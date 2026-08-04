@@ -1,0 +1,77 @@
+---
+description: Author C# formatting and style for LewdventureServer (ASP.NET Core)
+globs: **/*.cs
+alwaysApply: true
+---
+
+# C# author style (LewdventureServer)
+
+Canonical source: `.ai-factory/rules/csharp-author-style.mdc`. Keep both files in sync.
+
+Stack: C#, ASP.NET Core, Newtonsoft.Json. Match surrounding files; for new code follow these rules.
+
+## Language and access
+
+- Prefer `var` for locals when the type is obvious.
+- Default to `internal` for types and members unless wider API is required.
+- On interfaces, always write explicit access modifiers on members.
+- One type per file; file name = type name.
+- No XML `/// summary` unless the folder already uses them.
+
+## Conditions and loops
+
+- Write `condition == false`, not `!condition`. Do not write `== true`.
+- Use `!=` for inequality.
+- Prefer `<` and `<=` over `>` and `>=` (invert when needed).
+- Blank line before `if`, `for`, `foreach`, `while` when non-empty code precedes.
+- Single-statement `if` / `for` / `foreach` body: no braces.
+- Use `foreach` only when `for` is not practical.
+- `for` index `i` is allowed; never shorten other names (`obj`, `ex`).
+
+## Collections and exceptions
+
+- Fields: `private readonly List<T> _items = new();`.
+- Cache reused buffers in fields when used repeatedly.
+- Catch: `Exception exception`, not `ex`.
+- `Equals(object other)` — not `object obj`.
+
+## Spacing and file layout
+
+- Spaces around `=` in assignments and named arguments.
+- File ends with a single trailing newline.
+
+## Methods
+
+- Methods use block body `{ }`; no expression-bodied methods (`=>`).
+- Read-only properties may use `=>` when matching nearby mapper types.
+
+## Enums
+
+- First value is `None`, `Unknown`, or domain-neutral `= 0`.
+
+## Config mappers
+
+- Data-only: serialized/backing fields + read-only properties.
+- No lookup methods on mappers; indexing in `*MapperManager`.
+- Parsers: thin coordinator + dedicated parser per mechanic.
+
+## DI constructor order
+
+ASP.NET resolves by type; order is for readability.
+
+**Layer order:** Infrastructure → Managers → Services → Factories.
+
+- Within layer: alphabetical by type name.
+- `private readonly` fields match ctor parameter order.
+- Mutable runtime fields may precede readonly dependencies.
+
+## Logging
+
+- `ILogger<T>` via DI for errors and diagnostics.
+- Tagged prefixes in messages when helpful (e.g. `[Battle]`).
+
+## Misc
+
+- No emoji in comments, logs, or docs.
+- No LINQ in runtime code.
+- After generating code, re-read diff against these rules and neighboring files.
