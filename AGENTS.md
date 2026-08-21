@@ -21,7 +21,9 @@ LewdventureServer — ASP.NET Core 9 Web API для Lewdventure. Загружа�
 
 ```text
 Assets/
-  Documents/                   # GDD, разложенный под серверную ответственность
+  Documents/                   # вся документация
+    GDD/                       # игровая логика из GDD
+    Server/                    # API, config sync (/aif-docs)
   Core/
     Configs/                   # UrlConfig, parsers, converters
     Managers/                  # ConstantsMapperManager
@@ -32,6 +34,8 @@ Assets/
     Battles/                   # Simulation core
       Models/                  # DTO: request, response, steps
       Services/                # BattleSimulatorService, perks, skills
+    Artifacts/                 # Artifact bonus mappers (sheet stub)
+    Aspects/                   # Aspect bonus mappers (sheet stub)
     Bonuses/
     Common/
     Entities/
@@ -39,6 +43,7 @@ Assets/
     Perks/
     Statuses/
     Stories/
+    Trainings/                 # Training level bonus mappers (sheet stub)
 Program.cs                     # Composition root + endpoints
 .ai-factory/                   # AI Factory context
 .cursor/
@@ -54,11 +59,13 @@ Program.cs                     # Composition root + endpoints
 
 | Файл                                                          | Назначение                                                   |
 | ------------------------------------------------------------- | ------------------------------------------------------------ |
-| `Program.cs`                                                  | DI, middleware, `/api/battle/simulate`, `/api/config/update` |
-| `Assets/Core/Services/ConfigDistributor/ConfigDistributor.cs` | Все mapper managers                                          |
-| `Assets/Core/Services/GameConfigService/GameConfigService.cs` | Загрузка конфигов из Google Sheets                           |
+| `Program.cs`                                                  | DI, middleware, `/api/battle/simulate`, `/api/battle/replay`, `/api/config/update` |
+| `Assets/Core/Services/ConfigDistributor/ConfigDistributor.cs` | Все mapper managers (единственный runtime-владелец)          |
+| `Assets/Core/Services/GameConfigService/GameConfigService.cs` | Загрузка конфигов из Google Sheets (`[Config]`)              |
 | `Assets/Game/Battles/Services/BattleSimulatorService.cs`      | Основной battle loop                                         |
 | `Assets/Core/Configs/UrlConfig.cs`                            | URL paths для endpoints                                      |
+| `Assets/Documents/Server/config-sync.md`                      | Sync contract, Sheets > JSON, list/dictionary managers       |
+| `Assets/Documents/GDD/`                                       | GDD раскладка под серверную ответственность                  |
 | `LewdventureServer.csproj`                                    | .NET 9 Web SDK, package refs                                 |
 
 
@@ -70,6 +77,11 @@ Program.cs                     # Composition root + endpoints
 | Документ            | Путь                                        | Описание                           |
 | ------------------- | ------------------------------------------- | ---------------------------------- |
 | README              | `README.md`                                 | Quick start, endpoints             |
+| Documents           | `Assets/Documents/README.md`                | Корень GDD + Server docs           |
+| Battle API          | `Assets/Documents/Server/battle-api.md`     | Simulate endpoint / flow           |
+| Client battle (AI)  | `Assets/Documents/GDD/10-client-battle-ai.md` | Handoff: Unity client под protocol |
+| Config Sync         | `Assets/Documents/Server/config-sync.md`    | Sheets sync, managers, source of truth |
+| GDD                 | `Assets/Documents/GDD/README.md`            | Игровая логика под сервер          |
 | Project description | `.ai-factory/DESCRIPTION.md`                | Стек и соглашения                  |
 | Architecture        | `.ai-factory/ARCHITECTURE.md`               | Modular Monolith, dependency rules |
 | Battle spec         | `.ai-factory/specs/battle-simulation.md`    | API contract симуляции             |

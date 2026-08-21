@@ -10,3 +10,4 @@
 - Battle-изменения: читать `.ai-factory/specs/battle-simulation.md` перед правками.
 - Не выполнять destructive git-команды без явного запроса.
 - Не редактировать Google Sheet IDs и JSON-конфиги без явного запроса.
+- В планах (`/aif-plan`, `.ai-factory/plans/`, Cursor plan) **запрещена** секция `## Original Request` — не писать никогда.

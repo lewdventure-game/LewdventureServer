@@ -6,8 +6,11 @@
 /[Bb]uilds/
 /[Ll]ogs/
 /[Ll]og/
-/[Dd]ocs/
+# Project docs live in /docs (tracked). Do not ignore root docs/.
 /[Uu]ser[Ss]ettings/
+
+# .NET build output
+/[Bb]in/
 
 /[Aa]ssets/StreamingAssets
 /[Aa]ssets/AddressableAssetsData/link.xml

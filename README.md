@@ -14,6 +14,7 @@ cd D:\Project\LewdventureServer
 dotnet run
 
 # Сервер стартует на http://localhost:5000
+# На старте сам дергает sync конфигов (тот же путь, что POST /api/config/update)
 # Swagger UI: http://localhost:5000/swagger (Development only)
 ```
 
@@ -24,7 +25,8 @@ dotnet run
 | `/` | GET | Hello World |
 | `/api/ping` | GET | Status + UTC time |
 | `/api/battle/simulate` | POST | Симуляция боя |
-| `/api/config/update` | POST | Обновить конфиги из Google Sheets (`X-Config-Secret` header) |
+| `/api/battle/replay` | POST | Replay боя по seed + тому же snapshot |
+| `/api/config/update` | POST | Обновить конфиги из Google Sheets (`X-Config-Secret` header); на старте вызывается автоматически |
 
 ## Key Features
 
@@ -39,6 +41,10 @@ dotnet run
 | Документ | Описание |
 | --- | --- |
 | [AGENTS.md](AGENTS.md) | Карта проекта для AI agents |
+| [Documents](Assets/Documents/README.md) | Корень: GDD + Server docs |
+| [Battle API](Assets/Documents/Server/battle-api.md) | Endpoint, flow, примеры request/response |
+| [Config Sync](Assets/Documents/Server/config-sync.md) | Google Sheets sync, managers, источник правды |
+| [GDD](Assets/Documents/GDD/README.md) | Игровая логика (раскладка под сервер) |
 | [Description](.ai-factory/DESCRIPTION.md) | Стек и соглашения |
 | [Architecture](.ai-factory/ARCHITECTURE.md) | Modular Monolith, dependency rules |
 | [Battle Simulation](.ai-factory/specs/battle-simulation.md) | API contract симуляции |

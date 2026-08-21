@@ -1,0 +1,473 @@
+using Microsoft.Extensions.Logging;
+using Server.Bonuses;
+using Server.Services;
+
+namespace Server.Battles
+{
+    internal sealed class BattleBonusService : IBattleBonusService
+    {
+        private readonly ILogger<BattleBonusService> _logger;
+        private readonly IBattleCommandFactory _battleCommandFactory;
+        private readonly ICharacteristicCalculator _characteristicCalculator;
+        private readonly IConfigDistributor _configDistributor;
+
+        public BattleBonusService(
+            ILogger<BattleBonusService> logger,
+            IBattleCommandFactory battleCommandFactory,
+            ICharacteristicCalculator characteristicCalculator,
+            IConfigDistributor configDistributor)
+        {
+            _logger = logger;
+            _battleCommandFactory = battleCommandFactory;
+            _characteristicCalculator = characteristicCalculator;
+            _configDistributor = configDistributor;
+        }
+
+        public void Grant(
+            IUnitState unit,
+            int bonusId,
+            int count,
+            string sourceKey,
+            List<BattleCommand> commands,
+            int currentTurn)
+        {
+            if (count <= 0 || bonusId <= 0)
+                return;
+
+            if (_configDistributor.Bonuses.TryGet(bonusId, out var bonusMapper) == false)
+            {
+                _logger.LogWarning($"[Story][Battle] bonus missing id = {bonusId}");
+
+                return;
+            }
+
+            if (bonusMapper.BonusType == BonusType.Healing || bonusMapper.BonusType == BonusType.HealingFromMax)
+            {
+                ApplyHealingEffect(unit, bonusMapper, count, commands);
+
+                return;
+            }
+
+            if (bonusMapper.BonusType == BonusType.CurrentHealthLocal)
+            {
+                ApplyCurrentHealthLocal(unit, bonusMapper.BonusValue * count, bonusMapper.OperatorType, commands);
+
+                return;
+            }
+
+            var workMode = BonusWorkModeParser.ParseCore(bonusMapper.WorkModeParameters);
+            RemoveBonusesWithExactSourceKey(unit, sourceKey);
+
+            var activeBonus = new ActiveBattleBonus(
+                bonusId,
+                count,
+                bonusMapper.BonusType,
+                bonusMapper.BonusValue,
+                bonusMapper.OperatorType,
+                workMode,
+                sourceKey);
+
+            unit.ActiveBonuses.Add(activeBonus);
+
+            if (workMode.Kind == BonusWorkModeKind.NextBattles)
+                _logger.LogDebug($"[Story][Battle] bonus next_battles grant unitId = {unit.Id}, bonusId = {bonusId}, remainingBattles = {activeBonus.RemainingBattles}");
+
+            _logger.LogDebug($"[Story][Battle] bonus grant unitId = {unit.Id}, bonusId = {bonusId}, count = {count}, type = {bonusMapper.BonusType}, operator = {bonusMapper.OperatorType}, workMode = {workMode.Kind}, sourceKey = {sourceKey}");
+
+            Rebuild(unit, currentTurn, commands, true);
+        }
+
+        public void GrantRewardBonuses(
+            IUnitState unit,
+            IReadOnlyList<RewardBonus> bonuses,
+            int stacksMultiplier,
+            string sourceKey,
+            List<BattleCommand> commands,
+            int currentTurn)
+        {
+            if (bonuses.Count == 0 || stacksMultiplier <= 0)
+                return;
+
+            for (int i = 0; i < bonuses.Count; i++)
+            {
+                var rewardBonus = bonuses[i];
+                var layeredSourceKey = $"{sourceKey}:{rewardBonus.BonusId}:{i}";
+
+                Grant(unit, rewardBonus.BonusId, rewardBonus.Count * stacksMultiplier, layeredSourceKey, commands, currentTurn);
+            }
+        }
+
+        public void RemoveBySourceKey(
+            IUnitState unit,
+            string sourceKey,
+            List<BattleCommand> commands,
+            int currentTurn)
+        {
+            var activeBonuses = unit.ActiveBonuses;
+            var removedBonusIds = new List<int>();
+            var removed = 0;
+
+            for (int i = activeBonuses.Count - 1; 0 <= i; i--)
+            {
+                if (string.Equals(activeBonuses[i].SourceKey, sourceKey, StringComparison.Ordinal) == false
+                    && activeBonuses[i].SourceKey.StartsWith(sourceKey + ":", StringComparison.Ordinal) == false)
+                    continue;
+
+                var bonusId = activeBonuses[i].BonusId;
+
+                _logger.LogDebug($"[Story][Battle] bonus remove unitId = {unit.Id}, bonusId = {bonusId}, sourceKey = {activeBonuses[i].SourceKey}");
+
+                if (ContainsBonusId(removedBonusIds, bonusId) == false)
+                    removedBonusIds.Add(bonusId);
+
+                activeBonuses.RemoveAt(i);
+                removed += 1;
+            }
+
+            if (removed == 0)
+                return;
+
+            Rebuild(unit, currentTurn, commands, true);
+            EmitClearedBonusCommands(unit, removedBonusIds, currentTurn, commands);
+        }
+
+        public void OnTurnStart(IUnitState unit, int currentTurn, List<BattleCommand> commands)
+        {
+            var activeBonuses = unit.ActiveBonuses;
+            var changed = false;
+
+            for (int i = 0; i < activeBonuses.Count; i++)
+            {
+                var activeBonus = activeBonuses[i];
+
+                if (activeBonus.WorkMode.Kind != BonusWorkModeKind.EveryTurn)
+                    continue;
+
+                activeBonus.EveryTurnStacks += 1;
+                changed = true;
+
+                _logger.LogDebug($"[Story][Battle] bonus every_turn stack unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, everyTurnStacks = {activeBonus.EveryTurnStacks}, turn = {currentTurn}");
+            }
+
+            if (changed == false && HasTurnScopedBonus(activeBonuses) == false)
+                return;
+
+            Rebuild(unit, currentTurn, commands, true);
+        }
+
+        public void OnBattleEnd(IUnitState unit, List<BattleCommand> commands)
+        {
+            var activeBonuses = unit.ActiveBonuses;
+            var removed = 0;
+            var nextBattlesChanged = false;
+
+            for (int i = activeBonuses.Count - 1; 0 <= i; i--)
+            {
+                var activeBonus = activeBonuses[i];
+                var kind = activeBonus.WorkMode.Kind;
+
+                if (kind == BonusWorkModeKind.NextBattles)
+                {
+                    activeBonus.RemainingBattles -= 1;
+                    nextBattlesChanged = true;
+                    _logger.LogDebug($"[Story][Battle] bonus next_battles decrement unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, remainingBattles = {activeBonus.RemainingBattles}");
+
+                    if (0 < activeBonus.RemainingBattles)
+                        continue;
+
+                    commands.Add(_battleCommandFactory.SetBonus(unit.Id, unit.SlotIndex, activeBonus.BonusId, 0f, unit.Id));
+                    activeBonuses.RemoveAt(i);
+                    removed += 1;
+
+                    continue;
+                }
+
+                if (kind != BonusWorkModeKind.EndOfBattle && kind != BonusWorkModeKind.EveryTurn && kind != BonusWorkModeKind.FirstTurns)
+                    continue;
+
+                _logger.LogDebug($"[Story][Battle] bonus battle-end remove unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, workMode = {kind}");
+
+                commands.Add(_battleCommandFactory.SetBonus(unit.Id, unit.SlotIndex, activeBonus.BonusId, 0f, unit.Id));
+                activeBonuses.RemoveAt(i);
+                removed += 1;
+            }
+
+            if (removed == 0 && nextBattlesChanged == false)
+                return;
+
+            Rebuild(unit, int.MaxValue, commands, true);
+        }
+
+        public void Rebuild(IUnitState unit, int currentTurn, List<BattleCommand> commands, bool emitSetBonusCommands)
+        {
+            var buckets = unit.BaseBuckets.Clone();
+            var replaceOverrides = new List<ReplaceOverride>();
+            var activeBonuses = unit.ActiveBonuses;
+
+            for (int i = 0; i < activeBonuses.Count; i++)
+            {
+                var activeBonus = activeBonuses[i];
+
+                if (IsActiveForTurn(unit, activeBonus, currentTurn) == false)
+                    continue;
+
+                var totalCount = activeBonus.Count;
+
+                if (activeBonus.WorkMode.Kind == BonusWorkModeKind.EveryTurn)
+                    totalCount = activeBonus.Count * Math.Max(activeBonus.EveryTurnStacks, 1);
+
+                var totalValue = activeBonus.BonusValue * totalCount;
+
+                if (activeBonus.OperatorType == BonusOperatorType.Replace)
+                {
+                    replaceOverrides.Add(new ReplaceOverride(activeBonus.BonusType, totalValue));
+
+                    continue;
+                }
+
+                CharacteristicBucketApplicator.Apply(buckets, activeBonus.BonusType, totalValue);
+            }
+
+            var healthBeforeRebuild = unit.CharacteristicState.Health;
+
+            _characteristicCalculator.ApplyToState(buckets, unit.CharacteristicState, replaceOverrides, true, false);
+
+            if (emitSetBonusCommands == false)
+                return;
+
+            EmitHealthSyncIfChanged(unit, healthBeforeRebuild, commands);
+            EmitAggregatedSetBonusCommands(unit, currentTurn, commands, activeBonuses);
+        }
+
+        private void EmitHealthSyncIfChanged(IUnitState unit, float healthBeforeRebuild, List<BattleCommand> commands)
+        {
+            var healthAfterRebuild = unit.CharacteristicState.Health;
+
+            if (MathF.Abs(healthAfterRebuild - healthBeforeRebuild) <= 0.0001f)
+                return;
+
+            commands.Add(_battleCommandFactory.SetHp(unit.Id, unit.SlotIndex, healthAfterRebuild));
+            _logger.LogDebug($"[Story][Battle] bonus rebuild health sync unitId = {unit.Id}, healthBefore = {healthBeforeRebuild}, healthAfter = {healthAfterRebuild}, maxHealth = {unit.CharacteristicState.MaxHealth}");
+        }
+
+        private static void RemoveBonusesWithExactSourceKey(IUnitState unit, string sourceKey)
+        {
+            if (string.IsNullOrEmpty(sourceKey))
+                return;
+
+            var activeBonuses = unit.ActiveBonuses;
+
+            for (int i = activeBonuses.Count - 1; 0 <= i; i--)
+            {
+                if (string.Equals(activeBonuses[i].SourceKey, sourceKey, StringComparison.Ordinal) == false)
+                    continue;
+
+                activeBonuses.RemoveAt(i);
+            }
+        }
+
+        private void EmitAggregatedSetBonusCommands(
+            IUnitState unit,
+            int currentTurn,
+            List<BattleCommand> commands,
+            List<ActiveBattleBonus> activeBonuses)
+        {
+            var emittedBonusIds = new List<int>();
+
+            for (int i = 0; i < activeBonuses.Count; i++)
+            {
+                var bonusId = activeBonuses[i].BonusId;
+
+                if (ContainsBonusId(emittedBonusIds, bonusId))
+                    continue;
+
+                emittedBonusIds.Add(bonusId);
+
+                var appliedValue = 0f;
+                var hasActiveEntry = false;
+                var hasInactivePresentationClear = false;
+
+                for (int j = 0; j < activeBonuses.Count; j++)
+                {
+                    var activeBonus = activeBonuses[j];
+
+                    if (activeBonus.BonusId != bonusId)
+                        continue;
+
+                    if (IsActiveForTurn(unit, activeBonus, currentTurn) == false)
+                    {
+                        if (activeBonus.WorkMode.Kind == BonusWorkModeKind.FirstTurns
+                            || activeBonus.WorkMode.Kind == BonusWorkModeKind.IfEquipped)
+                            hasInactivePresentationClear = true;
+
+                        continue;
+                    }
+
+                    hasActiveEntry = true;
+                    var totalCount = activeBonus.Count;
+
+                    if (activeBonus.WorkMode.Kind == BonusWorkModeKind.EveryTurn)
+                        totalCount = activeBonus.Count * Math.Max(activeBonus.EveryTurnStacks, 1);
+
+                    appliedValue += activeBonus.BonusValue * totalCount;
+                }
+
+                if (hasActiveEntry == false)
+                {
+                    if (hasInactivePresentationClear)
+                        commands.Add(_battleCommandFactory.SetBonus(unit.Id, unit.SlotIndex, bonusId, 0f, unit.Id));
+
+                    continue;
+                }
+
+                commands.Add(_battleCommandFactory.SetBonus(unit.Id, unit.SlotIndex, bonusId, appliedValue, unit.Id));
+            }
+        }
+
+        private void ApplyHealingEffect(IUnitState unit, IBonusMapper bonusMapper, int count, List<BattleCommand> commands)
+        {
+            var characteristics = unit.CharacteristicState;
+            var value = bonusMapper.BonusValue * count;
+            float healDelta;
+
+            if (bonusMapper.BonusType == BonusType.HealingFromMax)
+                healDelta = _characteristicCalculator.CalculateHealingFromMax(characteristics.MaxHealth, value, characteristics.HealingBoost);
+            else
+                healDelta = _characteristicCalculator.CalculateHealingFromCurrent(characteristics.Health, value, characteristics.HealingBoost);
+
+            characteristics.Health += healDelta;
+
+            if (characteristics.Health < 0f)
+                characteristics.Health = 0f;
+
+            if (characteristics.MaxHealth < characteristics.Health)
+                characteristics.Health = characteristics.MaxHealth;
+
+            commands.Add(_battleCommandFactory.SetBonus(unit.Id, unit.SlotIndex, bonusMapper.Id, value, unit.Id));
+            commands.Add(_battleCommandFactory.ShowHeal(unit.Id, unit.SlotIndex, unit.Id, unit.SlotIndex, healDelta));
+            commands.Add(_battleCommandFactory.SetHp(unit.Id, unit.SlotIndex, characteristics.Health));
+
+            _logger.LogDebug($"[Story][Battle] healing effect unitId = {unit.Id}, bonusId = {bonusMapper.Id}, type = {bonusMapper.BonusType}, healDelta = {healDelta}, health = {characteristics.Health}");
+        }
+
+        private void ApplyCurrentHealthLocal(IUnitState unit, float value, BonusOperatorType operatorType, List<BattleCommand> commands)
+        {
+            var characteristics = unit.CharacteristicState;
+
+            if (operatorType == BonusOperatorType.Replace)
+            {
+                characteristics.Health = value;
+                _logger.LogDebug($"[Story][Battle] current health local replace unitId = {unit.Id}, value = {value}");
+            }
+            else
+            {
+                characteristics.Health += value;
+                _logger.LogDebug($"[Story][Battle] current health local unitId = {unit.Id}, delta = {value}, health = {characteristics.Health}");
+            }
+
+            if (characteristics.Health < 0f)
+                characteristics.Health = 0f;
+
+            if (characteristics.MaxHealth < characteristics.Health)
+                characteristics.Health = characteristics.MaxHealth;
+
+            commands.Add(_battleCommandFactory.SetHp(unit.Id, unit.SlotIndex, characteristics.Health));
+        }
+
+        private bool IsActiveForTurn(IUnitState unit, ActiveBattleBonus activeBonus, int currentTurn)
+        {
+            var kind = activeBonus.WorkMode.Kind;
+
+            if (kind == BonusWorkModeKind.NextBattles)
+                return 0 < activeBonus.RemainingBattles;
+
+            if (kind == BonusWorkModeKind.FirstTurns)
+            {
+                var turnLimit = activeBonus.WorkMode.Count;
+
+                if (turnLimit <= 0)
+                    return false;
+
+                // Turns in simulator are 0-based; first_turns:N covers turns 0..N-1.
+                return currentTurn < turnLimit;
+            }
+
+            if (kind == BonusWorkModeKind.IfEquipped)
+            {
+                var entityType = activeBonus.WorkMode.EquippedEntityType;
+                var entityId = activeBonus.WorkMode.EquippedEntityId;
+                var isEquipped = unit.HasEquippedEntity(entityType, entityId);
+
+                if (isEquipped == false)
+                    _logger.LogWarning($"[Story][Battle] if_equipped skip unitId = {unit.Id} bonusId = {activeBonus.BonusId} entityType = {entityType} entityId = {entityId}");
+
+                return isEquipped;
+            }
+
+            return true;
+        }
+
+        private bool HasTurnScopedBonus(List<ActiveBattleBonus> activeBonuses)
+        {
+            for (int i = 0; i < activeBonuses.Count; i++)
+            {
+                if (activeBonuses[i].WorkMode.Kind == BonusWorkModeKind.FirstTurns)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void EmitClearedBonusCommands(
+            IUnitState unit,
+            List<int> removedBonusIds,
+            int currentTurn,
+            List<BattleCommand> commands)
+        {
+            var activeBonuses = unit.ActiveBonuses;
+
+            for (int i = 0; i < removedBonusIds.Count; i++)
+            {
+                var bonusId = removedBonusIds[i];
+
+                if (HasRemainingActiveBonusId(unit, activeBonuses, bonusId, currentTurn))
+                    continue;
+
+                commands.Add(_battleCommandFactory.SetBonus(unit.Id, unit.SlotIndex, bonusId, 0f, unit.Id));
+
+                _logger.LogDebug($"[Story][Battle] bonus cleared presentation unitId = {unit.Id}, bonusId = {bonusId}");
+            }
+        }
+
+        private bool HasRemainingActiveBonusId(
+            IUnitState unit,
+            List<ActiveBattleBonus> activeBonuses,
+            int bonusId,
+            int currentTurn)
+        {
+            for (int i = 0; i < activeBonuses.Count; i++)
+            {
+                if (activeBonuses[i].BonusId != bonusId)
+                    continue;
+
+                if (IsActiveForTurn(unit, activeBonuses[i], currentTurn) == false)
+                    continue;
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool ContainsBonusId(List<int> bonusIds, int bonusId)
+        {
+            for (int i = 0; i < bonusIds.Count; i++)
+            {
+                if (bonusIds[i] == bonusId)
+                    return true;
+            }
+
+            return false;
+        }
+    }
+}

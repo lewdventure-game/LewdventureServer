@@ -1,0 +1,29 @@
+namespace Server.Battles
+{
+    internal interface IUnitSnapshot
+    {
+        public int Id { get; set; }
+
+        public int Level { get; set; }
+
+        public int MasteryLevel { get; set; }
+
+        public List<IEquipmentSnapshot> Equipment { get; set; }
+
+        public List<int> EquipmentIds { get; set; }
+
+        public int TrainingLevel { get; set; }
+
+        public List<int> ArtifactIds { get; set; }
+
+        public List<int> AspectIds { get; set; }
+
+        public List<int> ActivePerkIds { get; set; }
+
+        public List<string> ActiveSkillIds { get; set; }
+
+        public List<int> ActiveStatusIds { get; set; }
+
+        public int SlotIndex { get; set; }
+    }
+}

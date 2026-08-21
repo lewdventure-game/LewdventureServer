@@ -17,7 +17,7 @@ LewdventureServer — ASP.NET Core 9 Web API для headless симуляции 
 
 ## Архитектурные наблюдения
 
-- Код живёт в `Assets/` с разделением `Core` (инфраструктура, конфиги, constants) и `Game` (доменные области: Battles, Entities, Stories, Perks, Statuses, Bonuses, Equipments).
+- Код живёт в `Assets/` с разделением `Core` (инфраструктура, конфиги, constants) и `Game` (доменные области: Battles, Entities, Stories, Perks, Statuses, Bonuses, Equipments, Trainings, Artifacts, Aspects).
 - `Program.cs` — composition root: DI registrations, middleware, minimal API endpoints.
 - `IConfigDistributor` агрегирует все `*MapperManager`; `GameConfigService` обновляет данные из Google Sheets.
 - Battle simulation: `BattleSimulatorService` + `BattleStatusSimulator`, perks/skills через factories.

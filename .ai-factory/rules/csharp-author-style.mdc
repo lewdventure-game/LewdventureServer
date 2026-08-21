@@ -14,7 +14,8 @@ Stack: C#, ASP.NET Core, Newtonsoft.Json. Match surrounding files; for new code 
 
 - Prefer `var` for locals when the type is obvious.
 - Default to `internal` for types and members unless wider API is required.
-- On interfaces, always write explicit access modifiers on members.
+- On interfaces, always write explicit access modifiers on every member.
+- On interfaces, always declare properties first, then methods.
 - One type per file; file name = type name.
 - No XML `/// summary` unless the folder already uses them.
 
@@ -37,13 +38,15 @@ Stack: C#, ASP.NET Core, Newtonsoft.Json. Match surrounding files; for new code 
 
 ## Spacing and file layout
 
-- Spaces around `=` in assignments and named arguments.
-- File ends with a single trailing newline.
+- `=` is ALWAYS surrounded by spaces (assignments, named arguments, logs, comparisons like `==` / `!=` already have spaces; never write `id={x}` or `a=b`).
+- Blank line between consecutive members: fields group, constructor, properties, methods (never jam `}\n        public` / `}\n        internal`).
+- File ALWAYS ends with a single trailing newline (last `}` then newline; editor shows an empty last line).
 
 ## Methods
 
 - Methods use block body `{ }`; no expression-bodied methods (`=>`).
 - Read-only properties may use `=>` when matching nearby mapper types.
+- NEVER use optional parameters (`param = default`). ALL parameters are ALWAYS explicit at every call site.
 
 ## Enums
 
@@ -68,10 +71,13 @@ ASP.NET resolves by type; order is for readability.
 ## Logging
 
 - `ILogger<T>` via DI for errors and diagnostics.
-- Tagged prefixes in messages when helpful (e.g. `[Battle]`).
+- Tagged prefixes in messages when helpful (e.g. `[Story][Battle]`).
+- Log calls are ALWAYS one line: `_logger.LogDebug($"...");` — never break the opening `(` onto the next line.
 
 ## Misc
 
 - No emoji in comments, logs, or docs.
 - No LINQ in runtime code.
+- NEVER use abbreviations in code, logs, comments, or chat with the owner (write `damage over time`, not `DoT`; `data transfer object` only if forced by existing API names).
+- NEVER use nullable reference types (`T?` for classes/interfaces, `out T?`, `null!`). Prefer index/`Try` patterns that do not need null.
 - After generating code, re-read diff against these rules and neighboring files.

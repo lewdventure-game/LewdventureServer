@@ -4,25 +4,19 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Server.Battles;
 using Server.Bonuses;
-using Server.Common;
 using Server.Configs;
-using Server.Entities;
-using Server.Equipments;
-using Server.Perks;
 using Server.Services;
-using Server.Statuses;
-using Server.Stories;
 
 namespace Server
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var url = $"{UrlConfig.LocalHost}:{ServerConfig.Port}";
             var builder = CreateBuilder(args, url);
 
-            BuildWebApplication(builder, url);
+            await BuildWebApplication(builder, url);
         }
 
         private static WebApplicationBuilder CreateBuilder(string[] args, string url)
@@ -36,16 +30,38 @@ namespace Server
             return builder;
         }
 
-        private static void BuildWebApplication(WebApplicationBuilder builder, string url)
+        private static async Task BuildWebApplication(WebApplicationBuilder builder, string url)
         {
             var application = builder.Build();
 
             ConfigureMiddleware(application);
             ConfigureEndpoints(application);
 
+            await SyncConfigsOnStartup(application);
+
             Console.WriteLine($"Battle Server started on {url}");
 
-            application.Run();
+            await application.RunAsync();
+        }
+
+        private static async Task SyncConfigsOnStartup(WebApplication application)
+        {
+            var configService = application.Services.GetRequiredService<IGameConfigService>();
+            var environment = application.Services.GetRequiredService<IHostEnvironment>();
+            var logger = application.Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(Program));
+
+            logger.LogInformation("[Config] startup sync begin (same path as POST /api/config/update)");
+
+            var (success, message) = await configService.UpdateAllConfigsAsync(environment.IsDevelopment());
+
+            if (success == false)
+            {
+                logger.LogError($"[Config] startup sync failed: {message}");
+
+                return;
+            }
+
+            logger.LogInformation($"[Config] startup sync ok: {message}");
         }
 
         private static void ConfigureServices(IServiceCollection services)
@@ -56,28 +72,33 @@ namespace Server
                 .AddEndpointsApiExplorer()
                 .AddSwaggerGen();
 
-            // 2. Бизнес-логика
+            // 2. Бизнес-логика — configs only via IConfigDistributor (managers live inside it)
             services
                 .AddSingleton<IConfigDistributor, ConfigDistributor>()
                 .AddSingleton<IGameConfigService, GameConfigService>()
-                .AddSingleton<IConstantsMapperManager, ConstantsMapperManager>()
-                .AddSingleton<IBonusMapperManager, BonusMapperManager>()
-                .AddSingleton<ICharacterMapperManager, CharacterMapperManager>()
-                .AddSingleton<IEnemyMapperManager, EnemyMapperManager>()
-                .AddSingleton<IEquipmentMapperManager, EquipmentMapperManager>()
-                .AddSingleton<IExperienceLevelPatternMapperManager, ExperienceLevelPatternMapperManager>()
-                .AddSingleton<IPerkGroupMapperManager, PerkGroupMapperManager>()
-                .AddSingleton<IPerkMapperManager, PerkMapperManager>()
-                .AddSingleton<IStatusMapperManager, StatusMapperManager>()
-                .AddSingleton<IStoryEventMapperManager, StoryEventMapperManager>()
-                .AddSingleton<IStoryLevelMapperManager, StoryLevelMapperManager>()
-                .AddSingleton<IStoryStageMapperManager, StoryStageMapperManager>()
-                .AddSingleton<ISummonLevelMapperManager, SummonLevelMapperManager>()
-                .AddSingleton<ISummonMapperManager, SummonMapperManager>()
+                .AddSingleton<IBonusWorkModeParser, BonusWorkModeParser>()
+                .AddSingleton<IBattleAttackService, BattleAttackService>()
+                .AddSingleton<IBattleBonusService, BattleBonusService>()
+                .AddSingleton<IBattleCommandFactory, BattleCommandFactory>()
+                .AddSingleton<IBattleParameterParser, BattleParameterParser>()
+                .AddSingleton<IBattlePerkSimulator, BattlePerkSimulator>()
+                .AddSingleton<IBattleRewardParser, BattleRewardParser>()
+                .AddSingleton<IBattleRewardService, BattleRewardService>()
+                .AddSingleton<IBattleScriptBuilder, BattleScriptBuilder>()
+                .AddSingleton<IBattleSimulationValidator, BattleSimulationValidator>()
+                .AddSingleton<IBattleSkillSimulator, BattleSkillSimulator>()
                 .AddSingleton<IBattleStatusSimulator, BattleStatusSimulator>()
+                .AddSingleton<IBattleSummonSimulator, BattleSummonSimulator>()
+                .AddSingleton<ICharacteristicCalculator, CharacteristicCalculator>()
+                .AddSingleton<IPerkFactory, PerkFactory>()
+                .AddSingleton<ISkillFactory, SkillFactory>()
+                .AddSingleton<IStatusParametersParser, StatusParametersParser>()
+                .AddSingleton<IUnitStateBuilder, UnitStateBuilder>()
                 .AddSingleton<BattleSimulatorService>();
 
-            // 3. Контроллеры
+            // 3. JSON — Newtonsoft канон; Minimal API по умолчанию жрёт System.Text.Json, его для battle не используем.
+            services.AddSingleton(CreateNewtonsoftSerializerSettings());
+
             services
                 .AddControllers()
                 .ConfigureApiBehaviorOptions(options =>
@@ -86,11 +107,26 @@ namespace Server
                 })
                 .AddNewtonsoftJson(options =>
                 {
-                    var serializerSettings = options.SerializerSettings;
-                    serializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-                    serializerSettings.NullValueHandling = NullValueHandling.Ignore;
-                    serializerSettings.ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor;
+                    ApplyNewtonsoftSerializerSettings(options.SerializerSettings);
                 });
+        }
+
+        private static JsonSerializerSettings CreateNewtonsoftSerializerSettings()
+        {
+            var serializerSettings = new JsonSerializerSettings();
+            ApplyNewtonsoftSerializerSettings(serializerSettings);
+
+            return serializerSettings;
+        }
+
+        private static void ApplyNewtonsoftSerializerSettings(JsonSerializerSettings serializerSettings)
+        {
+            serializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+            serializerSettings.NullValueHandling = NullValueHandling.Ignore;
+            serializerSettings.ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor;
+            serializerSettings.Converters.Add(new TeamSnapshotJsonConverter());
+            serializerSettings.Converters.Add(new UnitSnapshotJsonConverter());
+            serializerSettings.Converters.Add(new EquipmentSnapshotJsonConverter());
         }
 
         private static void ConfigureMiddleware(WebApplication application)
@@ -108,7 +144,7 @@ namespace Server
 
                     var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
                     var exceptionFeature = context.Features.Get<IExceptionHandlerFeature>();
-                    logger.LogError(exceptionFeature?.Error, "Unhandled exception");
+                    logger.LogError(exceptionFeature?.Error, "[Error] unhandled exception");
                 });
             });
 
@@ -153,14 +189,62 @@ namespace Server
                     : Results.Problem(detail: message, statusCode: 500);
             });
 
-            // Основной POST запрос для симуляции боя
-            app.MapPost(UrlConfig.SimulateBattle, (
-                BattleSimulationData request,
+            // Battle body/response — только Newtonsoft. Accepts/Produces нужны Swagger'у (параметр HttpRequest он не документирует).
+            app.MapPost(UrlConfig.SimulateBattle, async (
+                HttpRequest httpRequest,
+                [FromServices] JsonSerializerSettings serializerSettings,
+                [FromServices] IBattleSimulationValidator validator,
                 [FromServices] BattleSimulatorService simulator) =>
             {
+                string body;
+
+                using (var streamReader = new StreamReader(httpRequest.Body))
+                    body = await streamReader.ReadToEndAsync();
+
+                var request = JsonConvert.DeserializeObject<BattleSimulationData>(body, serializerSettings);
+
+                if (request == null)
+                    return Results.BadRequest(new { error = "Request body is required." });
+
+                if (validator.TryValidate(request, out var errorMessage) == false)
+                    return Results.BadRequest(new { error = errorMessage });
+
                 var script = simulator.Simulate(request);
-                return Results.Ok(script);
-            });
+                var responseJson = JsonConvert.SerializeObject(script, serializerSettings);
+
+                return Results.Content(responseJson, "application/json");
+            })
+            .Accepts<BattleSimulationData>("application/json")
+            .Produces<BattleScriptResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest);
+
+            app.MapPost(UrlConfig.ReplayBattle, async (
+                HttpRequest httpRequest,
+                [FromServices] JsonSerializerSettings serializerSettings,
+                [FromServices] IBattleSimulationValidator validator,
+                [FromServices] BattleSimulatorService simulator) =>
+            {
+                string body;
+
+                using (var streamReader = new StreamReader(httpRequest.Body))
+                    body = await streamReader.ReadToEndAsync();
+
+                var request = JsonConvert.DeserializeObject<BattleReplayData>(body, serializerSettings);
+
+                if (request == null)
+                    return Results.BadRequest(new { error = "Request body is required." });
+
+                if (validator.TryValidate(request, out var errorMessage) == false)
+                    return Results.BadRequest(new { error = errorMessage });
+
+                var script = simulator.Replay(request);
+                var responseJson = JsonConvert.SerializeObject(script, serializerSettings);
+
+                return Results.Content(responseJson, "application/json");
+            })
+            .Accepts<BattleReplayData>("application/json")
+            .Produces<BattleScriptResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest);
         }
     }
 }

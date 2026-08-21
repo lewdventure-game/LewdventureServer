@@ -45,8 +45,9 @@ paths:
   # README.md remains the landing page in the project root.
   # Change this if you want docs pages under another folder like
   # documentation/, handbook/, or site/docs/.
+  # Server API / sync docs (GDD lives in Assets/Documents/GDD/)
   # Default: docs/
-  docs: docs/
+  docs: Assets/Documents/Server/
 
   # Roadmap file
   # Default: .ai-factory/ROADMAP.md
