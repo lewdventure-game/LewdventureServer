@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using Core.Collections;
 
 namespace Server.Stories
 {
     internal sealed class StoryEventMapperManager : BaseManager<IStoryEventMapper>, IStoryEventMapperManager
     {
-        public bool TryGet(int storyEventId, out IStoryEventMapper mapper)
+        public bool TryGet(int storyEventId, [MaybeNullWhen(false)] out IStoryEventMapper mapper)
         {
             for (int i = 0; i < Collection.Count; i++)
             {

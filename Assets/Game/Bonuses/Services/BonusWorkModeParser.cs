@@ -100,12 +100,11 @@ namespace Server.Bonuses
                 return false;
 
             entityType = remainder.Substring(0, separator).Trim();
+
             var idRaw = remainder.Substring(separator + 1).Trim();
 
-            if (string.IsNullOrEmpty(entityType))
-                return false;
-
-            return int.TryParse(idRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out entityId);
+            return string.IsNullOrEmpty(entityType) == false
+                && int.TryParse(idRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out entityId);
         }
     }
 }

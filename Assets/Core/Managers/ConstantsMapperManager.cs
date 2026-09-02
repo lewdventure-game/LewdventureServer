@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using Core.Collections;
 
 namespace Server.Configs
 {
     internal sealed class ConstantsMapperManager : BaseManager<IConstantsMapper>, IConstantsMapperManager
     {
-        public bool TryGet(string constantName, out IConstantsMapper mapper)
+        public bool TryGet(string constantName, [MaybeNullWhen(false)] out IConstantsMapper mapper)
         {
             for (int i = 0; i < Collection.Count; i++)
             {

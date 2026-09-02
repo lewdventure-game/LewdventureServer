@@ -2,8 +2,18 @@ namespace Server.Battles
 {
     internal sealed class EquipmentSnapshot : IEquipmentSnapshot
     {
-        public int Id { get; set; }
+        private readonly int _id;
 
-        public int Level { get; set; }
+        private readonly int _level;
+
+        public int Id => _id;
+
+        public int Level => _level;
+
+        internal EquipmentSnapshot(int id, int level)
+        {
+            _id = id;
+            _level = level;
+        }
     }
 }

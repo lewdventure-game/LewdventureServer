@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Core.Collections
 {
     public interface IDictionaryManager<TKey, TValue>
@@ -9,7 +11,7 @@ namespace Core.Collections
 
         public bool Add(TKey key, TValue value);
 
-        public bool TryGet(TKey key, out TValue value);
+        public bool TryGet(TKey key, [MaybeNullWhen(false)] out TValue value);
 
         public void Clear();
     }

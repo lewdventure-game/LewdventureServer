@@ -20,7 +20,7 @@ namespace Server.Configs
         public override object ReadJson(
             JsonReader reader,
             Type objectType,
-            object existingValue,
+            object? existingValue,
             JsonSerializer serializer)
         {
             if (reader.TokenType == JsonToken.Null)
@@ -35,35 +35,42 @@ namespace Server.Configs
 
             if (reader.TokenType == JsonToken.String)
             {
-                var value = (string)reader.Value;
-
-                if (string.IsNullOrWhiteSpace(value))
-                    return Array.Empty<float>();
-
-                value = value.Trim('[', ']');
-                var parts = value.Split(_delimiter);
-                var numbers = new List<float>(parts.Length);
-
-                for (int i = 0; i < parts.Length; i++)
+                if (reader.Value is string value)
                 {
-                    var part = parts[i].Trim();
+                    if (string.IsNullOrWhiteSpace(value))
+                        return Array.Empty<float>();
 
-                    if (string.IsNullOrWhiteSpace(part))
-                        continue;
+                    value = value.Trim('[', ']');
+                    var parts = value.Split(_delimiter);
+                    var numbers = new List<float>(parts.Length);
 
-                    numbers.Add(float.Parse(part, CultureInfo.InvariantCulture));
+                    for (int i = 0; i < parts.Length; i++)
+                    {
+                        var part = parts[i].Trim();
+
+                        if (string.IsNullOrWhiteSpace(part))
+                            continue;
+
+                        numbers.Add(float.Parse(part, CultureInfo.InvariantCulture));
+                    }
+
+                    return numbers.ToArray();
                 }
 
-                return numbers.ToArray();
+                return Array.Empty<float>();
             }
 
             if (reader.TokenType == JsonToken.StartArray)
-                return serializer.Deserialize<float[]>(reader);
+            {
+                var values = serializer.Deserialize<float[]>(reader);
+
+                return values ?? [];
+            }
 
             throw new JsonSerializationException($"Unexpected token {reader.TokenType} when parsing float[]");
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
             serializer.Serialize(writer, value);
         }

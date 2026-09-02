@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using Core.Collections;
 
 namespace Server.Entities
 {
     internal sealed class SummonLevelMapperManager : BaseManager<ISummonLevelMapper>, ISummonLevelMapperManager
     {
-        public bool TryGet(int patternId, int level, out ISummonLevelMapper mapper)
+        public bool TryGet(int patternId, int level, [MaybeNullWhen(false)] out ISummonLevelMapper mapper)
         {
             for (int i = 0; i < Collection.Count; i++)
             {

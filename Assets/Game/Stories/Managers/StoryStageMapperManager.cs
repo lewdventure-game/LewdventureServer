@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using Core.Collections;
 
 namespace Server.Stories
 {
     internal sealed class StoryStageMapperManager : BaseManager<IStoryStageMapper>, IStoryStageMapperManager
     {
-        public bool TryGet(int storyStageId, out IStoryStageMapper mapper)
+        public bool TryGet(int storyStageId, [MaybeNullWhen(false)] out IStoryStageMapper mapper)
         {
             for (int i = 0; i < Collection.Count; i++)
             {

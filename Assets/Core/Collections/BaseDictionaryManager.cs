@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Core.Collections
 {
     public abstract class BaseDictionaryManager<TKey, TValue> : IDictionaryManager<TKey, TValue>
@@ -23,16 +25,12 @@ namespace Core.Collections
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        public bool TryGet(TKey key, out TValue value)
+        public bool TryGet(TKey key, [MaybeNullWhen(false)] out TValue value)
         {
-            if (_dictionary.TryGetValue(key, out value))
-                return true;
-
-            value = default;
-
-            return false;
+            return _dictionary.TryGetValue(key, out value);
         }
 
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public void Clear()
         {
             _dictionary.Clear();

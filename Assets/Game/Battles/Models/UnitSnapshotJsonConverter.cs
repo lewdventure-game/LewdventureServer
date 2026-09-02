@@ -10,10 +10,10 @@ namespace Server.Battles
             return objectType == typeof(IUnitSnapshot);
         }
 
-        public override object ReadJson(
+        public override object? ReadJson(
             JsonReader reader,
             Type objectType,
-            object existingValue,
+            object? existingValue,
             JsonSerializer serializer)
         {
             if (reader.TokenType == JsonToken.Null)
@@ -27,71 +27,62 @@ namespace Server.Battles
             return unitSnapshot;
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
             serializer.Serialize(writer, value);
         }
 
         private static void NormalizeEquipment(UnitSnapshot unitSnapshot, JObject token)
         {
-            if (unitSnapshot.Equipment == null)
-                unitSnapshot.Equipment = new List<IEquipmentSnapshot>();
+            CheckFields(unitSnapshot);
 
-            if (unitSnapshot.EquipmentIds == null)
-                unitSnapshot.EquipmentIds = new List<int>();
-
-            if (unitSnapshot.ArtifactIds == null)
-                unitSnapshot.ArtifactIds = new List<int>();
-
-            if (unitSnapshot.AspectIds == null)
-                unitSnapshot.AspectIds = new List<int>();
-
-            if (unitSnapshot.ActivePerkIds == null)
-                unitSnapshot.ActivePerkIds = new List<int>();
-
-            if (unitSnapshot.ActiveSkillIds == null)
-                unitSnapshot.ActiveSkillIds = new List<string>();
-
-            if (unitSnapshot.ActiveStatusIds == null)
-                unitSnapshot.ActiveStatusIds = new List<int>();
-
-            var hasEquipmentProperty = token["equipment"] != null || token["Equipment"] != null;
+            var hasEquipmentsProperty = token["equipments"] != null || token["Equipments"] != null;
             var hasEquipmentIdsProperty = token["equipmentIds"] != null || token["EquipmentIds"] != null;
 
-            if (unitSnapshot.Equipment.Count == 0 && hasEquipmentIdsProperty)
+            var equipments = unitSnapshot.Equipments;
+            var equipmentIds = unitSnapshot.EquipmentIds;
+
+            if (equipments.Count == 0 && hasEquipmentIdsProperty)
             {
-                for (int i = 0; i < unitSnapshot.EquipmentIds.Count; i++)
+                for (int i = 0; i < equipmentIds.Count; i++)
                 {
-                    unitSnapshot.Equipment.Add(new EquipmentSnapshot
-                    {
-                        Id = unitSnapshot.EquipmentIds[i],
-                        Level = 1,
-                    });
+                    var id = equipmentIds[i];
+
+                    equipments.Add(new EquipmentSnapshot(id, 1));
                 }
             }
-            else if (unitSnapshot.EquipmentIds.Count == 0 && hasEquipmentProperty)
+            else if (equipmentIds.Count == 0 && hasEquipmentsProperty)
             {
-                for (int i = 0; i < unitSnapshot.Equipment.Count; i++)
+                for (int i = 0; i < equipments.Count; i++)
                 {
-                    var entry = unitSnapshot.Equipment[i];
+                    var entry = equipments[i];
 
                     if (entry == null)
                         continue;
 
-                    unitSnapshot.EquipmentIds.Add(entry.Id);
+                    equipmentIds.Add(entry.Id);
                 }
             }
-            else if (unitSnapshot.Equipment.Count == 0 && unitSnapshot.EquipmentIds.Count != 0)
+            else if (equipments.Count == 0 && equipmentIds.Count != 0)
             {
-                for (int i = 0; i < unitSnapshot.EquipmentIds.Count; i++)
+                for (int i = 0; i < equipmentIds.Count; i++)
                 {
-                    unitSnapshot.Equipment.Add(new EquipmentSnapshot
-                    {
-                        Id = unitSnapshot.EquipmentIds[i],
-                        Level = 1,
-                    });
+                    var id = equipmentIds[i];
+
+                    equipments.Add(new EquipmentSnapshot(id, 1));
                 }
             }
+        }
+
+        private static void CheckFields(UnitSnapshot unitSnapshot)
+        {
+            unitSnapshot.Equipments ??= [];
+            unitSnapshot.EquipmentIds ??= [];
+            unitSnapshot.ArtifactIds ??= [];
+            unitSnapshot.AspectIds ??= [];
+            unitSnapshot.ActivePerkIds ??= [];
+            unitSnapshot.ActiveSkillIds ??= [];
+            unitSnapshot.ActiveStatusIds ??= [];
         }
     }
 }

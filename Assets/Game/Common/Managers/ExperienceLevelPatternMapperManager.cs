@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Core.Collections;
 using Server.Configs;
 
@@ -5,7 +6,7 @@ namespace Server.Common
 {
     internal sealed class ExperienceLevelPatternMapperManager : BaseManager<IExperienceLevelPatternMapper>, IExperienceLevelPatternMapperManager
     {
-        public bool TryGet(int patternId, int experienceLevel, out IExperienceLevelPatternMapper mapper)
+        public bool TryGet(int patternId, int experienceLevel, [MaybeNullWhen(false)] out IExperienceLevelPatternMapper mapper)
         {
             for (int i = 0; i < Collection.Count; i++)
             {

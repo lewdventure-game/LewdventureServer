@@ -285,16 +285,14 @@ namespace Server.Battles
                 return false;
 
             var statusType = statusMapper.StatusType;
+            var isBurn = burn && (statusType == StatusType.Burning || statusType == StatusType.BurningStrong);
 
-            if (burn
-                && (statusType == StatusType.Burning || statusType == StatusType.BurningStrong))
+            if (isBurn)
                 return true;
 
-            if (poison
-                && (statusType == StatusType.Poison || statusType == StatusType.PoisonStrong))
-                return true;
+            var isPoison = poison && (statusType == StatusType.Poison || statusType == StatusType.PoisonStrong);
 
-            return false;
+            return isPoison;
         }
 
         private void TryApplyHitRewards(

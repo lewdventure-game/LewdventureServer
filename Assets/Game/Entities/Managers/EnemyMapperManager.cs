@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using Core.Collections;
 
 namespace Server.Entities
 {
     internal sealed class EnemyMapperManager : BaseManager<IEnemyMapper>, IEnemyMapperManager
     {
-        public bool TryGet(int enemyId, out IEnemyMapper enemyMapper)
+        public bool TryGet(int enemyId, [MaybeNullWhen(false)] out IEnemyMapper enemyMapper)
         {
             for (int i = 0; i < Collection.Count; i++)
             {

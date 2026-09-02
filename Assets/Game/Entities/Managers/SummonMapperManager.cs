@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using Core.Collections;
 
 namespace Server.Entities
 {
     internal sealed class SummonMapperManager : BaseManager<ISummonMapper>, ISummonMapperManager
     {
-        public bool TryGet(int summonId, out ISummonMapper summonMapper)
+        public bool TryGet(int summonId, [MaybeNullWhen(false)] out ISummonMapper summonMapper)
         {
             for (int i = 0; i < Collection.Count; i++)
             {

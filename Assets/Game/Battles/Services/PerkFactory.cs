@@ -122,24 +122,22 @@ namespace Server.Battles
 
         private IReadOnlyList<BattleReward> ParseRewardsKey(string key)
         {
-            if (_parameterCache.TryGetValue(key, out var value) == false)
-                return Array.Empty<BattleReward>();
-
-            return _battleRewardParser.Parse(value);
+            return _parameterCache.TryGetValue(key, out var value)
+                ? _battleRewardParser.Parse(value)
+                : [];
         }
 
         private IReadOnlyList<int> ParseProcRounds()
         {
-            if (_parameterCache.TryGetValue("proc_rounds", out var value) == false)
-                return Array.Empty<int>();
-
-            return ParserUtils.ParseIntList(value);
+            return _parameterCache.TryGetValue("proc_rounds", out var value)
+                ? ParserUtils.ParseIntList(value)
+                : [];
         }
 
         private IReadOnlyList<PerkActionThreshold> ParseActionThresholds()
         {
             if (_parameterCache.TryGetValue("actions", out var raw) == false || string.IsNullOrWhiteSpace(raw))
-                return Array.Empty<PerkActionThreshold>();
+                return [];
 
             var parts = raw.Split(',');
             var result = new List<PerkActionThreshold>();
@@ -192,36 +190,39 @@ namespace Server.Battles
             {
                 case "attack":
                     actionType = BattlePerkActionType.Attack;
+
                     return true;
                 case "counterattack":
                     actionType = BattlePerkActionType.CounterAttack;
+
                     return true;
                 case "comboattack":
                     actionType = BattlePerkActionType.ComboAttack;
+
                     return true;
                 case "any_damage":
                     actionType = BattlePerkActionType.AnyDamage;
+
                     return true;
                 default:
                     actionType = BattlePerkActionType.None;
+
                     return false;
             }
         }
 
         private float GetFloat(string key, float defaultValue)
         {
-            if (_parameterCache.TryGetValue(key, out var value) == false)
-                return defaultValue;
-
-            return ParserUtils.GetFloat(value, defaultValue);
+            return _parameterCache.TryGetValue(key, out var value)
+                ? ParserUtils.GetFloat(value, defaultValue)
+                : defaultValue;
         }
 
         private int GetInt(string key, int defaultValue)
         {
-            if (_parameterCache.TryGetValue(key, out var value) == false)
-                return defaultValue;
-
-            return ParserUtils.GetInt(value, defaultValue);
+            return _parameterCache.TryGetValue(key, out var value)
+                ? ParserUtils.GetInt(value, defaultValue)
+                : defaultValue;
         }
     }
 }

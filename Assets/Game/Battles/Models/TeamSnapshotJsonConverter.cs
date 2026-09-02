@@ -9,19 +9,18 @@ namespace Server.Battles
             return objectType == typeof(ITeamSnapshot);
         }
 
-        public override object ReadJson(
+        public override object? ReadJson(
             JsonReader reader,
             Type objectType,
-            object existingValue,
+            object? existingValue,
             JsonSerializer serializer)
         {
-            if (reader.TokenType == JsonToken.Null)
-                return null;
-
-            return serializer.Deserialize<TeamSnapshot>(reader);
+            return reader.TokenType != JsonToken.Null
+                ? (object?)serializer.Deserialize<TeamSnapshot>(reader)
+                : null;
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
             serializer.Serialize(writer, value);
         }

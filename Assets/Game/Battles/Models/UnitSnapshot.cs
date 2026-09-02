@@ -8,7 +8,7 @@ namespace Server.Battles
 
         public int MasteryLevel { get; set; }
 
-        public List<IEquipmentSnapshot> Equipment { get; set; } = new();
+        public List<IEquipmentSnapshot> Equipments { get; set; } = new();
 
         public List<int> EquipmentIds { get; set; } = new();
 

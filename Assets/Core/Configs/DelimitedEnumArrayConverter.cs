@@ -21,7 +21,7 @@ namespace Server.Configs
         public override object ReadJson(
             JsonReader reader,
             Type objectType,
-            object existingValue,
+            object? existingValue,
             JsonSerializer serializer)
         {
             if (reader.TokenType == JsonToken.Null)
@@ -29,39 +29,70 @@ namespace Server.Configs
 
             if (reader.TokenType == JsonToken.String)
             {
-                var value = ((string)reader.Value).Trim('[', ']');
-
-                if (string.IsNullOrWhiteSpace(value))
-                    return Array.Empty<TEnum>();
-
-                return value
-                    .Split(_delimiter)
-                    .Where(stringValue => string.IsNullOrWhiteSpace(stringValue) == false)
-                    .Select(stringValue => ParseEnum(stringValue.Trim()))
-                    .ToArray();
+                return reader.Value is string rawValue
+                    ? ParseDelimitedString(rawValue)
+                    : [];
             }
 
             if (reader.TokenType == JsonToken.StartArray)
-                return serializer.Deserialize<TEnum[]>(reader);
+            {
+                var values = serializer.Deserialize<TEnum[]>(reader);
+
+                return values ?? [];
+            }
 
             throw new JsonSerializationException($"Unexpected token {reader.TokenType} when parsing {typeof(TEnum).Name}[]");
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
             serializer.Serialize(writer, value);
+        }
+
+        private TEnum[] ParseDelimitedString(string rawValue)
+        {
+            var value = rawValue.Trim('[', ']');
+
+            if (string.IsNullOrWhiteSpace(value))
+                return [];
+
+            var parts = value.Split(_delimiter);
+            var parsedValues = new List<TEnum>(parts.Length);
+
+            for (int i = 0; i < parts.Length; i++)
+            {
+                var part = parts[i].Trim();
+
+                if (string.IsNullOrWhiteSpace(part))
+                    continue;
+
+                parsedValues.Add(ParseEnum(part));
+            }
+
+            return parsedValues.ToArray();
         }
 
         private static TEnum ParseEnum(string value)
         {
             // 1. Сначала ищем по [EnumMember(Value = "...")]
-            foreach (var field in typeof(TEnum).GetFields())
-            {
-                var attribute = field.GetCustomAttributes(typeof(EnumMemberAttribute), false)
-                    .FirstOrDefault() as EnumMemberAttribute;
 
-                if (attribute != null && string.Equals(attribute.Value, value, StringComparison.OrdinalIgnoreCase))
-                    return (TEnum)field.GetValue(null);
+            var fields = typeof(TEnum).GetFields();
+
+            for (int i = 0; i < fields.Length; i++)
+            {
+                var field = fields[i];
+
+                var customAttributes = field.GetCustomAttributes(typeof(EnumMemberAttribute), false);
+                var customAttribute = customAttributes.FirstOrDefault();
+
+                if (customAttribute is not EnumMemberAttribute attribute)
+                    continue;
+
+                if (string.Equals(attribute.Value, value, StringComparison.OrdinalIgnoreCase) == false)
+                    continue;
+
+                if (field.GetValue(null) is TEnum parsed)
+                    return parsed;
             }
 
             // 2. Пытаемся стандартный парсинг (с учётом регистра)
@@ -71,10 +102,7 @@ namespace Server.Configs
             // 3. Пытаемся с SnakeCase -> PascalCase
             var pascalCase = string.Concat(value.Split('_').Select(word => char.ToUpperInvariant(word[0]) + word.Substring(1).ToLowerInvariant()));
 
-            if (Enum.TryParse(pascalCase, true, out result))
-                return result;
-
-            return default;
+            return Enum.TryParse(pascalCase, true, out result) ? result : default;
         }
     }
 }

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Server.Bonuses;
@@ -134,7 +135,7 @@ namespace Server.Battles
             else if (battleSide == BattleSide.Attacking)
                 unitState.RegisterEquippedEntity("characters", unitSnapshot.Id);
 
-            var equipment = unitSnapshot.Equipment;
+            var equipment = unitSnapshot.Equipments;
 
             for (int i = 0; i < equipment.Count; i++)
             {
@@ -257,7 +258,7 @@ namespace Server.Battles
             return baseDamage * masteryMultiplier;
         }
 
-        private bool TryResolveMastery(int masteryId, int masteryLevel, int summonId, out IMasteryMapper masteryMapper)
+        private bool TryResolveMastery(int masteryId, int masteryLevel, int summonId, [MaybeNullWhen(false)] out IMasteryMapper masteryMapper)
         {
             var masteries = _configDistributor.Masteries;
 
@@ -502,7 +503,7 @@ namespace Server.Battles
 
         private UnitFlags ResolveCharacterMeleeFlags(IUnitSnapshot unitSnapshot)
         {
-            var equipment = unitSnapshot.Equipment;
+            var equipment = unitSnapshot.Equipments;
 
             for (int i = 0; i < equipment.Count; i++)
             {
@@ -563,7 +564,7 @@ namespace Server.Battles
 
         private void GrantEquipmentBonuses(UnitState unitState, IUnitSnapshot unitSnapshot)
         {
-            var equipment = unitSnapshot.Equipment;
+            var equipment = unitSnapshot.Equipments;
 
             for (int i = 0; i < equipment.Count; i++)
             {
@@ -632,7 +633,8 @@ namespace Server.Battles
                 return false;
             }
 
-            IBonusMapper firstMatch = default;
+            IBonusMapper firstMatch = default!;
+
             var hasFirstMatch = false;
             var matchCount = 0;
 
@@ -652,13 +654,13 @@ namespace Server.Battles
 
             if (hasFirstMatch == false)
             {
-                _logger.LogWarning($"[Story][Battle] equipment bonus type missing type = {bonusType} raw = {bonusTypeRaw}");
+                _logger.LogWarning($"[Story][Battle] equipment bonus type missing type = {bonusType}, raw = {bonusTypeRaw}");
 
                 return false;
             }
 
             if (1 < matchCount)
-                _logger.LogWarning($"[Story][Battle] equipment bonus type ambiguous type = {bonusType} matches = {matchCount} usingId = {firstMatch.Id}");
+                _logger.LogWarning($"[Story][Battle] equipment bonus type ambiguous type = {bonusType}, matches = {matchCount}, usingId = {firstMatch.Id}");
 
             bonusId = firstMatch.Id;
 
@@ -684,9 +686,14 @@ namespace Server.Battles
                 if (string.Equals(attribute.Value, value, StringComparison.OrdinalIgnoreCase) == false)
                     continue;
 
-                bonusType = (BonusType)field.GetValue(null);
+                var fieldValue = field.GetValue(null);
 
-                return true;
+                if (fieldValue is BonusType parsedBonusType)
+                {
+                    bonusType = parsedBonusType;
+
+                    return true;
+                }
             }
 
             if (Enum.TryParse(value, true, out bonusType) && bonusType != BonusType.Unknown)
@@ -758,7 +765,6 @@ namespace Server.Battles
             if (commaSegments.Length < semicolonSegments.Length)
                 return semicolonSegments;
 
-            // Equal non-trivial counts: prefer comma (GDD).
             if (1 < commaSegments.Length)
                 return commaSegments;
 
@@ -880,7 +886,7 @@ namespace Server.Battles
 
         private void InjectEquipmentSkillIds(IUnitSnapshot unitSnapshot, List<string> skillIds)
         {
-            var equipment = unitSnapshot.Equipment;
+            var equipment = unitSnapshot.Equipments;
 
             for (int i = 0; i < equipment.Count; i++)
             {

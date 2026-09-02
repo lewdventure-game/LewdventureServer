@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Server.Services;
 
 namespace Server.Battles
@@ -24,7 +23,9 @@ namespace Server.Battles
             if (data == null)
             {
                 errorMessage = "Request body is required.";
-                LogValidationFailure(data, errorMessage);
+
+                _logger.LogWarning($"[Story][Battle]: Validation failed: {errorMessage}");
+                _logger.LogInformation($"[Config]: Snapshot summary unavailable; request body is null");
 
                 return false;
             }
@@ -32,6 +33,7 @@ namespace Server.Battles
             if (data.TeamA == null)
             {
                 errorMessage = "teamA is required.";
+
                 LogValidationFailure(data, errorMessage);
 
                 return false;
@@ -40,6 +42,7 @@ namespace Server.Battles
             if (data.TeamB == null)
             {
                 errorMessage = "teamB is required.";
+
                 LogValidationFailure(data, errorMessage);
 
                 return false;
@@ -62,6 +65,7 @@ namespace Server.Battles
             if (_configDistributor.StoryLevels.TryGet(data.StoryLevelId, out _) == false)
             {
                 errorMessage = $"Unknown storyLevelId = {data.StoryLevelId}.";
+
                 LogValidationFailure(data, errorMessage);
 
                 return false;
@@ -70,6 +74,7 @@ namespace Server.Battles
             if (data.StageId != 0 && _configDistributor.StoryStages.TryGet(data.StageId, out _) == false)
             {
                 errorMessage = $"Unknown stageId = {data.StageId}.";
+
                 LogValidationFailure(data, errorMessage);
 
                 return false;
@@ -151,7 +156,7 @@ namespace Server.Battles
                 return false;
             }
 
-            if (unit.Equipment == null)
+            if (unit.Equipments == null)
             {
                 errorMessage = $"equipment must not be null for unit id = {unit.Id}.";
 
@@ -165,9 +170,9 @@ namespace Server.Battles
                 return false;
             }
 
-            for (int i = 0; i < unit.Equipment.Count; i++)
+            for (int i = 0; i < unit.Equipments.Count; i++)
             {
-                var equipmentEntry = unit.Equipment[i];
+                var equipmentEntry = unit.Equipments[i];
 
                 if (equipmentEntry == null)
                 {
@@ -279,7 +284,7 @@ namespace Server.Battles
                 return false;
             }
 
-            _logger.LogDebug($"[Story][Battle] unit snapshot resolved id = {unit.Id} masteryLevel = {unit.MasteryLevel} trainingLevel = {unit.TrainingLevel} equipmentCount = {unit.Equipment.Count} artifactCount = {unit.ArtifactIds.Count} aspectCount = {unit.AspectIds.Count}");
+            _logger.LogDebug($"[Story][Battle]: Unit snapshot resolved id = {unit.Id}, masteryLevel = {unit.MasteryLevel}, trainingLevel = {unit.TrainingLevel}, equipmentCount = {unit.Equipments.Count}, artifactCount = {unit.ArtifactIds.Count}, aspectCount = {unit.AspectIds.Count}");
 
             errorMessage = string.Empty;
 
@@ -288,14 +293,7 @@ namespace Server.Battles
 
         private void LogValidationFailure(IBattleSimulationData data, string errorMessage)
         {
-            _logger.LogWarning($"[Story][Battle] validation failed: {errorMessage}");
-
-            if (data == null)
-            {
-                _logger.LogInformation($"[Config] snapshot summary unavailable; request body is null");
-
-                return;
-            }
+            _logger.LogWarning($"[Story][Battle]: Validation failed: {errorMessage}");
 
             var teamAEquipmentCount = CountTeamEquipment(data.TeamA);
             var teamBEquipmentCount = CountTeamEquipment(data.TeamB);
@@ -304,7 +302,7 @@ namespace Server.Battles
             var teamAAspectCount = CountTeamAspects(data.TeamA);
             var teamBAspectCount = CountTeamAspects(data.TeamB);
 
-            _logger.LogInformation($"[Config] snapshot summary stageId = {data.StageId} storyLevelId = {data.StoryLevelId} teamAEquipment = {teamAEquipmentCount} teamBEquipment = {teamBEquipmentCount} teamAArtifacts = {teamAArtifactCount} teamBArtifacts = {teamBArtifactCount} teamAAspects = {teamAAspectCount} teamBAspects = {teamBAspectCount}");
+            _logger.LogInformation($"[Config] snapshot summary stageId = {data.StageId}, storyLevelId = {data.StoryLevelId}, teamAEquipment = {teamAEquipmentCount}, teamBEquipment = {teamBEquipmentCount}, teamAArtifacts = {teamAArtifactCount}, teamBArtifacts = {teamBArtifactCount}, teamAAspects = {teamAAspectCount}, teamBAspects = {teamBAspectCount}");
         }
 
         private static int CountTeamEquipment(ITeamSnapshot team)
@@ -312,10 +310,13 @@ namespace Server.Battles
             if (team == null)
                 return 0;
 
-            return CountUnitsEquipment(team.MainUnits) + CountUnitsEquipment(team.Summons);
+            var mainUnitEquipments = CountUnitsEquipments(team.MainUnits);
+            var summonEquipments = CountUnitsEquipments(team.Summons);
+
+            return mainUnitEquipments + summonEquipments;
         }
 
-        private static int CountUnitsEquipment(List<IUnitSnapshot> units)
+        private static int CountUnitsEquipments(List<IUnitSnapshot> units)
         {
             if (units == null)
                 return 0;
@@ -326,10 +327,10 @@ namespace Server.Battles
             {
                 var unit = units[i];
 
-                if (unit == null || unit.Equipment == null)
+                if (unit == null || unit.Equipments == null)
                     continue;
 
-                count += unit.Equipment.Count;
+                count += unit.Equipments.Count;
             }
 
             return count;
@@ -340,7 +341,10 @@ namespace Server.Battles
             if (team == null)
                 return 0;
 
-            return CountUnitsArtifacts(team.MainUnits) + CountUnitsArtifacts(team.Summons);
+            var mainUnitArtifacts = CountUnitsArtifacts(team.MainUnits);
+            var summonArtifacts = CountUnitsArtifacts(team.Summons);
+
+            return mainUnitArtifacts + summonArtifacts;
         }
 
         private static int CountUnitsArtifacts(List<IUnitSnapshot> units)
@@ -368,7 +372,10 @@ namespace Server.Battles
             if (team == null)
                 return 0;
 
-            return CountUnitsAspects(team.MainUnits) + CountUnitsAspects(team.Summons);
+            var mainUnitAspects = CountUnitsAspects(team.MainUnits);
+            var summonAspects = CountUnitsAspects(team.Summons);
+
+            return mainUnitAspects + summonAspects;
         }
 
         private static int CountUnitsAspects(List<IUnitSnapshot> units)

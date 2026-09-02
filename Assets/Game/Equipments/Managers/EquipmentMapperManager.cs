@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Core.Collections;
 using System.Globalization;
 
@@ -5,7 +6,7 @@ namespace Server.Equipments
 {
     internal sealed class EquipmentMapperManager : BaseManager<IEquipmentMapper>, IEquipmentMapperManager
     {
-        public bool TryGet(int equipmentId, out IEquipmentMapper equipmentMapper)
+        public bool TryGet(int equipmentId, [MaybeNullWhen(false)] out IEquipmentMapper equipmentMapper)
         {
             var equipmentIdText = equipmentId.ToString(CultureInfo.InvariantCulture);
 

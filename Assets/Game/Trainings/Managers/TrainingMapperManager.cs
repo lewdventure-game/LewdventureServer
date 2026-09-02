@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using Core.Collections;
 
 namespace Server.Trainings
 {
     internal sealed class TrainingMapperManager : BaseManager<ITrainingMapper>, ITrainingMapperManager
     {
-        public bool TryGet(int trainingLevel, out ITrainingMapper mapper)
+        public bool TryGet(int trainingLevel, [MaybeNullWhen(false)] out ITrainingMapper mapper)
         {
             for (int i = 0; i < Collection.Count; i++)
             {

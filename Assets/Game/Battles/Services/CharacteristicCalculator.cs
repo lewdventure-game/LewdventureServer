@@ -118,11 +118,13 @@ namespace Server.Battles
             return heal;
         }
 
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public float CalculateHealingFromMax(float maxHealth, float healingBonus, float healingBoost)
         {
             return MathF.Ceiling(maxHealth * healingBonus * healingBoost);
         }
 
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public float CalculateHealingFromCurrent(float currentHealth, float healingBonus, float healingBoost)
         {
             return currentHealth * healingBonus * healingBoost;
@@ -247,6 +249,7 @@ namespace Server.Battles
             return value;
         }
 
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         private float ApplyFormula2(float baseValue, float local, float perk)
         {
             return (baseValue + local) * (1f + perk);
@@ -272,12 +275,10 @@ namespace Server.Battles
             return value;
         }
 
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         private float ApplyDefenceFormula(float raw, float coefficient)
         {
-            if (coefficient <= 0f)
-                return raw;
-
-            return coefficient * raw / (1f + coefficient * raw);
+            return coefficient <= 0f ? raw : coefficient * raw / (1f + coefficient * raw);
         }
     }
 }

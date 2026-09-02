@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using Core.Collections;
 
 namespace Server.Entities
 {
     internal sealed class CharacterMapperManager : BaseManager<ICharacterMapper>, ICharacterMapperManager
     {
-        public bool TryGet(int characterId, out ICharacterMapper characterMapper)
+        public bool TryGet(int characterId, [MaybeNullWhen(false)] out ICharacterMapper characterMapper)
         {
             for (int i = 0; i < Collection.Count; i++)
             {

@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using Core.Collections;
 
 namespace Server.Artifacts
 {
     internal sealed class ArtifactMapperManager : BaseManager<IArtifactMapper>, IArtifactMapperManager
     {
-        public bool TryGet(int artifactId, out IArtifactMapper mapper)
+        public bool TryGet(int artifactId, [MaybeNullWhen(false)] out IArtifactMapper mapper)
         {
             for (int i = 0; i < Collection.Count; i++)
             {

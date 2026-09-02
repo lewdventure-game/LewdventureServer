@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Server.Services;
 using Server.Statuses;
@@ -327,7 +328,7 @@ namespace Server.Battles
             return -1;
         }
 
-        private static bool TryFindUnit(ITeamSimulationState team, int unitId, out IUnitState unit)
+        private static bool TryFindUnit(ITeamSimulationState team, int unitId, [MaybeNullWhen(false)] out IUnitState unit)
         {
             var mainUnits = team.MainUnits;
 

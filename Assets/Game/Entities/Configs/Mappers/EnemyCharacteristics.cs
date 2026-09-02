@@ -147,10 +147,10 @@ namespace Server.Entities
                 return 0f;
 
             if (float.TryParse(
-                    valueSpan,
-                    NumberStyles.Float,
-                    CultureInfo.InvariantCulture,
-                    out var value))
+                valueSpan,
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out var value))
                 return value;
 
             return 0f;

@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Server.Services;
 
 namespace Server.Battles
@@ -53,7 +52,7 @@ namespace Server.Battles
         {
             var seededRandomService = new SeededRandomService();
 
-            _logger.LogDebug($"[Story][Battle] generated seed = {seededRandomService.Seed}");
+            _logger.LogDebug($"[Story][Battle]: Generated seed = {seededRandomService.Seed}");
 
             return RunSimulation(data, seededRandomService);
         }
@@ -62,7 +61,7 @@ namespace Server.Battles
         {
             var seededRandomService = new SeededRandomService(data.Seed);
 
-            _logger.LogDebug($"[Story][Battle] replay seed = {seededRandomService.Seed}");
+            _logger.LogDebug($"[Story][Battle]: Replay seed = {seededRandomService.Seed}");
 
             return RunSimulation(data, seededRandomService);
         }
@@ -81,6 +80,7 @@ namespace Server.Battles
 
             _battleSummonSimulator.EmitInitialSpawns(steps, stateA, 0);
             _battleSummonSimulator.EmitInitialSpawns(steps, stateB, 0);
+
             EmitInitialStatuses(steps, stateA, 0);
             EmitInitialStatuses(steps, stateB, 0);
 
@@ -113,16 +113,15 @@ namespace Server.Battles
             EmitLivingSummonDespawns(steps, stateA, maxTurnFromSteps);
             EmitLivingSummonDespawns(steps, stateB, maxTurnFromSteps);
 
-            _logger.LogInformation($"[Story][Battle] outcomeType = {outcomeType}, maxTurn = {maxTurnFromSteps}");
+            _logger.LogInformation($"[Story][Battle]: OutcomeType = {outcomeType}, maxTurn = {maxTurnFromSteps}");
 
             _battleScriptBuilder.Add(
                 steps,
                 maxTurnFromSteps,
                 BattlePhaseType.Unknown,
-                new List<BattleCommand>
-                {
+                [
                     _battleCommandFactory.SetBattleResult(outcomeType),
-                });
+                ]);
 
             var response = new BattleScriptResponse
             {
@@ -166,12 +165,11 @@ namespace Server.Battles
                     turn,
                     BattlePhaseType.Unknown,
                     summon,
-                    new List<BattleCommand>
-                    {
+                    [
                         _battleCommandFactory.DespawnUnit(summon.Id, summon.SlotIndex),
-                    });
+                    ]);
 
-                _logger.LogDebug($"[Story][Battle] despawn living summon unitId = {summon.Id} slot = {summon.SlotIndex} side = {team.BattleSide}");
+                _logger.LogDebug($"[Story][Battle]: Despawn living summon unitId = {summon.Id}, slot = {summon.SlotIndex}, side = {team.BattleSide}");
             }
         }
 
@@ -179,7 +177,7 @@ namespace Server.Battles
         {
             if (_configDistributor.StoryLevels.TryGet(storyLevelId, out var storyLevel) == false)
             {
-                _logger.LogError($"[Error][Story][Battle] story level missing id = {storyLevelId}");
+                _logger.LogError($"[Error][Story][Battle]: Story level missing id = {storyLevelId}");
 
                 return 0;
             }
@@ -201,7 +199,7 @@ namespace Server.Battles
         {
             if (_configDistributor.Constants.TryGet(constantKey, out var constant) == false)
             {
-                _logger.LogError($"[Error][Story][Battle] constant missing key = {constantKey}");
+                _logger.LogError($"[Error][Story][Battle]: Constant missing key = {constantKey}");
 
                 return 0f;
             }
@@ -224,10 +222,9 @@ namespace Server.Battles
             if (aAlive == false && bAlive)
                 return OutcomeType.TeamBWin;
 
-            if (currentTurn < maxTurns)
-                return OutcomeType.Draw;
-
-            return OutcomeType.Timeout;
+            return currentTurn < maxTurns
+                ? OutcomeType.Draw
+                : OutcomeType.Timeout;
         }
 
         private ITeamSimulationState BuildTeamState(ITeamSnapshot teamSnapshot, BattleSide battleSide, int storyLevelId, int stageId)
@@ -240,7 +237,7 @@ namespace Server.Battles
             {
                 var mainUnit = mainUnits[i];
 
-                _logger.LogDebug($"[Story][Battle] side = {battleSide} kind = main id = {mainUnit.Id} level = {mainUnit.Level} slot = {mainUnit.SlotIndex}");
+                _logger.LogDebug($"[Story][Battle]: Side = {battleSide}, type = main, id = {mainUnit.Id}, level = {mainUnit.Level}, slot = {mainUnit.SlotIndex}");
 
                 mainUnitStates.Add(_unitStateBuilder.Build(mainUnit, battleSide, false, storyLevelId, stageId));
             }
@@ -253,7 +250,7 @@ namespace Server.Battles
             {
                 var summon = summons[i];
 
-                _logger.LogDebug($"[Story][Battle] side = {battleSide} kind = summon id = {summon.Id} level = {summon.Level} slot = {summon.SlotIndex}");
+                _logger.LogDebug($"[Story][Battle]: Side = {battleSide}, type = summon, id = {summon.Id}, level = {summon.Level}, slot = {summon.SlotIndex}");
 
                 summonStates.Add(_unitStateBuilder.Build(summon, battleSide, true, storyLevelId, stageId));
             }
@@ -284,7 +281,7 @@ namespace Server.Battles
                 }
 
                 _battleBonusService.Rebuild(mainUnit, 0, rebuildCommands, false);
-                _logger.LogDebug($"[Story][Battle] team summons applied on main unitId = {mainUnit.Id} summonCount = {summonStates.Count}");
+                _logger.LogDebug($"[Story][Battle]: Team summons applied on main unitId = {mainUnit.Id}, summonCount = {summonStates.Count}");
             }
         }
 
@@ -306,7 +303,7 @@ namespace Server.Battles
             int currentTurn,
             ISeededRandomService seededRandomService)
         {
-            _logger.LogDebug($"[Story][Battle] side turn side = {attacker.BattleSide}, turn = {currentTurn}");
+            _logger.LogDebug($"[Story][Battle]: Side turn side = {attacker.BattleSide}, turn = {currentTurn}");
 
             _battlePerkSimulator.BeginSideTurn();
 
@@ -315,27 +312,29 @@ namespace Server.Battles
 
             if (_battlePerkSimulator.ShouldAbortSideTurn)
             {
-                _logger.LogDebug($"[Story][Battle] side turn abort after statuses side = {attacker.BattleSide} turn = {currentTurn}");
+                _logger.LogDebug($"[Story][Battle]: Side turn abort after statuses side = {attacker.BattleSide}, turn = {currentTurn}");
 
                 return;
             }
 
             _battlePerkSimulator.Simulate(steps, attacker, defender, currentTurn, seededRandomService);
+
             EmitPhaseTrailingWait(steps, currentTurn, BattlePhaseType.PerkTrigger, _perksCooldown, "perks", attacker.BattleSide);
 
             if (_battlePerkSimulator.ShouldAbortSideTurn)
             {
-                _logger.LogDebug($"[Story][Battle] side turn abort after perks side = {attacker.BattleSide} turn = {currentTurn}");
+                _logger.LogDebug($"[Story][Battle]: Side turn abort after perks side = {attacker.BattleSide}, turn = {currentTurn}");
 
                 return;
             }
 
             _battleSummonSimulator.Simulate(steps, attacker, defender, currentTurn, seededRandomService);
+
             EmitPhaseTrailingWait(steps, currentTurn, BattlePhaseType.SummonAttack, _summonsCooldown, "summons", attacker.BattleSide);
 
             if (_battlePerkSimulator.ShouldAbortSideTurn)
             {
-                _logger.LogDebug($"[Story][Battle] side turn abort after summons side = {attacker.BattleSide} turn = {currentTurn}");
+                _logger.LogDebug($"[Story][Battle]: Side turn abort after summons side = {attacker.BattleSide}, turn = {currentTurn}");
 
                 return;
             }
@@ -353,7 +352,7 @@ namespace Server.Battles
         {
             if (cooldownSeconds <= 0f)
             {
-                _logger.LogDebug($"[Story][Battle] phase trailing wait skip phase = {phaseName} side = {side} turn = {currentTurn} cooldown = {cooldownSeconds}");
+                _logger.LogDebug($"[Story][Battle]: Phase trailing wait skip phase = {phaseName}, side = {side}, turn = {currentTurn}, cooldown = {cooldownSeconds}");
 
                 return;
             }
@@ -362,12 +361,11 @@ namespace Server.Battles
                 steps,
                 currentTurn,
                 phase,
-                new List<BattleCommand>
-                {
+                [
                     _battleCommandFactory.Wait(cooldownSeconds),
-                });
+                ]);
 
-            _logger.LogDebug($"[Story][Battle] phase trailing wait phase = {phaseName} side = {side} turn = {currentTurn} cooldown = {cooldownSeconds}");
+            _logger.LogDebug($"[Story][Battle]: Phase trailing wait phase = {phaseName}, side = {side}, turn = {currentTurn}, cooldown = {cooldownSeconds}");
         }
 
         private void EmitInitialStatuses(List<BattleStep> steps, ITeamSimulationState team, int currentTurn)
@@ -419,7 +417,7 @@ namespace Server.Battles
                     commands,
                     unit);
 
-                _logger.LogDebug($"[Story][Battle] turn start bonus presentation unitId = {unit.Id}, turn = {currentTurn}, commands = {commands.Count}");
+                _logger.LogDebug($"[Story][Battle]: Turn start bonus presentation unitId = {unit.Id}, turn = {currentTurn}, commands = {commands.Count}");
             }
         }
 
@@ -452,7 +450,7 @@ namespace Server.Battles
                     commands,
                     unit);
 
-                _logger.LogDebug($"[Story][Battle] battle end bonus presentation unitId = {unit.Id}, turn = {currentTurn}, commands = {commands.Count}");
+                _logger.LogDebug($"[Story][Battle]: Battle end bonus presentation unitId = {unit.Id}, turn = {currentTurn}, commands = {commands.Count}");
             }
         }
     }

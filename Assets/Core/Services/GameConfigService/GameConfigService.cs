@@ -38,9 +38,9 @@ namespace Server.Services
             if (File.Exists(credentialPath) == false)
                 throw new FileNotFoundException("Файл google-credentials.json не найден. Убедитесь, что он добавлен в проект и имеет свойство 'Копировать, если новее'.");
 
-            using var stream = new FileStream(credentialPath, FileMode.Open, FileAccess.Read);
-
-            var credential = GoogleCredential.FromStream(stream).CreateScoped(SheetsService.Scope.SpreadsheetsReadonly);
+            var credential = CredentialFactory.FromFile<ServiceAccountCredential>(credentialPath)
+                .ToGoogleCredential()
+                .CreateScoped(SheetsService.Scope.SpreadsheetsReadonly);
 
             _sheetsService = new SheetsService(new BaseClientService.Initializer()
             {
