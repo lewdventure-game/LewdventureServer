@@ -4,9 +4,11 @@ namespace Server.Battles
 {
     internal interface IBattlePerkSimulator
     {
-        public bool ShouldAbortSideTurn { get; }
+        public bool ShouldAbortRemainingTurn { get; }
 
-        public void BeginSideTurn();
+        public void BeginBattleTurn();
+
+        public void BeginSideTurn(BattleSide actingSide);
 
         public void Simulate(
             List<BattleStep> steps,

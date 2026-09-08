@@ -45,9 +45,9 @@ namespace Server.Battles
 
             for (int i = 0; i < attackers.Count; i++)
             {
-                if (_battlePerkSimulator.ShouldAbortSideTurn)
+                if (_battlePerkSimulator.ShouldAbortRemainingTurn)
                 {
-                    _logger.LogDebug($"[Story][Battle] main attack phase abort side-turn side = {attacker.BattleSide} turn = {currentTurn}");
+                    _logger.LogDebug($"[Story][Battle]: Main attack phase abort remaining turn side = {attacker.BattleSide}, turn = {currentTurn}");
 
                     return;
                 }
@@ -98,7 +98,7 @@ namespace Server.Battles
         {
             if (_unitsCooldown <= 0f)
             {
-                _logger.LogDebug($"[Story][Battle] pre-attack units_cooldown skip unitId = {actor.Id} turn = {currentTurn}");
+                _logger.LogDebug($"[Story][Battle]: Pre-attack units_cooldown skip, unitId = {actor.Id}, turn = {currentTurn}");
 
                 return;
             }
@@ -113,7 +113,7 @@ namespace Server.Battles
                     _battleCommandFactory.Wait(_unitsCooldown),
                 });
 
-            _logger.LogDebug($"[Story][Battle] pre-attack units_cooldown unitId = {actor.Id} turn = {currentTurn} cooldown = {_unitsCooldown}");
+            _logger.LogDebug($"[Story][Battle]: Pre-attack units_cooldown, unitId = {actor.Id}, turn = {currentTurn}, cooldown = {_unitsCooldown}");
         }
 
         private void ExecuteNormalAttack(
@@ -160,7 +160,7 @@ namespace Server.Battles
                 commands,
                 target);
 
-            _logger.LogDebug($"[Story][Battle] normal attack chain decision actorId = {actor.Id} targetId = {target.Id} hit = {hit}");
+            _logger.LogDebug($"[Story][Battle]: Normal attack chain decision, actorId = {actor.Id}, targetId = {target.Id}, hit = {hit}");
 
             if (hit)
             {
@@ -187,12 +187,21 @@ namespace Server.Battles
 
                     return;
                 }
+
+                if (actor.IsAlive() && target.IsAlive())
+                {
+                    _logger.LogDebug($"[Story][Battle]: Post-attack chain start, actorId = {actor.Id}, targetId = {target.Id}, turn = {currentTurn}");
+
+                    ExecutePostAttackChain(steps, attacker, defender, actor, target, currentTurn, seededRandomService);
+                }
+            }
+            else
+            {
+                _logger.LogDebug($"[Story][Battle]: Post-attack chain skip miss, actorId = {actor.Id}, targetId = {target.Id}, turn = {currentTurn}");
             }
 
-            if (actor.IsAlive() && target.IsAlive())
-                ExecutePostAttackChain(steps, attacker, defender, actor, target, currentTurn, seededRandomService);
-
             EmitReturnToPosition(steps, actor, currentTurn, isMelee);
+
             _battleSkillSimulator.TryCastEnergySkill(steps, actor, attacker, defender, currentTurn, seededRandomService);
         }
 
@@ -211,7 +220,8 @@ namespace Server.Battles
                 return;
 
             var combo1Succeeded = TryComboAttack(steps, attacker, defender, actor, target, currentTurn, seededRandomService, 1);
-            _logger.LogDebug($"[Story][Battle] combo1 gate actorId = {actor.Id} targetId = {target.Id} combo1Succeeded = {combo1Succeeded}");
+
+            _logger.LogDebug($"[Story][Battle]: Combo1 gate, actorId = {actor.Id}, targetId = {target.Id}, combo1Succeeded = {combo1Succeeded}");
 
             if (combo1Succeeded)
                 TryCounterAttack(steps, attacker, defender, target, actor, currentTurn, seededRandomService);
@@ -241,7 +251,7 @@ namespace Server.Battles
             var counterChance = counterActor.CharacteristicState.CounterChance;
             var counterRoll = seededRandomService.GetRandomValue();
 
-            _logger.LogDebug($"[Story][Battle] counter roll actorId = {counterActor.Id}, targetId = {counterTarget.Id}, counterRoll = {counterRoll}, counterChance = {counterChance}");
+            _logger.LogDebug($"[Story][Battle]: Counter roll, actorId = {counterActor.Id}, targetId = {counterTarget.Id}, counterRoll = {counterRoll}, counterChance = {counterChance}");
 
             if (counterChance <= counterRoll)
                 return;
@@ -252,7 +262,8 @@ namespace Server.Battles
             if (isMelee)
             {
                 commands.Add(_battleCommandFactory.Approach(counterActor.Id, counterActor.SlotIndex, counterTarget.Id, counterTarget.SlotIndex, true));
-                _logger.LogDebug($"[Story][Battle] counter approach actorId = {counterActor.Id} targetId = {counterTarget.Id}");
+
+                _logger.LogDebug($"[Story][Battle]: Counter approach, actorId = {counterActor.Id}, targetId = {counterTarget.Id}");
             }
 
             commands.Add(_battleCommandFactory.Wait(_counterAttackCooldown));
@@ -312,7 +323,7 @@ namespace Server.Battles
             var phase = comboNumber == 1 ? BattlePhaseType.Combo1Attack : BattlePhaseType.Combo2Attack;
             var comboRoll = seededRandomService.GetRandomValue();
 
-            _logger.LogDebug($"[Story][Battle] combo{comboNumber} roll actorId = {actor.Id}, targetId = {target.Id}, comboRoll = {comboRoll}, comboChance = {comboChance}");
+            _logger.LogDebug($"[Story][Battle]: Combo{comboNumber} roll, actorId = {actor.Id}, targetId = {target.Id}, comboRoll = {comboRoll}, comboChance = {comboChance}");
 
             if (comboChance <= comboRoll)
                 return false;
@@ -323,7 +334,8 @@ namespace Server.Battles
             if (isMelee)
             {
                 commands.Add(_battleCommandFactory.Approach(actor.Id, actor.SlotIndex, target.Id, target.SlotIndex, true));
-                _logger.LogDebug($"[Story][Battle] combo{comboNumber} approach actorId = {actor.Id} targetId = {target.Id}");
+
+                _logger.LogDebug($"[Story][Battle]: Combo{comboNumber} approach, actorId = {actor.Id}, targetId = {target.Id}");
             }
 
             commands.Add(_battleCommandFactory.Wait(_comboAttackCooldown));
@@ -398,11 +410,12 @@ namespace Server.Battles
             var evasionRoll = seededRandomService.GetRandomValue();
             var isEvaded = evasionRoll < targetCharacteristics.Evasion;
 
-            _logger.LogDebug($"[Story][Battle] strike phase = {phase}, actorId = {actor.Id}, targetId = {target.Id}, evasionRoll = {evasionRoll}, evasion = {targetCharacteristics.Evasion}, isEvaded = {isEvaded}");
+            _logger.LogDebug($"[Story][Battle]: Strike, phase = {phase}, actorId = {actor.Id}, targetId = {target.Id}, evasionRoll = {evasionRoll}, evasion = {targetCharacteristics.Evasion}, isEvaded = {isEvaded}");
 
             if (isEvaded)
             {
                 commands.Add(_battleCommandFactory.ShowMiss(actor.Id, actor.SlotIndex, target.Id, target.SlotIndex));
+                
                 AppendMissWait(commands);
 
                 return false;
@@ -411,7 +424,7 @@ namespace Server.Battles
             var criticalRoll = seededRandomService.GetRandomValue();
             var isCritical = criticalRoll < actorCharacteristics.CriticalChance;
 
-            _logger.LogDebug($"[Story][Battle] strike phase = {phase}, actorId = {actor.Id}, criticalRoll = {criticalRoll}, criticalChance = {actorCharacteristics.CriticalChance}, isCritical = {isCritical}");
+            _logger.LogDebug($"[Story][Battle]: Strike, phase = {phase}, actorId = {actor.Id}, criticalRoll = {criticalRoll}, criticalChance = {actorCharacteristics.CriticalChance}, isCritical = {isCritical}");
 
             var damage = CalculateStrikeDamage(actorCharacteristics, targetCharacteristics, damageMultiplier, isCritical);
             var healthBefore = targetCharacteristics.Health;
@@ -427,7 +440,7 @@ namespace Server.Battles
 
             ApplyVampyrism(commands, actor, damage);
 
-            _logger.LogInformation($"[Story][Battle] damage applied phase = {phase}, actorId = {actor.Id}, targetId = {target.Id}, damage = {damage}, isCritical = {isCritical}, health = {healthAfter}");
+            _logger.LogInformation($"[Story][Battle]: Damage applied, phase = {phase}, actorId = {actor.Id}, targetId = {target.Id}, damage = {damage}, isCritical = {isCritical}, health = {healthAfter}");
 
             return true;
         }
@@ -452,7 +465,7 @@ namespace Server.Battles
             commands.Add(_battleCommandFactory.ShowHeal(actor.Id, actor.SlotIndex, actor.Id, actor.SlotIndex, heal));
             commands.Add(_battleCommandFactory.SetHp(actor.Id, actor.SlotIndex, actorCharacteristics.Health));
 
-            _logger.LogDebug($"[Story][Battle] vampyrism actorId = {actor.Id}, dealt = {dealtDamage}, vampyrism = {actorCharacteristics.Vampyrism}, healingBoost = {actorCharacteristics.HealingBoost}, heal = {heal}, health = {actorCharacteristics.Health}");
+            _logger.LogDebug($"[Story][Battle]: Vampyrism, actorId = {actor.Id}, dealt = {dealtDamage}, vampyrism = {actorCharacteristics.Vampyrism}, healingBoost = {actorCharacteristics.HealingBoost}, heal = {heal}, health = {actorCharacteristics.Health}");
         }
 
         private float CalculateStrikeDamage(
@@ -480,7 +493,8 @@ namespace Server.Battles
                 return;
 
             commands.Add(_battleCommandFactory.Wait(_battleFlytextTimer));
-            _logger.LogDebug($"[Story][Battle] miss wait seconds = {_battleFlytextTimer}");
+
+            _logger.LogDebug($"[Story][Battle]: Miss, wait seconds = {_battleFlytextTimer}");
         }
 
         private void EmitReturnToPosition(
@@ -491,7 +505,7 @@ namespace Server.Battles
         {
             if (isMelee == false)
             {
-                _logger.LogDebug($"[Story][Battle] return skip ranged unitId = {actor.Id}");
+                _logger.LogDebug($"[Story][Battle]: Return, skip ranged unitId = {actor.Id}");
 
                 return;
             }
@@ -506,7 +520,7 @@ namespace Server.Battles
                     _battleCommandFactory.ReturnToPosition(actor.Id, actor.SlotIndex),
                 });
 
-            _logger.LogDebug($"[Story][Battle] return to position unitId = {actor.Id}");
+            _logger.LogDebug($"[Story][Battle]: Return to position unitId = {actor.Id}");
         }
 
         private void EmitDeath(List<BattleStep> steps, int currentTurn, IUnitState unit)
@@ -514,7 +528,7 @@ namespace Server.Battles
             if (_battlePerkSimulator.TryResurrectOnDeath(unit, steps, currentTurn))
                 return;
 
-            _logger.LogDebug($"[Story][Battle] death unitId = {unit.Id}, turn = {currentTurn}");
+            _logger.LogDebug($"[Story][Battle]: Death, unitId = {unit.Id}, turn = {currentTurn}");
 
             _battleScriptBuilder.Add(
                 steps,
@@ -557,7 +571,9 @@ namespace Server.Battles
 
             for (int i = 0; i < mainUnits.Count; i++)
             {
-                if (mainUnits[i].IsAlive())
+                var mainUnit = mainUnits[i];
+
+                if (mainUnit.IsAlive())
                     return true;
             }
 

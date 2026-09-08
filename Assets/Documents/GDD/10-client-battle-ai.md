@@ -262,8 +262,8 @@ Dictionary<(int configId, int slotIndex), Entity>  // или аналог
 | `SetHp` | `unitId`, `slotIndex`, `hp` | **Авторитетное** HP. Выставить бар/модель в `hp`. |
 | `SetEnergy` | `unitId`, `slotIndex`, `energy` | **Авторитетная** энергия. |
 | `SetBonus` | `unitId`, `slotIndex`, `bonusId`, `value`, `sourceId` | Опциональный UI/debug индикатор бонуса. Не пересчитывай статы из этого. На wire — **один** `SetBonus` на `bonusId` с суммой активных слоёв. Start bonus id `1` = resolved grant (`Characters.start_bonus_value`, обычно `10`). WarHowl → bonus id `2` (`damage_local`), не второй слой `0.15` на id `1`. |
-| `SpawnUnit` | `unitId`, `slotIndex` | Заспавнить summon/unit в слот, зарегистрировать lookup, idle. |
-| `DespawnUnit` | `unitId`, `slotIndex` | Убрать со сцены (в т.ч. живой summon на cleanup конца боя). |
+| `SpawnUnit` | `unitId`, `slotIndex` | Заспавнить summon/unit в слот, зарегистрировать lookup, idle. Живые саммоны приходят так в **старте** script и остаются до конца боя. |
+| `DespawnUnit` | `unitId`, `slotIndex` | Убрать со сцены, когда логика боя так сказала (скилл / «саммон покинул поле»). Живых саммонов в конце боя сервер **не** despawn'ит. |
 | `KillUnit` | `unitId`, `slotIndex` | Death-анимация / состояние «мёртв». |
 | `GrantReward` | `rewardType`, `rewardId`, `count`, `targetId` | **Только презентация** дропа/награды в бою. Аккаунт сервер **не** мутирует. `rewardType`: `resource` / `character` / `summon` / `equipment`. `rewardId` — **int или string** (для `resource` часто string key). Не путать с `SetBonus` / `ApplyStatus`. |
 | `SetBattleResult` | `outcome` (int `BattleOutcome`) | Финал script → показать результат. Не завершай бой раньше этой команды (даже если `outcome` уже в корне response — playback сначала доигрывает). |
@@ -284,7 +284,7 @@ Dictionary<(int configId, int slotIndex), Entity>  // или аналог
 
 **Конец:**
 
-… → `DespawnUnit` (cleanup) → `SetBattleResult`
+… → `SetBattleResult` (живые саммоны остаются в слотах; массового `DespawnUnit` в конце нет)
 
 Клиент **не** обязан знать фазы сервера, чтобы играть. `phase` на step — для отладки и опционального UI.
 

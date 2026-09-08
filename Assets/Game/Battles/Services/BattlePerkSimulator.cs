@@ -6,6 +6,9 @@ namespace Server.Battles
 {
     internal sealed class BattlePerkSimulator : IBattlePerkSimulator
     {
+        private bool _shouldAbortRemainingTurn;
+        private BattleSide _actingSide;
+
         private readonly ILogger<BattlePerkSimulator> _logger;
         private readonly IBattleBonusService _battleBonusService;
         private readonly IBattleCommandFactory _battleCommandFactory;
@@ -13,9 +16,8 @@ namespace Server.Battles
         private readonly IBattleScriptBuilder _battleScriptBuilder;
         private readonly IConfigDistributor _configDistributor;
         private readonly List<PerkQueueEntry> _queueBuffer = new();
-        private bool _shouldAbortSideTurn;
 
-        public bool ShouldAbortSideTurn => _shouldAbortSideTurn;
+        public bool ShouldAbortRemainingTurn => _shouldAbortRemainingTurn;
 
         public BattlePerkSimulator(
             ILogger<BattlePerkSimulator> logger,
@@ -33,9 +35,16 @@ namespace Server.Battles
             _configDistributor = configDistributor;
         }
 
-        public void BeginSideTurn()
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public void BeginBattleTurn()
         {
-            _shouldAbortSideTurn = false;
+            _shouldAbortRemainingTurn = false;
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public void BeginSideTurn(BattleSide actingSide)
+        {
+            _actingSide = actingSide;
         }
 
         public void Simulate(
@@ -46,19 +55,20 @@ namespace Server.Battles
             ISeededRandomService seededRandomService)
         {
             _queueBuffer.Clear();
+
             CollectPerks(attacker.MainUnits);
             CollectPerks(attacker.Summons);
             SortQueueByTriggerOrder();
 
             var cooldown = GetPerksCooldown();
 
-            _logger.LogDebug($"[Story][Battle] perk phase side = {attacker.BattleSide}, turn = {currentTurn}, queue = {_queueBuffer.Count}");
+            _logger.LogDebug($"[Story][Battle]: Perk phase, side = {attacker.BattleSide}, turn = {currentTurn}, queue = {_queueBuffer.Count}");
 
             for (int i = 0; i < _queueBuffer.Count; i++)
             {
-                if (_shouldAbortSideTurn)
+                if (_shouldAbortRemainingTurn)
                 {
-                    _logger.LogDebug($"[Story][Battle] perk phase abort side-turn side = {attacker.BattleSide} turn = {currentTurn}");
+                    _logger.LogDebug($"[Story][Battle]: Perk phase, abort remaining turn, side = {attacker.BattleSide}, turn = {currentTurn}");
 
                     return;
                 }
@@ -73,7 +83,7 @@ namespace Server.Battles
                 if (perk.CanTrigger(currentTurn) == false)
                     continue;
 
-                _logger.LogDebug($"[Story][Battle] perk queue perkId = {perk.Id}, type = {perk.PerkType}, order = {perk.TriggerOrder}, ownerId = {owner.Id}, side = {attacker.BattleSide}");
+                _logger.LogDebug($"[Story][Battle]: Perk queue, perkId = {perk.Id}, type = {perk.PerkType}, order = {perk.TriggerOrder}, ownerId = {owner.Id}, side = {attacker.BattleSide}");
 
                 var stepCountBefore = steps.Count;
                 var context = CreateContext(steps, owner, attacker, defender, currentTurn, seededRandomService);
@@ -81,7 +91,7 @@ namespace Server.Battles
 
                 if (steps.Count == stepCountBefore)
                 {
-                    _logger.LogDebug($"[Story][Battle] perk queue no-op skip cooldown perkId = {perk.Id}, ownerId = {owner.Id}");
+                    _logger.LogDebug($"[Story][Battle]: Perk queue no-op skip cooldown, perkId = {perk.Id}, ownerId = {owner.Id}");
 
                     continue;
                 }
@@ -126,7 +136,7 @@ namespace Server.Battles
             int currentTurn,
             ISeededRandomService seededRandomService)
         {
-            _logger.LogDebug($"[Story][Battle] any_damage notify dealerId = {damageDealer.Id} slot = {damageDealer.SlotIndex} turn = {currentTurn}");
+            _logger.LogDebug($"[Story][Battle]: Any_damage notify, dealerId = {damageDealer.Id}, slot = {damageDealer.SlotIndex}, turn = {currentTurn}");
 
             NotifyAction(
                 BattlePerkActionType.AnyDamage,
@@ -179,9 +189,12 @@ namespace Server.Battles
                         _battleScriptBuilder) == false)
                     continue;
 
-                _shouldAbortSideTurn = true;
-                _logger.LogInformation($"[Story][Battle] resurrected on death unitId = {unit.Id}, perkId = {perk.Id}, turn = {currentTurn}");
-                _logger.LogDebug($"[Story][Battle] abort side-turn after resurrection unitId = {unit.Id} turn = {currentTurn}");
+                _shouldAbortRemainingTurn = true;
+
+                var skipDefenderTurn = _actingSide == BattleSide.Attacking;
+
+                _logger.LogInformation($"[Story][Battle]: Resurrected on death, unitId = {unit.Id}, perkId = {perk.Id}, turn = {currentTurn}");
+                _logger.LogInformation($"[Story][Battle]: Abort remaining turn after resurrection, unitId = {unit.Id}, side = {unit.Side}, turn = {currentTurn}, skipDefenderTurn = {skipDefenderTurn}");
 
                 return true;
             }
@@ -245,7 +258,7 @@ namespace Server.Battles
         {
             if (_configDistributor.Constants.TryGet(ConstantKeys.PerksCooldownKey, out var constant) == false)
             {
-                _logger.LogWarning($"[Story][Battle] constant missing key = {ConstantKeys.PerksCooldownKey}");
+                _logger.LogWarning($"[Story][Battle]: Constant missing key = {ConstantKeys.PerksCooldownKey}");
 
                 return 0f;
             }
@@ -258,11 +271,11 @@ namespace Server.Battles
             private readonly IUnitState _owner;
             private readonly IPerk _perk;
 
-            public IUnitState Owner => _owner;
+            internal IUnitState Owner => _owner;
 
-            public IPerk Perk => _perk;
+            internal IPerk Perk => _perk;
 
-            public PerkQueueEntry(IUnitState owner, IPerk perk)
+            internal PerkQueueEntry(IUnitState owner, IPerk perk)
             {
                 _owner = owner;
                 _perk = perk;

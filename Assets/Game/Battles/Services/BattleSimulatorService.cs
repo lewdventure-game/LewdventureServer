@@ -88,10 +88,21 @@ namespace Server.Battles
 
             while (currentTurn < maxTurns && HasAliveMainUnits(stateA) && HasAliveMainUnits(stateB))
             {
+                _battlePerkSimulator.BeginBattleTurn();
+
                 ApplyTurnStartBonuses(steps, stateA, currentTurn);
                 ApplyTurnStartBonuses(steps, stateB, currentTurn);
 
                 SimulateSideTurn(steps, stateA, stateB, currentTurn, seededRandomService);
+
+                if (_battlePerkSimulator.ShouldAbortRemainingTurn)
+                {
+                    _logger.LogDebug($"[Story][Battle] skip defender side after attacker resurrection turn = {currentTurn}");
+
+                    ++currentTurn;
+
+                    continue;
+                }
 
                 if (HasAliveMainUnits(stateB) == false)
                     break;
@@ -110,8 +121,8 @@ namespace Server.Battles
             var outcomeType = ResolveOutcomeType(stateA, stateB, currentTurn, maxTurns);
             var maxTurnFromSteps = GetMaxTurnFromSteps(steps);
 
-            EmitLivingSummonDespawns(steps, stateA, maxTurnFromSteps);
-            EmitLivingSummonDespawns(steps, stateB, maxTurnFromSteps);
+            LogLivingSummonsLeftInScript(stateA);
+            LogLivingSummonsLeftInScript(stateB);
 
             _logger.LogInformation($"[Story][Battle]: OutcomeType = {outcomeType}, maxTurn = {maxTurnFromSteps}");
 
@@ -149,7 +160,7 @@ namespace Server.Battles
             return maxTurn;
         }
 
-        private void EmitLivingSummonDespawns(List<BattleStep> steps, ITeamSimulationState team, int turn)
+        private void LogLivingSummonsLeftInScript(ITeamSimulationState team)
         {
             var summons = team.Summons;
 
@@ -160,16 +171,7 @@ namespace Server.Battles
                 if (summon.IsAlive() == false)
                     continue;
 
-                _battleScriptBuilder.Add(
-                    steps,
-                    turn,
-                    BattlePhaseType.Unknown,
-                    summon,
-                    [
-                        _battleCommandFactory.DespawnUnit(summon.Id, summon.SlotIndex),
-                    ]);
-
-                _logger.LogDebug($"[Story][Battle]: Despawn living summon unitId = {summon.Id}, slot = {summon.SlotIndex}, side = {team.BattleSide}");
+                _logger.LogInformation($"[Story][Battle] living summons left in script unitId = {summon.Id} slot = {summon.SlotIndex} side = {team.BattleSide}");
             }
         }
 
@@ -290,8 +292,12 @@ namespace Server.Battles
             var mainUnits = state.MainUnits;
 
             for (int i = 0; i < mainUnits.Count; i++)
-                if (mainUnits[i].IsAlive())
+            {
+                var mainUnit = mainUnits[i];
+
+                if (mainUnit.IsAlive())
                     return true;
+            }
 
             return false;
         }
@@ -305,12 +311,12 @@ namespace Server.Battles
         {
             _logger.LogDebug($"[Story][Battle]: Side turn side = {attacker.BattleSide}, turn = {currentTurn}");
 
-            _battlePerkSimulator.BeginSideTurn();
+            _battlePerkSimulator.BeginSideTurn(attacker.BattleSide);
 
             SimulateStatuses(steps, attacker, defender, currentTurn, seededRandomService);
             EmitPhaseTrailingWait(steps, currentTurn, BattlePhaseType.StatusTrigger, _statusesCooldown, "statuses", attacker.BattleSide);
 
-            if (_battlePerkSimulator.ShouldAbortSideTurn)
+            if (_battlePerkSimulator.ShouldAbortRemainingTurn)
             {
                 _logger.LogDebug($"[Story][Battle]: Side turn abort after statuses side = {attacker.BattleSide}, turn = {currentTurn}");
 
@@ -321,7 +327,7 @@ namespace Server.Battles
 
             EmitPhaseTrailingWait(steps, currentTurn, BattlePhaseType.PerkTrigger, _perksCooldown, "perks", attacker.BattleSide);
 
-            if (_battlePerkSimulator.ShouldAbortSideTurn)
+            if (_battlePerkSimulator.ShouldAbortRemainingTurn)
             {
                 _logger.LogDebug($"[Story][Battle]: Side turn abort after perks side = {attacker.BattleSide}, turn = {currentTurn}");
 
@@ -332,7 +338,7 @@ namespace Server.Battles
 
             EmitPhaseTrailingWait(steps, currentTurn, BattlePhaseType.SummonAttack, _summonsCooldown, "summons", attacker.BattleSide);
 
-            if (_battlePerkSimulator.ShouldAbortSideTurn)
+            if (_battlePerkSimulator.ShouldAbortRemainingTurn)
             {
                 _logger.LogDebug($"[Story][Battle]: Side turn abort after summons side = {attacker.BattleSide}, turn = {currentTurn}");
 

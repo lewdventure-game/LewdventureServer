@@ -103,7 +103,7 @@ namespace Server.Battles
                     state.Health = 0f;
             }
 
-            _logger.LogDebug($"[Story][Battle] characteristic rebuild maxHealth = {state.MaxHealth}, health = {state.Health}, damage = {state.Damage}, defence = {state.Defence}, combo1Mn = {state.Combo1Multiplier}, combo2Mn = {state.Combo2Multiplier}, vampyrism = {state.Vampyrism}, healingBoost = {state.HealingBoost}");
+            _logger.LogDebug($"[Story][Battle]: Characteristic rebuild, maxHealth = {state.MaxHealth}, health = {state.Health}, damage = {state.Damage}, defence = {state.Defence}, combo1Mn = {state.Combo1Multiplier}, combo2Mn = {state.Combo2Multiplier}, vampyrism = {state.Vampyrism}, healingBoost = {state.HealingBoost}");
         }
 
         public float CalculateVampyrismHeal(float dealtDamage, ICharacteristicState state)
@@ -113,7 +113,7 @@ namespace Server.Battles
 
             var heal = MathF.Ceiling(dealtDamage * state.Vampyrism * state.HealingBoost);
 
-            _logger.LogDebug($"[Story][Battle] vampyrism heal dealt = {dealtDamage}, vampyrism = {state.Vampyrism}, healingBoost = {state.HealingBoost}, heal = {heal}");
+            _logger.LogDebug($"[Story][Battle]: Vampyrism heal dealt = {dealtDamage}, vampyrism = {state.Vampyrism}, healingBoost = {state.HealingBoost}, heal = {heal}");
 
             return heal;
         }
@@ -260,7 +260,7 @@ namespace Server.Battles
             var rounded = MathF.Round(value);
 
             if (rounded != value)
-                _logger.LogDebug($"[Story][Battle] formula2 multiplier round field = {fieldName} raw = {value} rounded = {rounded}");
+                _logger.LogDebug($"[Story][Battle]: Formula2 multiplier round, field = {fieldName}, raw = {value}, rounded = {rounded}");
 
             return rounded;
         }
@@ -275,10 +275,29 @@ namespace Server.Battles
             return value;
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         private float ApplyDefenceFormula(float raw, float coefficient)
         {
-            return coefficient <= 0f ? raw : coefficient * raw / (1f + coefficient * raw);
+            if (coefficient <= 0f)
+            {
+                _logger.LogDebug($"[Story][Battle]: Defence formula skip, coefficient = {coefficient}, raw = {raw}");
+
+                return raw;
+            }
+
+            var absoluteRaw = raw;
+
+            if (absoluteRaw < 0f)
+            {
+                absoluteRaw = -absoluteRaw;
+
+                _logger.LogError($"[Story][Battle]: Defence formula negative armor, raw = {raw}");
+            }
+
+            var defence = coefficient * raw / (1f + coefficient * absoluteRaw);
+
+            _logger.LogDebug($"[Story][Battle]: Defence formula, raw = {raw}, absoluteRaw = {absoluteRaw}, coefficient = {coefficient}, defence = {defence}");
+
+            return defence;
         }
     }
 }

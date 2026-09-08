@@ -37,7 +37,9 @@
 | КРИТ_МН | crit_multiplier_local / crit_multiplier_perk | 2 |
 | КОМБО_1_ШАНС | combo_1_chance_* | 2 |
 | КОМБО_2_ШАНС | combo_2_chance_* | 2 |
-| КОМБО_МН | combo_multiplier_* | 2 |
+| КОМБО_1_МН | combo_1_multiplier_* | 2 |
+| КОМБО_2_МН | combo_2_multiplier_* | 2 |
+| КОМБО_МН (legacy) | combo_multiplier_* | 2, копится в оба combo_1 и combo_2 |
 | КОНТР_ШАНС | counter_chance_* | 2 |
 | КОНТР_МН | counter_multiplier_* | 2 |
 | СПЕЛЛ_МН | spell_multiplier_* | 2 |
@@ -48,13 +50,16 @@
 
 `equip_spell_multiplier_*` в GDD зачёркнут — не планировать без отдельного решения.
 
+АТК_МН, УКЛОНЕНИЕ, КРИТ_ШАНС, КРИТ_МН, КОМБО_*_ШАНС, КОМБО_*_МН, КОНТР_ШАНС, КОНТР_МН, СПЕЛЛ_МН, энергия (gain) — **формула 2**. Живые константы уже в шкале 0..1 (`atk_multiplier_base = 1`, `crit_chance_base = 0.05` и т.п.).
+
 ## Формулы
 
 1. **Сложный множитель:**  
    `round((((base + sum_local) * (1 + sum_minor)) * (1 + sum_major)) * (1 + sum_perk_and_events))`  
-   Итог ≥ 1 (кроме текущего ХП).
+   Итог ≥ 1 (кроме текущего ХП).  
+   Слоя `*_global` **нет**: в `BonusType` и buckets нет Global. Не выдумывать, пока Sheets не привезут колонки.
 
-2. **Простой множитель:**  
+2. **Простой множитель (канон для шансов и АТК_МН):**  
    `(base + sum_local) * (1 + sum_perk_and_events)`
 
 3. **Healing from max (ceil):**  
@@ -64,14 +69,22 @@
    `prev - damageTaken`
 
 5. **Защита:**  
-   `def_coeff_const * raw / (1 + def_coeff * raw)`  
-   где `raw = (base + sum_local) * (1 + sum_perk)`
+   `def_coeff_const * raw / (1 + def_coeff * |raw|)`  
+   где `raw = (base + sum_local) * (1 + sum_perk)`. Отрицательная броня: модуль только в знаменателе, знак raw в числителе сохраняется.
 
 6. **Вампиризм (ceil):**  
    `ceil(dealtDamage * (const + sum_local) * (1 + sum_perk) * healingBoost)`
 
 7. **Healing boost:**  
    `round((1 + healing_boost_base + sum_local) * (1 + sum_perk_and_events))`
+
+### Канон vs сырой текст Аксёнова
+
+В сыром GDD «формула 3» для шансов/АТК_МН записана как `(1 + base + local) * …`. Это **ошибка документа**, не канон. При живых константах получится АТК_МН ≈ 2 и крит ≈ 105%. Код (`ApplyFormula2`) считает формулу 2 этого файла: `(base + local) * (1 + perk)`.
+
+Нумерация в **этом** файле другая: формула 3 здесь — healing from max, не шансы.
+
+`combo_mn` vs `combo_1_mn` / `combo_2_mn`: канон — раздельные множители. Legacy `combo_multiplier_*` (constants / bonus / enemy pack) копится в оба bucket, если раздельных ключей нет.
 
 При изменении МАКС.ХП текущее ХП пересчитывается **пропорционально**.
 

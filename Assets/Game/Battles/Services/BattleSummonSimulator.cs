@@ -49,7 +49,7 @@ namespace Server.Battles
                         _battleCommandFactory.SpawnUnit(summon.Id, summon.SlotIndex),
                     });
 
-                _logger.LogDebug($"[Story][Battle] spawn summon unitId = {summon.Id}, slot = {summon.SlotIndex}, side = {team.BattleSide}");
+                _logger.LogDebug($"[Story][Battle]: Spawn summon, unitId = {summon.Id}, slot = {summon.SlotIndex}, side = {team.BattleSide}");
             }
         }
 
@@ -69,7 +69,7 @@ namespace Server.Battles
 
             if (critSourceIndex < 0)
             {
-                _logger.LogWarning($"[Story][Battle] summon phase skipped no living main side = {attacker.BattleSide}, turn = {currentTurn}");
+                _logger.LogWarning($"[Story][Battle]: Summon phase skipped no living main, side = {attacker.BattleSide}, turn = {currentTurn}");
 
                 return;
             }
@@ -77,13 +77,13 @@ namespace Server.Battles
             var critSource = attacker.MainUnits[critSourceIndex];
             var cooldown = GetSummonsCooldown();
 
-            _logger.LogDebug($"[Story][Battle] summon phase side = {attacker.BattleSide}, turn = {currentTurn}, summons = {_summonOrderBuffer.Count}, critSourceId = {critSource.Id}");
+            _logger.LogDebug($"[Story][Battle]: Summon phase, side = {attacker.BattleSide}, turn = {currentTurn}, summons = {_summonOrderBuffer.Count}, critSourceId = {critSource.Id}");
 
             for (int i = 0; i < _summonOrderBuffer.Count; i++)
             {
-                if (_battlePerkSimulator.ShouldAbortSideTurn)
+                if (_battlePerkSimulator.ShouldAbortRemainingTurn)
                 {
-                    _logger.LogDebug($"[Story][Battle] summon phase abort side-turn side = {attacker.BattleSide} turn = {currentTurn}");
+                    _logger.LogDebug($"[Story][Battle]: Summon phase abort remaining turn, side = {attacker.BattleSide}, turn = {currentTurn}");
 
                     return;
                 }
@@ -153,7 +153,7 @@ namespace Server.Battles
             var evasionRoll = seededRandomService.GetRandomValue();
             var isEvaded = evasionRoll < targetCharacteristics.Evasion;
 
-            _logger.LogDebug($"[Story][Battle] summon attack unitId = {summon.Id}, slot = {summon.SlotIndex}, targetId = {target.Id}, evasionRoll = {evasionRoll}, evasion = {targetCharacteristics.Evasion}, isEvaded = {isEvaded}, critSourceId = {critSource.Id}");
+            _logger.LogDebug($"[Story][Battle]: Summon attack, unitId = {summon.Id}, slot = {summon.SlotIndex}, targetId = {target.Id}, evasionRoll = {evasionRoll}, evasion = {targetCharacteristics.Evasion}, isEvaded = {isEvaded}, critSourceId = {critSource.Id}");
 
             var dealtAnyDamage = false;
 
@@ -164,7 +164,8 @@ namespace Server.Battles
                 if (0f < _battleFlytextTimer)
                 {
                     commands.Add(_battleCommandFactory.Wait(_battleFlytextTimer));
-                    _logger.LogDebug($"[Story][Battle] summon miss wait unitId = {summon.Id} seconds = {_battleFlytextTimer}");
+
+                    _logger.LogDebug($"[Story][Battle]: Summon miss wait, unitId = {summon.Id}, seconds = {_battleFlytextTimer}");
                 }
             }
             else
@@ -173,7 +174,7 @@ namespace Server.Battles
                 var criticalRoll = seededRandomService.GetRandomValue();
                 var isCritical = criticalRoll < critSourceCharacteristics.CriticalChance;
 
-                _logger.LogDebug($"[Story][Battle] summon crit roll unitId = {summon.Id}, criticalRoll = {criticalRoll}, criticalChance = {critSourceCharacteristics.CriticalChance}, isCritical = {isCritical}, critSourceId = {critSource.Id}");
+                _logger.LogDebug($"[Story][Battle]: Summon crit roll, unitId = {summon.Id}, criticalRoll = {criticalRoll}, criticalChance = {critSourceCharacteristics.CriticalChance}, isCritical = {isCritical}, critSourceId = {critSource.Id}");
 
                 var defenceFactor = 1f - targetCharacteristics.Defence;
 
@@ -197,10 +198,11 @@ namespace Server.Battles
                 commands.Add(_battleCommandFactory.ShowDamage(summon.Id, summon.SlotIndex, target.Id, target.SlotIndex, damage, isCritical, false));
                 commands.Add(_battleCommandFactory.SetHp(target.Id, target.SlotIndex, healthAfter));
 
-                _logger.LogInformation($"[Story][Battle] summon damage unitId = {summon.Id}, slot = {summon.SlotIndex}, targetId = {target.Id}, damage = {damage}, isCritical = {isCritical}, health = {healthAfter}, critSourceId = {critSource.Id}");
+                _logger.LogInformation($"[Story][Battle]: Summon damage, unitId = {summon.Id}, slot = {summon.SlotIndex}, targetId = {target.Id}, damage = {damage}, isCritical = {isCritical}, health = {healthAfter}, critSourceId = {critSource.Id}");
 
                 dealtAnyDamage = true;
-                _logger.LogDebug($"[FIX][Story][Battle] any_damage deferred until summon step commit unitId = {summon.Id} targetId = {target.Id} turn = {currentTurn}");
+
+                _logger.LogDebug($"[FIX][Story][Battle]: Any_damage deferred until summon step commit, unitId = {summon.Id}, targetId = {target.Id}, turn = {currentTurn}");
             }
 
             if (isRanged == false)
@@ -216,7 +218,8 @@ namespace Server.Battles
 
             if (dealtAnyDamage)
             {
-                _logger.LogDebug($"[FIX][Story][Battle] any_damage flush after summon step unitId = {summon.Id} targetId = {target.Id} turn = {currentTurn}");
+                _logger.LogDebug($"[FIX][Story][Battle]: Any_damage flush after summon step, unitId = {summon.Id}, targetId = {target.Id}, turn = {currentTurn}");
+
                 _battlePerkSimulator.NotifyAnyDamage(summon, attacker, defender, steps, currentTurn, seededRandomService);
             }
         }
@@ -239,7 +242,7 @@ namespace Server.Battles
             if (_battlePerkSimulator.TryResurrectOnDeath(unit, steps, currentTurn))
                 return;
 
-            _logger.LogDebug($"[Story][Battle] death unitId = {unit.Id}, turn = {currentTurn}");
+            _logger.LogDebug($"[Story][Battle]: Death, unitId = {unit.Id}, turn = {currentTurn}");
 
             _battleScriptBuilder.Add(
                 steps,
@@ -333,7 +336,9 @@ namespace Server.Battles
 
             for (int i = 0; i < mainUnits.Count; i++)
             {
-                if (mainUnits[i].IsAlive())
+                var mainUnit = mainUnits[i];
+
+                if (mainUnit.IsAlive())
                     return true;
             }
 
@@ -344,7 +349,7 @@ namespace Server.Battles
         {
             if (_configDistributor.Constants.TryGet(ConstantKeys.SummonsCooldownKey, out var constant) == false)
             {
-                _logger.LogWarning($"[Story][Battle] constant missing key = {ConstantKeys.SummonsCooldownKey}");
+                _logger.LogWarning($"[Story][Battle]: Constant missing key = {ConstantKeys.SummonsCooldownKey}");
 
                 return 0f;
             }
@@ -356,7 +361,7 @@ namespace Server.Battles
         {
             if (_configDistributor.Constants.TryGet(constantKey, out var constant) == false)
             {
-                _logger.LogWarning($"[Story][Battle] constant missing key = {constantKey}");
+                _logger.LogWarning($"[Story][Battle]: Constant missing key = {constantKey}");
 
                 return 0f;
             }

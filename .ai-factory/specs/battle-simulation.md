@@ -135,8 +135,8 @@ Snapshot — вход для серверной сборки `UnitState`. Ито
 | `SetHp` | `unitId`, `hp` | Авторитетное HP после логики |
 | `SetEnergy` | `unitId`, `energy` | Авторитетная энергия |
 | `SetBonus` | `unitId`, `bonusId`, `value`, `sourceId` | Изменение бонуса |
-| `SpawnUnit` | `unitId`, `slotIndex` | Появление юнита/саммона |
-| `DespawnUnit` | `unitId` | Убрать юнита со сцены (в т.ч. живой summon на cleanup конца боя) |
+| `SpawnUnit` | `unitId`, `slotIndex` | Появление юнита/саммона (в старте script — поставить живых саммонов в слоты) |
+| `DespawnUnit` | `unitId` | Убрать юнита со сцены, когда логика боя так сказала. Не эмитится автоматически для всех живых саммонов в конце |
 | `KillUnit` | `unitId` | Смерть юнита |
 | `GrantReward` | `rewardType`, `rewardId`, `count`, `targetId` | Meta-награда для презентации клиента (`resource` / `character` / `summon` / `equipment`); аккаунт сервер **не** мутирует. `rewardId` — int id **или** string key (для `resource`, если id в конфиге не int). `bonus` / `status` через эту команду **не** идут — остаются `SetBonus` / `ApplyStatus` |
 | `SetBattleResult` | `outcome` | Финал script (`BattleOutcome` as int) |
@@ -158,26 +158,35 @@ Combo2 roll выполняется **только** если Combo1 сработ
 1. Seed RNG (`SeededRandomService`) — сервер генерирует seed.
 2. Build `TeamSimulationState` для A и B из snapshot + configs (характеристики, perks, skills, statuses).
 3. Emit initial `SpawnUnit` для summons обеих сторон, затем initial `ApplyStatus` для стартовых статусов.
-4. Loop turns до `maxTurns` или смерти main units.
-5. Каждый turn: side A acts, then side B (если противник жив).
-6. Emit `SetBattleResult` + return outcome + full script.
+4. Loop `currentTurn` пока `< maxTurns` и у обеих сторон есть живые main:
+   - `BeginBattleTurn()` — сбросить abort remaining turn.
+   - Turn-start bonuses обеим сторонам.
+   - Side A.
+   - Если resurrection abort: `++currentTurn`, continue (сторона B этот ход не играет).
+   - Если B мёртв: break.
+   - Side B.
+   - Если A мёртв: break.
+   - `++currentTurn`.
+5. Battle-end bonuses, outcome, `SetBattleResult`. Живых саммонов в конце **не** despawn'ить.
 
 ### Side-turn order (GDD)
 
 Когда сторона становится атакующей:
 
-0. **Turn-start bonuses** — `first_turns` / `every_turn` rebuild через `IBattleBonusService` (оба стороны в начале полного хода).
-1. **Statuses** — статусы юнитов атакующей стороны по `proc_order`; DoT одного id суммируется за тик; пауза `statuses_cooldown`.
-2. **Perks** — перки атакующей стороны по `proc_order` (доступные на ходе; `proc_rounds` 1-based), пауза `perks_cooldown`.
-3. **Summons** — слоты по возрастанию `slotIndex`: summon skills → SummonAttack (крит от живого main с мин. `slotIndex`) → Return если melee → `summons_cooldown`.
-4. **Main unit(s):**
+0. **Turn-start bonuses** уже начислены в начале полного хода (оба стороны), не внутри side-turn.
+1. **Statuses** — статусы **main** атакующей стороны по `proc_order`; тики одного id суммируются за ход; саммоны в очередь не входят. Trailing `statuses_cooldown` Wait даже при пустой очереди.
+2. **Perks** — перки атакующей стороны по `proc_order` (доступные на ходе; `proc_rounds` 1-based). Trailing `perks_cooldown` Wait даже при пустой очереди.
+3. **Summons** — слоты по возрастанию `slotIndex`: summon skills → SummonAttack (крит от живого main с мин. `slotIndex`) → Return если melee → `summons_cooldown`. Trailing Wait после фазы.
+4. **Main unit(s)** (все живые main стороны; два моба — оба ходят):
    1. Unit skills (не energy) → `units_cooldown` внутри skill steps.
    2. NormalAttack (крит/уклон) → energy gain при hit.
-   3. CounterAttack защитника (не триггерит контр) → Combo1 → Counter → Combo2 → Counter.
-   4. ReturnToPosition / unit cooldown.
+   3. Counter → Combo1 → Counter → Combo2 → Counter **только после hit** обычной атаки. Miss → Return + energy skill без цепочки. Контр не триггерит контр. Combo2 только если Combo1 прошло.
+   4. ReturnToPosition.
    5. EnergySkill, если `Energy >= MaxEnergy` (без крита, с уклоном, без контратаки) → сброс energy.
 
 Цель атак/скиллов/саммонов: живой `mainUnits` защитника с минимальным `slotIndex`.
+
+**Resurrection:** `TryResurrectOnDeath` ставит `ShouldAbortRemainingTurn`. Остаток **полного** хода пропускается (не только текущей стороны). Сброс флага — `BeginBattleTurn` в начале следующей итерации, не в `BeginSideTurn`.
 
 ## Example JSON (минимальный 1v1)
 
@@ -322,5 +331,5 @@ Skills: thin registry по `SkillType` / string id (`fireball`); полный Sk
 
 Story level: `enemies_attack_multiplier` / `enemies_health_multiplier` применяются к health/damage врагов при build по `storyLevelId`.
 Stage: при `stageId > 0` дополнительно умножается `StoryStage.EnemyStatsMultiplier` на health/damage врагов.
-Bonus `work_mode` — строка на mapper, parse через `BonusWorkModeParser`; battle apply (`operator` + `end_of_battle` / `first_turns` / `every_turn`) — `IBattleBonusService` + layered `CharacteristicBuckets` rebuild (формулы GDD 1/2/5/6/7). Status apply uses `status_target`; DoT stacks aggregate into one presentation tick per `statusId` per turn.
+Bonus `work_mode` — строка на mapper, parse через `BonusWorkModeParser`; battle apply (`operator` + `end_of_battle` / `first_turns` / `every_turn`) — `IBattleBonusService` + layered `CharacteristicBuckets` rebuild (формулы GDD 1/2/5/6/7; формула 5 со `|raw|` в знаменателе; шансы/АТК_МН = формула 2, не «(1+base+local)» из сырого GDD). Status apply uses `status_target`; damage-over-time stacks aggregate into one presentation tick per `statusId` per turn, queue = attacking mains only.
 Training / Artifact / Aspect sheets — data-only mappers + managers; grant в `UnitStateBuilder` из snapshot ids/levels. Пустые sheets = runtime no-op.

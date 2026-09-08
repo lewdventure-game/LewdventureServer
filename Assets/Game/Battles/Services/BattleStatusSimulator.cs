@@ -66,7 +66,7 @@ namespace Server.Battles
                     commands,
                     unitState);
 
-                _logger.LogDebug($"[Story][Battle] apply status unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, stacks = {stacks}, remainingTicks = {activeStatus.RemainingTicks}");
+                _logger.LogDebug($"[Story][Battle]: Apply status, unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, stacks = {stacks}, remainingTicks = {activeStatus.RemainingTicks}");
             }
         }
 
@@ -78,19 +78,19 @@ namespace Server.Battles
             ISeededRandomService seededRandomService)
         {
             _tickQueue.Clear();
+
             CollectDamageOverTimeTicks(ownerTeam.MainUnits);
-            CollectDamageOverTimeTicks(ownerTeam.Summons);
             SortTickQueueByTriggerOrder();
 
             var cooldown = GetStatusesCooldown();
 
-            _logger.LogDebug($"[Story][Battle] status side queue side = {ownerTeam.BattleSide} turn = {currentTurn} queueSize = {_tickQueue.Count}");
+            _logger.LogDebug($"[Story][Battle]: Status side, queue side = {ownerTeam.BattleSide}, turn = {currentTurn}, mainsOnly = true, summonsSkipped = true, queueSize = {_tickQueue.Count}");
 
             for (int i = 0; i < _tickQueue.Count; i++)
             {
                 var entry = _tickQueue[i];
 
-                _logger.LogDebug($"[Story][Battle] status queue entry index = {i} unitId = {entry.Unit.Id} statusId = {entry.StatusId} triggerOrder = {entry.TriggerOrder}");
+                _logger.LogDebug($"[Story][Battle]: Status queue entry, index = {i}, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, triggerOrder = {entry.TriggerOrder}");
 
                 TickDamageOverTimeGroup(
                     entry.Unit,
@@ -122,9 +122,10 @@ namespace Server.Battles
                     continue;
 
                 ExpireStatus(unitState, steps, currentTurn, activeStatus);
+
                 activeStatuses.RemoveAt(i);
 
-                _logger.LogDebug($"[Story][Battle] battle end expire non damage over time status unitId = {unitState.Id} statusId = {activeStatus.StatusId} sourceKey = {activeStatus.BonusSourceKey}");
+                _logger.LogDebug($"[Story][Battle]: Battle end, expire non damage over time status, unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, sourceKey = {activeStatus.BonusSourceKey}");
             }
         }
 
@@ -154,6 +155,7 @@ namespace Server.Battles
                         continue;
 
                     processedStatusIds.Add(statusId);
+
                     _tickQueue.Add(new StatusTickEntry(unit, statusId, mapper.TriggerOrder));
                 }
             }
@@ -177,25 +179,26 @@ namespace Server.Battles
 
         private void DecrementAndExpireStatuses(IReadOnlyList<IUnitState> units, List<BattleStep> steps, int currentTurn)
         {
-            for (int u = 0; u < units.Count; u++)
+            for (int i = 0; i < units.Count; i++)
             {
-                var unitState = units[u];
+                var unitState = units[i];
                 var activeStatuses = unitState.ActiveStatuses;
 
-                for (int i = 0; i < activeStatuses.Count; i++)
+                for (int j = 0; j < activeStatuses.Count; j++)
                 {
-                    var activeStatus = activeStatuses[i];
+                    var activeStatus = activeStatuses[j];
                     activeStatus.DecrementRemainingTicks();
-                    activeStatuses[i] = activeStatus;
+                    activeStatuses[j] = activeStatus;
                 }
 
-                for (int i = activeStatuses.Count - 1; 0 <= i; i--)
+                for (int j = activeStatuses.Count - 1; 0 <= j; j--)
                 {
-                    if (0 < activeStatuses[i].RemainingTicks)
+                    if (0 < activeStatuses[j].RemainingTicks)
                         continue;
 
-                    ExpireStatus(unitState, steps, currentTurn, activeStatuses[i]);
-                    activeStatuses.RemoveAt(i);
+                    ExpireStatus(unitState, steps, currentTurn, activeStatuses[j]);
+
+                    activeStatuses.RemoveAt(j);
                 }
             }
         }
@@ -266,7 +269,7 @@ namespace Server.Battles
                 commands,
                 unitState);
 
-            _logger.LogDebug($"[Story][Battle] status aggregate tick unitId = {unitState.Id}, statusId = {statusId}, damage = {totalDamage}, isCritical = {anyCritical}, health = {healthAfter}");
+            _logger.LogDebug($"[Story][Battle]: Status aggregate tick, unitId = {unitState.Id}, statusId = {statusId}, damage = {totalDamage}, isCritical = {anyCritical}, health = {healthAfter}");
 
             NotifyDamageOverTimeSource(unitState, ownerTeam, opponentTeam, steps, currentTurn, seededRandomService, statusId);
 
@@ -289,7 +292,7 @@ namespace Server.Battles
 
             if (sourceUnitId < 0)
             {
-                _logger.LogDebug($"[Story][Battle] any_damage skip status tick; source missing statusId = {statusId} targetId = {unitState.Id}");
+                _logger.LogDebug($"[Story][Battle]: Any_damage skip status tick; source missing statusId = {statusId}, targetId = {unitState.Id}");
 
                 return;
             }
@@ -368,6 +371,7 @@ namespace Server.Battles
             out bool isCritical)
         {
             isCritical = false;
+
             ResolveLiveSourceStats(
                 unitState,
                 ownerTeam,
@@ -394,7 +398,7 @@ namespace Server.Battles
             if (isCritical)
                 damage *= criticalMultiplier;
 
-            _logger.LogDebug($"[Story][Battle] damage over time stack unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, sourceId = {activeStatus.SourceUnitId}, sourceDamage = {sourceDamage}, damageRatio = {activeStatus.DamageRatio}, tickDamageBase = {tickDamageBase}, criticalRoll = {criticalRoll}, isCritical = {isCritical}, damage = {damage}");
+            _logger.LogDebug($"[Story][Battle]: Damage over time stack, unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, sourceId = {activeStatus.SourceUnitId}, sourceDamage = {sourceDamage}, damageRatio = {activeStatus.DamageRatio}, tickDamageBase = {tickDamageBase}, criticalRoll = {criticalRoll}, isCritical = {isCritical}, damage = {damage}");
 
             return damage;
         }
@@ -425,11 +429,11 @@ namespace Server.Battles
                     return;
                 }
 
-                _logger.LogWarning($"[Story][Battle] damage over time source missing sourceId = {activeStatus.SourceUnitId} bearerId = {bearer.Id} statusId = {activeStatus.StatusId}; fallback bearer");
+                _logger.LogWarning($"[Story][Battle]: Damage over time source missing, sourceId = {activeStatus.SourceUnitId}, bearerId = {bearer.Id}, statusId = {activeStatus.StatusId}; fallback bearer");
             }
             else
             {
-                _logger.LogWarning($"[Story][Battle] damage over time source unset bearerId = {bearer.Id} statusId = {activeStatus.StatusId}; fallback bearer");
+                _logger.LogWarning($"[Story][Battle]: Damage over time source unset, bearerId = {bearer.Id}, statusId = {activeStatus.StatusId}; fallback bearer");
             }
 
             var bearerCharacteristics = bearer.CharacteristicState;
@@ -454,23 +458,23 @@ namespace Server.Battles
                 _battleCommandFactory.RemoveStatus(unitState.Id, unitState.SlotIndex, activeStatus.StatusId),
             };
 
-                if (activeStatus.AppliesBonuses)
-                    _battleBonusService.RemoveBySourceKey(unitState, activeStatus.BonusSourceKey, commands, currentTurn);
+            if (activeStatus.AppliesBonuses)
+                _battleBonusService.RemoveBySourceKey(unitState, activeStatus.BonusSourceKey, commands, currentTurn);
 
-                if (0 < remainingStacks)
-                {
-                    var remainingDurationTurns = FindMaxRemainingTicks(unitState.ActiveStatuses, activeStatus.StatusId);
+            if (0 < remainingStacks)
+            {
+                var remainingDurationTurns = FindMaxRemainingTicks(unitState.ActiveStatuses, activeStatus.StatusId);
 
-                    commands.Add(
-                        _battleCommandFactory.ApplyStatus(
-                            unitState.Id,
-                            unitState.SlotIndex,
-                            unitState.Id,
-                            unitState.SlotIndex,
-                            activeStatus.StatusId,
-                            remainingStacks,
-                            remainingDurationTurns));
-                }
+                commands.Add(
+                    _battleCommandFactory.ApplyStatus(
+                        unitState.Id,
+                        unitState.SlotIndex,
+                        unitState.Id,
+                        unitState.SlotIndex,
+                        activeStatus.StatusId,
+                        remainingStacks,
+                        remainingDurationTurns));
+            }
 
             _battleScriptBuilder.Add(
                 steps,
@@ -480,7 +484,7 @@ namespace Server.Battles
                 commands,
                 unitState);
 
-            _logger.LogDebug($"[Story][Battle] expire status unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, remainingStacks = {remainingStacks}");
+            _logger.LogDebug($"[Story][Battle]: Expire status, unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, remainingStacks = {remainingStacks}");
         }
 
         private void EmitDeath(List<BattleStep> steps, int currentTurn, IUnitState unit)
@@ -488,7 +492,7 @@ namespace Server.Battles
             if (_battlePerkSimulator.TryResurrectOnDeath(unit, steps, currentTurn))
                 return;
 
-            _logger.LogDebug($"[Story][Battle] death unitId = {unit.Id}, turn = {currentTurn}");
+            _logger.LogDebug($"[Story][Battle]: Death unitId = {unit.Id}, turn = {currentTurn}");
 
             _battleScriptBuilder.Add(
                 steps,
@@ -506,7 +510,7 @@ namespace Server.Battles
         {
             if (_configDistributor.Constants.TryGet(ConstantKeys.StatusesCooldownKey, out var constant) == false)
             {
-                _logger.LogError($"[Story][Battle] constant missing key = {ConstantKeys.StatusesCooldownKey}");
+                _logger.LogError($"[Story][Battle]: Constant missing key = {ConstantKeys.StatusesCooldownKey}");
 
                 return 0f;
             }
@@ -526,7 +530,9 @@ namespace Server.Battles
         {
             for (int i = 0; i < index; i++)
             {
-                if (activeStatuses[i].StatusId == statusId)
+                var activeStatus = activeStatuses[i];
+
+                if (activeStatus.StatusId == statusId)
                     return true;
             }
 
@@ -537,7 +543,9 @@ namespace Server.Battles
         {
             for (int i = 0; i < statusIds.Count; i++)
             {
-                if (statusIds[i] == statusId)
+                var statusId = statusIds[i];
+
+                if (statusId == statusId)
                     return true;
             }
 
@@ -550,7 +558,9 @@ namespace Server.Battles
 
             for (int i = 0; i < activeStatuses.Count; i++)
             {
-                if (activeStatuses[i].StatusId == statusId)
+                var activeStatus = activeStatuses[i];
+
+                if (activeStatus.StatusId == statusId)
                     stacks += 1;
             }
 
@@ -563,13 +573,17 @@ namespace Server.Battles
 
             for (int i = 0; i < activeStatuses.Count; i++)
             {
-                if (activeStatuses[i].StatusId != statusId)
+                var activeStatus = activeStatuses[i];
+
+                if (activeStatus.StatusId != statusId)
                     continue;
 
-                if (activeStatuses[i].RemainingTicks <= maxTicks)
+                var remainingTicks = activeStatus.RemainingTicks;
+
+                if (remainingTicks <= maxTicks)
                     continue;
 
-                maxTicks = activeStatuses[i].RemainingTicks;
+                maxTicks = remainingTicks;
             }
 
             return maxTicks;
@@ -577,18 +591,22 @@ namespace Server.Battles
 
         private readonly struct StatusTickEntry
         {
-            public StatusTickEntry(IUnitState unit, int statusId, int triggerOrder)
+            private readonly IUnitState _unit;
+            private readonly int _statusId;
+            private readonly int _triggerOrder;
+
+            internal IUnitState Unit => _unit;
+
+            internal int StatusId => _statusId;
+
+            internal int TriggerOrder => _triggerOrder;
+
+            internal StatusTickEntry(IUnitState unit, int statusId, int triggerOrder)
             {
-                Unit = unit;
-                StatusId = statusId;
-                TriggerOrder = triggerOrder;
+                _unit = unit;
+                _statusId = statusId;
+                _triggerOrder = triggerOrder;
             }
-
-            public IUnitState Unit { get; }
-
-            public int StatusId { get; }
-
-            public int TriggerOrder { get; }
         }
     }
 }
