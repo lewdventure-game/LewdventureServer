@@ -82,7 +82,54 @@ namespace Server.Battles
 
             errorMessage = string.Empty;
 
+            LogSnapshotSummary(data);
+
             return true;
+        }
+
+        private void LogSnapshotSummary(IBattleSimulationData data)
+        {
+            LogTeamSnapshot("A", data.TeamA, data.StoryLevelId, data.StageId);
+            LogTeamSnapshot("B", data.TeamB, data.StoryLevelId, data.StageId);
+        }
+
+        private void LogTeamSnapshot(string teamName, ITeamSnapshot team, int storyLevelId, int stageId)
+        {
+            if (team == null)
+            {
+                _logger.LogDebug($"[Story][Battle] snapshot team = {teamName} missing storyLevelId = {storyLevelId} stageId = {stageId}");
+
+                return;
+            }
+
+            LogUnitsSnapshot(teamName, "main", team.MainUnits, storyLevelId, stageId);
+            LogUnitsSnapshot(teamName, "summon", team.Summons, storyLevelId, stageId);
+        }
+
+        private void LogUnitsSnapshot(
+            string teamName,
+            string groupName,
+            List<IUnitSnapshot> units,
+            int storyLevelId,
+            int stageId)
+        {
+            if (units == null)
+                return;
+
+            for (int i = 0; i < units.Count; i++)
+            {
+                var unit = units[i];
+
+                if (unit == null)
+                    continue;
+
+                var perkCount = unit.ActivePerkIds == null ? 0 : unit.ActivePerkIds.Count;
+                var skillCount = unit.ActiveSkillIds == null ? 0 : unit.ActiveSkillIds.Count;
+                var equipmentCount = unit.Equipments == null ? 0 : unit.Equipments.Count;
+                var bonusCount = unit.ActiveBonuses == null ? 0 : unit.ActiveBonuses.Count;
+
+                _logger.LogDebug($"[Story][Battle] snapshot team = {teamName} group = {groupName} id = {unit.Id} slot = {unit.SlotIndex} level = {unit.Level} mastery = {unit.MasteryLevel} training = {unit.TrainingLevel} perkCount = {perkCount} skillCount = {skillCount} equipmentCount = {equipmentCount} bonusCount = {bonusCount} storyLevelId = {storyLevelId} stageId = {stageId}");
+            }
         }
 
         private bool ValidateTeam(ITeamSnapshot team, BattleSide battleSide, out string errorMessage)
@@ -284,7 +331,50 @@ namespace Server.Battles
                 return false;
             }
 
-            _logger.LogDebug($"[Story][Battle]: Unit snapshot resolved id = {unit.Id}, masteryLevel = {unit.MasteryLevel}, trainingLevel = {unit.TrainingLevel}, equipmentCount = {unit.Equipments.Count}, artifactCount = {unit.ArtifactIds.Count}, aspectCount = {unit.AspectIds.Count}");
+            if (ValidateActiveBonuses(unit, out errorMessage) == false)
+                return false;
+
+            _logger.LogDebug($"[Story][Battle]: Unit snapshot resolved id = {unit.Id}, masteryLevel = {unit.MasteryLevel}, trainingLevel = {unit.TrainingLevel}, equipmentCount = {unit.Equipments.Count}, artifactCount = {unit.ArtifactIds.Count}, aspectCount = {unit.AspectIds.Count}, bonusCount = {unit.ActiveBonuses.Count}");
+
+            errorMessage = string.Empty;
+
+            return true;
+        }
+
+        private bool ValidateActiveBonuses(IUnitSnapshot unit, out string errorMessage)
+        {
+            if (unit.ActiveBonuses == null)
+            {
+                errorMessage = $"activeBonuses must not be null for unit id = {unit.Id}.";
+
+                return false;
+            }
+
+            for (int i = 0; i < unit.ActiveBonuses.Count; i++)
+            {
+                var grant = unit.ActiveBonuses[i];
+
+                if (grant == null)
+                {
+                    errorMessage = $"activeBonuses entry is null for unit id = {unit.Id}.";
+
+                    return false;
+                }
+
+                if (grant.Id <= 0 || grant.Count <= 0)
+                {
+                    errorMessage = $"activeBonuses id and count must be > 0 for unit id = {unit.Id}.";
+
+                    return false;
+                }
+
+                if (_configDistributor.Bonuses.TryGet(grant.Id, out _) == false)
+                {
+                    _logger.LogWarning($"[Story][Battle] unknown run bonus id = {grant.Id} for unit id = {unit.Id}");
+
+                    continue;
+                }
+            }
 
             errorMessage = string.Empty;
 

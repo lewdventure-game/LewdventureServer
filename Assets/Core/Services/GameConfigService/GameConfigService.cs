@@ -91,7 +91,7 @@ namespace Server.Services
 
                 await Task.Delay(150);
 
-                var tempStoryLevels = await DownloadWithRetryAsync<StoryLevelMapper>(request, "1gz8t6fmWwIwvz93U7pKZ8rrBu9RdfyJB5Yn9G2ITuCE", "B:L", "Story_levels");
+                var tempStoryLevels = await DownloadWithRetryAsync<StoryLevelMapper>(request, "1gz8t6fmWwIwvz93U7pKZ8rrBu9RdfyJB5Yn9G2ITuCE", "B:I", "Story_levels");
 
                 await Task.Delay(150);
 

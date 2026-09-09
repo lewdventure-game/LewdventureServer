@@ -22,7 +22,7 @@ namespace Server.Battles
             var token = JObject.Load(reader);
             var unitSnapshot = new UnitSnapshot();
             serializer.Populate(token.CreateReader(), unitSnapshot);
-            NormalizeEquipment(unitSnapshot, token);
+            NormalizeEquipment(unitSnapshot, token, serializer);
 
             return unitSnapshot;
         }
@@ -32,11 +32,18 @@ namespace Server.Battles
             serializer.Serialize(writer, value);
         }
 
-        private static void NormalizeEquipment(UnitSnapshot unitSnapshot, JObject token)
+        private static void NormalizeEquipment(
+            UnitSnapshot unitSnapshot,
+            JObject token,
+            JsonSerializer serializer)
         {
             CheckFields(unitSnapshot);
 
-            var hasEquipmentsProperty = token["equipments"] != null || token["Equipments"] != null;
+            TryPopulateEquipmentAlias(unitSnapshot, token, serializer);
+
+            var hasEquipmentsProperty = token["equipments"] != null
+                || token["Equipments"] != null
+                || token["equipment"] != null;
             var hasEquipmentIdsProperty = token["equipmentIds"] != null || token["EquipmentIds"] != null;
 
             var equipments = unitSnapshot.Equipments;
@@ -74,6 +81,35 @@ namespace Server.Battles
             }
         }
 
+        private static void TryPopulateEquipmentAlias(
+            UnitSnapshot unitSnapshot,
+            JObject token,
+            JsonSerializer serializer)
+        {
+            if (unitSnapshot.Equipments.Count != 0)
+                return;
+
+            var equipmentToken = token["equipment"];
+
+            if (equipmentToken == null || equipmentToken.Type == JTokenType.Null)
+                return;
+
+            var aliased = equipmentToken.ToObject<List<EquipmentSnapshot>>(serializer);
+
+            if (aliased == null)
+                return;
+
+            for (int i = 0; i < aliased.Count; i++)
+            {
+                var entry = aliased[i];
+
+                if (entry == null)
+                    continue;
+
+                unitSnapshot.Equipments.Add(entry);
+            }
+        }
+
         private static void CheckFields(UnitSnapshot unitSnapshot)
         {
             unitSnapshot.Equipments ??= [];
@@ -83,6 +119,7 @@ namespace Server.Battles
             unitSnapshot.ActivePerkIds ??= [];
             unitSnapshot.ActiveSkillIds ??= [];
             unitSnapshot.ActiveStatusIds ??= [];
+            unitSnapshot.ActiveBonuses ??= [];
         }
     }
 }

@@ -24,6 +24,8 @@ namespace Server.Battles
 
         public List<int> ActiveStatusIds { get; set; } = new();
 
+        public List<IBonusGrantSnapshot> ActiveBonuses { get; set; } = new();
+
         public int SlotIndex { get; set; }
     }
 }

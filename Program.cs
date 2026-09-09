@@ -127,6 +127,7 @@ namespace Server
             serializerSettings.Converters.Add(new TeamSnapshotJsonConverter());
             serializerSettings.Converters.Add(new UnitSnapshotJsonConverter());
             serializerSettings.Converters.Add(new EquipmentSnapshotJsonConverter());
+            serializerSettings.Converters.Add(new BonusGrantSnapshotJsonConverter());
         }
 
         private static void ConfigureMiddleware(WebApplication application)

@@ -542,12 +542,8 @@ namespace Server.Battles
         private bool ContainsStatusId(List<int> statusIds, int statusId)
         {
             for (int i = 0; i < statusIds.Count; i++)
-            {
-                var statusId = statusIds[i];
-
-                if (statusId == statusId)
+                if (statusIds[i] == statusId)
                     return true;
-            }
 
             return false;
         }

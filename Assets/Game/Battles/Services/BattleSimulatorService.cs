@@ -75,6 +75,8 @@ namespace Server.Battles
             var teamB = data.TeamB;
             var maxTurns = CalculateMaxTurns(data.StoryLevelId);
 
+            _logger.LogInformation($"[Story][Battle]: Simulate start storyLevelId = {data.StoryLevelId}, maxTurns = {maxTurns}, seed = {seed}");
+
             var stateA = BuildTeamState(teamA, BattleSide.Attacking, data.StoryLevelId, data.StageId);
             var stateB = BuildTeamState(teamB, BattleSide.Defending, data.StoryLevelId, data.StageId);
 
@@ -124,7 +126,7 @@ namespace Server.Battles
             LogLivingSummonsLeftInScript(stateA);
             LogLivingSummonsLeftInScript(stateB);
 
-            _logger.LogInformation($"[Story][Battle]: OutcomeType = {outcomeType}, maxTurn = {maxTurnFromSteps}");
+            _logger.LogInformation($"[Story][Battle]: OutcomeType = {outcomeType}, currentTurn = {currentTurn}, maxTurns = {maxTurns}, maxTurnFromSteps = {maxTurnFromSteps}");
 
             _battleScriptBuilder.Add(
                 steps,
@@ -177,14 +179,25 @@ namespace Server.Battles
 
         private int CalculateMaxTurns(int storyLevelId)
         {
+            var fallbackMaxTurns = 25;
+
             if (_configDistributor.StoryLevels.TryGet(storyLevelId, out var storyLevel) == false)
             {
-                _logger.LogError($"[Error][Story][Battle]: Story level missing id = {storyLevelId}");
+                _logger.LogError($"[Error][Story][Battle]: Story level missing id = {storyLevelId}, using fallback maxTurns = {fallbackMaxTurns}");
 
-                return 0;
+                return fallbackMaxTurns;
             }
 
-            return storyLevel.MaxBattleTurns;
+            var maxTurns = storyLevel.MaxBattleTurns;
+
+            if (maxTurns <= 0)
+            {
+                _logger.LogError($"[Error][Story][Battle]: Story level max_battle_turns missing or zero id = {storyLevelId}, using fallback maxTurns = {fallbackMaxTurns}");
+
+                return fallbackMaxTurns;
+            }
+
+            return maxTurns;
         }
 
         private void CacheConstants()

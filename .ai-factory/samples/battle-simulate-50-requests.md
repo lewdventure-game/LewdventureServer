@@ -42,7 +42,7 @@ Equipments в клиентском экспорте пустые — в рекв
 - Start: bonus id `start_bonus_type` с value `start_bonus_value`.
 - Upgrades: ordinal по GDD (см. выше). **Не** «level−1 раз все пары».
 - На текущем Characters пресете level почти не качает DPS (апгрейд = `max_health_perk`).
-- Snapshot **не** принимает `activeBonusIds`.
+- Snapshot принимает `activeBonuses` (`id`/`count`/`remainingBattles`), **не** `activeBonusIds`.
 - `skill_ids` персонажа не авто-подтягиваются: только `activeSkillIds` (+ equipment `skill_id`).
 
 Шаблон юнита без баффов:

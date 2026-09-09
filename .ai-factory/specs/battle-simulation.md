@@ -49,14 +49,15 @@ Seed RNG для `/api/battle/simulate` генерирует только сер�
 | `id` | `int` | ID сущности в конфиге (character / enemy / summon) |
 | `level` | `int` | Уровень сущности (character upgrade tier / summon level / enemy level) |
 | `masteryLevel` | `int` | Уровень мастерства саммона; для non-summons = `0` |
-| `equipment` | `EquipmentSnapshot[]` | Экипировка с уровнем (предпочтительно) |
-| `equipmentIds` | `int[]` | Legacy: только id; сервер трактует как `equipment` с `level = 1` |
+| `equipments` | `EquipmentSnapshot[]` | Экипировка с уровнем. Клиент шлёт это имя. Alias `equipment` принимается сервером |
+| `equipmentIds` | `int[]` | Legacy: только id; сервер трактует как `equipments` с `level = 1` |
 | `trainingLevel` | `int` | Уровень тренировки (player main); `0` если нет |
 | `artifactIds` | `int[]` | Активные артефакты |
 | `aspectIds` | `int[]` | Активные аспекты |
 | `activePerkIds` | `int[]` | Активные перки на момент боя |
 | `activeSkillIds` | `string[]` | Активные скиллы (ключи из конфига) |
 | `activeStatusIds` | `int[]` | Стартовые статусы (id из Statuses) |
+| `activeBonuses` | `{ id, count, remainingBattles }[]` | Run-bonuses персонажа A из story ledger. Саммоны/враги — `[]`. `remainingBattles`: `0` = не сжигать по боям (`permanent` / `end_of_game` / `first_turns` / `every_turn`); `> 0` = осталось боёв (`end_of_battle` / `next_battles` / fork `RewardLenght`) |
 | `slotIndex` | `int` | Позиция в команде (2 моба / слоты саммонов) |
 
 ### `EquipmentSnapshot`
@@ -66,7 +67,11 @@ Seed RNG для `/api/battle/simulate` генерирует только сер�
 | `id` | `int` | ID экипировки в конфиге |
 | `level` | `int` | Уровень предмета (1-based индекс в `equip_bonus_values_*`) |
 
-Snapshot — вход для серверной сборки `UnitState`. Итоговые HP/DMG/crit/evasion/combo/counter/energy сервер считает из constants + character start/upgrades + training + equipment(level) + summons mastery + artifacts + aspects + perks/statuses/runtime bonuses.
+Snapshot — вход для серверной сборки `UnitState`. Итоговые HP/DMG/crit/evasion/combo/counter/energy сервер считает из constants + character start/upgrades + training + equipment(level) + summons mastery + artifacts + aspects + perks/statuses/runtime bonuses + snapshot `activeBonuses` (`IBattleBonusService.Grant`, sourceKey `run:{id}:{index}`).
+
+Если на клиенте нет модуля инвентаря/тренировок — `equipments` / `artifactIds` / `aspectIds` пустые, `trainingLevel = 0`. Не слать фейковые id. `activePerkIds` / `activeStatusIds` — из рантайма. `activeSkillIds` — из конфига сущности (character `skill_ids` как строки, summon `skill_id`). `activeBonuses` — только у attacking character. Неизвестный bonus id: WARN + skip, simulate не валится. Сервер всё равно инжектит `ICharacterMapper.SkillIds` и summon `SkillId` из своих конфигов.
+
+`level` / `masteryLevel` на клиенте сейчас часто `1` / `0`: у `ICharacter`/`ISummon` нет runtime mastery/level UI. Не выдумывать.
 
 **Validate fail logging:** при ошибке валидации сервер пишет `[Config]` INFO summary новых полей snapshot (`stageId`, `masteryLevel`, `trainingLevel`, counts `equipment` / `artifactIds` / `aspectIds`) вместе с причиной отказа.
 
@@ -76,7 +81,7 @@ Snapshot — вход для серверной сборки `UnitState`. Ито
 | --- | --- | --- |
 | `protocolVersion` | `int` | Версия протокола (сейчас `1`) |
 | `seed` | `ulong` | Seed RNG, сгенерированный сервером |
-| `outcome` | `BattleOutcome` | Результат боя |
+| `outcomeType` | `OutcomeType` as int | Результат боя (`Unknown=0`, `TeamAWin=1`, `TeamBWin=2`, `Timeout=3`, `Draw=4`) |
 | `steps` | `List<BattleStep>` | Пошаговый script |
 
 Число отыгранных ходов клиент берёт из `steps` (`max(turn)`, либо `0` если script пуст). Отдельного поля `turnsPlayed` нет.
@@ -107,39 +112,39 @@ Snapshot — вход для серверной сборки `UnitState`. Ито
 - Значения = `UnitSnapshot.id` из request (не ECS entity id клиента).
 - Клиент при спавне строит lookup `id → entity` и играет команды по этим id.
 - Если у шага нет внешней цели (cooldown, self-buff без target и т.п.) — `targetId = -1`.
-- В `params` конкретных команд (`ShowDamage`, `Approach`, …) `targetId` обязан быть валидным id, если операция подразумевает цель.
+- В `parameters` конкретных команд (`ShowDamage`, `Approach`, …) `targetId` обязан быть валидным id, если операция подразумевает цель.
 
 ## `BattleCommand`
 
 | Field | Description |
 | --- | --- |
-| `operation` | `BattleCommandOperation` enum |
-| `params` | `JsonObject` — параметры операции для клиента |
+| `commandType` | `CommandType` enum as int (`Wait=1` … `GrantReward=20`) |
+| `parameters` | `JObject` — параметры команды для клиента |
 
-### `BattleCommandOperation` → `params`
+### `CommandType` → `parameters`
 
-| Operation | Params keys | Notes |
+| CommandType | Parameters keys | Notes |
 | --- | --- | --- |
 | `Wait` | `seconds` | Пауза между фазами / cooldown |
-| `Approach` | `actorId`, `targetId`, `isMelee` | Подход melee к цели |
-| `ReturnToPosition` | `actorId` | Возврат на позицию |
-| `PlayAnimation` | `actorId`, `animationKey` | Анимация атаки / каста / hit |
-| `ShowDamage` | `actorId`, `targetId`, `damage`, `isCritical`, `isEvaded` | Flytext урона |
-| `ShowHeal` | `actorId`, `targetId`, `heal` | Flytext лечения |
-| `ShowMiss` | `actorId`, `targetId` | Уклонение |
-| `ApplyStatus` | `actorId`, `targetId`, `statusId`, `stacks`, `durationTurns` | Наложение статуса |
-| `RemoveStatus` | `targetId`, `statusId` | Снятие статуса |
-| `TickStatus` | `targetId`, `statusId`, `value` | Тик статуса (DOT/hot value) |
-| `CastSkill` | `actorId`, `targetId`, `skillId` | Каст скилла |
-| `TriggerPerk` | `actorId`, `targetId`, `perkId` | Срабатывание перка |
-| `SetHp` | `unitId`, `hp` | Авторитетное HP после логики |
-| `SetEnergy` | `unitId`, `energy` | Авторитетная энергия |
-| `SetBonus` | `unitId`, `bonusId`, `value`, `sourceId` | Изменение бонуса |
-| `SpawnUnit` | `unitId`, `slotIndex` | Появление юнита/саммона (в старте script — поставить живых саммонов в слоты) |
-| `DespawnUnit` | `unitId` | Убрать юнита со сцены, когда логика боя так сказала. Не эмитится автоматически для всех живых саммонов в конце |
-| `KillUnit` | `unitId` | Смерть юнита |
-| `GrantReward` | `rewardType`, `rewardId`, `count`, `targetId` | Meta-награда для презентации клиента (`resource` / `character` / `summon` / `equipment`); аккаунт сервер **не** мутирует. `rewardId` — int id **или** string key (для `resource`, если id в конфиге не int). `bonus` / `status` через эту команду **не** идут — остаются `SetBonus` / `ApplyStatus` |
-| `SetBattleResult` | `outcome` | Финал script (`BattleOutcome` as int) |
+| `Approach` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `isMelee` | Подход melee к цели |
+| `ReturnToPosition` | `actorId`, `actorSlotIndex` | Возврат на позицию |
+| `PlayAnimation` | `actorId`, `actorSlotIndex`, `animationKey` | Анимация атаки / каста / hit |
+| `ShowDamage` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `damage`, `isCritical`, `isEvaded` | Flytext урона |
+| `ShowHeal` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `heal` | Flytext лечения |
+| `ShowMiss` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex` | Уклонение |
+| `ApplyStatus` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `statusId`, `stacks`, `durationTurns` | Наложение статуса; `durationTurns = -1` если бесконечно |
+| `RemoveStatus` | `targetId`, `targetSlotIndex`, `statusId` | Снятие статуса |
+| `TickStatus` | `targetId`, `targetSlotIndex`, `statusId`, `value` | Тик статуса (DOT/hot value) |
+| `CastSkill` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `skillId` | Каст скилла |
+| `TriggerPerk` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `perkId` | Срабатывание перка |
+| `SetHp` | `unitId`, `slotIndex`, `hp` | Авторитетное HP после логики |
+| `SetEnergy` | `unitId`, `slotIndex`, `energy` | Авторитетная энергия |
+| `SetBonus` | `unitId`, `slotIndex`, `bonusId`, `value`, `sourceId` | Изменение бонуса |
+| `SpawnUnit` | `unitId`, `slotIndex` | Появление юнита/саммона |
+| `DespawnUnit` | `unitId`, `slotIndex` | Убрать юнита со сцены |
+| `KillUnit` | `unitId`, `slotIndex` | Смерть юнита |
+| `GrantReward` | `rewardType`, `rewardId`, `count`, `targetId` | Meta-награда для презентации (`resource` / `character` / `summon` / `equipment`); аккаунт сервер **не** мутирует. `rewardId` — int или string. `bonus` / `status` через эту команду **не** идут |
+| `SetBattleResult` | `outcome` | Финал script (`OutcomeType` as int) |
 
 Клиент **не** решает: крит, уклон, урон, смерть, статусы, исход. Только играет команды по порядку.
 
@@ -200,7 +205,7 @@ Combo2 roll выполняется **только** если Combo1 сработ
         "id": 1,
         "level": 5,
         "masteryLevel": 0,
-        "equipment": [
+        "equipments": [
           { "id": 101, "level": 2 },
           { "id": 102, "level": 1 }
         ],
@@ -218,7 +223,7 @@ Combo2 roll выполняется **только** если Combo1 сработ
         "id": 10,
         "level": 3,
         "masteryLevel": 2,
-        "equipment": [],
+        "equipments": [],
         "trainingLevel": 0,
         "artifactIds": [],
         "aspectIds": [],
@@ -235,7 +240,7 @@ Combo2 roll выполняется **только** если Combo1 сработ
         "id": 201,
         "level": 5,
         "masteryLevel": 0,
-        "equipment": [],
+        "equipments": [],
         "trainingLevel": 0,
         "artifactIds": [],
         "aspectIds": [],
@@ -258,7 +263,7 @@ Combo2 roll выполняется **только** если Combo1 сработ
 {
   "protocolVersion": 1,
   "seed": 12345678901234567890,
-  "outcome": "TeamAWin",
+  "outcomeType": 1,
   "steps": [
     {
       "index": 0,
@@ -267,12 +272,12 @@ Combo2 roll выполняется **только** если Combo1 сработ
       "actorId": 1,
       "targetId": 201,
       "commands": [
-        { "operation": "Approach", "params": { "actorId": 1, "targetId": 201, "isMelee": true } },
-        { "operation": "PlayAnimation", "params": { "actorId": 1, "animationKey": "attack" } },
-        { "operation": "ShowDamage", "params": { "actorId": 1, "targetId": 201, "damage": 42, "isCritical": false, "isEvaded": false } },
-        { "operation": "SetHp", "params": { "unitId": 201, "hp": 58 } },
-        { "operation": "ReturnToPosition", "params": { "actorId": 1 } },
-        { "operation": "Wait", "params": { "seconds": 0.3 } }
+        { "commandType": 2, "parameters": { "actorId": 1, "actorSlotIndex": 0, "targetId": 201, "targetSlotIndex": 0, "isMelee": true } },
+        { "commandType": 4, "parameters": { "actorId": 1, "actorSlotIndex": 0, "animationKey": "attack" } },
+        { "commandType": 5, "parameters": { "actorId": 1, "actorSlotIndex": 0, "targetId": 201, "targetSlotIndex": 0, "damage": 42, "isCritical": false, "isEvaded": false } },
+        { "commandType": 13, "parameters": { "unitId": 201, "slotIndex": 0, "hp": 58 } },
+        { "commandType": 3, "parameters": { "actorId": 1, "actorSlotIndex": 0 } },
+        { "commandType": 1, "parameters": { "seconds": 0.3 } }
       ]
     },
     {
@@ -282,7 +287,7 @@ Combo2 roll выполняется **только** если Combo1 сработ
       "actorId": 1,
       "targetId": -1,
       "commands": [
-        { "operation": "Wait", "params": { "seconds": 0.2 } }
+        { "commandType": 1, "parameters": { "seconds": 0.2 } }
       ]
     }
   ]
@@ -316,7 +321,7 @@ TODO GD: подтвердить (focus-fire / lowest HP / иное) и обно�
 ## Extension Recipe
 
 1. Добавить фазу в `BattlePhaseType` (если нужна новая фаза).
-2. Добавить operation в `BattleCommandOperation` (если нужна новая клиентская операция).
+2. Добавить значение в `CommandType` (если нужна новая клиентская команда).
 3. Реализовать logic в `BattleSimulatorService` или dedicated service.
 4. Обновить этот spec и клиентский battle spec в Lewdventure.
 5. Добавить unit test с фиксированным seed.

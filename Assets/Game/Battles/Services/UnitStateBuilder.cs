@@ -101,6 +101,7 @@ namespace Server.Battles
                 GrantEquipmentBonuses(unitState, unitSnapshot);
                 GrantArtifactBonuses(unitState, unitSnapshot);
                 GrantAspectBonuses(unitState, unitSnapshot);
+                GrantSnapshotRunBonuses(unitState, unitSnapshot);
                 _battleBonusService.Rebuild(unitState, 0, new List<BattleCommand>(), false);
             }
 
@@ -771,6 +772,59 @@ namespace Server.Battles
             return semicolonSegments;
         }
 
+        private void GrantSnapshotRunBonuses(IUnitState unitState, IUnitSnapshot unitSnapshot)
+        {
+            var grants = unitSnapshot.ActiveBonuses;
+
+            if (grants == null || grants.Count == 0)
+                return;
+
+            var commands = new List<BattleCommand>();
+
+            for (int i = 0; i < grants.Count; i++)
+            {
+                var grant = grants[i];
+
+                if (grant == null)
+                    continue;
+
+                if (grant.Id <= 0 || grant.Count <= 0)
+                {
+                    _logger.LogWarning($"[Story][Battle] run bonus skip invalid id = {grant.Id}, count = {grant.Count}");
+
+                    continue;
+                }
+
+                var sourceKey = $"run:{grant.Id}:{i}";
+
+                _battleBonusService.Grant(unitState, grant.Id, grant.Count, sourceKey, commands, 0);
+
+                if (grant.RemainingBattles <= 0)
+                    continue;
+
+                OverrideRemainingBattles(unitState, sourceKey, grant.RemainingBattles);
+            }
+        }
+
+        private void OverrideRemainingBattles(IUnitState unitState, string sourceKey, int remainingBattles)
+        {
+            var activeBonuses = unitState.ActiveBonuses;
+
+            for (int i = 0; i < activeBonuses.Count; i++)
+            {
+                var activeBonus = activeBonuses[i];
+
+                if (string.Equals(activeBonus.SourceKey, sourceKey, StringComparison.Ordinal) == false)
+                    continue;
+
+                activeBonus.RemainingBattles = remainingBattles;
+
+                _logger.LogDebug($"[Story][Battle] run bonus remaining override unitId = {unitState.Id}, bonusId = {activeBonus.BonusId}, remainingBattles = {remainingBattles}, sourceKey = {sourceKey}");
+
+                return;
+            }
+        }
+
         private void GrantBuildBonus(IUnitState unitState, int bonusId, float value, string sourceKey)
         {
             if (bonusId <= 0)
@@ -861,7 +915,10 @@ namespace Server.Battles
                 AddUniqueSkillId(skillIds, summonMapper.SkillId);
 
             if (isSummon == false)
+            {
+                InjectCharacterSkillIds(unitSnapshot, skillIds);
                 InjectEquipmentSkillIds(unitSnapshot, skillIds);
+            }
 
             var skills = new List<ISkill>(skillIds.Count);
 
@@ -882,6 +939,25 @@ namespace Server.Battles
             }
 
             return skills;
+        }
+
+        private void InjectCharacterSkillIds(IUnitSnapshot unitSnapshot, List<string> skillIds)
+        {
+            if (_configDistributor.Characters.TryGet(unitSnapshot.Id, out var characterMapper) == false)
+                return;
+
+            var characterSkillIds = characterMapper.SkillIds;
+
+            for (int i = 0; i < characterSkillIds.Length; i++)
+            {
+                var skillId = characterSkillIds[i].ToString();
+                var beforeCount = skillIds.Count;
+
+                AddUniqueSkillId(skillIds, skillId);
+
+                if (beforeCount < skillIds.Count)
+                    _logger.LogDebug($"[Story][Battle] character skill injected unitId = {unitSnapshot.Id} skillId = {skillId}");
+            }
         }
 
         private void InjectEquipmentSkillIds(IUnitSnapshot unitSnapshot, List<string> skillIds)

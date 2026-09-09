@@ -17,9 +17,10 @@
 ## Уже есть
 
 - Загрузка конфигов + managers.
-- API `POST /api/battle/simulate`, DTO, seed в response.
-- Каркас turn loop, enums фаз/команд.
-- Частичный status tick; perk/skill factories (stubs).
+- API `POST /api/battle/simulate` и `POST /api/battle/replay`, DTO, seed в response.
+- Полный side-turn: statuses → perks → summons → unit skills → attack/counter/combo → energy.
+- Формулы удара/саммона, статусы 1–5, perk types 1–7 (не stub), SkillFactory по ключам из Skills.json.
+- Script: `commandType` (int) + `parameters` (camelCase). Клиент играет, не считает.
 
 
 

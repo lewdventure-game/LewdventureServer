@@ -440,7 +440,7 @@ namespace Server.Battles
 
             ApplyVampyrism(commands, actor, damage);
 
-            _logger.LogInformation($"[Story][Battle]: Damage applied, phase = {phase}, actorId = {actor.Id}, targetId = {target.Id}, damage = {damage}, isCritical = {isCritical}, health = {healthAfter}");
+            _logger.LogInformation($"[Story][Battle]: Damage applied, phase = {phase}, actorId = {actor.Id}, targetId = {target.Id}, damage = {damage}, damageMultiplier = {damageMultiplier}, defence = {targetCharacteristics.Defence}, isCritical = {isCritical}, health = {healthAfter}");
 
             return true;
         }

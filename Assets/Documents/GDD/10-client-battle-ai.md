@@ -74,7 +74,7 @@ JSON: **camelCase**.
 - `maxTurns`
 - HP, damage, crit, evasion, energy, любые итоговые характеристики
 - профиль аккаунта, валюты, инвентарь целиком
-- `activeBonusIds` (такого поля нет; бонусы приходят из конфигов по id экипов/артефактов/…)
+- `activeBonusIds` (поля нет). Run-bonuses — `activeBonuses: [{ id, count, remainingBattles }]` только на attacking character. Equips/artifacts/aspects по-прежнему своими id.
 
 ### 3.4 `TeamSnapshot`
 
@@ -98,6 +98,7 @@ JSON: **camelCase**.
 | `activePerkIds` | `int[]` | Перки, которые реально активны **на момент входа в бой** |
 | `activeSkillIds` | `string[]` | Ключи скиллов (`"fireball"` / `"1"` и т.п.). **Не** авто-подтягиваются из `Characters.skill_ids` — только то, что клиент явно положил (+ сервер ещё может взять skill с equipment) |
 | `activeStatusIds` | `int[]` | Стартовые статусы (редко; обычно `[]`) |
+| `activeBonuses` | `{ id, count, remainingBattles }[]` | Story/run bonuses персонажа A. Саммоны/мобы — `[]`. `remainingBattles = 0` не сжигается после боя |
 | `slotIndex` | `int` | Позиция. Main: `0` (и `1` для второго моба). Summons: `1`/`2`/`3` |
 
 Пустые массивы — всегда `[]`, не `null`.

@@ -67,7 +67,7 @@ Rewards in battle: `bonus` / `status` применяются в симуляци
 - Combo1 / Combo2 — раздельные множители; legacy `combo_multiplier_*` → fallback в оба. Combo2 только после успешного Combo1.
 - Vampyrism heal-back только после успешного strike (normal/counter/combo), не на elemental/skills.
 - Healing effects: `healing` / `healing_from_max` — разово при grant.
-- После miss обычной атаки цепочка counter/combo всё ещё крутится; energy gain — только на hit.
+- После miss обычной атаки counter/combo **не** крутятся; energy skill всё равно, если бар полный.
 
 ### Elemental perks
 
@@ -112,7 +112,9 @@ Response тот же `BattleScriptResponse`; поле `seed` = переданн�
 
 ### Unit snapshot (thin)
 
-`id`, `level`, `masteryLevel`, `equipment[]` (`{id,level}`), legacy `equipmentIds` → level 1, `trainingLevel`, `artifactIds`, `aspectIds`, `activePerkIds`, `activeSkillIds`, `activeStatusIds`, `slotIndex`.
+`id`, `level`, `masteryLevel`, `equipments[]` (`{id,level}`; alias `equipment` на сервере), legacy `equipmentIds` → level 1, `trainingLevel`, `artifactIds`, `aspectIds`, `activePerkIds`, `activeSkillIds`, `activeStatusIds`, `activeBonuses[]` (`{id,count,remainingBattles}`), `slotIndex`.
+
+Клиент без инвентаря шлёт пустые `equipments` / `artifactIds` / `aspectIds` и `trainingLevel = 0`. Не выдумывать id. Перки/статусы/skill ids — из рантайма и загруженных конфигов. Сервер дополнительно инжектит `Characters.skill_ids` (int → string), даже если `activeSkillIds` пустой.
 
 Пример минимального 1v1:
 
@@ -124,7 +126,7 @@ Response тот же `BattleScriptResponse`; поле `seed` = переданн�
         "id": 1,
         "level": 5,
         "masteryLevel": 0,
-        "equipment": [
+        "equipments": [
           { "id": 101, "level": 2 },
           { "id": 102, "level": 1 }
         ],
@@ -134,6 +136,7 @@ Response тот же `BattleScriptResponse`; поле `seed` = переданн�
         "activePerkIds": [3],
         "activeSkillIds": ["fireball"],
         "activeStatusIds": [],
+        "activeBonuses": [],
         "slotIndex": 0
       }
     ],
@@ -145,13 +148,14 @@ Response тот же `BattleScriptResponse`; поле `seed` = переданн�
         "id": 201,
         "level": 5,
         "masteryLevel": 0,
-        "equipment": [],
+        "equipments": [],
         "trainingLevel": 0,
         "artifactIds": [],
         "aspectIds": [],
         "activePerkIds": [],
         "activeSkillIds": [],
         "activeStatusIds": [],
+        "activeBonuses": [],
         "slotIndex": 0
       }
     ],
@@ -168,14 +172,14 @@ Response тот же `BattleScriptResponse`; поле `seed` = переданн�
 | --- | --- |
 | `protocolVersion` | Версия протокола (`1`) |
 | `seed` | Seed RNG, сгенерированный **сервером** (replay/debug) |
-| `outcome` | `TeamAWin` / `TeamBWin` / `Timeout` / `Draw` |
+| `outcomeType` | int `OutcomeType`: `Unknown=0`, `TeamAWin=1`, `TeamBWin=2`, `Timeout=3`, `Draw=4` |
 | `steps` | Упорядоченный script |
 
 Ходы: `max(steps[].turn)` (или `0`, если пусто). Поля `turnsPlayed` нет.
 
 Каждый step: `index`, `turn`, `phase`, `actorId`, `targetId` (`-1` если нет цели), `commands[]`.
 
-Каждая command: `operation` + `params` (схема ключей — в [battle-simulation.md](../../../.ai-factory/specs/battle-simulation.md)).
+Каждая command: `commandType` (int enum) + `parameters` (схема ключей — в [battle-simulation.md](../../../.ai-factory/specs/battle-simulation.md)).
 
 Фрагмент response:
 
@@ -183,7 +187,7 @@ Response тот же `BattleScriptResponse`; поле `seed` = переданн�
 {
   "protocolVersion": 1,
   "seed": 12345678901234567890,
-  "outcome": "TeamAWin",
+  "outcomeType": 1,
   "steps": [
     {
       "index": 0,
@@ -194,9 +198,9 @@ Response тот же `BattleScriptResponse`; поле `seed` = переданн�
       "targetId": 201,
       "targetSlotIndex": 0,
       "commands": [
-        { "operation": "Approach", "params": { "actorId": 1, "actorSlotIndex": 0, "targetId": 201, "targetSlotIndex": 0, "isMelee": true } },
-        { "operation": "ShowDamage", "params": { "actorId": 1, "actorSlotIndex": 0, "targetId": 201, "targetSlotIndex": 0, "damage": 42, "isCritical": false, "isEvaded": false } },
-        { "operation": "SetHp", "params": { "unitId": 201, "slotIndex": 0, "hp": 58 } }
+        { "commandType": 2, "parameters": { "actorId": 1, "actorSlotIndex": 0, "targetId": 201, "targetSlotIndex": 0, "isMelee": true } },
+        { "commandType": 5, "parameters": { "actorId": 1, "actorSlotIndex": 0, "targetId": 201, "targetSlotIndex": 0, "damage": 42, "isCritical": false, "isEvaded": false } },
+        { "commandType": 13, "parameters": { "unitId": 201, "slotIndex": 0, "hp": 58 } }
       ]
     }
   ]
