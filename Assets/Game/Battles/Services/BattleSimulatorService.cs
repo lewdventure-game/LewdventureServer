@@ -1,16 +1,10 @@
+using System;
 using Server.Services;
 
 namespace Server.Battles
 {
     internal sealed class BattleSimulatorService : IBattleSimulatorService
     {
-        private float _comboAttackCooldown;
-        private float _counterAttackCooldown;
-        private float _perksCooldown;
-        private float _statusesCooldown;
-        private float _summonsCooldown;
-        private float _unitsCooldown;
-
         private readonly ILogger<BattleSimulatorService> _logger;
         private readonly IBattleAttackService _battleAttackService;
         private readonly IBattleBonusService _battleBonusService;
@@ -44,8 +38,6 @@ namespace Server.Battles
             _battleSummonSimulator = battleSummonSimulator;
             _configDistributor = configDistributor;
             _unitStateBuilder = unitStateBuilder;
-
-            CacheConstants();
         }
 
         public IBattleScriptResponse Simulate(IBattleSimulationData data)
@@ -96,15 +88,6 @@ namespace Server.Battles
                 ApplyTurnStartBonuses(steps, stateB, currentTurn);
 
                 SimulateSideTurn(steps, stateA, stateB, currentTurn, seededRandomService);
-
-                if (_battlePerkSimulator.ShouldAbortRemainingTurn)
-                {
-                    _logger.LogDebug($"[Story][Battle] skip defender side after attacker resurrection turn = {currentTurn}");
-
-                    ++currentTurn;
-
-                    continue;
-                }
 
                 if (HasAliveMainUnits(stateB) == false)
                     break;
@@ -173,53 +156,29 @@ namespace Server.Battles
                 if (summon.IsAlive() == false)
                     continue;
 
-                _logger.LogInformation($"[Story][Battle] living summons left in script unitId = {summon.Id} slot = {summon.SlotIndex} side = {team.BattleSide}");
+                _logger.LogInformation($"[Story][Battle]: Living summons left in script unitId = {summon.Id}, slot = {summon.SlotIndex}, side = {team.BattleSide}");
             }
         }
 
         private int CalculateMaxTurns(int storyLevelId)
         {
-            var fallbackMaxTurns = 25;
-
             if (_configDistributor.StoryLevels.TryGet(storyLevelId, out var storyLevel) == false)
             {
-                _logger.LogError($"[Error][Story][Battle]: Story level missing id = {storyLevelId}, using fallback maxTurns = {fallbackMaxTurns}");
+                _logger.LogError($"[Error][Story][Battle]: Story level missing id = {storyLevelId}");
 
-                return fallbackMaxTurns;
+                throw new InvalidOperationException($"[Error][Story][Battle]: Story level missing id = {storyLevelId}");
             }
 
             var maxTurns = storyLevel.MaxBattleTurns;
 
             if (maxTurns <= 0)
             {
-                _logger.LogError($"[Error][Story][Battle]: Story level max_battle_turns missing or zero id = {storyLevelId}, using fallback maxTurns = {fallbackMaxTurns}");
+                _logger.LogError($"[Error][Story][Battle]: Story level max_battle_turns missing or zero id = {storyLevelId}");
 
-                return fallbackMaxTurns;
+                throw new InvalidOperationException($"[Error][Story][Battle]: Story level max_battle_turns missing or zero id = {storyLevelId}");
             }
 
             return maxTurns;
-        }
-
-        private void CacheConstants()
-        {
-            _counterAttackCooldown = GetConstant(ConstantKeys.CounterAttackCooldownKey);
-            _comboAttackCooldown = GetConstant(ConstantKeys.ComboAttackCooldownKey);
-            _perksCooldown = GetConstant(ConstantKeys.PerksCooldownKey);
-            _statusesCooldown = GetConstant(ConstantKeys.StatusesCooldownKey);
-            _summonsCooldown = GetConstant(ConstantKeys.SummonsCooldownKey);
-            _unitsCooldown = GetConstant(ConstantKeys.UnitsCooldownKey);
-        }
-
-        private float GetConstant(string constantKey)
-        {
-            if (_configDistributor.Constants.TryGet(constantKey, out var constant) == false)
-            {
-                _logger.LogError($"[Error][Story][Battle]: Constant missing key = {constantKey}");
-
-                return 0f;
-            }
-
-            return float.Parse(constant.ConstantValue, System.Globalization.CultureInfo.InvariantCulture);
         }
 
         private OutcomeType ResolveOutcomeType(
@@ -296,6 +255,7 @@ namespace Server.Battles
                 }
 
                 _battleBonusService.Rebuild(mainUnit, 0, rebuildCommands, false);
+
                 _logger.LogDebug($"[Story][Battle]: Team summons applied on main unitId = {mainUnit.Id}, summonCount = {summonStates.Count}");
             }
         }
@@ -327,64 +287,12 @@ namespace Server.Battles
             _battlePerkSimulator.BeginSideTurn(attacker.BattleSide);
 
             SimulateStatuses(steps, attacker, defender, currentTurn, seededRandomService);
-            EmitPhaseTrailingWait(steps, currentTurn, BattlePhaseType.StatusTrigger, _statusesCooldown, "statuses", attacker.BattleSide);
-
-            if (_battlePerkSimulator.ShouldAbortRemainingTurn)
-            {
-                _logger.LogDebug($"[Story][Battle]: Side turn abort after statuses side = {attacker.BattleSide}, turn = {currentTurn}");
-
-                return;
-            }
 
             _battlePerkSimulator.Simulate(steps, attacker, defender, currentTurn, seededRandomService);
 
-            EmitPhaseTrailingWait(steps, currentTurn, BattlePhaseType.PerkTrigger, _perksCooldown, "perks", attacker.BattleSide);
-
-            if (_battlePerkSimulator.ShouldAbortRemainingTurn)
-            {
-                _logger.LogDebug($"[Story][Battle]: Side turn abort after perks side = {attacker.BattleSide}, turn = {currentTurn}");
-
-                return;
-            }
-
             _battleSummonSimulator.Simulate(steps, attacker, defender, currentTurn, seededRandomService);
 
-            EmitPhaseTrailingWait(steps, currentTurn, BattlePhaseType.SummonAttack, _summonsCooldown, "summons", attacker.BattleSide);
-
-            if (_battlePerkSimulator.ShouldAbortRemainingTurn)
-            {
-                _logger.LogDebug($"[Story][Battle]: Side turn abort after summons side = {attacker.BattleSide}, turn = {currentTurn}");
-
-                return;
-            }
-
             _battleAttackService.SimulateMainUnits(steps, attacker, defender, currentTurn, seededRandomService);
-        }
-
-        private void EmitPhaseTrailingWait(
-            List<BattleStep> steps,
-            int currentTurn,
-            BattlePhaseType phase,
-            float cooldownSeconds,
-            string phaseName,
-            BattleSide side)
-        {
-            if (cooldownSeconds <= 0f)
-            {
-                _logger.LogDebug($"[Story][Battle]: Phase trailing wait skip phase = {phaseName}, side = {side}, turn = {currentTurn}, cooldown = {cooldownSeconds}");
-
-                return;
-            }
-
-            _battleScriptBuilder.Add(
-                steps,
-                currentTurn,
-                phase,
-                [
-                    _battleCommandFactory.Wait(cooldownSeconds),
-                ]);
-
-            _logger.LogDebug($"[Story][Battle]: Phase trailing wait phase = {phaseName}, side = {side}, turn = {currentTurn}, cooldown = {cooldownSeconds}");
         }
 
         private void EmitInitialStatuses(List<BattleStep> steps, ITeamSimulationState team, int currentTurn)
@@ -451,8 +359,6 @@ namespace Server.Battles
             for (int i = 0; i < units.Count; i++)
             {
                 var unit = units[i];
-
-                _battleStatusSimulator.ExpireNonDamageOverTimeStatusesAtBattleEnd(unit, steps, currentTurn);
 
                 var commands = new List<BattleCommand>();
 

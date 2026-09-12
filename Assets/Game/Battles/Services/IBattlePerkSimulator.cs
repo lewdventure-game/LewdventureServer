@@ -4,11 +4,13 @@ namespace Server.Battles
 {
     internal interface IBattlePerkSimulator
     {
-        public bool ShouldAbortRemainingTurn { get; }
+        public bool ShouldSkipRemainingActions(IUnitState unit);
 
         public void BeginBattleTurn();
 
         public void BeginSideTurn(BattleSide actingSide);
+
+        public void SetActingUnit(IUnitState unit);
 
         public void Simulate(
             List<BattleStep> steps,

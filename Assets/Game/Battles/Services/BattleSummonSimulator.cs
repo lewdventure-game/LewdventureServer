@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Server.Services;
 
 namespace Server.Battles
@@ -63,7 +62,11 @@ namespace Server.Battles
             BuildOrderedLivingSummons(attacker.Summons);
 
             if (_summonOrderBuffer.Count == 0)
+            {
+                _logger.LogDebug($"[Story][Battle]: Phase wait skippedEmpty phase = summons, side = {attacker.BattleSide}, turn = {currentTurn}, queueSize = 0, emittedWaits = 0");
+
                 return;
+            }
 
             var critSourceIndex = FindCritSourceMainIndex(attacker);
 
@@ -81,17 +84,19 @@ namespace Server.Battles
 
             for (int i = 0; i < _summonOrderBuffer.Count; i++)
             {
-                if (_battlePerkSimulator.ShouldAbortRemainingTurn)
-                {
-                    _logger.LogDebug($"[Story][Battle]: Summon phase abort remaining turn, side = {attacker.BattleSide}, turn = {currentTurn}");
-
-                    return;
-                }
-
                 if (HasAliveMainUnits(defender) == false)
                     return;
 
                 var summon = _summonOrderBuffer[i];
+
+                _battlePerkSimulator.SetActingUnit(summon);
+
+                if (_battlePerkSimulator.ShouldSkipRemainingActions(summon))
+                {
+                    _logger.LogDebug($"[Story][Battle]: Summon skip aborted unit, unitId = {summon.Id}, turn = {currentTurn}");
+
+                    continue;
+                }
 
                 if (summon.IsAlive() == false)
                     continue;
@@ -104,7 +109,13 @@ namespace Server.Battles
                     currentTurn,
                     seededRandomService);
 
-                if (summon.IsAlive() == false || HasAliveMainUnits(defender) == false)
+                if (_battlePerkSimulator.ShouldSkipRemainingActions(summon))
+                    continue;
+
+                if (summon.IsAlive() == false)
+                    continue;
+
+                if (HasAliveMainUnits(defender) == false)
                     return;
 
                 var targetIndex = FindTargetIndex(defender);
@@ -128,7 +139,11 @@ namespace Server.Battles
                     EmitDeath(steps, currentTurn, target);
 
                 EmitSummonCooldown(steps, summon, currentTurn, cooldown);
+
+                _logger.LogDebug($"[Story][Battle]: Phase wait phase = summons, unitId = {summon.Id}, wait = {cooldown}");
             }
+
+            _logger.LogDebug($"[Story][Battle]: Phase wait phase = summons, side = {attacker.BattleSide}, turn = {currentTurn}, queueSize = {_summonOrderBuffer.Count}");
         }
 
         private void ExecuteSummonAttack(
@@ -148,6 +163,9 @@ namespace Server.Battles
                 commands.Add(_battleCommandFactory.Approach(summon.Id, summon.SlotIndex, target.Id, target.SlotIndex, true));
 
             commands.Add(_battleCommandFactory.PlayAnimation(summon.Id, summon.SlotIndex, "attack"));
+
+            if (isRanged)
+                commands.Add(_battleCommandFactory.Approach(summon.Id, summon.SlotIndex, target.Id, target.SlotIndex, false));
 
             var targetCharacteristics = target.CharacteristicState;
             var evasionRoll = seededRandomService.GetRandomValue();
@@ -208,6 +226,8 @@ namespace Server.Battles
             if (isRanged == false)
                 commands.Add(_battleCommandFactory.ReturnToPosition(summon.Id, summon.SlotIndex));
 
+            AppendIdleIfAlive(commands, summon);
+
             _battleScriptBuilder.Add(
                 steps,
                 currentTurn,
@@ -222,6 +242,16 @@ namespace Server.Battles
 
                 _battlePerkSimulator.NotifyAnyDamage(summon, attacker, defender, steps, currentTurn, seededRandomService);
             }
+        }
+
+        private void AppendIdleIfAlive(List<BattleCommand> commands, IUnitState unit)
+        {
+            if (unit.IsAlive() == false)
+                return;
+
+            commands.Add(_battleCommandFactory.PlayAnimation(unit.Id, unit.SlotIndex, "idle"));
+
+            _logger.LogDebug($"[Story][Battle]: Idle after summon attack unitId = {unit.Id}");
         }
 
         private void EmitSummonCooldown(List<BattleStep> steps, IUnitState summon, int currentTurn, float cooldown)

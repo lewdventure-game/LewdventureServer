@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Extensions.Logging;
 using Server.Services;
 
@@ -45,14 +46,16 @@ namespace Server.Battles
 
             for (int i = 0; i < attackers.Count; i++)
             {
-                if (_battlePerkSimulator.ShouldAbortRemainingTurn)
-                {
-                    _logger.LogDebug($"[Story][Battle]: Main attack phase abort remaining turn, side = {attacker.BattleSide}, turn = {currentTurn}");
-
-                    return;
-                }
-
                 var actor = attackers[i];
+
+                _battlePerkSimulator.SetActingUnit(actor);
+
+                if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
+                {
+                    _logger.LogDebug($"[Story][Battle]: Main attack skip aborted unit, unitId = {actor.Id}, turn = {currentTurn}");
+
+                    continue;
+                }
 
                 if (actor.IsAlive() == false)
                     continue;
@@ -70,7 +73,13 @@ namespace Server.Battles
                     currentTurn,
                     seededRandomService);
 
-                if (actor.IsAlive() == false || HasAliveMainUnits(defender) == false)
+                if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
+                    continue;
+
+                if (actor.IsAlive() == false)
+                    continue;
+
+                if (HasAliveMainUnits(defender) == false)
                     return;
 
                 EmitUnitsCooldownBeforeAttack(steps, actor, currentTurn);
@@ -144,6 +153,9 @@ namespace Server.Battles
             var commands = new List<BattleCommand>();
             commands.Add(_battleCommandFactory.PlayAnimation(actor.Id, actor.SlotIndex, "attack"));
 
+            if (isMelee == false)
+                commands.Add(_battleCommandFactory.Approach(actor.Id, actor.SlotIndex, target.Id, target.SlotIndex, false));
+
             var hit = TryResolveStrike(
                 commands,
                 actor,
@@ -179,6 +191,13 @@ namespace Server.Battles
                     EmitDeath(steps, currentTurn, target);
 
                 _battleSkillSimulator.ApplyEnergyGain(steps, actor, currentTurn);
+
+                if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
+                {
+                    EmitReturnToPosition(steps, actor, currentTurn, isMelee);
+
+                    return;
+                }
 
                 if (targetDied)
                 {
@@ -216,24 +235,42 @@ namespace Server.Battles
         {
             TryCounterAttack(steps, attacker, defender, target, actor, currentTurn, seededRandomService);
 
-            if (actor.IsAlive() == false || target.IsAlive() == false)
-                return;
-
-            var combo1Succeeded = TryComboAttack(steps, attacker, defender, actor, target, currentTurn, seededRandomService, 1);
-
-            _logger.LogDebug($"[Story][Battle]: Combo1 gate, actorId = {actor.Id}, targetId = {target.Id}, combo1Succeeded = {combo1Succeeded}");
-
-            if (combo1Succeeded)
-                TryCounterAttack(steps, attacker, defender, target, actor, currentTurn, seededRandomService);
-
-            if (combo1Succeeded == false)
+            if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
                 return;
 
             if (actor.IsAlive() == false || target.IsAlive() == false)
                 return;
 
-            if (TryComboAttack(steps, attacker, defender, actor, target, currentTurn, seededRandomService, 2))
-                TryCounterAttack(steps, attacker, defender, target, actor, currentTurn, seededRandomService);
+            var combo1Hit = TryComboAttack(steps, attacker, defender, actor, target, currentTurn, seededRandomService, 1);
+
+            _logger.LogDebug($"[Story][Battle]: Combo1 gate, actorId = {actor.Id}, targetId = {target.Id}, combo1Hit = {combo1Hit}");
+
+            if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
+                return;
+
+            if (combo1Hit == false)
+            {
+                _logger.LogDebug($"[Story][Battle]: Combo2 skip, actorId = {actor.Id}, targetId = {target.Id}, reason = combo1MissOrNoRoll");
+
+                return;
+            }
+
+            TryCounterAttack(steps, attacker, defender, target, actor, currentTurn, seededRandomService);
+
+            if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
+                return;
+
+            if (actor.IsAlive() == false || target.IsAlive() == false)
+                return;
+
+            if (TryComboAttack(steps, attacker, defender, actor, target, currentTurn, seededRandomService, 2) == false)
+            {
+                _logger.LogDebug($"[Story][Battle]: Combo2 skip, actorId = {actor.Id}, targetId = {target.Id}, reason = combo2MissOrNoRoll");
+
+                return;
+            }
+
+            TryCounterAttack(steps, attacker, defender, target, actor, currentTurn, seededRandomService);
         }
 
         private void TryCounterAttack(
@@ -269,6 +306,9 @@ namespace Server.Battles
             commands.Add(_battleCommandFactory.Wait(_counterAttackCooldown));
             commands.Add(_battleCommandFactory.PlayAnimation(counterActor.Id, counterActor.SlotIndex, "attack"));
 
+            if (isMelee == false)
+                commands.Add(_battleCommandFactory.Approach(counterActor.Id, counterActor.SlotIndex, counterTarget.Id, counterTarget.SlotIndex, false));
+
             var hit = TryResolveStrike(
                 commands,
                 counterActor,
@@ -279,6 +319,8 @@ namespace Server.Battles
 
             if (isMelee)
                 commands.Add(_battleCommandFactory.ReturnToPosition(counterActor.Id, counterActor.SlotIndex));
+
+            AppendIdleIfAlive(commands, counterActor);
 
             _battleScriptBuilder.Add(
                 steps,
@@ -319,7 +361,7 @@ namespace Server.Battles
 
             var actorCharacteristics = actor.CharacteristicState;
             var comboChance = comboNumber == 1 ? actorCharacteristics.Combo1Chance : actorCharacteristics.Combo2Chance;
-            var comboMultiplier = comboNumber == 1 ? actorCharacteristics.Combo1Multiplier : actorCharacteristics.Combo2Multiplier;
+            var comboMultiplier = actorCharacteristics.ComboMultiplier;
             var phase = comboNumber == 1 ? BattlePhaseType.Combo1Attack : BattlePhaseType.Combo2Attack;
             var comboRoll = seededRandomService.GetRandomValue();
 
@@ -341,6 +383,9 @@ namespace Server.Battles
             commands.Add(_battleCommandFactory.Wait(_comboAttackCooldown));
             commands.Add(_battleCommandFactory.PlayAnimation(actor.Id, actor.SlotIndex, "attack"));
 
+            if (isMelee == false)
+                commands.Add(_battleCommandFactory.Approach(actor.Id, actor.SlotIndex, target.Id, target.SlotIndex, false));
+
             var hit = TryResolveStrike(
                 commands,
                 actor,
@@ -350,7 +395,11 @@ namespace Server.Battles
                 comboMultiplier);
 
             if (isMelee)
+            {
                 commands.Add(_battleCommandFactory.ReturnToPosition(actor.Id, actor.SlotIndex));
+
+                AppendIdleIfAlive(commands, actor);
+            }
 
             _battleScriptBuilder.Add(
                 steps,
@@ -371,11 +420,15 @@ namespace Server.Battles
                     currentTurn,
                     seededRandomService);
             }
+            else
+            {
+                _logger.LogDebug($"[Story][Battle]: Combo{comboNumber} miss, actorId = {actor.Id}, targetId = {target.Id}");
+            }
 
             if (hit && target.IsAlive() == false)
                 EmitDeath(steps, currentTurn, target);
 
-            return true;
+            return hit;
         }
 
         private void NotifyPerkAction(
@@ -440,7 +493,7 @@ namespace Server.Battles
 
             ApplyVampyrism(commands, actor, damage);
 
-            _logger.LogInformation($"[Story][Battle]: Damage applied, phase = {phase}, actorId = {actor.Id}, targetId = {target.Id}, damage = {damage}, damageMultiplier = {damageMultiplier}, defence = {targetCharacteristics.Defence}, isCritical = {isCritical}, health = {healthAfter}");
+            _logger.LogDebug($"[Story][Battle]: Damage applied, phase = {phase}, actorId = {actor.Id}, targetId = {target.Id}, damage = {damage}, damageMultiplier = {damageMultiplier}, defence = {targetCharacteristics.Defence}, isCritical = {isCritical}, health = {healthAfter}");
 
             return true;
         }
@@ -503,24 +556,36 @@ namespace Server.Battles
             int currentTurn,
             bool isMelee)
         {
-            if (isMelee == false)
-            {
-                _logger.LogDebug($"[Story][Battle]: Return, skip ranged unitId = {actor.Id}");
+            var commands = new List<BattleCommand>();
 
-                return;
+            if (isMelee)
+            {
+                commands.Add(_battleCommandFactory.ReturnToPosition(actor.Id, actor.SlotIndex));
+
+                _logger.LogDebug($"[Story][Battle]: Return to position unitId = {actor.Id}");
             }
+
+            AppendIdleIfAlive(commands, actor);
+
+            if (commands.Count == 0)
+                return;
 
             _battleScriptBuilder.Add(
                 steps,
                 currentTurn,
                 BattlePhaseType.ReturnToPosition,
                 actor,
-                new List<BattleCommand>
-                {
-                    _battleCommandFactory.ReturnToPosition(actor.Id, actor.SlotIndex),
-                });
+                commands);
+        }
 
-            _logger.LogDebug($"[Story][Battle]: Return to position unitId = {actor.Id}");
+        private void AppendIdleIfAlive(List<BattleCommand> commands, IUnitState unit)
+        {
+            if (unit.IsAlive() == false)
+                return;
+
+            commands.Add(_battleCommandFactory.PlayAnimation(unit.Id, unit.SlotIndex, "idle"));
+
+            _logger.LogDebug($"[Story][Battle]: Idle after action unitId = {unit.Id}");
         }
 
         private void EmitDeath(List<BattleStep> steps, int currentTurn, IUnitState unit)
@@ -584,9 +649,9 @@ namespace Server.Battles
         {
             if (configDistributor.Constants.TryGet(constantKey, out var constant) == false)
             {
-                Console.WriteLine($"[Error]: Can't find constant with key {constantKey}");
+                _logger.LogError($"[Error][Story][Battle]: Constant missing key = {constantKey}");
 
-                return 0f;
+                throw new InvalidOperationException($"[Error][Story][Battle]: Constant missing key = {constantKey}");
             }
 
             return float.Parse(constant.ConstantValue, System.Globalization.CultureInfo.InvariantCulture);

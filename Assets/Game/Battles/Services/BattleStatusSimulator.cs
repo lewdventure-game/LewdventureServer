@@ -1,5 +1,5 @@
+using System;
 using System.Diagnostics.CodeAnalysis;
-using Microsoft.Extensions.Logging;
 using Server.Services;
 using Server.Statuses;
 
@@ -82,6 +82,15 @@ namespace Server.Battles
             CollectDamageOverTimeTicks(ownerTeam.MainUnits);
             SortTickQueueByTriggerOrder();
 
+            if (_tickQueue.Count == 0)
+            {
+                _logger.LogDebug($"[Story][Battle]: Phase wait skippedEmpty phase = statuses, side = {ownerTeam.BattleSide}, turn = {currentTurn}, queueSize = 0, emittedWaits = 0");
+
+                DecrementAndExpireStatuses(ownerTeam.MainUnits, steps, currentTurn);
+
+                return;
+            }
+
             var cooldown = GetStatusesCooldown();
 
             _logger.LogDebug($"[Story][Battle]: Status side, queue side = {ownerTeam.BattleSide}, turn = {currentTurn}, mainsOnly = true, summonsSkipped = true, queueSize = {_tickQueue.Count}");
@@ -89,6 +98,15 @@ namespace Server.Battles
             for (int i = 0; i < _tickQueue.Count; i++)
             {
                 var entry = _tickQueue[i];
+
+                _battlePerkSimulator.SetActingUnit(entry.Unit);
+
+                if (_battlePerkSimulator.ShouldSkipRemainingActions(entry.Unit))
+                {
+                    _logger.LogDebug($"[Story][Battle]: Status queue skip aborted unit, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, turn = {currentTurn}");
+
+                    continue;
+                }
 
                 _logger.LogDebug($"[Story][Battle]: Status queue entry, index = {i}, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, triggerOrder = {entry.TriggerOrder}");
 
@@ -103,30 +121,9 @@ namespace Server.Battles
                     entry.StatusId);
             }
 
+            _logger.LogDebug($"[Story][Battle]: Phase wait phase = statuses, side = {ownerTeam.BattleSide}, turn = {currentTurn}, queueSize = {_tickQueue.Count}, emittedWaits = {_tickQueue.Count}");
+
             DecrementAndExpireStatuses(ownerTeam.MainUnits, steps, currentTurn);
-            DecrementAndExpireStatuses(ownerTeam.Summons, steps, currentTurn);
-        }
-
-        public void ExpireNonDamageOverTimeStatusesAtBattleEnd(
-            IUnitState unitState,
-            List<BattleStep> steps,
-            int currentTurn)
-        {
-            var activeStatuses = unitState.ActiveStatuses;
-
-            for (int i = activeStatuses.Count - 1; 0 <= i; i--)
-            {
-                var activeStatus = activeStatuses[i];
-
-                if (activeStatus.AppliesDamageOverTime)
-                    continue;
-
-                ExpireStatus(unitState, steps, currentTurn, activeStatus);
-
-                activeStatuses.RemoveAt(i);
-
-                _logger.LogDebug($"[Story][Battle]: Battle end, expire non damage over time status, unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, sourceKey = {activeStatus.BonusSourceKey}");
-            }
         }
 
         private void CollectDamageOverTimeTicks(IReadOnlyList<IUnitState> units)
@@ -149,7 +146,11 @@ namespace Server.Battles
                         continue;
 
                     if (_configDistributor.Statuses.TryGet(statusId, out var mapper) == false)
-                        continue;
+                    {
+                        _logger.LogError($"[Error][Story][Battle]: Status missing in tick queue, statusId = {statusId}, unitId = {unit.Id}");
+
+                        throw new InvalidOperationException($"[Error][Story][Battle]: Status missing in tick queue, statusId = {statusId}, unitId = {unit.Id}");
+                    }
 
                     if (IsDamageOverTime(mapper.StatusType) == false)
                         continue;
@@ -243,9 +244,6 @@ namespace Server.Battles
                     anyCritical = true;
             }
 
-            if (totalDamage <= 0f)
-                return;
-
             var healthAfter = healthBefore - totalDamage;
 
             if (healthAfter < 0f)
@@ -269,9 +267,10 @@ namespace Server.Battles
                 commands,
                 unitState);
 
-            _logger.LogDebug($"[Story][Battle]: Status aggregate tick, unitId = {unitState.Id}, statusId = {statusId}, damage = {totalDamage}, isCritical = {anyCritical}, health = {healthAfter}");
+            _logger.LogDebug($"[Story][Battle]: Status aggregate tick, unitId = {unitState.Id}, statusId = {statusId}, damage = {totalDamage}, isCritical = {anyCritical}, health = {healthAfter}, wait = {cooldown}");
 
-            NotifyDamageOverTimeSource(unitState, ownerTeam, opponentTeam, steps, currentTurn, seededRandomService, statusId);
+            if (0f < totalDamage)
+                NotifyDamageOverTimeSource(unitState, ownerTeam, opponentTeam, steps, currentTurn, seededRandomService, statusId);
 
             if (wasAlive == false || 0f < healthAfter)
                 return;
@@ -297,14 +296,14 @@ namespace Server.Battles
                 return;
             }
 
-            if (TryFindUnit(opponentTeam, sourceUnitId, out var sourceUnit))
+            if (TryFindMain(opponentTeam, sourceUnitId, out var sourceUnit))
             {
                 _battlePerkSimulator.NotifyAnyDamage(sourceUnit, opponentTeam, ownerTeam, steps, currentTurn, seededRandomService);
 
                 return;
             }
 
-            if (TryFindUnit(ownerTeam, sourceUnitId, out sourceUnit))
+            if (TryFindMain(ownerTeam, sourceUnitId, out sourceUnit))
                 _battlePerkSimulator.NotifyAnyDamage(sourceUnit, ownerTeam, opponentTeam, steps, currentTurn, seededRandomService);
         }
 
@@ -331,7 +330,7 @@ namespace Server.Battles
             return -1;
         }
 
-        private static bool TryFindUnit(ITeamSimulationState team, int unitId, [MaybeNullWhen(false)] out IUnitState unit)
+        private bool TryFindMain(ITeamSimulationState team, int unitId, [MaybeNullWhen(false)] out IUnitState unit)
         {
             var mainUnits = team.MainUnits;
 
@@ -341,18 +340,6 @@ namespace Server.Battles
                     continue;
 
                 unit = mainUnits[i];
-
-                return true;
-            }
-
-            var summons = team.Summons;
-
-            for (int i = 0; i < summons.Count; i++)
-            {
-                if (summons[i].Id != unitId)
-                    continue;
-
-                unit = summons[i];
 
                 return true;
             }
@@ -414,32 +401,27 @@ namespace Server.Battles
         {
             sourceDamage = 0f;
             criticalChance = 0f;
-            criticalMultiplier = 1f;
+            criticalMultiplier = 0f;
 
-            if (0 <= activeStatus.SourceUnitId)
+            if (activeStatus.SourceUnitId < 0)
             {
-                if (TryFindUnit(ownerTeam, activeStatus.SourceUnitId, out var sourceUnit)
-                    || TryFindUnit(opponentTeam, activeStatus.SourceUnitId, out sourceUnit))
-                {
-                    var sourceCharacteristics = sourceUnit.CharacteristicState;
-                    sourceDamage = sourceCharacteristics.Damage;
-                    criticalChance = sourceCharacteristics.CriticalChance;
-                    criticalMultiplier = sourceCharacteristics.CriticalMultiplier;
+                _logger.LogError($"[Story][Battle]: Damage over time source unset, bearerId = {bearer.Id}, statusId = {activeStatus.StatusId}");
 
-                    return;
-                }
-
-                _logger.LogWarning($"[Story][Battle]: Damage over time source missing, sourceId = {activeStatus.SourceUnitId}, bearerId = {bearer.Id}, statusId = {activeStatus.StatusId}; fallback bearer");
-            }
-            else
-            {
-                _logger.LogWarning($"[Story][Battle]: Damage over time source unset, bearerId = {bearer.Id}, statusId = {activeStatus.StatusId}; fallback bearer");
+                return;
             }
 
-            var bearerCharacteristics = bearer.CharacteristicState;
-            sourceDamage = bearerCharacteristics.Damage;
-            criticalChance = bearerCharacteristics.CriticalChance;
-            criticalMultiplier = bearerCharacteristics.CriticalMultiplier;
+            if (TryFindMain(ownerTeam, activeStatus.SourceUnitId, out var sourceUnit)
+                || TryFindMain(opponentTeam, activeStatus.SourceUnitId, out sourceUnit))
+            {
+                var sourceCharacteristics = sourceUnit.CharacteristicState;
+                sourceDamage = sourceCharacteristics.Damage;
+                criticalChance = sourceCharacteristics.CriticalChance;
+                criticalMultiplier = sourceCharacteristics.CriticalMultiplier;
+
+                return;
+            }
+
+            _logger.LogError($"[Story][Battle]: Damage over time source main missing, sourceId = {activeStatus.SourceUnitId}, bearerId = {bearer.Id}, statusId = {activeStatus.StatusId}");
         }
 
         private void ExpireStatus(
@@ -510,9 +492,9 @@ namespace Server.Battles
         {
             if (_configDistributor.Constants.TryGet(ConstantKeys.StatusesCooldownKey, out var constant) == false)
             {
-                _logger.LogError($"[Story][Battle]: Constant missing key = {ConstantKeys.StatusesCooldownKey}");
+                _logger.LogError($"[Error][Story][Battle]: Constant missing key = {ConstantKeys.StatusesCooldownKey}");
 
-                return 0f;
+                throw new InvalidOperationException($"[Error][Story][Battle]: Constant missing key = {ConstantKeys.StatusesCooldownKey}");
             }
 
             return float.Parse(constant.ConstantValue, System.Globalization.CultureInfo.InvariantCulture);

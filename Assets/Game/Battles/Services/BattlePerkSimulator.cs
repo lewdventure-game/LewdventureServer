@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Extensions.Logging;
 using Server.Perks;
 using Server.Services;
@@ -6,8 +7,10 @@ namespace Server.Battles
 {
     internal sealed class BattlePerkSimulator : IBattlePerkSimulator
     {
-        private bool _shouldAbortRemainingTurn;
-        private BattleSide _actingSide;
+        private IUnitState _actingUnit;
+
+        private readonly List<int> _abortedUnitIds = new();
+        private readonly List<int> _abortedUnitSlots = new();
 
         private readonly ILogger<BattlePerkSimulator> _logger;
         private readonly IBattleBonusService _battleBonusService;
@@ -17,7 +20,21 @@ namespace Server.Battles
         private readonly IConfigDistributor _configDistributor;
         private readonly List<PerkQueueEntry> _queueBuffer = new();
 
-        public bool ShouldAbortRemainingTurn => _shouldAbortRemainingTurn;
+        public bool ShouldSkipRemainingActions(IUnitState unit)
+        {
+            for (int i = 0; i < _abortedUnitIds.Count; i++)
+            {
+                if (_abortedUnitIds[i] != unit.Id)
+                    continue;
+
+                if (_abortedUnitSlots[i] != unit.SlotIndex)
+                    continue;
+
+                return true;
+            }
+
+            return false;
+        }
 
         public BattlePerkSimulator(
             ILogger<BattlePerkSimulator> logger,
@@ -35,16 +52,24 @@ namespace Server.Battles
             _configDistributor = configDistributor;
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public void BeginBattleTurn()
         {
-            _shouldAbortRemainingTurn = false;
+            ClearAbortedUnits();
+
+            _actingUnit = null;
+        }
+
+        public void BeginSideTurn(BattleSide actingSide)
+        {
+            ClearAbortedUnits();
+
+            _actingUnit = null;
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        public void BeginSideTurn(BattleSide actingSide)
+        public void SetActingUnit(IUnitState unit)
         {
-            _actingSide = actingSide;
+            _actingUnit = unit;
         }
 
         public void Simulate(
@@ -60,22 +85,32 @@ namespace Server.Battles
             CollectPerks(attacker.Summons);
             SortQueueByTriggerOrder();
 
+            if (_queueBuffer.Count == 0)
+            {
+                _logger.LogDebug($"[Story][Battle]: Phase wait skippedEmpty phase = perks, side = {attacker.BattleSide}, turn = {currentTurn}, queueSize = 0, emittedWaits = 0");
+
+                return;
+            }
+
             var cooldown = GetPerksCooldown();
+            var emittedWaits = 0;
 
             _logger.LogDebug($"[Story][Battle]: Perk phase, side = {attacker.BattleSide}, turn = {currentTurn}, queue = {_queueBuffer.Count}");
 
             for (int i = 0; i < _queueBuffer.Count; i++)
             {
-                if (_shouldAbortRemainingTurn)
-                {
-                    _logger.LogDebug($"[Story][Battle]: Perk phase, abort remaining turn, side = {attacker.BattleSide}, turn = {currentTurn}");
-
-                    return;
-                }
-
                 var entry = _queueBuffer[i];
                 var owner = entry.Owner;
                 var perk = entry.Perk;
+
+                SetActingUnit(owner);
+
+                if (ShouldSkipRemainingActions(owner))
+                {
+                    _logger.LogDebug($"[Story][Battle]: Perk queue skip aborted unit, perkId = {perk.Id}, ownerId = {owner.Id}, turn = {currentTurn}");
+
+                    continue;
+                }
 
                 if (owner.IsAlive() == false && perk.PerkType != PerkType.Resurrection)
                     continue;
@@ -107,7 +142,13 @@ namespace Server.Battles
                     BattlePhaseType.PerkTrigger,
                     owner,
                     waitCommands);
+
+                ++emittedWaits;
+
+                _logger.LogDebug($"[Story][Battle]: Phase wait phase = perks, perkId = {perk.Id}, ownerId = {owner.Id}, wait = {cooldown}");
             }
+
+            _logger.LogDebug($"[Story][Battle]: Phase wait phase = perks, side = {attacker.BattleSide}, turn = {currentTurn}, queueSize = {_queueBuffer.Count}, emittedWaits = {emittedWaits}");
         }
 
         public void NotifyAction(
@@ -189,17 +230,43 @@ namespace Server.Battles
                         _battleScriptBuilder) == false)
                     continue;
 
-                _shouldAbortRemainingTurn = true;
+                AbortUnit(unit);
 
-                var skipDefenderTurn = _actingSide == BattleSide.Attacking;
+                if (_actingUnit != null)
+                    AbortUnit(_actingUnit);
 
                 _logger.LogInformation($"[Story][Battle]: Resurrected on death, unitId = {unit.Id}, perkId = {perk.Id}, turn = {currentTurn}");
-                _logger.LogInformation($"[Story][Battle]: Abort remaining turn after resurrection, unitId = {unit.Id}, side = {unit.Side}, turn = {currentTurn}, skipDefenderTurn = {skipDefenderTurn}");
+                _logger.LogInformation($"[Story][Battle]: Abort remaining unit actions after resurrection, unitId = {unit.Id}, actingUnitId = {GetActingUnitId()}, turn = {currentTurn}");
 
                 return true;
             }
 
             return false;
+        }
+
+        private void AbortUnit(IUnitState unit)
+        {
+            if (ShouldSkipRemainingActions(unit))
+                return;
+
+            _abortedUnitIds.Add(unit.Id);
+            _abortedUnitSlots.Add(unit.SlotIndex);
+
+            _logger.LogDebug($"[Story][Battle]: Abort unit remaining actions, unitId = {unit.Id}, slot = {unit.SlotIndex}");
+        }
+
+        private int GetActingUnitId()
+        {
+            if (_actingUnit == null)
+                return -1;
+
+            return _actingUnit.Id;
+        }
+
+        private void ClearAbortedUnits()
+        {
+            _abortedUnitIds.Clear();
+            _abortedUnitSlots.Clear();
         }
 
         private void CollectPerks(IReadOnlyList<IUnitState> units)
@@ -258,9 +325,9 @@ namespace Server.Battles
         {
             if (_configDistributor.Constants.TryGet(ConstantKeys.PerksCooldownKey, out var constant) == false)
             {
-                _logger.LogWarning($"[Story][Battle]: Constant missing key = {ConstantKeys.PerksCooldownKey}");
+                _logger.LogError($"[Error][Story][Battle]: Constant missing key = {ConstantKeys.PerksCooldownKey}");
 
-                return 0f;
+                throw new InvalidOperationException($"[Error][Story][Battle]: Constant missing key = {ConstantKeys.PerksCooldownKey}");
             }
 
             return float.Parse(constant.ConstantValue, System.Globalization.CultureInfo.InvariantCulture);

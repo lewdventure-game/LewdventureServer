@@ -107,6 +107,9 @@ namespace Server.Battles
             int currentTurn,
             ISeededRandomService seededRandomService)
         {
+            if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
+                return;
+
             var characteristics = actor.CharacteristicState;
 
             if (characteristics.MaxEnergy <= 0f)
@@ -243,6 +246,9 @@ namespace Server.Battles
 
                 if (target.IsAlive() == false)
                     context.EmitDeath(target);
+
+                if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
+                    return;
             }
         }
 
