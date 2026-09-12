@@ -116,12 +116,33 @@ namespace Server.Battles
             if (isSummon && _configDistributor.Summons.TryGet(unitSnapshot.Id, out var summonMapperForBreakout))
                 ApplyBreakoutHook(unitSnapshot, summonMapperForBreakout);
 
-            SeedActiveStatuses(unitState, unitSnapshot);
+            SeedActiveStatuses(unitState, unitSnapshot, isSummon);
             ApplyEquippedPerks(unitState);
+            ApplySnapshotHealth(unitState, unitSnapshot);
 
-            _logger.LogDebug($"[Story][Battle] built id = {unitState.Id} level = {unitState.Level} slot = {unitState.SlotIndex} hp = {characteristics.Health}/{characteristics.MaxHealth} dmg = {characteristics.Damage} vampyrism = {characteristics.Vampyrism} healingBoost = {characteristics.HealingBoost} statuses = {unitState.ActiveStatuses.Count} perks = {perks.Count} skills = {skills.Count} activeBonuses = {unitState.ActiveBonuses.Count}");
+            _logger.LogDebug($"[Story][Battle]: Built, id = {unitState.Id}, level = {unitState.Level}, slot = {unitState.SlotIndex}, hp = {characteristics.Health}/{characteristics.MaxHealth}, damage = {characteristics.Damage}, vampyrism = {characteristics.Vampyrism}, healingBoost = {characteristics.HealingBoost}, statuses = {unitState.ActiveStatuses.Count}, perks = {perks.Count}, skills = {skills.Count}, activeBonuses = {unitState.ActiveBonuses.Count}");
 
             return unitState;
+        }
+
+        private void ApplySnapshotHealth(IUnitState unitState, IUnitSnapshot unitSnapshot)
+        {
+            var characteristics = unitState.CharacteristicState;
+            var currentHealth = unitSnapshot.CurrentHealth;
+
+            if (currentHealth <= 0f)
+            {
+                _logger.LogError($"[Story][Battle]: Invalid currentHealth = {currentHealth}, unitId = {unitSnapshot.Id}, slot = {unitSnapshot.SlotIndex}");
+
+                throw new InvalidOperationException($"[Story][Battle]: Invalid currentHealth = {currentHealth}, unitId = {unitSnapshot.Id}, slot = {unitSnapshot.SlotIndex}");
+            }
+
+            if (characteristics.MaxHealth < currentHealth)
+                currentHealth = characteristics.MaxHealth;
+
+            characteristics.Health = currentHealth;
+
+            _logger.LogDebug($"[Story][Battle]: Snapshot health applied, unitId = {unitState.Id}, health = {characteristics.Health}/{characteristics.MaxHealth}");
         }
 
         private void ApplyEquippedPerks(IUnitState unitState)
@@ -161,67 +182,52 @@ namespace Server.Battles
 
         private CharacteristicBuckets BuildEnemyBuckets(IEnemyMapper enemyMapper, int storyLevelId, int stageId)
         {
-            var attackMultiplier = 1f;
-            var healthMultiplier = 1f;
             var stageMultiplier = 1f;
 
-            if (_configDistributor.StoryLevels.TryGet(storyLevelId, out var storyLevel))
+            if (0 < stageId)
             {
-                attackMultiplier = storyLevel.EnemiesAttackMultiplier;
-                healthMultiplier = storyLevel.EnemiesHealthMultiplier;
+                if (_configDistributor.StoryStages.TryGet(stageId, out var storyStage) == false)
+                {
+                    _logger.LogError($"[Story][Battle]: Story stage missing id = {stageId}");
 
-                if (attackMultiplier <= 0f)
-                    attackMultiplier = 1f;
+                    throw new InvalidOperationException($"[Story][Battle]: Story stage missing id = {stageId}");
+                }
 
-                if (healthMultiplier <= 0f)
-                    healthMultiplier = 1f;
-            }
-            else
-            {
-                _logger.LogWarning($"[Story][Battle] story level missing id = {storyLevelId}; enemy multipliers default 1");
-            }
-
-            if (0 < stageId && _configDistributor.StoryStages.TryGet(stageId, out var storyStage))
-            {
                 stageMultiplier = storyStage.EnemyStatsMultiplier;
 
                 if (stageMultiplier <= 0f)
-                    stageMultiplier = 1f;
-            }
-            else if (0 < stageId)
-            {
-                _logger.LogWarning($"[Story][Battle] story stage missing id = {stageId}; stage multiplier default 1");
+                {
+                    _logger.LogError($"[Story][Battle]: Invalid enemy_stats_multiplier = {stageMultiplier}, stageId = {stageId}");
+
+                    throw new InvalidOperationException($"[Story][Battle]: Invalid enemy_stats_multiplier = {stageMultiplier}, stageId = {stageId}");
+                }
             }
 
-            var finalAttackMultiplier = attackMultiplier * stageMultiplier;
-            var finalHealthMultiplier = healthMultiplier * stageMultiplier;
-            _logger.LogDebug($"[Story][Battle] enemy multipliers storyLevelId = {storyLevelId} stageId = {stageId} attack = {finalAttackMultiplier} health = {finalHealthMultiplier} levelAttack = {attackMultiplier} levelHealth = {healthMultiplier} stage = {stageMultiplier}");
+            _logger.LogDebug($"[Story][Battle]: Enemy multipliers, storyLevelId = {storyLevelId}, stageId = {stageId}, stage = {stageMultiplier}");
 
             var buckets = new CharacteristicBuckets
             {
-                HealthBase = enemyMapper.Health * finalHealthMultiplier,
-                DamageBase = enemyMapper.Damage * finalAttackMultiplier,
-                AttackMultiplierBase = 1f,
-                DefenceBase = enemyMapper.Defence,
+                HealthBase = enemyMapper.Health * stageMultiplier,
+                DamageBase = enemyMapper.Damage * stageMultiplier,
+                AttackMultiplierBase = ToFormula3Start(1f),
+                ArmorBase = enemyMapper.Defence,
                 DefenceCoefficient = GetConstant(ConstantKeys.DefenceCoefficientKey),
-                EvasionBase = enemyMapper.Evasion,
-                CriticalChanceBase = enemyMapper.CriticalChance,
-                CriticalMultiplierBase = enemyMapper.CriticalMultiplier,
-                Combo1ChanceBase = enemyMapper.Combo1Chance,
-                Combo2ChanceBase = enemyMapper.Combo2Chance,
-                Combo1MultiplierBase = enemyMapper.Combo1Multiplier,
-                Combo2MultiplierBase = enemyMapper.Combo2Multiplier,
-                CounterChanceBase = enemyMapper.CounterChance,
-                CounterMultiplierBase = enemyMapper.CounterMultiplier,
-                SkillMultiplierBase = enemyMapper.SpellMultiplier,
+                EvasionBase = ToFormula3Start(enemyMapper.Evasion),
+                CriticalChanceBase = ToFormula3Start(enemyMapper.CriticalChance),
+                CriticalMultiplierBase = ToFormula3Start(enemyMapper.CriticalMultiplier),
+                Combo1ChanceBase = ToFormula3Start(enemyMapper.Combo1Chance),
+                Combo2ChanceBase = ToFormula3Start(enemyMapper.Combo2Chance),
+                ComboMultiplierBase = ToFormula3Start(ResolveEnemyComboMultiplier(enemyMapper)),
+                CounterChanceBase = ToFormula3Start(enemyMapper.CounterChance),
+                CounterMultiplierBase = ToFormula3Start(enemyMapper.CounterMultiplier),
+                SkillMultiplierBase = ToFormula3Start(enemyMapper.SpellMultiplier),
                 EnergyBase = enemyMapper.Energy,
                 EnergyMaxBase = enemyMapper.MaxEnergy,
                 VampyrismBase = enemyMapper.Vampyrism,
-                HealingBoostBase = enemyMapper.HealingBoost - 1f,
+                HealingBoostBase = enemyMapper.HealingBoost,
             };
 
-            if (buckets.HealingBoostBase < -1f)
-                buckets.HealingBoostBase = -1f;
+            _logger.LogDebug($"[Story][Battle]: Enemy buckets seeded, id = {enemyMapper.Id}, armor = {buckets.ArmorBase}, comboMnStart = {buckets.ComboMultiplierBase}");
 
             return buckets;
         }
@@ -232,7 +238,7 @@ namespace Server.Battles
 
             if (_configDistributor.Summons.TryGet(unitSnapshot.Id, out var summonMapper) == false)
             {
-                _logger.LogError($"[Story][Battle] summon config missing id = {unitSnapshot.Id}");
+                _logger.LogError($"[Story][Battle]: Summon config missing id = {unitSnapshot.Id}");
 
                 return buckets;
             }
@@ -253,38 +259,34 @@ namespace Server.Battles
             else if (0 < damageOnLevels.Length)
                 baseDamage = damageOnLevels[damageOnLevels.Length - 1];
             else
-                _logger.LogError($"[Story][Battle] summon id = {unitSnapshot.Id} has empty dmg_on_lvls");
+                _logger.LogError($"[Story][Battle]: Summon id = {unitSnapshot.Id} has empty dmg_on_lvls");
 
-            var masteryMultiplier = 1f;
             var masteryLevel = unitSnapshot.MasteryLevel;
 
-            if (TryResolveMastery(summonMapper.MasteryId, masteryLevel, unitSnapshot.Id, out var masteryMapper))
+            if (masteryLevel <= 0)
             {
-                masteryMultiplier = masteryMapper.DamageMultiplier;
-                _logger.LogDebug($"[Story][Battle] summon mastery damage summonId = {unitSnapshot.Id} masteryId = {summonMapper.MasteryId} masteryLevel = {masteryLevel} multiplier = {masteryMultiplier} baseDamage = {baseDamage}");
+                _logger.LogDebug($"[Story][Battle]: Summon mastery unused, summonId = {unitSnapshot.Id}, masteryLevel = {masteryLevel}, baseDamage = {baseDamage}");
+
+                return baseDamage;
             }
 
-            return baseDamage * masteryMultiplier;
+            var masteryMapper = ResolveMastery(summonMapper.MasteryId, masteryLevel, unitSnapshot.Id);
+
+            _logger.LogDebug($"[Story][Battle]: Summon mastery damage, summonId = {unitSnapshot.Id}, masteryId = {summonMapper.MasteryId}, masteryLevel = {masteryLevel}, multiplier = {masteryMapper.DamageMultiplier}, baseDamage = {baseDamage}");
+
+            return baseDamage * masteryMapper.DamageMultiplier;
         }
 
-        private bool TryResolveMastery(int masteryId, int masteryLevel, int summonId, [MaybeNullWhen(false)] out IMasteryMapper masteryMapper)
+        private IMasteryMapper ResolveMastery(int masteryId, int masteryLevel, int summonId)
         {
             var masteries = _configDistributor.Masteries;
 
-            if (masteries.TryGet(masteryId, masteryLevel, out masteryMapper))
-                return true;
+            if (masteries.TryGet(masteryId, masteryLevel, out var masteryMapper))
+                return masteryMapper;
 
-            if (masteryLevel != 0 && masteries.TryGet(masteryId, 0, out masteryMapper))
-            {
-                _logger.LogWarning($"[Story][Battle] mastery level missing masteryId = {masteryId} masteryLevel = {masteryLevel} summonId = {summonId}; fallback masteryLevel = 0");
+            _logger.LogError($"[Story][Battle]: Mastery missing, masteryId = {masteryId}, masteryLevel = {masteryLevel}, summonId = {summonId}");
 
-                return true;
-            }
-
-            _logger.LogError($"[Story][Battle] mastery missing masteryId = {masteryId} masteryLevel = {masteryLevel} summonId = {summonId}; using multiplier 1.0");
-            masteryMapper = null;
-
-            return false;
+            throw new InvalidOperationException($"[Story][Battle]: Mastery missing, masteryId = {masteryId}, masteryLevel = {masteryLevel}, summonId = {summonId}");
         }
 
         private void ApplyBreakoutHook(IUnitSnapshot unitSnapshot, ISummonMapper summonMapper)
@@ -469,32 +471,18 @@ namespace Server.Battles
 
             var masteryLevel = summonSnapshot.MasteryLevel;
 
-            if (TryResolveMastery(summonMapper.MasteryId, masteryLevel, summonSnapshot.Id, out var masteryMapper)
-                && 0 < masteryMapper.BonusId)
+            if (0 < masteryLevel)
             {
-                var sourceKey = $"build:summon-mastery:{summonSnapshot.Id}:{masteryLevel}";
-                GrantBuildBonus(mainUnit, masteryMapper.BonusId, 0f, sourceKey);
-                _logger.LogDebug($"[Story][Battle] summon mastery bonus grant mainId = {mainUnit.Id} summonId = {summonSnapshot.Id} masteryLevel = {masteryLevel} bonusId = {masteryMapper.BonusId}");
-            }
+                var masteryMapper = ResolveMastery(summonMapper.MasteryId, masteryLevel, summonSnapshot.Id);
 
-            var bonusMasteryLevels = summonMapper.BonusMasteryLevels;
-            var bonusTypes = summonMapper.BonusTypes;
-            var accountBonusCount = bonusMasteryLevels.Length;
+                if (0 < masteryMapper.BonusId)
+                {
+                    var sourceKey = $"build:summon-mastery:{summonSnapshot.Id}:{masteryLevel}";
 
-            if (bonusTypes.Length < accountBonusCount)
-                accountBonusCount = bonusTypes.Length;
+                    GrantBuildBonus(mainUnit, masteryMapper.BonusId, 0f, sourceKey);
 
-            for (int i = 0; i < accountBonusCount; i++)
-            {
-                var requiredMasteryLevel = bonusMasteryLevels[i];
-
-                if (masteryLevel < requiredMasteryLevel)
-                    continue;
-
-                var bonusId = bonusTypes[i];
-                var sourceKey = $"build:summon-account:{summonSnapshot.Id}:{requiredMasteryLevel}:{bonusId}";
-                GrantBuildBonus(mainUnit, bonusId, 0f, sourceKey);
-                _logger.LogDebug($"[Story][Battle] summon account bonus grant mainId = {mainUnit.Id} summonId = {summonSnapshot.Id} requiredMastery = {requiredMasteryLevel} bonusId = {bonusId}");
+                    _logger.LogDebug($"[Story][Battle]: Summon mastery bonus grant, mainId = {mainUnit.Id}, summonId = {summonSnapshot.Id}, masteryLevel = {masteryLevel}, bonusId = {masteryMapper.BonusId}");
+                }
             }
         }
 
@@ -814,11 +802,11 @@ namespace Server.Battles
                 if (grant.RemainingBattles <= 0)
                     continue;
 
-                OverrideRemainingBattles(unitState, sourceKey, grant.RemainingBattles);
+                OverrideRemainingBattles(unitState, sourceKey, grant.RemainingBattles, grant.Id);
             }
         }
 
-        private void OverrideRemainingBattles(IUnitState unitState, string sourceKey, int remainingBattles)
+        private void OverrideRemainingBattles(IUnitState unitState, string sourceKey, int remainingBattles, int bonusId)
         {
             var activeBonuses = unitState.ActiveBonuses;
 
@@ -829,9 +817,16 @@ namespace Server.Battles
                 if (string.Equals(activeBonus.SourceKey, sourceKey, StringComparison.Ordinal) == false)
                     continue;
 
+                if (activeBonus.WorkMode.Kind != BonusWorkModeKind.NextBattles)
+                {
+                    _logger.LogDebug($"[Story][Battle]: Run bonus remaining override skipped, unitId = {unitState.Id}, bonusId = {bonusId}, kind = {activeBonus.WorkMode.Kind}, sourceKey = {sourceKey}");
+
+                    return;
+                }
+
                 activeBonus.RemainingBattles = remainingBattles;
 
-                _logger.LogDebug($"[Story][Battle] run bonus remaining override unitId = {unitState.Id}, bonusId = {activeBonus.BonusId}, remainingBattles = {remainingBattles}, sourceKey = {sourceKey}");
+                _logger.LogDebug($"[Story][Battle]: Run bonus remaining override, unitId = {unitState.Id}, bonusId = {activeBonus.BonusId}, remainingBattles = {remainingBattles}, sourceKey = {sourceKey}");
 
                 return;
             }
@@ -844,9 +839,9 @@ namespace Server.Battles
 
             if (_configDistributor.Bonuses.TryGet(bonusId, out var bonusMapper) == false)
             {
-                _logger.LogWarning($"[Story][Battle] bonus missing id = {bonusId}");
+                _logger.LogError($"[Story][Battle]: Bonus missing, id = {bonusId}");
 
-                return;
+                throw new InvalidOperationException($"[Story][Battle]: Bonus missing, id = {bonusId}");
             }
 
             if (bonusMapper.BonusType == BonusType.Healing
@@ -934,6 +929,7 @@ namespace Server.Battles
             if (isSummon == false)
             {
                 InjectCharacterSkillIds(unitSnapshot, skillIds);
+                InjectEnemySkillIds(unitSnapshot, skillIds);
                 InjectEquipmentSkillIds(unitSnapshot, skillIds);
             }
 
@@ -975,6 +971,25 @@ namespace Server.Battles
 
                 if (beforeCount < skillIds.Count)
                     _logger.LogDebug($"[Story][Battle]: Character skill injected, unitId = {unitSnapshot.Id}, skillId = {skillId}");
+            }
+        }
+
+        private void InjectEnemySkillIds(IUnitSnapshot unitSnapshot, List<string> skillIds)
+        {
+            if (_configDistributor.Enemies.TryGet(unitSnapshot.Id, out var enemyMapper) == false)
+                return;
+
+            var enemySkillIds = enemyMapper.SkillIds;
+
+            for (int i = 0; i < enemySkillIds.Length; i++)
+            {
+                var skillId = enemySkillIds[i].ToString();
+                var beforeCount = skillIds.Count;
+
+                AddUniqueSkillId(skillIds, skillId);
+
+                if (beforeCount < skillIds.Count)
+                    _logger.LogDebug($"[Story][Battle]: Enemy skill injected, unitId = {unitSnapshot.Id}, skillId = {skillId}");
             }
         }
 
@@ -1032,11 +1047,21 @@ namespace Server.Battles
             skillIds.Add(trimmed);
         }
 
-        private void SeedActiveStatuses(UnitState unitState, IUnitSnapshot unitSnapshot)
+        private void SeedActiveStatuses(UnitState unitState, IUnitSnapshot unitSnapshot, bool isSummon)
         {
             var statusIds = unitSnapshot.ActiveStatusIds;
+
+            if (statusIds.Count == 0)
+                return;
+
+            if (isSummon)
+            {
+                _logger.LogError($"[Story][Battle]: Status seed on summon forbidden, unitId = {unitSnapshot.Id}, count = {statusIds.Count}");
+
+                return;
+            }
+
             var activeStatuses = unitState.ActiveStatuses;
-            var characteristics = unitState.CharacteristicState;
             var commands = new List<BattleCommand>();
 
             for (int i = 0; i < statusIds.Count; i++)
@@ -1064,27 +1089,27 @@ namespace Server.Battles
                     continue;
                 }
 
-                var appliesDamageOverTime = IsDamageOverTime(statusMapper.StatusType);
-                var appliesBonuses = IsBonusStatus(statusMapper.StatusType);
-                var remainingTicks = parameters.DamageLength;
+                if (_statusParametersParser.TryParse(statusMapper.Parameters, statusMapper.StatusType, out var parameters) == false)
+                    continue;
 
-                if (appliesDamageOverTime == false && remainingTicks <= 0)
-                    remainingTicks = int.MaxValue;
+                var currentStacks = CountStatusStacks(activeStatuses, statusId);
 
-                if (appliesDamageOverTime && remainingTicks <= 0)
+                if (parameters.MaxStacks <= currentStacks)
                 {
-                    _logger.LogWarning($"[Story][Battle] status damage_length missing id = {statusId}");
+                    _logger.LogWarning($"[Story][Battle]: Status max stacks reached, id = {statusId}, maxStacks = {parameters.MaxStacks}");
 
                     continue;
                 }
 
+                var appliesBonuses = statusMapper.StatusType == StatusType.BurningStrong
+                    || statusMapper.StatusType == StatusType.PoisonStrong;
                 var sourceKey = $"status:{statusId}:{currentStacks}";
                 var activeStatus = new ActiveStatus(
                     statusId,
-                    remainingTicks,
+                    parameters.DamageLength,
                     -1,
                     parameters.DamageRatio,
-                    appliesDamageOverTime,
+                    true,
                     appliesBonuses,
                     parameters.Bonuses,
                     sourceKey);
@@ -1094,23 +1119,8 @@ namespace Server.Battles
 
                 activeStatuses.Add(activeStatus);
 
-                _logger.LogDebug($"[Story][Battle] seeded status id = {statusId}, remainingTicks = {remainingTicks}, damageRatio = {parameters.DamageRatio}, stacks = {currentStacks + 1}, bonuses = {parameters.Bonuses.Count}, target = {statusMapper.StatusTarget}");
+                _logger.LogDebug($"[Story][Battle]: Seeded status, id = {statusId}, remainingTicks = {parameters.DamageLength}, damageRatio = {parameters.DamageRatio}, stacks = {currentStacks + 1}, bonuses = {parameters.Bonuses.Count}, applyingMainId = -1");
             }
-        }
-
-        private bool IsDamageOverTime(StatusType statusType)
-        {
-            return statusType == StatusType.Burning
-                || statusType == StatusType.BurningStrong
-                || statusType == StatusType.Poison
-                || statusType == StatusType.PoisonStrong;
-        }
-
-        private bool IsBonusStatus(StatusType statusType)
-        {
-            return statusType == StatusType.BonusChange
-                || statusType == StatusType.BurningStrong
-                || statusType == StatusType.PoisonStrong;
         }
 
         private int CountStatusStacks(List<ActiveStatus> activeStatuses, int statusId)
@@ -1126,39 +1136,24 @@ namespace Server.Battles
             return stacks;
         }
 
-        private void SeedComboMultiplierBases(CharacteristicBuckets buckets)
+        private float ResolveEnemyComboMultiplier(IEnemyMapper enemyMapper)
         {
-            var hasLegacy = TryGetConstant(ConstantKeys.ComboMultiplierBaseKey, out var legacyComboMultiplier);
-            var hasCombo1 = TryGetConstant(ConstantKeys.ComboOneMultiplierBaseKey, out var combo1Multiplier);
-            var hasCombo2 = TryGetConstant(ConstantKeys.ComboTwoMultiplierBaseKey, out var combo2Multiplier);
+            var combo1 = enemyMapper.Combo1Multiplier;
+            var combo2 = enemyMapper.Combo2Multiplier;
 
-            if (hasCombo1 == false && hasLegacy)
+            if (combo1 != combo2)
             {
-                combo1Multiplier = legacyComboMultiplier;
-                hasCombo1 = true;
+                _logger.LogError($"[Story][Battle]: Enemy combo multipliers differ, enemyId = {enemyMapper.Id}, combo1 = {combo1}, combo2 = {combo2}");
+
+                throw new InvalidOperationException($"[Story][Battle]: Enemy combo multipliers differ, enemyId = {enemyMapper.Id}");
             }
 
-            if (hasCombo2 == false && hasLegacy)
-            {
-                combo2Multiplier = legacyComboMultiplier;
-                hasCombo2 = true;
-            }
+            return combo1;
+        }
 
-            if (hasCombo1 == false)
-            {
-                _logger.LogError($"[Story][Battle] constant missing key = {ConstantKeys.ComboOneMultiplierBaseKey} and fallback {ConstantKeys.ComboMultiplierBaseKey}");
-                combo1Multiplier = 0f;
-            }
-
-            if (hasCombo2 == false)
-            {
-                _logger.LogError($"[Story][Battle] constant missing key = {ConstantKeys.ComboTwoMultiplierBaseKey} and fallback {ConstantKeys.ComboMultiplierBaseKey}");
-                combo2Multiplier = 0f;
-            }
-
-            buckets.Combo1MultiplierBase = combo1Multiplier;
-            buckets.Combo2MultiplierBase = combo2Multiplier;
-            _logger.LogDebug($"[Story][Battle] combo multipliers base combo1 = {buckets.Combo1MultiplierBase} combo2 = {buckets.Combo2MultiplierBase}");
+        private float ToFormula3Start(float finalValue)
+        {
+            return finalValue - 1f;
         }
 
         private bool TryGetConstant(string constantKey, out float value)
@@ -1174,10 +1169,9 @@ namespace Server.Battles
                     CultureInfo.InvariantCulture,
                     out value) == false)
             {
-                _logger.LogError($"[Story][Battle] constant parse failed key = {constantKey} value = {constant.ConstantValue}");
-                value = 0f;
+                _logger.LogError($"[Story][Battle]: Constant parse failed, key = {constantKey} value = {constant.ConstantValue}");
 
-                return false;
+                throw new InvalidOperationException($"[Story][Battle]: Constant parse failed, key = {constantKey}");
             }
 
             return true;
@@ -1187,9 +1181,9 @@ namespace Server.Battles
         {
             if (TryGetConstant(constantKey, out var value) == false)
             {
-                _logger.LogError($"[Story][Battle] constant missing key = {constantKey}");
+                _logger.LogError($"[Story][Battle]: Constant missing key = {constantKey}");
 
-                return 0f;
+                throw new InvalidOperationException($"[Story][Battle]: Constant missing key = {constantKey}");
             }
 
             return value;

@@ -1,5 +1,6 @@
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
+using Server.Configs;
 
 namespace Server.Entities
 {
@@ -36,6 +37,10 @@ namespace Server.Entities
 
         [JsonProperty("damage")]
         public float Damage { get; init; }
+
+        [JsonProperty("skill_ids")]
+        [JsonConverter(typeof(DelimitedIntArrayConverter), ';')]
+        public int[] SkillIds { get; init; } = Array.Empty<int>();
 
         [JsonProperty("evasion")]
         private float EvasionRaw

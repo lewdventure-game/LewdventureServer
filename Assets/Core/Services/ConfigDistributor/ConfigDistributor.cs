@@ -6,6 +6,7 @@ using Server.Configs;
 using Server.Entities;
 using Server.Equipments;
 using Server.Perks;
+using Server.Skills;
 using Server.Statuses;
 using Server.Stories;
 using Server.Trainings;
@@ -36,6 +37,8 @@ namespace Server.Services
 
         public IPerkMapperManager Perks { get; } = new PerkMapperManager();
 
+        public ISkillMapperManager Skills { get; } = new SkillMapperManager();
+
         public IStatusMapperManager Statuses { get; } = new StatusMapperManager();
 
         public IStoryEventMapperManager StoryEvents { get; } = new StoryEventMapperManager();
@@ -63,6 +66,7 @@ namespace Server.Services
             Masteries.Clear();
             PerkGroups.Clear();
             Perks.Clear();
+            Skills.Clear();
             Statuses.Clear();
             StoryEvents.Clear();
             StoryLevels.Clear();

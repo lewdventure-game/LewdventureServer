@@ -39,10 +39,10 @@ DI: runtime доступ к конфигам **только** через `IConfi
 | Characters | `Characters` | `is_melee`; `start_bonus_type` = **bonus id**; `upgrade_costs` / `upgrade_bonus_types` / `upgrade_bonus_values` — списки `;` (или скаляр → один элемент); апгрейд `i` = `costs[i]` + `types[i]` + `values[i]` |
 | Bonuses | `Bonuses` | dictionary by id; `work_mode` — сырая строка на mapper, parse через `BonusWorkModeParser` |
 | Statuses | `Statuses` | |
-| Summons | `Summons` | `breakout_multis`, `bonus_mastery_levels`, `bonus_types`, `is_melee`, `attack_cooldown` |
+| Summons | `Summons` | `breakout_multis`, `bonus_mastery_levels`, `bonus_types`, `is_melee`, `attack_cooldown`, `skill_ids` |
 | Summon_levels | `SummonLevels` | load-only для боя |
 | Mastery | `Masteries` | composite key id+level |
-| Enemies | `Enemies` | `is_melee`; flat client columns **or** packed `other_characteristics` (`key:value;...`); packed overrides flat when non-empty; dual combo keys + legacy `combo_multiplier` |
+| Enemies | `Enemies` | `is_melee`; `skill_ids`; flat client columns **or** packed `other_characteristics` (`key:value;...`); packed overrides flat when non-empty; dual combo keys + legacy `combo_multiplier` |
 | Equipments | `Equipments` | может быть пусто; `equip_bonus_type_*` = bonus **id** или имя `BonusType`; `equip_bonus_values_*` по уровню через `,` или `;`; `is_melee`; `skill_id` → inject known energy/skill into character build (unknown skipped) |
 | Trainings | `Trainings` | stub: sheet id не wired, manager empty после sync |
 | Artifacts | `Artifacts` | stub: sheet id не wired |
@@ -52,6 +52,7 @@ DI: runtime доступ к конфигам **только** через `IConfi
 | Story_events | `StoryEvents` | load-only |
 | Exp_levels_patterns | `ExperienceLevelPatterns` | load-only |
 | Perks | `Perks` | |
+| Skills | `Skills` | `C:F`; `id`, `type`, `proc_order`, `parameters`. Factory maps `type` → class. `id=2` is `summon_1_skill_1`, **not** energy. Energy row missing → equipment `skill_id=energy` skipped |
 | Perk_groups | `PerkGroups` | load-only |
 
 ## work_mode

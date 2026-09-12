@@ -1,15 +1,21 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
+using Server.Services;
 
 namespace Server.Battles
 {
     internal sealed class SkillFactory : ISkillFactory
     {
         private readonly ILogger<SkillFactory> _logger;
+        private readonly IConfigDistributor _configDistributor;
 
-        public SkillFactory(ILogger<SkillFactory> logger)
+        public SkillFactory(
+            ILogger<SkillFactory> logger,
+            IConfigDistributor configDistributor)
         {
             _logger = logger;
+            _configDistributor = configDistributor;
         }
 
         public ISkill Create(string skillId)
@@ -23,24 +29,23 @@ namespace Server.Battles
 
             var trimmed = skillId.Trim();
 
-            if (TryResolveFireball(trimmed, out var fireballKey))
-                return new FireballSkill(new SkillMapper((int)SkillType.Fireball, fireballKey, SkillType.Fireball, "damage_ratio:1;projectile_count:1"));
+            if (TryFindSkillConfig(trimmed, out var skillConfig) == false)
+            {
+                _logger.LogWarning($"[Story][Battle]: Skill unknown, id = {trimmed}");
 
-            if (TryResolveEnergy(trimmed))
-                return new EnergySkill(new SkillMapper((int)SkillType.Energy, "energy", SkillType.Energy, string.Empty));
+                return new UnknownSkill(new SkillMapper(0, trimmed, SkillType.Unknown, string.Empty));
+            }
 
-            if (string.Equals(trimmed, "summon_1_skill_1", StringComparison.Ordinal))
-                return new SummonVenomStrikeSkill(new SkillMapper((int)SkillType.VenomStrike, trimmed, SkillType.VenomStrike, "damage_ratio:1;hit_rewards:status:3:2"));
+            if (TryResolveSkillType(skillConfig.Type, out var skillType) == false)
+            {
+                _logger.LogWarning($"[Story][Battle]: Skill unknown type, id = {trimmed}, type = {skillConfig.Type}");
 
-            if (string.Equals(trimmed, "summon_2_skill_1", StringComparison.Ordinal))
-                return new SummonWarHowlSkill(new SkillMapper((int)SkillType.WarHowl, trimmed, SkillType.WarHowl, "damage_ratio:0.35;heal_from_max_ratio:0.12;ally_rewards:bonus:2:1,status:5:1"));
+                return new UnknownSkill(new SkillMapper(skillConfig.Id, skillConfig.Type, SkillType.Unknown, skillConfig.Parameters));
+            }
 
-            if (string.Equals(trimmed, "summon_3_skill_1", StringComparison.Ordinal))
-                return new SummonSoulSiphonSkill(new SkillMapper((int)SkillType.SoulSiphon, trimmed, SkillType.SoulSiphon, "damage_ratio:1.25;life_steal_ratio:0.5;hit_rewards:status:1:1;ally_rewards:bonus:8:1"));
+            var mapper = new SkillMapper(skillConfig.Id, skillConfig.Type, skillType, skillConfig.Parameters);
 
-            _logger.LogWarning($"[Story][Battle]: Skill unknown, id = {trimmed}");
-
-            return new UnknownSkill(new SkillMapper(0, trimmed, SkillType.Unknown, string.Empty));
+            return CreateSkill(skillType, mapper);
         }
 
         public bool IsKnownSkillId(string skillId)
@@ -50,55 +55,80 @@ namespace Server.Battles
 
             var trimmed = skillId.Trim();
 
-            if (TryResolveFireball(trimmed, out _))
-                return true;
+            if (TryFindSkillConfig(trimmed, out var skillConfig) == false)
+                return false;
 
-            if (TryResolveEnergy(trimmed))
-                return true;
-
-            if (string.Equals(trimmed, "summon_1_skill_1", StringComparison.Ordinal))
-                return true;
-
-            if (string.Equals(trimmed, "summon_2_skill_1", StringComparison.Ordinal))
-                return true;
-
-            if (string.Equals(trimmed, "summon_3_skill_1", StringComparison.Ordinal))
-                return true;
-
-            return false;
+            return TryResolveSkillType(skillConfig.Type, out _);
         }
 
-        private bool TryResolveFireball(string skillId, out string skillKey)
+        private bool TryFindSkillConfig(string skillId, [MaybeNullWhen(false)] out Server.Skills.ISkillMapper skillConfig)
         {
-            skillKey = string.Empty;
+            if (int.TryParse(skillId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var numericId)
+                && _configDistributor.Skills.TryGet(numericId, out skillConfig))
+                return true;
 
-            if (string.Equals(skillId, "fireball", StringComparison.OrdinalIgnoreCase))
+            return _configDistributor.Skills.TryGetByType(skillId, out skillConfig);
+        }
+
+        private bool TryResolveSkillType(string skillTypeKey, out SkillType skillType)
+        {
+            if (string.Equals(skillTypeKey, "fireball", StringComparison.OrdinalIgnoreCase))
             {
-                skillKey = "fireball";
+                skillType = SkillType.Fireball;
 
                 return true;
             }
 
-            if (int.TryParse(skillId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var numericId) == false)
-                return false;
+            if (string.Equals(skillTypeKey, "energy", StringComparison.OrdinalIgnoreCase))
+            {
+                skillType = SkillType.Energy;
 
-            if (numericId != (int)SkillType.Fireball)
-                return false;
+                return true;
+            }
 
-            skillKey = skillId;
+            if (string.Equals(skillTypeKey, "summon_1_skill_1", StringComparison.OrdinalIgnoreCase))
+            {
+                skillType = SkillType.VenomStrike;
 
-            return true;
+                return true;
+            }
+
+            if (string.Equals(skillTypeKey, "summon_2_skill_1", StringComparison.OrdinalIgnoreCase))
+            {
+                skillType = SkillType.WarHowl;
+
+                return true;
+            }
+
+            if (string.Equals(skillTypeKey, "summon_3_skill_1", StringComparison.OrdinalIgnoreCase))
+            {
+                skillType = SkillType.SoulSiphon;
+
+                return true;
+            }
+
+            skillType = SkillType.Unknown;
+
+            return false;
         }
 
-        private bool TryResolveEnergy(string skillId)
+        private ISkill CreateSkill(SkillType skillType, ISkillMapper mapper)
         {
-            if (string.Equals(skillId, "energy", StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            if (int.TryParse(skillId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var numericId) == false)
-                return false;
-
-            return numericId == (int)SkillType.Energy;
+            switch (skillType)
+            {
+                case SkillType.Fireball:
+                    return new FireballSkill(mapper);
+                case SkillType.Energy:
+                    return new EnergySkill(mapper);
+                case SkillType.VenomStrike:
+                    return new SummonVenomStrikeSkill(mapper);
+                case SkillType.WarHowl:
+                    return new SummonWarHowlSkill(mapper);
+                case SkillType.SoulSiphon:
+                    return new SummonSoulSiphonSkill(mapper);
+                default:
+                    return new UnknownSkill(mapper);
+            }
         }
     }
 }

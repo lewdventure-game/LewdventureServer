@@ -69,7 +69,7 @@ Seed RNG для `/api/battle/simulate` генерирует только сер�
 
 Snapshot — вход для серверной сборки `UnitState`. Итоговые HP/DMG/crit/evasion/combo/counter/energy сервер считает из constants + character start/upgrades + training + equipment(level) + summons mastery + artifacts + aspects + perks/statuses/runtime bonuses + snapshot `activeBonuses` (`IBattleBonusService.Grant`, sourceKey `run:{id}:{index}`).
 
-Если на клиенте нет модуля инвентаря/тренировок — `equipments` / `artifactIds` / `aspectIds` пустые, `trainingLevel = 0`. Не слать фейковые id. `activePerkIds` / `activeStatusIds` — из рантайма. `activeSkillIds` — из конфига сущности (character `skill_ids` как строки, summon `skill_id`). `activeBonuses` — только у attacking character. Неизвестный bonus id: WARN + skip, simulate не валится. Сервер всё равно инжектит `ICharacterMapper.SkillIds` и summon `SkillId` из своих конфигов.
+Если на клиенте нет модуля инвентаря/тренировок — `equipments` / `artifactIds` / `aspectIds` пустые, `trainingLevel = 0`. Не слать фейковые id. `activePerkIds` / `activeStatusIds` — из рантайма. `activeSkillIds` — numeric string ids из конфига сущности (character/enemy `skill_ids`, summon `skill_ids`). `activeBonuses` — только у attacking character. Неизвестный bonus id: WARN + skip, simulate не валится. Сервер инжектит `Characters.skill_ids`, `Enemies.skill_ids` и summon `skill_ids` из своих конфигов.
 
 `level` / `masteryLevel` на клиенте сейчас часто `1` / `0`: у `ICharacter`/`ISummon` нет runtime mastery/level UI. Не выдумывать.
 
@@ -183,11 +183,11 @@ Combo2 roll выполняется **только** если Combo1 сработ
 2. **Perks** — перки атакующей стороны по `proc_order` (доступные на ходе; `proc_rounds` 1-based). `Wait(perks_cooldown)` после каждого сработавшего; пустая очередь — без wait.
 3. **Summons** — слоты по возрастанию `slotIndex`: скиллы (`Wait(summons_cooldown)` после каждого, включая последний) → обычная атака только если не на `attack_cooldown` (крит от живого main с мин. `slotIndex`; `is_melee` из Summons → Approach/Return, иначе ranged без возврата) → `Wait(summons_cooldown)` после атаки. Пропуск атаки wait за неё не даёт. Нет действий в фазе — без wait.
 4. **Main unit(s)** (все живые main стороны; два моба — оба ходят):
-   1. Unit skills (не energy) → `units_cooldown` внутри skill steps.
-   2. NormalAttack (крит/уклон) → energy gain при hit.
-   3. Counter → Combo1 → Counter → Combo2 → Counter **только после hit** обычной атаки. Miss → Return + energy skill без цепочки. Контр не триггерит контр. Combo2 только если Combo1 прошло.
-   4. ReturnToPosition.
-   5. EnergySkill, если `Energy >= MaxEnergy` (без крита, с уклоном, без контратаки) → сброс energy.
+   1. Unit skills (не energy). Wait между ними — не этот пункт.
+   2. Если `CanUseNormalAttack` = нет → EnergySkill (без Approach/Return/counter/combo).
+   3. Иначе melee: Approach → `Wait(units_cooldown)` → NormalAttack. Ranged: `Wait(units_cooldown)` → NormalAttack (снаряд).
+   4. Counter → Combo1 → Counter → Combo2 → Counter **только после hit** обычной атаки. Miss → Return (melee) + energy skill без цепочки. Контр не триггерит контр. Combo2 только если Combo1 прошло. Атакующий melee **не** Return после комбо; Return только в конце цепочки. Melee-защитник на контре подходит и возвращается на свой слот.
+   5. EnergySkill, если `Energy >= MaxEnergy` (без крита, с уклоном, без контратаки) → `Wait(units_cooldown)` → cast → `Wait(duration)` из parameters скилла → сброс energy.
 
 Цель атак/скиллов/саммонов: живой `mainUnits` защитника с минимальным `slotIndex`.
 
@@ -328,8 +328,8 @@ TODO GD: подтвердить (focus-fire / lowest HP / иное) и обно�
 
 ## Config Dependencies
 
-Симуляция читает constants, characters, enemies, summons, equipments, perks, statuses, bonuses, masteries, story levels через `IConfigDistributor`.
-Skills: thin registry по `SkillType` / string id (`fireball`); полный Skills sheet — later.
+Симуляция читает constants, characters, enemies, summons, equipments, perks, statuses, bonuses, masteries, story levels, skills через `IConfigDistributor`.
+Skills: `id` + `type` + `parameters` из Skills sheet (`C:F`). Factory без захардкоженных parameters. `SkillType` enum **не** равен Skills.id (`Energy=2` ≠ skill id 2).
 Перед тестами configs должны быть загружены (`/api/config/update` или test fixture).
 
 Источник правды конфигов — колонки Google Sheets (не клиентский JSON-экспорт). Подробности: [`config-sync.md`](../../Assets/Documents/Server/config-sync.md).

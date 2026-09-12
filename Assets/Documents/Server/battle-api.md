@@ -68,6 +68,8 @@ Rewards in battle: `bonus` / `status` применяются в симуляци
 - Vampyrism heal-back только после успешного strike (normal/counter/combo), не на elemental/skills.
 - Healing effects: `healing` / `healing_from_max` — разово при grant.
 - После miss обычной атаки counter/combo **не** крутятся; energy skill всё равно, если бар полный.
+- Если обычка недоступна (`CanUseNormalAttack` = нет) — сразу energy skill, без Approach/Return/counter/combo.
+- Melee атакующий: Approach → Wait → удар; комбо без Return; Return только в конце цепочки. Melee-защитник на контре подходит и возвращается на свой слот.
 
 ### Elemental perks
 
@@ -114,7 +116,7 @@ Response тот же `BattleScriptResponse`; поле `seed` = переданн�
 
 `id`, `level`, `masteryLevel`, `equipments[]` (`{id,level}`; alias `equipment` на сервере), legacy `equipmentIds` → level 1, `trainingLevel`, `artifactIds`, `aspectIds`, `activePerkIds`, `activeSkillIds`, `activeStatusIds`, `activeBonuses[]` (`{id,count,remainingBattles}`), `slotIndex`.
 
-Клиент без инвентаря шлёт пустые `equipments` / `artifactIds` / `aspectIds` и `trainingLevel = 0`. Не выдумывать id. Перки/статусы/skill ids — из рантайма и загруженных конфигов. Сервер дополнительно инжектит `Characters.skill_ids` (int → string), даже если `activeSkillIds` пустой.
+Клиент без инвентаря шлёт пустые `equipments` / `artifactIds` / `aspectIds` и `trainingLevel = 0`. Не выдумывать id. Перки/статусы/skill ids — из рантайма и загруженных конфигов. Сервер дополнительно инжектит `Characters.skill_ids`, `Enemies.skill_ids` и summon `skill_ids` (int/string → skill id), даже если `activeSkillIds` пустой.
 
 Пример минимального 1v1:
 
@@ -134,7 +136,7 @@ Response тот же `BattleScriptResponse`; поле `seed` = переданн�
         "artifactIds": [],
         "aspectIds": [],
         "activePerkIds": [3],
-        "activeSkillIds": ["fireball"],
+        "activeSkillIds": ["1"],
         "activeStatusIds": [],
         "activeBonuses": [],
         "slotIndex": 0
@@ -234,7 +236,7 @@ Handoff для ИИ (клиент целиком): [`GDD/10-client-battle-ai.md`
 
 | Симптом | Что проверить |
 | --- | --- |
-| `400` unknown skill | `activeSkillIds` должен резолвиться в `SkillType` (`fireball` / `1`) |
+| `400` unknown skill | `activeSkillIds` должен резолвиться в Skills config (`id` или `type`, напр. `"1"` / `"fireball"`) |
 | `maxTurns = 0` / странный outcome | `storyLevelId` есть в загруженных story configs |
 | Клиент не играет script | Response format: `steps`/`commands`, не legacy `events` |
 | Неизвестный unit id | Snapshot `id` должен существовать в characters/enemies/summons config |

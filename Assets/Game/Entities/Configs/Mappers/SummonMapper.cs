@@ -32,7 +32,7 @@ namespace Server.Entities
         [JsonProperty("is_melee")]
         public bool IsMelee { get; init; }
 
-        [JsonProperty("skill_id")]
+        [JsonProperty("skill_ids")]
         [JsonConverter(typeof(DelimitedStringArrayConverter), ';')]
         public string[] SkillIds { get; init; } = Array.Empty<string>();
 

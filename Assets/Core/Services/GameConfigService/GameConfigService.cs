@@ -10,6 +10,7 @@ using Server.Configs;
 using Server.Entities;
 using Server.Equipments;
 using Server.Perks;
+using Server.Skills;
 using Server.Statuses;
 using Server.Stories;
 
@@ -71,7 +72,7 @@ namespace Server.Services
 
                 await Task.Delay(150);
 
-                var tempSummons = await DownloadWithRetryAsync<SummonMapper>(request, "1QstDNh059XftqtZcIdIL3o80o_g8qQs_akKFe5jChCk", "B:J", "Summons");
+                var tempSummons = await DownloadWithRetryAsync<SummonMapper>(request, "1QstDNh059XftqtZcIdIL3o80o_g8qQs_akKFe5jChCk", "B:L", "Summons");
 
                 await Task.Delay(150);
 
@@ -83,7 +84,7 @@ namespace Server.Services
 
                 await Task.Delay(150);
 
-                var tempEnemies = await DownloadWithRetryAsync<EnemyMapper>(request, "1GLSin50lIGoTOZbmV3OQU8TXB_XAdUcnsnsfBK0AsKk", "B:Q", "Enemies");
+                var tempEnemies = await DownloadWithRetryAsync<EnemyMapper>(request, "1GLSin50lIGoTOZbmV3OQU8TXB_XAdUcnsnsfBK0AsKk", "B:K", "Enemies");
 
                 await Task.Delay(150);
 
@@ -91,7 +92,7 @@ namespace Server.Services
 
                 await Task.Delay(150);
 
-                var tempStoryLevels = await DownloadWithRetryAsync<StoryLevelMapper>(request, "1gz8t6fmWwIwvz93U7pKZ8rrBu9RdfyJB5Yn9G2ITuCE", "B:I", "Story_levels");
+                var tempStoryLevels = await DownloadWithRetryAsync<StoryLevelMapper>(request, "1gz8t6fmWwIwvz93U7pKZ8rrBu9RdfyJB5Yn9G2ITuCE", "B:K", "Story_levels");
 
                 await Task.Delay(150);
 
@@ -112,6 +113,10 @@ namespace Server.Services
                 await Task.Delay(150);
 
                 var tempPerkGroups = await DownloadWithRetryAsync<PerkGroupMapper>(request, "1USA6a-252oCKSmCqUDMtQn78pMiubIIj2garPm0pyBU", "B:G", "Perk_groups");
+
+                await Task.Delay(150);
+
+                var tempSkills = await DownloadWithRetryAsync<SkillMapper>(request, "1I6krV3fGIHHxpNXem0jvKYoMOmC5pSeHN0pOavOjmrw", "C:F", "Skills");
 
                 _cacheLock.EnterWriteLock();
 
@@ -134,14 +139,15 @@ namespace Server.Services
                     AddList(_configDistributor.ExperienceLevelPatterns, tempExpPatterns, "Exp_levels_patterns");
                     AddList(_configDistributor.Perks, tempPerks, "Perks");
                     AddList(_configDistributor.PerkGroups, tempPerkGroups, "Perk_groups");
+                    AddList(_configDistributor.Skills, tempSkills, "Skills");
 
-                    // Trainings / Artifacts / Aspects: sheet ids not wired yet — managers stay empty after ClearAll.
-                    _logger.LogInformation($"[Config] Trainings stub empty; sheet id not wired count = {_configDistributor.Trainings.Collection.Count}");
-                    _logger.LogInformation($"[Config] Artifacts stub empty; sheet id not wired count = {_configDistributor.Artifacts.Collection.Count}");
-                    _logger.LogInformation($"[Config] Aspects stub empty; sheet id not wired count = {_configDistributor.Aspects.Collection.Count}");
+                    // Artifacts / Aspects: sheet ids not wired. Trainings: owner skipped (not in demo).
+                    _logger.LogInformation($"[Config]: Trainings not loaded; sheet not in demo count = {_configDistributor.Trainings.Collection.Count}");
+                    _logger.LogInformation($"[Config]: Artifacts stub empty; sheet id not wired count = {_configDistributor.Artifacts.Collection.Count}");
+                    _logger.LogInformation($"[Config]: Aspects stub empty; sheet id not wired count = {_configDistributor.Aspects.Collection.Count}");
 
-                    _logger.LogInformation($"[Config] inventory summary bonuses = {_configDistributor.Bonuses.Count}, statuses = {_configDistributor.Statuses.Collection.Count}, perks = {_configDistributor.Perks.Collection.Count}, perkGroups = {_configDistributor.PerkGroups.Collection.Count}, trainings = {_configDistributor.Trainings.Collection.Count}, artifacts = {_configDistributor.Artifacts.Collection.Count}, aspects = {_configDistributor.Aspects.Collection.Count}");
-                    _logger.LogDebug($"[FIX][Config] inventory summary after sync bonuses = {_configDistributor.Bonuses.Count}, statuses = {_configDistributor.Statuses.Collection.Count}, perks = {_configDistributor.Perks.Collection.Count}");
+                    _logger.LogInformation($"[Config]: Inventory summary bonuses = {_configDistributor.Bonuses.Count}, statuses = {_configDistributor.Statuses.Collection.Count}, perks = {_configDistributor.Perks.Collection.Count}, perkGroups = {_configDistributor.PerkGroups.Collection.Count}, skills = {_configDistributor.Skills.Collection.Count}, trainings = {_configDistributor.Trainings.Collection.Count}, artifacts = {_configDistributor.Artifacts.Collection.Count}, aspects = {_configDistributor.Aspects.Collection.Count}");
+                    _logger.LogDebug($"[Config]: Inventory summary after sync bonuses = {_configDistributor.Bonuses.Count}, statuses = {_configDistributor.Statuses.Collection.Count}, perks = {_configDistributor.Perks.Collection.Count}");
 
                     return (true, "Конфиги успешно обновлены");
                 }
@@ -152,7 +158,7 @@ namespace Server.Services
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, $"[Config] update failed; keeping previous configs message = {exception.Message}");
+                _logger.LogError(exception, $"[Config]: Update failed; keeping previous configs message = {exception.Message}");
 
                 return (false, $"Ошибка обновления: {exception.Message}");
             }
@@ -167,15 +173,15 @@ namespace Server.Services
 
                 if (_configDistributor.Bonuses.Add(item.Id, item) == false)
                 {
-                    _logger.LogWarning($"[Config] duplicate bonus id = {item.Id}; skipped");
+                    _logger.LogWarning($"[Config]: Duplicate bonus, id = {item.Id}; skipped");
 
                     continue;
                 }
 
-                _logger.LogDebug($"[Config] bonus loaded id = {item.Id} type = {item.BonusType} workMode = {workMode.Kind}");
+                _logger.LogDebug($"[Config]: Bonus loaded, id = {item.Id}, type = {item.BonusType} workMode = {workMode.Kind}");
             }
 
-            _logger.LogInformation($"[Config] Bonuses count = {_configDistributor.Bonuses.Count}");
+            _logger.LogInformation($"[Config]: Bonuses count = {_configDistributor.Bonuses.Count}");
         }
 
         private void AddList<TMapper, TInterface>(
@@ -188,7 +194,7 @@ namespace Server.Services
             for (int i = 0; i < items.Count; i++)
                 manager.Add(items[i]);
 
-            _logger.LogInformation($"[Config] {sheetName} count = {manager.Collection.Count}");
+            _logger.LogInformation($"[Config]: {sheetName}, count = {manager.Collection.Count}");
         }
 
         private async Task<List<T>> DownloadWithRetryAsync<T>(
@@ -204,7 +210,7 @@ namespace Server.Services
             {
                 try
                 {
-                    _logger.LogDebug($"[Config] download start sheet = {sheetName} attempt = {attempt}/{maxRetries}");
+                    _logger.LogDebug($"[Config]: Download start, sheet = {sheetName}, attempt = {attempt}/{maxRetries}");
 
                     return await DownloadAndParseAsync<T>(request, sheetId, range, sheetName);
                 }
@@ -212,7 +218,7 @@ namespace Server.Services
                 {
                     var delayMs = attempt * 1000;
 
-                    _logger.LogWarning($"[Config] download retry sheet = {sheetName} attempt = {attempt} delayMs = {delayMs} error = {exception.Message}");
+                    _logger.LogWarning($"[Config]: Download retry, sheet = {sheetName}, attempt = {attempt}, delayMs = {delayMs}, error = {exception.Message}");
 
                     await Task.Delay(delayMs);
                 }
@@ -228,14 +234,14 @@ namespace Server.Services
             string sheetName)
             where T : class
         {
-            _logger.LogInformation($"[Config] downloading sheet = {sheetName} range = {range}");
+            _logger.LogInformation($"[Config]: Downloading sheet = {sheetName}, range = {range}");
 
             var response = await request.Get(sheetId, range).ExecuteAsync();
             var values = response.Values;
 
             if (values == null || values.Count < 2)
             {
-                _logger.LogWarning($"[Config] sheet empty sheet = {sheetName}");
+                _logger.LogWarning($"[Config]: Sheet empty, sheet = {sheetName}");
 
                 return new List<T>();
             }
@@ -297,12 +303,12 @@ namespace Server.Services
 
             if (result == null)
             {
-                _logger.LogWarning($"[Config] deserialize failed sheet = {sheetName}");
+                _logger.LogWarning($"[Config]: Deserialize failed, sheet = {sheetName}");
 
                 return new List<T>();
             }
 
-            _logger.LogInformation($"[Config] downloaded sheet = {sheetName} count = {result.Count}");
+            _logger.LogInformation($"[Config]: Downloaded sheet = {sheetName}, count = {result.Count}");
 
             return result;
         }

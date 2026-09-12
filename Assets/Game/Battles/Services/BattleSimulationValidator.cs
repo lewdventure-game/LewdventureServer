@@ -322,13 +322,24 @@ namespace Server.Battles
             }
 
             if (isSummon
-                && _configDistributor.Summons.TryGet(unit.Id, out var summonMapper)
-                && string.IsNullOrWhiteSpace(summonMapper.SkillId) == false
-                && _skillFactory.IsKnownSkillId(summonMapper.SkillId) == false)
+                && _configDistributor.Summons.TryGet(unit.Id, out var summonMapper))
             {
-                errorMessage = $"Unknown summon skill id = {summonMapper.SkillId} for unit id = {unit.Id}.";
+                var mapperSkillIds = summonMapper.SkillIds;
 
-                return false;
+                for (int i = 0; i < mapperSkillIds.Length; i++)
+                {
+                    var summonSkillId = mapperSkillIds[i];
+
+                    if (string.IsNullOrWhiteSpace(summonSkillId))
+                        continue;
+
+                    if (_skillFactory.IsKnownSkillId(summonSkillId) == false)
+                    {
+                        errorMessage = $"Unknown summon skill id = {summonSkillId} for unit id = {unit.Id}.";
+
+                        return false;
+                    }
+                }
             }
 
             if (ValidateActiveBonuses(unit, out errorMessage) == false)
@@ -361,16 +372,16 @@ namespace Server.Battles
                     return false;
                 }
 
-                if (grant.Id <= 0 || grant.Count <= 0)
+                if (grant.Id <= 0 || grant.Count == 0)
                 {
-                    errorMessage = $"activeBonuses id and count must be > 0 for unit id = {unit.Id}.";
+                    errorMessage = $"activeBonuses id must be > 0 and count != 0 for unit id = {unit.Id}.";
 
                     return false;
                 }
 
                 if (_configDistributor.Bonuses.TryGet(grant.Id, out _) == false)
                 {
-                    _logger.LogWarning($"[Story][Battle] unknown run bonus id = {grant.Id} for unit id = {unit.Id}");
+                    _logger.LogWarning($"[Story][Battle]: Unknown run bonus, id = {grant.Id} for unit id = {unit.Id}");
 
                     continue;
                 }
@@ -392,7 +403,7 @@ namespace Server.Battles
             var teamAAspectCount = CountTeamAspects(data.TeamA);
             var teamBAspectCount = CountTeamAspects(data.TeamB);
 
-            _logger.LogInformation($"[Config] snapshot summary stageId = {data.StageId}, storyLevelId = {data.StoryLevelId}, teamAEquipment = {teamAEquipmentCount}, teamBEquipment = {teamBEquipmentCount}, teamAArtifacts = {teamAArtifactCount}, teamBArtifacts = {teamBArtifactCount}, teamAAspects = {teamAAspectCount}, teamBAspects = {teamBAspectCount}");
+            _logger.LogInformation($"[Config]: Snapshot summary stageId = {data.StageId}, storyLevelId = {data.StoryLevelId}, teamAEquipment = {teamAEquipmentCount}, teamBEquipment = {teamBEquipmentCount}, teamAArtifacts = {teamAArtifactCount}, teamBArtifacts = {teamBArtifactCount}, teamAAspects = {teamAAspectCount}, teamBAspects = {teamBAspectCount}");
         }
 
         private static int CountTeamEquipment(ITeamSnapshot team)

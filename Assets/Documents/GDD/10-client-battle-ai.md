@@ -96,7 +96,7 @@ JSON: **camelCase**.
 | `artifactIds` | `int[]` | Активные артефакты |
 | `aspectIds` | `int[]` | Активные аспекты |
 | `activePerkIds` | `int[]` | Перки, которые реально активны **на момент входа в бой** |
-| `activeSkillIds` | `string[]` | Ключи скиллов (`"fireball"` / `"1"` и т.п.). **Не** авто-подтягиваются из `Characters.skill_ids` — только то, что клиент явно положил (+ сервер ещё может взять skill с equipment) |
+| `activeSkillIds` | `string[]` | Numeric skill ids из конфига (`"1"`). Клиент кладёт character/enemy/summon `skill_ids`. Сервер ещё инжектит Characters / Enemies / Summons и known equipment `skill_id` |
 | `activeStatusIds` | `int[]` | Стартовые статусы (редко; обычно `[]`) |
 | `activeBonuses` | `{ id, count, remainingBattles }[]` | Story/run bonuses персонажа A. Саммоны/мобы — `[]`. `remainingBattles = 0` не сжигается после боя |
 | `slotIndex` | `int` | Позиция. Main: `0` (и `1` для второго моба). Summons: `1`/`2`/`3` |
@@ -273,7 +273,7 @@ Dictionary<(int configId, int slotIndex), Entity>  // или аналог
 
 **Melee hit:**
 
-`Approach` → `PlayAnimation` → `ShowDamage` → `SetHp` → (`KillUnit`) → `ReturnToPosition` → `Wait`
+`Approach` → `Wait` → `PlayAnimation` → `ShowDamage` → `SetHp` → (`Wait` → counter/combo…) → `ReturnToPosition`
 
 **Miss:**
 
@@ -299,9 +299,10 @@ Dictionary<(int configId, int slotIndex), Entity>  // или аналог
 2. Statuses атакующей по слотам: `Wait(statuses_cooldown)` после каждого сработавшего. Пустая очередь — без wait. Смерть обрывает оставшиеся статусы юнита. `SetHp` если статус изменил HP.
 3. Perks → `Wait(perks_cooldown)` после каждого сработавшего; пустая очередь — без wait
 4. Summons по `slotIndex` ↑: скиллы (`summons_cooldown` после каждого, включая последний) → атака если не на `attack_cooldown` (`is_melee` из Summons: approach/return или ranged) → `summons_cooldown` после атаки. Пустая фаза / слот без действий — без wait.
-5. Unit skills (не energy) → `units_cooldown`
-6. NormalAttack → Counter → Combo1 → Counter → Combo2 → Counter → Return
-7. EnergySkill если `Energy >= MaxEnergy` (без крита, без контратаки)
+5. Unit skills (не energy)
+6. Если обычка недоступна → EnergySkill. Иначе melee: Approach → Wait(units_cooldown) → NormalAttack; ranged: Wait → NormalAttack
+7. Counter (`Wait(counterattack_cooldown)` → удар; melee-защитник Approach + Return на свой слот) → Combo1 (`Wait(comboattack_cooldown)` на месте) → Counter → Combo2 → Counter → Return атакующего melee
+8. EnergySkill если `Energy >= MaxEnergy` (без крита, без контратаки): Wait(units_cooldown) → cast → Wait(duration)
 
 Цель атак: живой `mainUnits` защитника с **минимальным** `slotIndex` (временное правило D6).
 

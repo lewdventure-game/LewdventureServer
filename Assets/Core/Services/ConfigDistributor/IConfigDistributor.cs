@@ -6,6 +6,7 @@ using Server.Configs;
 using Server.Entities;
 using Server.Equipments;
 using Server.Perks;
+using Server.Skills;
 using Server.Statuses;
 using Server.Stories;
 using Server.Trainings;
@@ -35,6 +36,8 @@ namespace Server.Services
         public IPerkGroupMapperManager PerkGroups { get; }
 
         public IPerkMapperManager Perks { get; }
+
+        public ISkillMapperManager Skills { get; }
 
         public IStatusMapperManager Statuses { get; }
 
