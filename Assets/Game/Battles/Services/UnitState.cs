@@ -10,10 +10,12 @@ namespace Server.Battles
         private readonly IReadOnlyList<ISkill> _skills;
         private readonly List<IPerk> _perks;
         private readonly UnitFlags _flags;
+        private readonly int _attackCooldownTurns;
         private readonly int _slotIndex;
         private readonly BattleSide _side;
         private readonly List<ActiveStatus> _activeStatuses = new();
         private readonly List<EquippedEntityRef> _equippedEntities = new();
+        private int _nextAttackTurn;
 
         public int Id => _id;
 
@@ -47,6 +49,7 @@ namespace Server.Battles
             IReadOnlyList<ISkill> skills,
             List<IPerk> perks,
             UnitFlags flags,
+            int attackCooldownTurns,
             int slotIndex,
             BattleSide side)
         {
@@ -57,6 +60,7 @@ namespace Server.Battles
             _skills = skills;
             _perks = perks;
             _flags = flags;
+            _attackCooldownTurns = attackCooldownTurns;
             _slotIndex = slotIndex;
             _side = side;
         }
@@ -64,6 +68,19 @@ namespace Server.Battles
         public bool IsAlive()
         {
             return 0f < _characteristicState.Health;
+        }
+
+        public bool CanUseNormalAttack(int currentTurn)
+        {
+            if (currentTurn < _nextAttackTurn)
+                return false;
+
+            return true;
+        }
+
+        public void RegisterNormalAttack(int currentTurn)
+        {
+            _nextAttackTurn = currentTurn + _attackCooldownTurns + 1;
         }
 
         public void RegisterEquippedEntity(string entityType, int entityId)

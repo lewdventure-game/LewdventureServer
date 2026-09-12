@@ -6,6 +6,8 @@ namespace Server.Entities
     {
         public int Id { get; }
 
+        public bool IsMelee { get; }
+
         public int[] UpgradeCosts { get; }
 
         public int StartBonusId { get; }

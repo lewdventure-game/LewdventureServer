@@ -79,6 +79,7 @@ namespace Server.Battles
 
             var critSource = attacker.MainUnits[critSourceIndex];
             var cooldown = GetConstant(ConstantKeys.SummonsCooldownKey);
+            var actedCount = 0;
 
             _logger.LogDebug($"[Story][Battle]: Summon phase, side = {attacker.BattleSide}, turn = {currentTurn}, summons = {_summonOrderBuffer.Count}, critSourceId = {critSource.Id}");
 
@@ -101,13 +102,20 @@ namespace Server.Battles
                 if (summon.IsAlive() == false)
                     continue;
 
-                _battleSkillSimulator.SimulateSummonSkills(
-                    steps,
-                    summon,
-                    attacker,
-                    defender,
-                    currentTurn,
-                    seededRandomService);
+                var hasSkills = HasNonEnergySkills(summon);
+
+                if (hasSkills)
+                {
+                    _battleSkillSimulator.SimulateSummonSkills(
+                        steps,
+                        summon,
+                        attacker,
+                        defender,
+                        currentTurn,
+                        seededRandomService);
+
+                    actedCount += 1;
+                }
 
                 if (_battlePerkSimulator.ShouldSkipRemainingActions(summon))
                     continue;
@@ -117,6 +125,13 @@ namespace Server.Battles
 
                 if (HasAliveMainUnits(defender) == false)
                     return;
+
+                if (summon.CanUseNormalAttack(currentTurn) == false)
+                {
+                    _logger.LogDebug($"[Story][Battle]: Summon skip attack on cooldown, unitId = {summon.Id}, turn = {currentTurn}");
+
+                    continue;
+                }
 
                 var targetIndex = FindTargetIndex(defender);
 
@@ -135,15 +150,27 @@ namespace Server.Battles
                     currentTurn,
                     seededRandomService);
 
+                summon.RegisterNormalAttack(currentTurn);
+
+                _logger.LogDebug($"[Story][Battle]: Summon attack cooldown start, unitId = {summon.Id}, turn = {currentTurn}");
+
                 if (target.IsAlive() == false)
                     EmitDeath(steps, currentTurn, target);
 
                 EmitSummonCooldown(steps, summon, currentTurn, cooldown);
+                actedCount += 1;
 
                 _logger.LogDebug($"[Story][Battle]: Phase wait phase = summons, unitId = {summon.Id}, wait = {cooldown}");
             }
 
-            _logger.LogDebug($"[Story][Battle]: Phase wait phase = summons, side = {attacker.BattleSide}, turn = {currentTurn}, queueSize = {_summonOrderBuffer.Count}");
+            if (actedCount == 0)
+            {
+                _logger.LogDebug($"[Story][Battle]: Phase wait skippedEmpty phase = summons, side = {attacker.BattleSide}, turn = {currentTurn}, queueSize = {_summonOrderBuffer.Count}, emittedWaits = 0");
+
+                return;
+            }
+
+            _logger.LogDebug($"[Story][Battle]: Phase wait phase = summons, side = {attacker.BattleSide}, turn = {currentTurn}, queueSize = {_summonOrderBuffer.Count}, actedCount = {actedCount}");
         }
 
         private void ExecuteSummonAttack(
@@ -358,6 +385,21 @@ namespace Server.Battles
             }
 
             return selectedIndex;
+        }
+
+        private bool HasNonEnergySkills(IUnitState summon)
+        {
+            var skills = summon.Skills;
+
+            for (int i = 0; i < skills.Count; i++)
+            {
+                if (skills[i].SkillType == SkillType.Energy)
+                    continue;
+
+                return true;
+            }
+
+            return false;
         }
 
         private bool HasAliveMainUnits(ITeamSimulationState state)

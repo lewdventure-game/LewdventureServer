@@ -8,6 +8,9 @@ namespace Server.Entities
         [JsonProperty("id")]
         public int Id { get; init; }
 
+        [JsonProperty("is_melee")]
+        public bool IsMelee { get; init; }
+
         // GDD: length = max upgrades; index i = cost of upgrade i + 1. Scalar sheet value → one-element array.
         [JsonProperty("upgrade_costs")]
         [JsonConverter(typeof(DelimitedIntArrayConverter), ';')]

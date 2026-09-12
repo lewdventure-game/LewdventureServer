@@ -41,7 +41,7 @@ Unity (BattlePlayback)
 | --- | --- | --- |
 | 1 | Statuses | per-main slot ↑, `proc_order` inside unit; `Wait(statuses_cooldown)` after each proc; empty = no wait; death skips rest of that unit |
 | 2 | Perks | `proc_order`; `Wait(perks_cooldown)` after each proc; empty = no wait |
-| 3 | Summons | slot ↑; skills → attack; trailing `summons_cooldown` Wait always |
+| 3 | Summons | slot ↑; skills (`summons_cooldown` after each) → attack if off `attack_cooldown` → Return if melee → `summons_cooldown`; skip attack = no attack wait; empty = no wait |
 | 4 | Unit skills | non-energy from `activeSkillIds` (+ equipment `skill_id` known skills); no EndCast Wait |
 | 5 | Units cooldown | one `Wait(units_cooldown)` before normal attack |
 | 6 | Attack chain | normal → counter → combo1/2 (+ counter); melee Approach/Return on normal/counter/combo; miss → `Wait(battle_flytext_timer)` |
@@ -51,9 +51,9 @@ Rewards in battle: `bonus` / `status` применяются в симуляци
 
 ### Melee / range
 
-- Character: `UnitFlags.Melee` только если хотя бы один equipped item имеет `is_melee=true`; иначе `Range`.
+- Character: `Characters.is_melee` (true → Melee, иначе Range).
 - Summon: `Summons.is_melee` (true → Melee, иначе Range).
-- Enemy: `Enemies.is_melee` как раньше.
+- Enemy: `Enemies.is_melee` (true → Melee, иначе Range).
 
 ### Characteristics / bonuses (battle)
 

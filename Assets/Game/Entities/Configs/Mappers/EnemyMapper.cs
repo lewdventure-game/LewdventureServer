@@ -28,7 +28,7 @@ namespace Server.Entities
         [JsonProperty("skin_name")]
         public string SkinName { get; init; } = string.Empty;
 
-        [JsonProperty("melee")]
+        [JsonProperty("is_melee")]
         public bool IsMelee { get; init; }
 
         [JsonProperty("health")]

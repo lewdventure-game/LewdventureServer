@@ -298,7 +298,7 @@ Dictionary<(int configId, int slotIndex), Entity>  // или аналог
 1. Turn-start bonuses (обе стороны в начале полного хода)
 2. Statuses атакующей по слотам: `Wait(statuses_cooldown)` после каждого сработавшего. Пустая очередь — без wait. Смерть обрывает оставшиеся статусы юнита. `SetHp` если статус изменил HP.
 3. Perks → `Wait(perks_cooldown)` после каждого сработавшего; пустая очередь — без wait
-4. Summons по `slotIndex` ↑ (skills → attack → return) → `summons_cooldown`
+4. Summons по `slotIndex` ↑: скиллы (`summons_cooldown` после каждого, включая последний) → атака если не на `attack_cooldown` (`is_melee` из Summons: approach/return или ranged) → `summons_cooldown` после атаки. Пустая фаза / слот без действий — без wait.
 5. Unit skills (не energy) → `units_cooldown`
 6. NormalAttack → Counter → Combo1 → Counter → Combo2 → Counter → Return
 7. EnergySkill если `Energy >= MaxEnergy` (без крита, без контратаки)

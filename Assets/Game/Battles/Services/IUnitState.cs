@@ -28,6 +28,10 @@ namespace Server.Battles
 
         public bool IsAlive();
 
+        public bool CanUseNormalAttack(int currentTurn);
+
+        public void RegisterNormalAttack(int currentTurn);
+
         public void RegisterEquippedEntity(string entityType, int entityId);
 
         public bool HasEquippedEntity(string entityType, int entityId);

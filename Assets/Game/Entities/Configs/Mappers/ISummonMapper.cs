@@ -17,6 +17,10 @@ namespace Server.Entities
 
         public float AttackSpeed { get; }
 
+        public int AttackCooldown { get; }
+
+        public bool IsMelee { get; }
+
         public string[] SkillIds { get; }
 
         public int MasteryId { get; }

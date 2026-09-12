@@ -202,7 +202,17 @@ namespace Server.Battles
             if (skills.Count == 0)
                 return;
 
-            var cooldown = GetConstant(ConstantKeys.UnitsCooldownKey);
+            var cooldownKey = string.Empty;
+
+            if (phase == BattlePhaseType.UnitSkill)
+                cooldownKey = ConstantKeys.UnitsCooldownKey;
+            else if (phase == BattlePhaseType.SummonSkill)
+                cooldownKey = ConstantKeys.SummonsCooldownKey;
+
+            if (string.IsNullOrEmpty(cooldownKey))
+                return;
+
+            var cooldown = GetConstant(cooldownKey);
 
             for (int i = 0; i < skills.Count; i++)
             {
@@ -228,7 +238,7 @@ namespace Server.Battles
 
                 var target = defender.MainUnits[targetIndex];
 
-                _logger.LogDebug($"[Story][Battle]: Skill cast, unitId = {actor.Id}, skillId = {skill.SkillKey}, type = {skill.SkillType}, targetId = {target.Id}, turn = {currentTurn}");
+                _logger.LogDebug($"[Story][Battle]: Skill cast, unitId = {actor.Id}, skillId = {skill.SkillKey}, type = {skill.SkillType}, targetId = {target.Id}, turn = {currentTurn}, cooldownKey = {cooldownKey}");
 
                 var context = CreateContext(
                     steps,

@@ -181,7 +181,7 @@ Combo2 roll выполняется **только** если Combo1 сработ
 0. **Turn-start bonuses** уже начислены в начале полного хода (оба стороны), не внутри side-turn.
 1. **Statuses** — статусы **main** атакующей стороны по слотам, внутри юнита по `proc_order`; тики одного id суммируются за ход; саммоны в очередь не входят. `Wait(statuses_cooldown)` после каждого сработавшего, включая последнее. Пустая очередь — без wait. Тик, убивший юнита, обрывает его оставшиеся статусы; очередь переходит к следующему живому main или (если живых main нет) остаток хода стороны не выполняется. `SetHp` если статус изменил HP; статус без изменения HP `SetHp` не шлёт.
 2. **Perks** — перки атакующей стороны по `proc_order` (доступные на ходе; `proc_rounds` 1-based). `Wait(perks_cooldown)` после каждого сработавшего; пустая очередь — без wait.
-3. **Summons** — слоты по возрастанию `slotIndex`: summon skills → SummonAttack (крит от живого main с мин. `slotIndex`) → Return если melee → `summons_cooldown`. Trailing Wait после фазы.
+3. **Summons** — слоты по возрастанию `slotIndex`: скиллы (`Wait(summons_cooldown)` после каждого, включая последний) → обычная атака только если не на `attack_cooldown` (крит от живого main с мин. `slotIndex`; `is_melee` из Summons → Approach/Return, иначе ranged без возврата) → `Wait(summons_cooldown)` после атаки. Пропуск атаки wait за неё не даёт. Нет действий в фазе — без wait.
 4. **Main unit(s)** (все живые main стороны; два моба — оба ходят):
    1. Unit skills (не energy) → `units_cooldown` внутри skill steps.
    2. NormalAttack (крит/уклон) → energy gain при hit.

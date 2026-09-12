@@ -26,6 +26,12 @@ namespace Server.Entities
         [JsonProperty("attack_speed")]
         public float AttackSpeed { get; init; }
 
+        [JsonProperty("attack_cooldown")]
+        public int AttackCooldown { get; init; }
+
+        [JsonProperty("is_melee")]
+        public bool IsMelee { get; init; }
+
         [JsonProperty("skill_id")]
         [JsonConverter(typeof(DelimitedStringArrayConverter), ';')]
         public string[] SkillIds { get; init; } = Array.Empty<string>();

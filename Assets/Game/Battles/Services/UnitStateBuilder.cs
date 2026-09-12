@@ -44,11 +44,13 @@ namespace Server.Battles
         {
             CharacteristicBuckets baseBuckets;
             UnitFlags flags;
+            var attackCooldownTurns = 0;
 
             if (isSummon)
             {
                 baseBuckets = BuildSummonBuckets(unitSnapshot);
                 flags = UnitFlags.Summon | ResolveSummonMeleeFlags(unitSnapshot);
+                attackCooldownTurns = ResolveSummonAttackCooldown(unitSnapshot);
             }
             else if (battleSide == BattleSide.Defending)
             {
@@ -56,6 +58,8 @@ namespace Server.Battles
                 {
                     baseBuckets = BuildEnemyBuckets(enemyMapper, storyLevelId, stageId);
                     flags = enemyMapper.IsMelee ? UnitFlags.Melee : UnitFlags.Range;
+
+                    _logger.LogDebug($"[Story][Battle]: Enemy melee flags, id = {unitSnapshot.Id}, isMelee = {enemyMapper.IsMelee}, flags = {flags}");
                 }
                 else
                 {
@@ -67,7 +71,9 @@ namespace Server.Battles
             else if (_configDistributor.Characters.TryGet(unitSnapshot.Id, out var characterMapper))
             {
                 baseBuckets = BuildConstantsBuckets();
-                flags = ResolveCharacterMeleeFlags(unitSnapshot);
+                flags = characterMapper.IsMelee ? UnitFlags.Melee : UnitFlags.Range;
+
+                _logger.LogDebug($"[Story][Battle]: Character melee flags, id = {unitSnapshot.Id}, isMelee = {characterMapper.IsMelee}, flags = {flags}");
             }
             else
             {
@@ -89,6 +95,7 @@ namespace Server.Battles
                 skills,
                 perks,
                 flags,
+                attackCooldownTurns,
                 unitSnapshot.SlotIndex,
                 battleSide);
 
@@ -495,52 +502,44 @@ namespace Server.Battles
         {
             if (_configDistributor.Summons.TryGet(unitSnapshot.Id, out var summonMapper) == false)
             {
-                _logger.LogWarning($"[Story][Battle] summon missing for melee resolve id = {unitSnapshot.Id}");
+                _logger.LogError($"[Story][Battle]: Summon melee flags missing config, id = {unitSnapshot.Id}, flags = Range");
 
                 return UnitFlags.Range;
             }
 
-            if (bool.TryParse(summonMapper.IsMelee, out var isMelee) && isMelee)
+            if (summonMapper.IsMelee)
             {
-                _logger.LogDebug($"[Story][Battle] summon melee flags id = {unitSnapshot.Id} flags = Melee");
+                _logger.LogDebug($"[Story][Battle]: Summon melee flags, id = {unitSnapshot.Id}, isMelee = {summonMapper.IsMelee}, flags = Melee");
 
                 return UnitFlags.Melee;
             }
 
-            _logger.LogDebug($"[Story][Battle] summon melee flags id = {unitSnapshot.Id} flags = Range isMeleeRaw = {summonMapper.IsMelee}");
+            _logger.LogDebug($"[Story][Battle]: Summon melee flags, id = {unitSnapshot.Id}, isMelee = {summonMapper.IsMelee}, flags = Range");
 
             return UnitFlags.Range;
         }
 
-        private UnitFlags ResolveCharacterMeleeFlags(IUnitSnapshot unitSnapshot)
+        private int ResolveSummonAttackCooldown(IUnitSnapshot unitSnapshot)
         {
-            var equipment = unitSnapshot.Equipments;
-
-            for (int i = 0; i < equipment.Count; i++)
+            if (_configDistributor.Summons.TryGet(unitSnapshot.Id, out var summonMapper) == false)
             {
-                var entry = equipment[i];
+                _logger.LogError($"[Story][Battle]: Summon attack cooldown missing config, id = {unitSnapshot.Id}");
 
-                if (entry == null)
-                    continue;
-
-                if (_configDistributor.Equipments.TryGet(entry.Id, out var equipmentMapper) == false)
-                {
-                    _logger.LogWarning($"[Story][Battle]: Equipment missing for melee resolve, id = {entry.Id}");
-
-                    continue;
-                }
-
-                if (bool.TryParse(equipmentMapper.IsMelee, out var isMelee) && isMelee)
-                {
-                    _logger.LogDebug($"[Story][Battle]: Character melee flags, unitId = {unitSnapshot.Id}, equipmentId = {entry.Id}, flags = Melee");
-
-                    return UnitFlags.Melee;
-                }
+                return 0;
             }
 
-            _logger.LogDebug($"[Story][Battle]: Character melee flags, unitId = {unitSnapshot.Id}, flags = Range");
+            var attackCooldownTurns = summonMapper.AttackCooldown;
 
-            return UnitFlags.Range;
+            if (attackCooldownTurns < 0)
+            {
+                _logger.LogError($"[Story][Battle]: Summon attack_cooldown negative, id = {unitSnapshot.Id}, attackCooldown = {attackCooldownTurns}");
+
+                throw new InvalidOperationException($"[Story][Battle]: Summon attack_cooldown negative, id = {unitSnapshot.Id}, attackCooldown = {attackCooldownTurns}");
+            }
+
+            _logger.LogDebug($"[Story][Battle]: Summon attack cooldown, id = {unitSnapshot.Id}, attackCooldown = {attackCooldownTurns}");
+
+            return attackCooldownTurns;
         }
 
         private CharacteristicBuckets BuildConstantsBuckets()
