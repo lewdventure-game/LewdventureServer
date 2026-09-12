@@ -39,8 +39,8 @@ Unity (BattlePlayback)
 
 | Order | Phase | Notes |
 | --- | --- | --- |
-| 1 | Statuses | side-wide `proc_order` queue; trailing `statuses_cooldown` Wait always |
-| 2 | Perks | `proc_order`; trailing `perks_cooldown` Wait always |
+| 1 | Statuses | per-main slot ↑, `proc_order` inside unit; `Wait(statuses_cooldown)` after each proc; empty = no wait; death skips rest of that unit |
+| 2 | Perks | `proc_order`; `Wait(perks_cooldown)` after each proc; empty = no wait |
 | 3 | Summons | slot ↑; skills → attack; trailing `summons_cooldown` Wait always |
 | 4 | Unit skills | non-energy from `activeSkillIds` (+ equipment `skill_id` known skills); no EndCast Wait |
 | 5 | Units cooldown | one `Wait(units_cooldown)` before normal attack |

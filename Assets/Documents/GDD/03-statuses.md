@@ -1,95 +1,99 @@
 # Статусы
 
-Источник: GDD «Статусы».  
-Конфиг: Statuses. Очередь в бою — [`01-battle-loop.md`](01-battle-loop.md). Визуал — [`02-presentation-contract.md`](02-presentation-contract.md).
+Источник: живая вкладка GDD «Статусы» (`t.juxy3pjvil6u`).  
+Конфиг: Statuses (Sheets / `Statuses.json`). Очередь в бою — [`01-battle-loop.md`](01-battle-loop.md). Визуал — [`02-presentation-contract.md`](02-presentation-contract.md). Бонусы — вкладка 04, не этот документ.
+
+Wire enum из Sheets не меняем: `status_type` 1–5, `status_target` 1=caster / 2=enemy.
 
 ## Общее
 
-Статус — эффект на персонаже/мобе в бою: механика, длительность, визуал.
+Статус — эффект на **main юните стороны** (персонаж / моб), не на саммоне.
 
 Сервер:
 
-- хранит активные статусы и стаки;
-- применяет/снимает/тикает;
-- считает урон/бонусы от статусов;
-- эмитит команды презентации.
+- резолвит носителя по `status_target` в живой main стороны;
+- для DoT хранит id main наложившей стороны и считает тик с его live-статов;
+- эмитит `ApplyStatus` / `TickStatus` / `RemoveStatus` только для висящих DoT;
+- `bonus_change` не висит: только выдача бонусов в момент apply.
 
-Клиент: иконки, стак-цифры, VFX.
+Клиент: иконка по `icon_art_name`, цифра стаков при `> 1`, VFX тика в центре модели по `status_type`.
+
+Парсер `parameters`: named keys, без numeric fallback (`damage_ratio=0`, `max_stacks=1` и т.п.). Нет ключа / пусто / мусор / неизвестный ключ → ERROR, apply нет.
 
 ## Иконка
 
 - Параметр `icon_art_name` в Statuses.
-- При получении — иконка у HP-бара.
-- Несколько стаков одного типа → цифра рядом с иконкой.
+- При получении **висящего** статуса — иконка у HP-бара. Спрайт ищется по строке `icon_art_name`, не по `statusId`.
+- Несколько стаков одного `statusId` → цифра рядом с иконкой.
+- Пустой / неизвестный `icon_art_name` → ERROR, соседний id не подставлять.
+- `bonus_change` иконку не показывает: статуса на юните нет.
 
 ## Цель статуса (`status_target`)
 
+«Сторона» = main юнит стороны. Саммон-кастер не носитель.
+
 | Значение | Смысл |
 | --- | --- |
-| `enemy` | На врага стороны-кастера |
-| `caster` | На сторону-кастера |
+| `caster` (1) | Main стороны источника |
+| `enemy` (2) | Main стороны противника |
 
-## Типы статусов
+Unknown `status_target` / нет живого main → ERROR, apply нет. Default на enemy / target / summon запрещён.
 
-У типа есть:
+## Типы статусов (`status_type`)
 
-- `status_type` — техническое имя;
-- `parameters` — числовые значения по порядку (парсятся механикой).
+`parameters` — **named keys**, не ordinal. Пример DoT: `damage_ratio:0.1;damage_length:3;max_stacks:5`.
 
-### burning
+### burning (1) / poison (3)
 
-DoT от итогового ДМГ наложившей стороны.
+DoT. Формулы и cap **свои на каждый status id**. `burning_strong` **не** делит `max_stacks` с `burning`. Poison — свой VFX, не огонь.
 
-- Урон стака: `ДМГ * damage_ratio * (1 - ЗАЩИТА носителя)`
-- Может критовать от КРИТ_ШАНС / КРИТ_МН наложившей стороны
+- Урон стака: live ДМГ **main наложившей стороны** × `damage_ratio` × `(1 - ЗАЩИТА носителя)`
+- Крит от live КРИТ_ШАНС / КРИТ_МН того же main
 - Уклониться нельзя
 - Длится `damage_length` срабатываний урона, затем стак спадает
-- Макс стаков: `max_stacks`; при переполнении новый стак не вешается
-- Несколько стаков суммируют урон за один тик хода
+- Макс стаков: `max_stacks` (> 0); при переполнении новый стак не вешается
+- Несколько стаков одного `statusId` суммируют урон за один тик хода
 - Стаки независимы по оставшимся тикам
 
-Параметры: `damage_ratio`, `damage_length`, `max_stacks`.
+Обязательные ключи: `damage_ratio`, `damage_length` (> 0), `max_stacks` (> 0).
 
-### burning_strong
+Нет живого main-источника на тике → ERROR, урон 0, **не** статы носителя. `damage_length` всё равно тратится.
 
-Как burning + каждый активный стак пассивно меняет бонусы носителя (`bonuses` → reward format с типом `bonus`).
+### burning_strong (2) / poison_strong (4)
 
-Суммирование бонусов по числу стаков; при исчезновении стака сила бонуса падает.
+Как соответствующий DoT + каждый активный стак пассивно меняет бонусы носителя.
 
-Параметры: `damage_ratio`, `damage_length`, `max_stacks`, `bonuses`.
+Ключи DoT плюс непустой `bonuses`. Список троек `bonus:id:count`, разделитель между тройками — **`;`**. Несколько троек в значении — в `[]`, чтобы top-level `;` parameters не рвал список.
 
-### poison
+`poison_strong` бонусы — про яд, не про ожог.
 
-Аналог burning (DoT, крит от наложившего, без уклонения, стаки, max_stacks).
+### bonus_change (5)
 
-Параметры: `damage_ratio`, `damage_length`, `max_stacks`.
+Мгновенная выдача бонусов на main-носителе в момент apply. Статус **не висит**: нет duration, cap, `ActiveStatus`, `ApplyStatus` / `TickStatus` / `RemoveStatus`, нет persistent иконки.
 
-### poison_strong
+Обязателен непустой `bonuses`. Разделитель троек — **`,`**.
 
-Аналог burning_strong для яда.
+Lifetime выданных бонусов — только `work_mode` конфига Bonuses (вкладка 04). Снятия «в конце боя потому что это статус» нет: статуса нет.
 
-Параметры: `damage_ratio`, `damage_length`, `max_stacks`, `bonuses`.
-
-Тик урона: live `Damage` юнита-источника (`SourceUnitId`) × `damage_ratio` × `(1 - DEF)`; крит от live характеристик источника.
-
-### bonus_change
-
-При получении статуса сторона получает указанные бонусы к характеристике.
-
-Параметры: `bonuses` (reward format, тип всегда `bonus`).
-
-Снятие non–damage-over-time статусов (в т.ч. bonus_change) — в конце боя.
+Seed snapshot с `bonus_change` как висящим статусом → ERROR.
 
 ## Очередь срабатывания
 
-Для статусов с тиком по ходу: **side-wide** очередь = `proc_order` по возрастанию (не per-unit first).
+Для статусов с тиком по ходу: очередь **на main атакующей стороны** (слоты по возрастанию), внутри юнита `proc_order` по возрастанию. Это не очередь перков.
 
-## Серверные задачи (кратко)
+Пауза `statuses_cooldown` (Constants) после каждого сработавшего статуса, включая последнее срабатывание юнита. Пустая очередь — без wait. Нет маппера статуса в очереди / нет `statuses_cooldown` → ERROR (не silent skip и не Wait(0) вместо константы).
 
-1. Модель активного статуса (id, стаки, оставшиеся тики, источник).
-2. Apply с учётом `status_target` и `max_stacks`.
-3. Tick в фазе StatusTrigger.
-4. Интеграция бонусов strong/bonus_change с системой характеристик.
-5. Команды `ApplyStatus` / `TickStatus` / `RemoveStatus`.
+Если тик убивает носителя: оставшиеся статусы этого юнита не срабатывают. Очередь переходит к следующему живому main или, если живых main нет, к другой стороне. Длительность (`damage_length`) списывается только с тикнувших стаков.
 
-Детальный декомпоз — отдельный план по этому документу.
+Саммоны в очередь тиков не входят; статус на них не вешается.
+
+## Клиент (playback)
+
+- `ApplyStatus` — иконка по `icon_art_name`, стаки.
+- `TickStatus` — one-shot VFX в `Renderer.bounds.center`: burning / burning_strong → fire, poison / poison_strong → poison. Чужой VFX не подменять.
+- `SetHp` — если статус изменил HP. Не после каждого статуса и не «статусы SetHp не шлют».
+- `bonus_change` этих команд не получает.
+
+## Клиентский `StatusType`
+
+Значения 0–5: `Unknown`, `Burning`, `BurningStrong`, `Poison`, `PoisonStrong`, `BonusChange`. Отдельного Resurrection-статуса нет (воскрешение — перк, не статус).

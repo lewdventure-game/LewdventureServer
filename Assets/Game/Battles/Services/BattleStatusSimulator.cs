@@ -13,6 +13,8 @@ namespace Server.Battles
         private readonly IBattlePerkSimulator _battlePerkSimulator;
         private readonly IBattleScriptBuilder _battleScriptBuilder;
         private readonly IConfigDistributor _configDistributor;
+        private readonly List<IUnitState> _mainsInSlotOrder = new();
+        private readonly List<int> _processedStatusIds = new();
         private readonly List<StatusTickEntry> _tickQueue = new();
 
         public BattleStatusSimulator(
@@ -77,88 +79,126 @@ namespace Server.Battles
             int currentTurn,
             ISeededRandomService seededRandomService)
         {
-            _tickQueue.Clear();
+            FillMainsInSlotOrder(ownerTeam.MainUnits);
 
-            CollectDamageOverTimeTicks(ownerTeam.MainUnits);
-            SortTickQueueByTriggerOrder();
+            var emittedWaits = 0;
+            var cooldownLoaded = false;
+            var cooldown = 0f;
 
-            if (_tickQueue.Count == 0)
+            for (int mainIndex = 0; mainIndex < _mainsInSlotOrder.Count; mainIndex++)
             {
-                _logger.LogDebug($"[Story][Battle]: Phase wait skippedEmpty phase = statuses, side = {ownerTeam.BattleSide}, turn = {currentTurn}, queueSize = 0, emittedWaits = 0");
-
-                DecrementAndExpireStatuses(ownerTeam.MainUnits, steps, currentTurn);
-
-                return;
-            }
-
-            var cooldown = GetStatusesCooldown();
-
-            _logger.LogDebug($"[Story][Battle]: Status side, queue side = {ownerTeam.BattleSide}, turn = {currentTurn}, mainsOnly = true, summonsSkipped = true, queueSize = {_tickQueue.Count}");
-
-            for (int i = 0; i < _tickQueue.Count; i++)
-            {
-                var entry = _tickQueue[i];
-
-                _battlePerkSimulator.SetActingUnit(entry.Unit);
-
-                if (_battlePerkSimulator.ShouldSkipRemainingActions(entry.Unit))
-                {
-                    _logger.LogDebug($"[Story][Battle]: Status queue skip aborted unit, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, turn = {currentTurn}");
-
-                    continue;
-                }
-
-                _logger.LogDebug($"[Story][Battle]: Status queue entry, index = {i}, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, triggerOrder = {entry.TriggerOrder}");
-
-                TickDamageOverTimeGroup(
-                    entry.Unit,
-                    ownerTeam,
-                    opponentTeam,
-                    steps,
-                    currentTurn,
-                    seededRandomService,
-                    cooldown,
-                    entry.StatusId);
-            }
-
-            _logger.LogDebug($"[Story][Battle]: Phase wait phase = statuses, side = {ownerTeam.BattleSide}, turn = {currentTurn}, queueSize = {_tickQueue.Count}, emittedWaits = {_tickQueue.Count}");
-
-            DecrementAndExpireStatuses(ownerTeam.MainUnits, steps, currentTurn);
-        }
-
-        private void CollectDamageOverTimeTicks(IReadOnlyList<IUnitState> units)
-        {
-            for (int i = 0; i < units.Count; i++)
-            {
-                var unit = units[i];
+                var unit = _mainsInSlotOrder[mainIndex];
 
                 if (unit.IsAlive() == false)
                     continue;
 
-                var activeStatuses = unit.ActiveStatuses;
-                var processedStatusIds = new List<int>();
+                CollectDamageOverTimeTicks(unit);
+                SortTickQueueByTriggerOrder();
 
-                for (int j = 0; j < activeStatuses.Count; j++)
+                if (_tickQueue.Count == 0)
+                    continue;
+
+                if (cooldownLoaded == false)
                 {
-                    var statusId = activeStatuses[j].StatusId;
+                    cooldown = GetStatusesCooldown();
+                    cooldownLoaded = true;
+                }
 
-                    if (ContainsStatusId(processedStatusIds, statusId))
-                        continue;
+                _logger.LogDebug($"[Story][Battle]: Status unit queue, side = {ownerTeam.BattleSide}, turn = {currentTurn}, unitId = {unit.Id}, slotIndex = {unit.SlotIndex}, queueSize = {_tickQueue.Count}");
 
-                    if (_configDistributor.Statuses.TryGet(statusId, out var mapper) == false)
+                for (int i = 0; i < _tickQueue.Count; i++)
+                {
+                    var entry = _tickQueue[i];
+
+                    _battlePerkSimulator.SetActingUnit(entry.Unit);
+
+                    if (entry.Unit.IsAlive() == false || _battlePerkSimulator.ShouldSkipRemainingActions(entry.Unit))
                     {
-                        _logger.LogError($"[Error][Story][Battle]: Status missing in tick queue, statusId = {statusId}, unitId = {unit.Id}");
+                        _logger.LogDebug($"[Story][Battle]: Status queue stop remaining, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, turn = {currentTurn}, remaining = {_tickQueue.Count - i}");
 
-                        throw new InvalidOperationException($"[Error][Story][Battle]: Status missing in tick queue, statusId = {statusId}, unitId = {unit.Id}");
+                        break;
                     }
 
-                    if (IsDamageOverTime(mapper.StatusType) == false)
+                    _logger.LogDebug($"[Story][Battle]: Status queue entry, index = {i}, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, triggerOrder = {entry.TriggerOrder}");
+
+                    TickDamageOverTimeGroup(
+                        entry.Unit,
+                        ownerTeam,
+                        opponentTeam,
+                        steps,
+                        currentTurn,
+                        seededRandomService,
+                        cooldown,
+                        entry.StatusId);
+                    ++emittedWaits;
+                    DecrementAndExpireStatusId(entry.Unit, steps, currentTurn, entry.StatusId);
+
+                    if (entry.Unit.IsAlive() == false || _battlePerkSimulator.ShouldSkipRemainingActions(entry.Unit))
+                    {
+                        _logger.LogDebug($"[Story][Battle]: Status queue killed unit, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, turn = {currentTurn}, remainingSkipped = {_tickQueue.Count - i - 1}");
+
+                        break;
+                    }
+                }
+            }
+
+            if (emittedWaits == 0)
+            {
+                _logger.LogDebug($"[Story][Battle]: Phase wait skippedEmpty phase = statuses, side = {ownerTeam.BattleSide}, turn = {currentTurn}, queueSize = 0, emittedWaits = 0");
+
+                return;
+            }
+
+            _logger.LogDebug($"[Story][Battle]: Phase wait phase = statuses, side = {ownerTeam.BattleSide}, turn = {currentTurn}, emittedWaits = {emittedWaits}");
+        }
+
+        private void FillMainsInSlotOrder(IReadOnlyList<IUnitState> mains)
+        {
+            _mainsInSlotOrder.Clear();
+
+            for (int i = 0; i < mains.Count; i++)
+                _mainsInSlotOrder.Add(mains[i]);
+
+            var count = _mainsInSlotOrder.Count;
+
+            for (int i = 0; i < count; i++)
+            {
+                for (int j = 0; j < count - 1 - i; j++)
+                {
+                    if (_mainsInSlotOrder[j].SlotIndex <= _mainsInSlotOrder[j + 1].SlotIndex)
                         continue;
 
-                    processedStatusIds.Add(statusId);
-
-                    _tickQueue.Add(new StatusTickEntry(unit, statusId, mapper.TriggerOrder));
+                    (_mainsInSlotOrder[j + 1], _mainsInSlotOrder[j]) = (_mainsInSlotOrder[j], _mainsInSlotOrder[j + 1]);
                 }
+            }
+        }
+
+        private void CollectDamageOverTimeTicks(IUnitState unit)
+        {
+            _tickQueue.Clear();
+            _processedStatusIds.Clear();
+
+            var activeStatuses = unit.ActiveStatuses;
+
+            for (int j = 0; j < activeStatuses.Count; j++)
+            {
+                var statusId = activeStatuses[j].StatusId;
+
+                if (ContainsStatusId(_processedStatusIds, statusId))
+                    continue;
+
+                if (_configDistributor.Statuses.TryGet(statusId, out var mapper) == false)
+                {
+                    _logger.LogError($"[Error][Story][Battle]: Status missing in tick queue, statusId = {statusId}, unitId = {unit.Id}");
+
+                    throw new InvalidOperationException($"[Error][Story][Battle]: Status missing in tick queue, statusId = {statusId}, unitId = {unit.Id}");
+                }
+
+                if (IsDamageOverTime(mapper.StatusType) == false)
+                    continue;
+
+                _processedStatusIds.Add(statusId);
+                _tickQueue.Add(new StatusTickEntry(unit, statusId, mapper.TriggerOrder));
             }
         }
 
@@ -178,29 +218,34 @@ namespace Server.Battles
             }
         }
 
-        private void DecrementAndExpireStatuses(IReadOnlyList<IUnitState> units, List<BattleStep> steps, int currentTurn)
+        private void DecrementAndExpireStatusId(
+            IUnitState unitState,
+            List<BattleStep> steps,
+            int currentTurn,
+            int statusId)
         {
-            for (int i = 0; i < units.Count; i++)
+            var activeStatuses = unitState.ActiveStatuses;
+
+            for (int j = 0; j < activeStatuses.Count; j++)
             {
-                var unitState = units[i];
-                var activeStatuses = unitState.ActiveStatuses;
+                if (activeStatuses[j].StatusId != statusId)
+                    continue;
 
-                for (int j = 0; j < activeStatuses.Count; j++)
-                {
-                    var activeStatus = activeStatuses[j];
-                    activeStatus.DecrementRemainingTicks();
-                    activeStatuses[j] = activeStatus;
-                }
+                var activeStatus = activeStatuses[j];
+                activeStatus.DecrementRemainingTicks();
+                activeStatuses[j] = activeStatus;
+            }
 
-                for (int j = activeStatuses.Count - 1; 0 <= j; j--)
-                {
-                    if (0 < activeStatuses[j].RemainingTicks)
-                        continue;
+            for (int j = activeStatuses.Count - 1; 0 <= j; j--)
+            {
+                if (activeStatuses[j].StatusId != statusId)
+                    continue;
 
-                    ExpireStatus(unitState, steps, currentTurn, activeStatuses[j]);
+                if (0 < activeStatuses[j].RemainingTicks)
+                    continue;
 
-                    activeStatuses.RemoveAt(j);
-                }
+                ExpireStatus(unitState, steps, currentTurn, activeStatuses[j]);
+                activeStatuses.RemoveAt(j);
             }
         }
 
@@ -254,10 +299,15 @@ namespace Server.Battles
             var commands = new List<BattleCommand>
             {
                 _battleCommandFactory.TickStatus(unitState.Id, unitState.SlotIndex, statusId, totalDamage),
-                _battleCommandFactory.ShowDamage(unitState.Id, unitState.SlotIndex, unitState.Id, unitState.SlotIndex, totalDamage, anyCritical, false),
-                _battleCommandFactory.SetHp(unitState.Id, unitState.SlotIndex, healthAfter),
-                _battleCommandFactory.Wait(cooldown),
             };
+
+            if (0f < totalDamage)
+                commands.Add(_battleCommandFactory.ShowDamage(unitState.Id, unitState.SlotIndex, unitState.Id, unitState.SlotIndex, totalDamage, anyCritical, false));
+
+            if (healthAfter != healthBefore)
+                commands.Add(_battleCommandFactory.SetHp(unitState.Id, unitState.SlotIndex, healthAfter));
+
+            commands.Add(_battleCommandFactory.Wait(cooldown));
 
             _battleScriptBuilder.Add(
                 steps,

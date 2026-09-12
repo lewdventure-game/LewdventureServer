@@ -27,7 +27,7 @@ Handoff для ИИ по клиентской реализации: [`10-client-
 | Урон попал | `ShowDamage`, `SetHp` |
 | Уклон | `ShowMiss` (+ движение уклона на клиенте) |
 | Лечение | `ShowHeal`, `SetHp` |
-| Статус наложен / снят / тик | `ApplyStatus` / `RemoveStatus` / `TickStatus` |
+| Статус наложен / снят / тик | `ApplyStatus` / `RemoveStatus` / `TickStatus` (+ `ShowDamage` если урон, `SetHp` если HP изменился) |
 | Перк | `TriggerPerk` |
 | Скилл | `CastSkill` |
 | Энергия | `SetEnergy` |
@@ -53,9 +53,9 @@ Handoff для ИИ по клиентской реализации: [`10-client-
 
 При команде miss/evasion:
 
-- юнит за ~0.2 с скользит назад;
-- flytext `ui.battle.evasion`, время жизни — `battle_flytext_timer` (Constants, значение отдаёт/использует сервер в Wait или клиент читает тот же ключ только как визуальный параметр — предпочтительно серверный Wait);
-- возврат на исходную точку.
+- юнит за 0.2 с скользит назад;
+- flytext `ui.battle.flytext.miss` (ключ `ui.battle.evasion` не используется), время жизни — `battle_flytext_timer`;
+- возврат на исходную точку. Busy playback держится, пока оба слайда не закончатся.
 
 ## Обычная атака / контратака / комбо / атака саммона (клиент)
 
@@ -72,9 +72,11 @@ Handoff для ИИ по клиентской реализации: [`10-client-
 
 ## Статусы (клиент)
 
-- Иконка статуса у HP-бара (`icon_art_name`).
-- При >1 стака одного типа — цифра стаков.
-- VFX конкретного типа (огонь при тике ожога и т.п.) — Unity; сервер шлёт `TickStatus` / `ApplyStatus`.
+- Иконка висящего статуса у HP-бара по `icon_art_name` из Statuses (не по `statusId`). Неизвестный art → ERROR, без fallback на соседний id.
+- При >1 стака одного `statusId` — цифра стаков.
+- `TickStatus` — one-shot VFX **в центре модели** (`Renderer.bounds.center`) по `status_type`: burning / burning_strong → огонь, poison / poison_strong → яд. Сервер шлёт `TickStatus` только для DoT.
+- Если статус изменил HP — в script будет `SetHp`. Если нет — не будет. `SetHp` не накладывает статус.
+- `bonus_change` не висит: нет `ApplyStatus` / `TickStatus` / иконки; клиент видит только выдачу бонуса (`SetBonus`), если сервер её эмитит.
 
 ## Перки (клиент)
 

@@ -288,6 +288,13 @@ namespace Server.Battles
 
             SimulateStatuses(steps, attacker, defender, currentTurn, seededRandomService);
 
+            if (HasAliveMainUnits(attacker) == false)
+            {
+                _logger.LogDebug($"[Story][Battle]: Side turn stop after statuses, no living mains, side = {attacker.BattleSide}, turn = {currentTurn}");
+
+                return;
+            }
+
             _battlePerkSimulator.Simulate(steps, attacker, defender, currentTurn, seededRandomService);
 
             _battleSummonSimulator.Simulate(steps, attacker, defender, currentTurn, seededRandomService);

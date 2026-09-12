@@ -257,7 +257,7 @@ Dictionary<(int configId, int slotIndex), Entity>  // или аналог
 | `ShowMiss` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex` | Уклон: target скользит назад ~0.2 с, flytext `ui.battle.evasion`, возврат. |
 | `ApplyStatus` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `statusId`, `stacks`, `durationTurns` | Иконка у HP-бара (`icon_art_name` из конфига статусов), цифра стаков если >1, VFX. `durationTurns = -1` = «бесконечно» для UI (сервер так шлёт вместо `int.MaxValue`). |
 | `RemoveStatus` | `targetId`, `targetSlotIndex`, `statusId` | Снять иконку/VFX статуса. |
-| `TickStatus` | `targetId`, `targetSlotIndex`, `statusId`, `value` | Тик (damage over time / hot): VFX типа + опционально число `value`. HP всё равно через последующий `SetHp`, если есть. |
+| `TickStatus` | `targetId`, `targetSlotIndex`, `statusId`, `value` | Тик (damage over time / hot): VFX типа + опционально число `value`. HP не трогать здесь: если статус изменил HP, дальше будет `SetHp`. |
 | `CastSkill` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `skillId` | Презентация каста (VFX/UI по `skillId`). Не применяй эффекты скилла сам. |
 | `TriggerPerk` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `perkId` | Презентация перка (иконка/плашка rarity). |
 | `SetHp` | `unitId`, `slotIndex`, `hp` | **Авторитетное** HP. Выставить бар/модель в `hp`. |
@@ -281,7 +281,7 @@ Dictionary<(int configId, int slotIndex), Entity>  // или аналог
 
 **Статус:**
 
-`ApplyStatus` / `TickStatus` / `RemoveStatus` (+ `SetHp` если тик урона)
+`ApplyStatus` / `TickStatus` / `RemoveStatus` (+ `ShowDamage` при уроне, `SetHp` если HP изменился)
 
 **Конец:**
 
@@ -296,8 +296,8 @@ Dictionary<(int configId, int slotIndex), Entity>  // или аналог
 Порядок логики на сервере (GDD), чтобы понимать «почему так в script»:
 
 1. Turn-start bonuses (обе стороны в начале полного хода)
-2. Statuses атакующей → trailing `statuses_cooldown` Wait
-3. Perks → trailing `perks_cooldown`
+2. Statuses атакующей по слотам: `Wait(statuses_cooldown)` после каждого сработавшего. Пустая очередь — без wait. Смерть обрывает оставшиеся статусы юнита. `SetHp` если статус изменил HP.
+3. Perks → `Wait(perks_cooldown)` после каждого сработавшего; пустая очередь — без wait
 4. Summons по `slotIndex` ↑ (skills → attack → return) → `summons_cooldown`
 5. Unit skills (не energy) → `units_cooldown`
 6. NormalAttack → Counter → Combo1 → Counter → Combo2 → Counter → Return
