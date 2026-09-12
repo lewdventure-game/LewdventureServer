@@ -73,16 +73,22 @@ namespace Server.Battles
                     currentTurn,
                     seededRandomService);
 
-                if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
-                    continue;
-
                 if (actor.IsAlive() == false)
                     continue;
 
                 if (HasAliveMainUnits(defender) == false)
                     return;
 
-                EmitUnitsCooldownBeforeAttack(steps, actor, currentTurn);
+                var skipRemaining = _battlePerkSimulator.ShouldSkipRemainingActions(actor);
+
+                if (skipRemaining || actor.CanUseNormalAttack(currentTurn) == false)
+                {
+                    _logger.LogDebug($"[Story][Battle]: Main skip attack, unitId = {actor.Id}, turn = {currentTurn}, aborted = {skipRemaining}");
+
+                    _battleSkillSimulator.TryCastEnergySkill(steps, actor, attacker, defender, currentTurn, seededRandomService);
+
+                    continue;
+                }
 
                 targetIndex = FindTargetIndex(defender);
 
@@ -103,28 +109,6 @@ namespace Server.Battles
             }
         }
 
-        private void EmitUnitsCooldownBeforeAttack(List<BattleStep> steps, IUnitState actor, int currentTurn)
-        {
-            if (_unitsCooldown <= 0f)
-            {
-                _logger.LogDebug($"[Story][Battle]: Pre-attack units_cooldown skip, unitId = {actor.Id}, turn = {currentTurn}");
-
-                return;
-            }
-
-            _battleScriptBuilder.Add(
-                steps,
-                currentTurn,
-                BattlePhaseType.UnitCooldown,
-                actor,
-                new List<BattleCommand>
-                {
-                    _battleCommandFactory.Wait(_unitsCooldown),
-                });
-
-            _logger.LogDebug($"[Story][Battle]: Pre-attack units_cooldown, unitId = {actor.Id}, turn = {currentTurn}, cooldown = {_unitsCooldown}");
-        }
-
         private void ExecuteNormalAttack(
             List<BattleStep> steps,
             ITeamSimulationState attacker,
@@ -134,23 +118,14 @@ namespace Server.Battles
             int currentTurn,
             ISeededRandomService seededRandomService)
         {
-            var isMelee = (actor.Flags & UnitFlags.Range) == 0;
+            var isMelee = IsMeleeUnit(actor);
+            var commands = new List<BattleCommand>();
 
             if (isMelee)
-            {
-                _battleScriptBuilder.Add(
-                    steps,
-                    currentTurn,
-                    BattlePhaseType.Approach,
-                    actor,
-                    new List<BattleCommand>
-                    {
-                        _battleCommandFactory.Approach(actor.Id, actor.SlotIndex, target.Id, target.SlotIndex, true),
-                    },
-                    target);
-            }
+                commands.Add(_battleCommandFactory.Approach(actor.Id, actor.SlotIndex, target.Id, target.SlotIndex, true));
 
-            var commands = new List<BattleCommand>();
+            AppendWait(commands, _unitsCooldown);
+
             commands.Add(_battleCommandFactory.PlayAnimation(actor.Id, actor.SlotIndex, "attack"));
 
             if (isMelee == false)
@@ -195,6 +170,7 @@ namespace Server.Battles
                 if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
                 {
                     EmitReturnToPosition(steps, actor, currentTurn, isMelee);
+                    _battleSkillSimulator.TryCastEnergySkill(steps, actor, attacker, defender, currentTurn, seededRandomService);
 
                     return;
                 }
@@ -294,7 +270,9 @@ namespace Server.Battles
                 return;
 
             var commands = new List<BattleCommand>();
-            var isMelee = (counterActor.Flags & UnitFlags.Range) == 0;
+            var isMelee = IsMeleeUnit(counterActor);
+
+            AppendWait(commands, _counterAttackCooldown);
 
             if (isMelee)
             {
@@ -303,7 +281,6 @@ namespace Server.Battles
                 _logger.LogDebug($"[Story][Battle]: Counter approach, actorId = {counterActor.Id}, targetId = {counterTarget.Id}");
             }
 
-            commands.Add(_battleCommandFactory.Wait(_counterAttackCooldown));
             commands.Add(_battleCommandFactory.PlayAnimation(counterActor.Id, counterActor.SlotIndex, "attack"));
 
             if (isMelee == false)
@@ -371,16 +348,10 @@ namespace Server.Battles
                 return false;
 
             var commands = new List<BattleCommand>();
-            var isMelee = (actor.Flags & UnitFlags.Range) == 0;
+            var isMelee = IsMeleeUnit(actor);
 
-            if (isMelee)
-            {
-                commands.Add(_battleCommandFactory.Approach(actor.Id, actor.SlotIndex, target.Id, target.SlotIndex, true));
+            AppendWait(commands, _comboAttackCooldown);
 
-                _logger.LogDebug($"[Story][Battle]: Combo{comboNumber} approach, actorId = {actor.Id}, targetId = {target.Id}");
-            }
-
-            commands.Add(_battleCommandFactory.Wait(_comboAttackCooldown));
             commands.Add(_battleCommandFactory.PlayAnimation(actor.Id, actor.SlotIndex, "attack"));
 
             if (isMelee == false)
@@ -393,13 +364,6 @@ namespace Server.Battles
                 seededRandomService,
                 phase,
                 comboMultiplier);
-
-            if (isMelee)
-            {
-                commands.Add(_battleCommandFactory.ReturnToPosition(actor.Id, actor.SlotIndex));
-
-                AppendIdleIfAlive(commands, actor);
-            }
 
             _battleScriptBuilder.Add(
                 steps,
@@ -586,6 +550,19 @@ namespace Server.Battles
             commands.Add(_battleCommandFactory.PlayAnimation(unit.Id, unit.SlotIndex, "idle"));
 
             _logger.LogDebug($"[Story][Battle]: Idle after action unitId = {unit.Id}");
+        }
+
+        private void AppendWait(List<BattleCommand> commands, float seconds)
+        {
+            if (seconds <= 0f)
+                return;
+
+            commands.Add(_battleCommandFactory.Wait(seconds));
+        }
+
+        private bool IsMeleeUnit(IUnitState unit)
+        {
+            return (unit.Flags & UnitFlags.Melee) != 0;
         }
 
         private void EmitDeath(List<BattleStep> steps, int currentTurn, IUnitState unit)

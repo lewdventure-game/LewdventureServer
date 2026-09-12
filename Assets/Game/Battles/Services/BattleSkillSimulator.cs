@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Extensions.Logging;
 using Server.Services;
 
@@ -107,7 +108,7 @@ namespace Server.Battles
             int currentTurn,
             ISeededRandomService seededRandomService)
         {
-            if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
+            if (actor.IsAlive() == false)
                 return;
 
             var characteristics = actor.CharacteristicState;
@@ -143,6 +144,7 @@ namespace Server.Battles
 
             var target = defender.MainUnits[targetIndex];
             var cooldown = GetConstant(ConstantKeys.UnitsCooldownKey);
+            var castDuration = GetEnergyCastDuration(actor);
             var context = CreateContext(
                 steps,
                 actor,
@@ -155,14 +157,16 @@ namespace Server.Battles
                 cooldown,
                 seededRandomService);
 
-            _logger.LogInformation($"[Story][Battle]: Energy skill cast, unitId = {actor.Id}, targetId = {target.Id}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}");
+            _logger.LogInformation($"[Story][Battle]: Energy skill cast, unitId = {actor.Id}, targetId = {target.Id}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}, duration = {castDuration}");
 
-            var commands = new List<BattleCommand>
-            {
-                _battleCommandFactory.Wait(cooldown),
-                _battleCommandFactory.PlayAnimation(actor.Id, actor.SlotIndex, "cast"),
-                _battleCommandFactory.CastSkill(actor.Id, actor.SlotIndex, target.Id, target.SlotIndex, "energy"),
-            };
+            var commands = new List<BattleCommand>();
+
+            if (0f < cooldown)
+                commands.Add(_battleCommandFactory.Wait(cooldown));
+
+            commands.Add(_battleCommandFactory.CastSkill(actor.Id, actor.SlotIndex, target.Id, target.SlotIndex, "energy"));
+            commands.Add(_battleCommandFactory.PlayAnimation(actor.Id, actor.SlotIndex, "cast"));
+            commands.Add(_battleCommandFactory.Wait(castDuration));
 
             context.TryDealStrike(commands, characteristics.SkillMultiplier, out _, out _);
 
@@ -174,7 +178,7 @@ namespace Server.Battles
                 context.EmitDeath(target);
         }
 
-        private static bool HasEnergySkill(IUnitState actor)
+        private bool HasEnergySkill(IUnitState actor)
         {
             var skills = actor.Skills;
 
@@ -185,6 +189,32 @@ namespace Server.Battles
             }
 
             return false;
+        }
+
+        private float GetEnergyCastDuration(IUnitState actor)
+        {
+            var skills = actor.Skills;
+
+            for (int i = 0; i < skills.Count; i++)
+            {
+                var skill = skills[i];
+
+                if (skill.SkillType != SkillType.Energy)
+                    continue;
+
+                if (skill.CastDurationSeconds <= 0f)
+                {
+                    _logger.LogError($"[Error][Story][Battle]: Energy skill duration missing or zero, unitId = {actor.Id}, skillId = {skill.SkillKey}");
+
+                    throw new InvalidOperationException($"[Error][Story][Battle]: Energy skill duration missing or zero, unitId = {actor.Id}, skillId = {skill.SkillKey}");
+                }
+
+                return skill.CastDurationSeconds;
+            }
+
+            _logger.LogError($"[Error][Story][Battle]: Energy skill duration missing, unitId = {actor.Id}");
+
+            throw new InvalidOperationException($"[Error][Story][Battle]: Energy skill duration missing, unitId = {actor.Id}");
         }
 
         private void CastAllSkills(
@@ -213,14 +243,15 @@ namespace Server.Battles
                 return;
 
             var cooldown = GetConstant(cooldownKey);
+            var executedCount = 0;
 
             for (int i = 0; i < skills.Count; i++)
             {
                 if (actor.IsAlive() == false)
-                    return;
+                    break;
 
                 if (HasAliveMainUnits(defender) == false)
-                    return;
+                    break;
 
                 var skill = skills[i];
 
@@ -234,7 +265,7 @@ namespace Server.Battles
                 var targetIndex = FindTargetIndex(defender);
 
                 if (targetIndex < 0)
-                    return;
+                    break;
 
                 var target = defender.MainUnits[targetIndex];
 
@@ -253,13 +284,51 @@ namespace Server.Battles
                     seededRandomService);
 
                 skill.Execute(context);
+                executedCount += 1;
 
                 if (target.IsAlive() == false)
                     context.EmitDeath(target);
 
                 if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
-                    return;
+                    break;
             }
+
+            TryEmitUnitSkillPhaseWait(steps, actor, currentTurn, cooldown, phase, executedCount);
+        }
+
+        private void TryEmitUnitSkillPhaseWait(
+            List<BattleStep> steps,
+            IUnitState actor,
+            int currentTurn,
+            float cooldown,
+            BattlePhaseType phase,
+            int executedCount)
+        {
+            if (phase != BattlePhaseType.UnitSkill)
+                return;
+
+            if (executedCount <= 0)
+                return;
+
+            if (actor.IsAlive() == false)
+                return;
+
+            if (cooldown <= 0f)
+                return;
+
+            var commands = new List<BattleCommand>
+            {
+                _battleCommandFactory.Wait(cooldown),
+            };
+
+            _battleScriptBuilder.Add(
+                steps,
+                currentTurn,
+                BattlePhaseType.UnitSkill,
+                actor,
+                commands);
+
+            _logger.LogDebug($"[Story][Battle]: Unit skill phase wait, unitId = {actor.Id}, wait = {cooldown}, executed = {executedCount}");
         }
 
         private SkillExecutionContext CreateContext(
