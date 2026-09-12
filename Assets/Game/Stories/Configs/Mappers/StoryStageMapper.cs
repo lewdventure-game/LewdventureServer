@@ -20,6 +20,6 @@ namespace Server.Stories
         public int[] EventChances { get; init; } = Array.Empty<int>();
 
         [JsonProperty("enemy_stats_multiplier")]
-        public float EnemyStatsMultiplier { get; init; } = 1f;
+        public float EnemyStatsMultiplier { get; init; }
     }
 }

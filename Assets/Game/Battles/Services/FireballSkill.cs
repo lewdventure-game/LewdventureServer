@@ -14,16 +14,15 @@ namespace Server.Battles
         internal FireballSkill(ISkillMapper mapper)
             : base(mapper)
         {
-            var parameters = mapper.Parameters;
-            var parts = parameters.Split(';');
-            var damageString = parts.Length > 0 ? parts[0] : "1";
-            var countString = parts.Length > 1 ? parts[1] : "1";
-            var projectileCount = ParserUtils.GetInt(countString, 1);
+            var dictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ParserUtils.ParseToDictionary(mapper.Parameters, dictionary);
+
+            var projectileCount = ParserUtils.GetInt(dictionary, "projectile_count", 1);
 
             if (projectileCount < 1)
                 projectileCount = 1;
 
-            _damageRatio = ParserUtils.GetFloat(damageString, 1f);
+            _damageRatio = ParserUtils.GetFloat(dictionary, "damage_ratio", 1f);
             _projectileCount = projectileCount;
         }
 

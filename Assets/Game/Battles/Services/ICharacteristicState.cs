@@ -10,6 +10,8 @@ namespace Server.Battles
 
         public float AttackMultiplier { get; set; }
 
+        public float Armor { get; set; }
+
         public float Defence { get; set; }
 
         public float Evasion { get; set; }
@@ -24,11 +26,9 @@ namespace Server.Battles
 
         public float Combo1Chance { get; set; }
 
-        public float Combo1Multiplier { get; set; }
-
         public float Combo2Chance { get; set; }
 
-        public float Combo2Multiplier { get; set; }
+        public float ComboMultiplier { get; set; }
 
         public float Energy { get; set; }
 

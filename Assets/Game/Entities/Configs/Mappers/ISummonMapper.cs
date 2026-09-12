@@ -15,16 +15,12 @@ namespace Server.Entities
 
         public float[] BreakoutMultipliers { get; }
 
-        public string SkillId { get; }
+        public float AttackSpeed { get; }
+
+        public string[] SkillIds { get; }
 
         public int MasteryId { get; }
 
         public int LevelUpgradePattern { get; }
-
-        public int[] BonusMasteryLevels { get; }
-
-        public int[] BonusTypes { get; }
-
-        public string IsMelee { get; }
     }
 }

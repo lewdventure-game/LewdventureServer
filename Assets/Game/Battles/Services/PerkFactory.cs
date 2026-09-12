@@ -44,7 +44,7 @@ namespace Server.Battles
                 case PerkType.Resurrection:
                     return CreateResurrectionPerk(mapper);
                 default:
-                    _logger.LogError($"[Story][Battle] perk unknown type id = {mapper.Id}, type = {mapper.PerkType}");
+                    _logger.LogError($"[Story][Battle]: Perk unknown type, id = {mapper.Id}, type = {mapper.PerkType}");
 
                     return new UnknownPerk(mapper, _logger);
             }
@@ -83,7 +83,7 @@ namespace Server.Battles
             var resurrectionsCount = GetInt("resurrections_count", 0);
 
             if (healthRatio <= 0f || resurrectionsCount <= 0)
-                _logger.LogError($"[Story][Battle] perk resurrection invalid params id = {mapper.Id}, healthRatio = {healthRatio}, count = {resurrectionsCount}");
+                _logger.LogError($"[Story][Battle]: Perk resurrection invalid params, id = {mapper.Id}, healthRatio = {healthRatio}, count = {resurrectionsCount}");
 
             return new ResurrectionPerk(mapper, healthRatio, resurrectionsCount, _logger);
         }
@@ -100,10 +100,10 @@ namespace Server.Battles
             var procRounds = ParseProcRounds();
 
             if (procRounds.Count == 0)
-                _logger.LogWarning($"[Story][Battle] perk elemental proc_rounds empty perkId = {mapper.Id} type = {perkType}");
+                _logger.LogWarning($"[Story][Battle]: Perk elemental proc_rounds empty, perkId = {mapper.Id} type = {perkType}");
 
             if (damageRatio <= 0f)
-                _logger.LogError($"[Story][Battle] perk elemental invalid damage_ratio id = {mapper.Id}, type = {perkType}");
+                _logger.LogError($"[Story][Battle]: Perk elemental invalid damage_ratio, id = {mapper.Id}, type = {perkType}");
 
             switch (perkType)
             {
@@ -153,7 +153,7 @@ namespace Server.Battles
 
                 if (separator < 0)
                 {
-                    _logger.LogError($"[Story][Battle] perk action pair invalid '{part}'");
+                    _logger.LogError($"[Story][Battle]: Perk action pair invalid '{part}'");
 
                     continue;
                 }
@@ -166,14 +166,14 @@ namespace Server.Battles
 
                 if (TryParseActionType(actionKey, out var actionType) == false)
                 {
-                    _logger.LogError($"[Story][Battle] perk action unknown '{actionKey}'");
+                    _logger.LogError($"[Story][Battle]: Perk action unknown '{actionKey}'");
 
                     continue;
                 }
 
                 if (int.TryParse(thresholdRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var threshold) == false || threshold <= 0)
                 {
-                    _logger.LogError($"[Story][Battle] perk action threshold invalid '{thresholdRaw}'");
+                    _logger.LogError($"[Story][Battle]: Perk action threshold invalid '{thresholdRaw}'");
 
                     continue;
                 }

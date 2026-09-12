@@ -97,7 +97,7 @@ namespace Server.Battles
         {
             if (team == null)
             {
-                _logger.LogDebug($"[Story][Battle] snapshot team = {teamName} missing storyLevelId = {storyLevelId} stageId = {stageId}");
+                _logger.LogDebug($"[Story][Battle]: Snapshot team = {teamName} missing, storyLevelId = {storyLevelId}, stageId = {stageId}");
 
                 return;
             }
@@ -128,7 +128,7 @@ namespace Server.Battles
                 var equipmentCount = unit.Equipments == null ? 0 : unit.Equipments.Count;
                 var bonusCount = unit.ActiveBonuses == null ? 0 : unit.ActiveBonuses.Count;
 
-                _logger.LogDebug($"[Story][Battle] snapshot team = {teamName} group = {groupName} id = {unit.Id} slot = {unit.SlotIndex} level = {unit.Level} mastery = {unit.MasteryLevel} training = {unit.TrainingLevel} perkCount = {perkCount} skillCount = {skillCount} equipmentCount = {equipmentCount} bonusCount = {bonusCount} storyLevelId = {storyLevelId} stageId = {stageId}");
+                _logger.LogDebug($"[Story][Battle]: Snapshot team = {teamName}, group = {groupName}, id = {unit.Id}, slot = {unit.SlotIndex}, level = {unit.Level}, mastery = {unit.MasteryLevel}, training = {unit.TrainingLevel}, perkCount = {perkCount}, skillCount = {skillCount}, equipmentCount = {equipmentCount}, bonusCount = {bonusCount}, storyLevelId = {storyLevelId}, stageId = {stageId}");
             }
         }
 

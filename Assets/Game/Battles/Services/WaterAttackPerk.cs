@@ -28,14 +28,14 @@ namespace Server.Battles
 
             if (stacksBefore <= 0)
             {
-                context.Logger.LogDebug($"[Story][Battle] water cleanse skip no poison perkId = {Id} targetId = {target.Id}");
+                context.Logger.LogDebug($"[Story][Battle]: Water cleanse skip no poison, perkId = {Id}, targetId = {target.Id}");
 
                 return;
             }
 
             if (TryRollRewardsChance(context, target, RewardsChance, "water_cleanse") == false)
             {
-                context.Logger.LogDebug($"[Story][Battle] water cleanse roll failed perkId = {Id} stacksBefore = {stacksBefore} targetId = {target.Id}");
+                context.Logger.LogDebug($"[Story][Battle]: Water cleanse roll failed, perkId = {Id}, stacksBefore = {stacksBefore}, targetId = {target.Id}");
 
                 return;
             }
@@ -44,9 +44,9 @@ namespace Server.Battles
             ApplyHitRewardsTimes(context, owner, target, commands, cleansed);
 
             if (0 < cleansed && HitRewards.Count == 0)
-                context.Logger.LogWarning($"[Story][Battle] water cleanse without hit_rewards perkId = {Id} cleansed = {cleansed}");
+                context.Logger.LogWarning($"[Story][Battle]: Water cleanse without hit_rewards, perkId = {Id}, cleansed = {cleansed}");
 
-            context.Logger.LogDebug($"[Story][Battle] water cleanse poison perkId = {Id} stacksBefore = {stacksBefore} cleansed = {cleansed} rewardsTimes = {cleansed}");
+            context.Logger.LogDebug($"[Story][Battle]: Water cleanse poison, perkId = {Id}, stacksBefore = {stacksBefore}, cleansed = {cleansed}, rewardsTimes = {cleansed}");
         }
     }
 }

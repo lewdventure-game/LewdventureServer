@@ -119,7 +119,7 @@ namespace Server.Battles
 
             if (type == BattleRewardType.None)
             {
-                _logger.LogWarning($"[Story][Battle] reward unknown type skipped raw = {typeSpan.ToString()}, count = {count}");
+                _logger.LogWarning($"[Story][Battle]: Reward unknown type skipped, raw = {typeSpan.ToString()}, count = {count}");
 
                 return false;
             }
@@ -128,7 +128,7 @@ namespace Server.Battles
             {
                 if (id <= 0)
                 {
-                    _logger.LogWarning($"[Story][Battle] reward id invalid type = {type} raw = {idSpan.ToString()} count = {count}");
+                    _logger.LogWarning($"[Story][Battle]: Reward id invalid, type = {type}, raw = {idSpan.ToString()}, count = {count}");
 
                     return false;
                 }
@@ -140,7 +140,7 @@ namespace Server.Battles
 
             if (type != BattleRewardType.Resource)
             {
-                _logger.LogWarning($"[Story][Battle] reward parse fail non-int id type = {type} raw = {idSpan.ToString()} count = {count}");
+                _logger.LogWarning($"[Story][Battle]: Reward parse fail non-int id, type = {type}, raw = {idSpan.ToString()}, count = {count}");
 
                 return false;
             }
@@ -149,13 +149,13 @@ namespace Server.Battles
 
             if (string.IsNullOrWhiteSpace(rewardKey))
             {
-                _logger.LogWarning($"[Story][Battle] reward resource key empty count = {count}");
+                _logger.LogWarning($"[Story][Battle]: Reward resource key empty, count = {count}");
 
                 return false;
             }
 
             reward = new BattleReward(type, rewardKey, count);
-            _logger.LogDebug($"[Story][Battle] reward resource key parsed key = {rewardKey} count = {count}");
+            _logger.LogDebug($"[Story][Battle]: Reward resource key parsed, key = {rewardKey} count = {count}");
 
             return true;
         }

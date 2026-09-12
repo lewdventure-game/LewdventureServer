@@ -25,7 +25,7 @@ namespace Server.Battles
             if (hasDebuff)
                 chance = RewardsChance * DebuffRewardsChance;
 
-            context.Logger.LogDebug($"[Story][Battle] earth hit rewards chance perkId = {Id} rewardsChance = {RewardsChance} debuffRewardsChance = {DebuffRewardsChance} burnStacks = {burnStacks} hasDebuff = {hasDebuff} effectiveChance = {chance}");
+            context.Logger.LogDebug($"[Story][Battle]: Earth hit rewards chance, perkId = {Id}, rewardsChance = {RewardsChance}, debuffRewardsChance = {DebuffRewardsChance}, burnStacks = {burnStacks}, hasDebuff = {hasDebuff},s effectiveChance = {chance}");
 
             return chance;
         }

@@ -47,7 +47,7 @@ namespace Server.Battles
             {
                 if (_battlePerkSimulator.ShouldAbortRemainingTurn)
                 {
-                    _logger.LogDebug($"[Story][Battle]: Main attack phase abort remaining turn side = {attacker.BattleSide}, turn = {currentTurn}");
+                    _logger.LogDebug($"[Story][Battle]: Main attack phase abort remaining turn, side = {attacker.BattleSide}, turn = {currentTurn}");
 
                     return;
                 }

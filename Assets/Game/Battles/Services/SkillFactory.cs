@@ -16,7 +16,7 @@ namespace Server.Battles
         {
             if (string.IsNullOrWhiteSpace(skillId))
             {
-                _logger.LogWarning($"[Story][Battle] skill unknown id = ");
+                _logger.LogWarning($"[Story][Battle]: Skill unknown, id = {skillId}");
 
                 return new UnknownSkill(new SkillMapper(0, string.Empty, SkillType.Unknown, string.Empty));
             }
@@ -24,21 +24,21 @@ namespace Server.Battles
             var trimmed = skillId.Trim();
 
             if (TryResolveFireball(trimmed, out var fireballKey))
-                return new FireballSkill(new SkillMapper((int)SkillType.Fireball, fireballKey, SkillType.Fireball, "1;1"));
+                return new FireballSkill(new SkillMapper((int)SkillType.Fireball, fireballKey, SkillType.Fireball, "damage_ratio:1;projectile_count:1"));
 
             if (TryResolveEnergy(trimmed))
                 return new EnergySkill(new SkillMapper((int)SkillType.Energy, "energy", SkillType.Energy, string.Empty));
 
             if (string.Equals(trimmed, "summon_1_skill_1", StringComparison.Ordinal))
-                return new SummonVenomStrikeSkill(new SkillMapper((int)SkillType.VenomStrike, trimmed, SkillType.VenomStrike, string.Empty));
+                return new SummonVenomStrikeSkill(new SkillMapper((int)SkillType.VenomStrike, trimmed, SkillType.VenomStrike, "damage_ratio:1;hit_rewards:status:3:2"));
 
             if (string.Equals(trimmed, "summon_2_skill_1", StringComparison.Ordinal))
-                return new SummonWarHowlSkill(new SkillMapper((int)SkillType.WarHowl, trimmed, SkillType.WarHowl, string.Empty));
+                return new SummonWarHowlSkill(new SkillMapper((int)SkillType.WarHowl, trimmed, SkillType.WarHowl, "damage_ratio:0.35;heal_from_max_ratio:0.12;ally_rewards:bonus:2:1,status:5:1"));
 
             if (string.Equals(trimmed, "summon_3_skill_1", StringComparison.Ordinal))
-                return new SummonSoulSiphonSkill(new SkillMapper((int)SkillType.SoulSiphon, trimmed, SkillType.SoulSiphon, string.Empty));
+                return new SummonSoulSiphonSkill(new SkillMapper((int)SkillType.SoulSiphon, trimmed, SkillType.SoulSiphon, "damage_ratio:1.25;life_steal_ratio:0.5;hit_rewards:status:1:1;ally_rewards:bonus:8:1"));
 
-            _logger.LogWarning($"[Story][Battle] skill unknown id = {trimmed}");
+            _logger.LogWarning($"[Story][Battle]: Skill unknown, id = {trimmed}");
 
             return new UnknownSkill(new SkillMapper(0, trimmed, SkillType.Unknown, string.Empty));
         }

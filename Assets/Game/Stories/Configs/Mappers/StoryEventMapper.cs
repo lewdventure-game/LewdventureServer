@@ -16,7 +16,7 @@ namespace Server.Stories
         [JsonProperty("event_parameters")]
         public string EventParameters { get; init; } = string.Empty;
 
-        [JsonProperty("reward_xp_value")]
+        [JsonProperty("level_exp")]
         public int RewardExperienceValue { get; init; }
     }
 }

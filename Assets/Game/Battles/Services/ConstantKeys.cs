@@ -10,6 +10,7 @@ namespace Server.Battles
         internal const string IsEquipmentEnabledKey = "is_equipment_enabled";
         internal const string HealthBaseKey = "health_base";
         internal const string HealingBoostBaseKey = "healing_boost_base";
+        internal const string VampyrismBaseKey = "vampyrism_base";
         internal const string DamageBaseKey = "damage_base";
         internal const string AttackMultiplierBaseKey = "atk_multiplier_base";
         internal const string EvasionBaseKey = "evasion_base";
@@ -18,8 +19,6 @@ namespace Server.Battles
         internal const string ComboOneChanceBaseKey = "combo_1_chance_base";
         internal const string ComboTwoChanceBaseKey = "combo_2_chance_base";
         internal const string ComboMultiplierBaseKey = "combo_multiplier_base";
-        internal const string ComboOneMultiplierBaseKey = "combo_1_multiplier_base";
-        internal const string ComboTwoMultiplierBaseKey = "combo_2_multiplier_base";
         internal const string CounterChanceBaseKey = "counter_chance_base";
         internal const string CounterMultiplierBaseKey = "counter_multiplier_base";
         internal const string SkillMultiplierBaseKey = "spell_multiplier_base";

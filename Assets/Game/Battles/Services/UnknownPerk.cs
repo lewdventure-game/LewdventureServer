@@ -20,7 +20,7 @@ namespace Server.Battles
 
         public override void Trigger(IPerkExecutionContext context)
         {
-            _logger.LogError($"[Story][Battle] perk unsupported trigger id = {Id}, type = {PerkType}");
+            _logger.LogError($"[Story][Battle]: Perk unsupported trigger, id = {Id}, type = {PerkType}");
         }
     }
 }

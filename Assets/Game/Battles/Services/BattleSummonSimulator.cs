@@ -75,7 +75,7 @@ namespace Server.Battles
             }
 
             var critSource = attacker.MainUnits[critSourceIndex];
-            var cooldown = GetSummonsCooldown();
+            var cooldown = GetConstant(ConstantKeys.SummonsCooldownKey);
 
             _logger.LogDebug($"[Story][Battle]: Summon phase, side = {attacker.BattleSide}, turn = {currentTurn}, summons = {_summonOrderBuffer.Count}, critSourceId = {critSource.Id}");
 
@@ -202,7 +202,7 @@ namespace Server.Battles
 
                 dealtAnyDamage = true;
 
-                _logger.LogDebug($"[FIX][Story][Battle]: Any_damage deferred until summon step commit, unitId = {summon.Id}, targetId = {target.Id}, turn = {currentTurn}");
+                _logger.LogDebug($"[Story][Battle]: Any_damage deferred until summon step commit, unitId = {summon.Id}, targetId = {target.Id}, turn = {currentTurn}");
             }
 
             if (isRanged == false)
@@ -218,7 +218,7 @@ namespace Server.Battles
 
             if (dealtAnyDamage)
             {
-                _logger.LogDebug($"[FIX][Story][Battle]: Any_damage flush after summon step, unitId = {summon.Id}, targetId = {target.Id}, turn = {currentTurn}");
+                _logger.LogDebug($"[Story][Battle]: Any_damage flush after summon step, unitId = {summon.Id}, targetId = {target.Id}, turn = {currentTurn}");
 
                 _battlePerkSimulator.NotifyAnyDamage(summon, attacker, defender, steps, currentTurn, seededRandomService);
             }
@@ -345,25 +345,13 @@ namespace Server.Battles
             return false;
         }
 
-        private float GetSummonsCooldown()
-        {
-            if (_configDistributor.Constants.TryGet(ConstantKeys.SummonsCooldownKey, out var constant) == false)
-            {
-                _logger.LogWarning($"[Story][Battle]: Constant missing key = {ConstantKeys.SummonsCooldownKey}");
-
-                return 0f;
-            }
-
-            return float.Parse(constant.ConstantValue, System.Globalization.CultureInfo.InvariantCulture);
-        }
-
         private float GetConstant(string constantKey)
         {
             if (_configDistributor.Constants.TryGet(constantKey, out var constant) == false)
             {
-                _logger.LogWarning($"[Story][Battle]: Constant missing key = {constantKey}");
+                _logger.LogError($"[Error][Story][Battle]: Constant missing key = {constantKey}");
 
-                return 0f;
+                throw new InvalidOperationException($"[Error][Story][Battle]: Constant missing key = {constantKey}");
             }
 
             return float.Parse(constant.ConstantValue, System.Globalization.CultureInfo.InvariantCulture);

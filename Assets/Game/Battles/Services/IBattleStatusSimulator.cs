@@ -12,10 +12,5 @@ namespace Server.Battles
             List<BattleStep> steps,
             int currentTurn,
             ISeededRandomService seededRandomService);
-
-        public void ExpireNonDamageOverTimeStatusesAtBattleEnd(
-            IUnitState unitState,
-            List<BattleStep> steps,
-            int currentTurn);
     }
 }

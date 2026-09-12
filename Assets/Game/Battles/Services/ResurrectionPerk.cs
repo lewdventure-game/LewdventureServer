@@ -48,7 +48,7 @@ namespace Server.Battles
 
             if (0 < owner.CharacteristicState.Health)
             {
-                _logger.LogDebug($"[Story][Battle] perk resurrection skipped alive perkId = {Id}, ownerId = {owner.Id}");
+                _logger.LogDebug($"[Story][Battle]: Perk resurrection skipped alive, perkId = {Id}, ownerId = {owner.Id}");
 
                 return false;
             }
@@ -91,7 +91,7 @@ namespace Server.Battles
                 commands,
                 owner);
 
-            _logger.LogInformation($"[Story][Battle] perk resurrection perkId = {Id}, ownerId = {owner.Id}, healDelta = {healDelta}, health = {healthAfter}, remaining = {_remainingResurrections}");
+            _logger.LogInformation($"[Story][Battle]: Perk resurrection, perkId = {Id}, ownerId = {owner.Id}, healDelta = {healDelta}, health = {healthAfter}, remaining = {_remainingResurrections}");
 
             if (_remainingResurrections == 0)
                 RemoveSelfFromOwner(owner);
@@ -109,7 +109,7 @@ namespace Server.Battles
                     continue;
 
                 perks.RemoveAt(i);
-                _logger.LogWarning($"[Story][Battle] resurrection perk removed exhausted perkId = {Id} ownerId = {owner.Id}");
+                _logger.LogWarning($"[Story][Battle]: Resurrection perk removed exhausted, perkId = {Id}, ownerId = {owner.Id}");
 
                 return;
             }

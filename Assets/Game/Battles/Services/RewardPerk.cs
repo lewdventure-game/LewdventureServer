@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Server.Perks;
 
 namespace Server.Battles
@@ -23,7 +22,7 @@ namespace Server.Battles
 
         public override void OnEquipped(IUnitState owner, List<BattleCommand> commands)
         {
-            _logger.LogDebug($"[Story][Battle] perk reward grant perkId = {Id}, ownerId = {owner.Id}, rewards = {_rewards.Count}");
+            _logger.LogDebug($"[Story][Battle]: Perk reward grant, perkId = {Id}, ownerId = {owner.Id}, rewards = {_rewards.Count}");
 
             _battleRewardService.Apply(_rewards, owner, owner, commands, 0);
         }

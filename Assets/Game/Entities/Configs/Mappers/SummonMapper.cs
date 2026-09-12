@@ -23,24 +23,17 @@ namespace Server.Entities
         [JsonConverter(typeof(DelimitedFloatArrayConverter), ';')]
         public float[] BreakoutMultipliers { get; init; } = Array.Empty<float>();
 
+        [JsonProperty("attack_speed")]
+        public float AttackSpeed { get; init; }
+
         [JsonProperty("skill_id")]
-        public string SkillId { get; init; } = string.Empty;
+        [JsonConverter(typeof(DelimitedStringArrayConverter), ';')]
+        public string[] SkillIds { get; init; } = Array.Empty<string>();
 
         [JsonProperty("mastery_id")]
         public int MasteryId { get; init; }
 
         [JsonProperty("level_upgrade_pattern")]
         public int LevelUpgradePattern { get; init; }
-
-        [JsonProperty("bonus_mastery_levels")]
-        [JsonConverter(typeof(DelimitedIntArrayConverter), ';')]
-        public int[] BonusMasteryLevels { get; init; } = Array.Empty<int>();
-
-        [JsonProperty("bonus_types")]
-        [JsonConverter(typeof(DelimitedIntArrayConverter), ';')]
-        public int[] BonusTypes { get; init; } = Array.Empty<int>();
-
-        [JsonProperty("is_melee")]
-        public string IsMelee { get; init; } = string.Empty;
     }
 }

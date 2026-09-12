@@ -28,25 +28,26 @@ namespace Server.Battles
 
             if (stacksBefore <= 0)
             {
-                context.Logger.LogDebug($"[Story][Battle] air cleanse skip no burn perkId = {Id} targetId = {target.Id}");
+                context.Logger.LogDebug($"[Story][Battle]: Air cleanse skip no burn, perkId = {Id}, targetId = {target.Id}");
 
                 return;
             }
 
             if (TryRollRewardsChance(context, target, RewardsChance, "air_cleanse") == false)
             {
-                context.Logger.LogDebug($"[Story][Battle] air cleanse roll failed perkId = {Id} stacksBefore = {stacksBefore} targetId = {target.Id}");
+                context.Logger.LogDebug($"[Story][Battle]: Air cleanse roll failed, perkId = {Id}, stacksBefore = {stacksBefore}, targetId = {target.Id}");
 
                 return;
             }
 
             var cleansed = CleanseStatusesOfTypes(context, target, commands, true, false);
+
             ApplyHitRewardsTimes(context, owner, target, commands, cleansed);
 
             if (0 < cleansed && HitRewards.Count == 0)
-                context.Logger.LogWarning($"[Story][Battle] air cleanse without hit_rewards perkId = {Id} cleansed = {cleansed}");
+                context.Logger.LogWarning($"[Story][Battle]: Air cleanse without hit_rewards, perkId = {Id}, cleansed = {cleansed}");
 
-            context.Logger.LogDebug($"[Story][Battle] air cleanse burn perkId = {Id} stacksBefore = {stacksBefore} cleansed = {cleansed} rewardsTimes = {cleansed}");
+            context.Logger.LogDebug($"[Story][Battle]: Air cleanse burn, perkId = {Id}, stacksBefore = {stacksBefore}, cleansed = {cleansed}, rewardsTimes = {cleansed}");
         }
     }
 }

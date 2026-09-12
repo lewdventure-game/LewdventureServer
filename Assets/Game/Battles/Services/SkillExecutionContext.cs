@@ -5,6 +5,8 @@ namespace Server.Battles
 {
     internal sealed class SkillExecutionContext : ISkillExecutionContext
     {
+        private int _pendingAnyDamageCount;
+
         private readonly List<BattleStep> _steps;
         private readonly IUnitState _actor;
         private readonly IUnitState _target;
@@ -22,7 +24,6 @@ namespace Server.Battles
         private readonly IBattleScriptBuilder _battleScriptBuilder;
         private readonly ILogger _logger;
         private readonly float _battleFlytextTimer;
-        private int _pendingAnyDamageCount;
 
         public List<BattleStep> Steps => _steps;
 
@@ -102,7 +103,7 @@ namespace Server.Battles
             var evasionRoll = _seededRandomService.GetRandomValue();
             var isEvaded = evasionRoll < targetCharacteristics.Evasion;
 
-            _logger.LogDebug($"[Story][Battle] skill strike actorId = {_actor.Id}, targetId = {_target.Id}, evasionRoll = {evasionRoll}, evasion = {targetCharacteristics.Evasion}, isEvaded = {isEvaded}, allowCritical = {_allowCritical}");
+            _logger.LogDebug($"[Story][Battle]: Skill strike, actorId = {_actor.Id}, targetId = {_target.Id}, evasionRoll = {evasionRoll}, evasion = {targetCharacteristics.Evasion}, isEvaded = {isEvaded}, allowCritical = {_allowCritical}");
 
             if (isEvaded)
             {
@@ -111,7 +112,7 @@ namespace Server.Battles
                 if (0f < _battleFlytextTimer)
                 {
                     commands.Add(_battleCommandFactory.Wait(_battleFlytextTimer));
-                    _logger.LogDebug($"[Story][Battle] skill miss wait actorId = {_actor.Id} seconds = {_battleFlytextTimer}");
+                    _logger.LogDebug($"[Story][Battle]: Skill miss wait, actorId = {_actor.Id} seconds = {_battleFlytextTimer}");
                 }
 
                 return false;
@@ -122,7 +123,7 @@ namespace Server.Battles
                 var criticalRoll = _seededRandomService.GetRandomValue();
                 isCritical = criticalRoll < actorCharacteristics.CriticalChance;
 
-                _logger.LogDebug($"[Story][Battle] skill crit roll actorId = {_actor.Id}, criticalRoll = {criticalRoll}, criticalChance = {actorCharacteristics.CriticalChance}, isCritical = {isCritical}");
+                _logger.LogDebug($"[Story][Battle]: Skill crit roll, actorId = {_actor.Id}, criticalRoll = {criticalRoll}, criticalChance = {actorCharacteristics.CriticalChance}, isCritical = {isCritical}");
             }
 
             var defenceFactor = 1f - targetCharacteristics.Defence;
@@ -148,10 +149,10 @@ namespace Server.Battles
             commands.Add(_battleCommandFactory.ShowDamage(_actor.Id, _actor.SlotIndex, _target.Id, _target.SlotIndex, damage, isCritical, false));
             commands.Add(_battleCommandFactory.SetHp(_target.Id, _target.SlotIndex, healthAfter));
 
-            _logger.LogInformation($"[Story][Battle] skill damage actorId = {_actor.Id}, targetId = {_target.Id}, damage = {damage}, isCritical = {isCritical}, health = {healthAfter}");
+            _logger.LogInformation($"[Story][Battle]: Skill damage, actorId = {_actor.Id}, targetId = {_target.Id}, damage = {damage}, isCritical = {isCritical}, health = {healthAfter}");
 
             _pendingAnyDamageCount += 1;
-            _logger.LogDebug($"[FIX][Story][Battle] any_damage deferred until step commit actorId = {_actor.Id} targetId = {_target.Id} pending = {_pendingAnyDamageCount} turn = {_currentTurn}");
+            _logger.LogDebug($"[Story][Battle]: any_damage deferred until step commit, actorId = {_actor.Id} targetId = {_target.Id} pending = {_pendingAnyDamageCount} turn = {_currentTurn}");
 
             return true;
         }
@@ -175,7 +176,7 @@ namespace Server.Battles
             commands.Add(_battleCommandFactory.ShowHeal(_actor.Id, _actor.SlotIndex, unit.Id, unit.SlotIndex, heal));
             commands.Add(_battleCommandFactory.SetHp(unit.Id, unit.SlotIndex, characteristics.Health));
 
-            _logger.LogDebug($"[Story][Battle] skill heal actorId = {_actor.Id}, unitId = {unit.Id}, heal = {heal}, health = {characteristics.Health}");
+            _logger.LogDebug($"[Story][Battle]: Skill heal, actorId = {_actor.Id}, unitId = {unit.Id}, heal = {heal}, health = {characteristics.Health}");
         }
 
         public int FindAllyMainIndex()
@@ -206,7 +207,7 @@ namespace Server.Battles
             if (_battlePerkSimulator.TryResurrectOnDeath(unit, _steps, _currentTurn))
                 return;
 
-            _logger.LogDebug($"[Story][Battle] death unitId = {unit.Id}, turn = {_currentTurn}");
+            _logger.LogDebug($"[Story][Battle]: Death, unitId = {unit.Id}, turn = {_currentTurn}");
 
             _battleScriptBuilder.Add(
                 _steps,
@@ -241,7 +242,7 @@ namespace Server.Battles
             var notifyCount = _pendingAnyDamageCount;
             _pendingAnyDamageCount = 0;
 
-            _logger.LogDebug($"[FIX][Story][Battle] any_damage flush after skill step actorId = {_actor.Id} count = {notifyCount} turn = {_currentTurn}");
+            _logger.LogDebug($"[Story][Battle]: any_damage flush after skill step, actorId = {_actor.Id}, count = {notifyCount}, turn = {_currentTurn}");
 
             for (int i = 0; i < notifyCount; i++)
                 _battlePerkSimulator.NotifyAnyDamage(_actor, _attacker, _defender, _steps, _currentTurn, _seededRandomService);

@@ -87,7 +87,7 @@ namespace Server.Battles
                 Commands = commands,
             });
 
-            _logger.LogDebug($"[Story][Battle] step index = {index}, turn = {turn}, phase = {phase}, actorId = {actorId}, actorSlotIndex = {actorSlotIndex}, targetId = {targetId}, targetSlotIndex = {targetSlotIndex}, commands = {commands.Count}");
+            _logger.LogDebug($"[Story][Battle]: Step index = {index}, turn = {turn}, phase = {phase}, actorId = {actorId}, actorSlotIndex = {actorSlotIndex}, targetId = {targetId}, targetSlotIndex = {targetSlotIndex}, commands = {commands.Count}");
         }
     }
 }

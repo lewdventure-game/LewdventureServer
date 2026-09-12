@@ -1,4 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
+using System;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Server.Bonuses;
@@ -13,6 +13,7 @@ namespace Server.Battles
     {
         private readonly ILogger<UnitStateBuilder> _logger;
         private readonly IBattleBonusService _battleBonusService;
+        private readonly IBonusWorkModeParser _bonusWorkModeParser;
         private readonly ICharacteristicCalculator _characteristicCalculator;
         private readonly IConfigDistributor _configDistributor;
         private readonly IPerkFactory _perkFactory;
@@ -22,6 +23,7 @@ namespace Server.Battles
         public UnitStateBuilder(
             ILogger<UnitStateBuilder> logger,
             IBattleBonusService battleBonusService,
+            IBonusWorkModeParser bonusWorkModeParser,
             ICharacteristicCalculator characteristicCalculator,
             IConfigDistributor configDistributor,
             IPerkFactory perkFactory,
@@ -30,6 +32,7 @@ namespace Server.Battles
         {
             _logger = logger;
             _battleBonusService = battleBonusService;
+            _bonusWorkModeParser = bonusWorkModeParser;
             _characteristicCalculator = characteristicCalculator;
             _configDistributor = configDistributor;
             _perkFactory = perkFactory;
@@ -56,10 +59,9 @@ namespace Server.Battles
                 }
                 else
                 {
-                    _logger.LogError($"[Story][Battle] enemy config missing id = {unitSnapshot.Id}; falling back to constants");
+                    _logger.LogError($"[Story][Battle]: Enemy config missing, id = {unitSnapshot.Id}");
 
-                    baseBuckets = BuildConstantsBuckets();
-                    flags = UnitFlags.Melee;
+                    throw new InvalidOperationException($"[Story][Battle]: Enemy config missing, id = {unitSnapshot.Id}");
                 }
             }
             else if (_configDistributor.Characters.TryGet(unitSnapshot.Id, out var characterMapper))
@@ -69,10 +71,9 @@ namespace Server.Battles
             }
             else
             {
-                _logger.LogError($"[Story][Battle] character config missing id = {unitSnapshot.Id} side = {battleSide}; falling back to constants");
+                _logger.LogError($"[Story][Battle]: Character config missing, id = {unitSnapshot.Id}, side = {battleSide}");
 
-                baseBuckets = BuildConstantsBuckets();
-                flags = UnitFlags.Melee;
+                throw new InvalidOperationException($"[Story][Battle]: Character config missing, id = {unitSnapshot.Id}, side = {battleSide}");
             }
 
             var characteristics = new CharacteristicState();
@@ -148,7 +149,7 @@ namespace Server.Battles
                 unitState.RegisterEquippedEntity("equipments", entry.Id);
             }
 
-            _logger.LogDebug($"[Story][Battle] equipped entities registered unitId = {unitState.Id} count = {unitState.EquippedEntities.Count}");
+            _logger.LogDebug($"[Story][Battle]: Equipped entities registered, unitId = {unitState.Id}, count = {unitState.EquippedEntities.Count}");
         }
 
         private CharacteristicBuckets BuildEnemyBuckets(IEnemyMapper enemyMapper, int storyLevelId, int stageId)
@@ -284,30 +285,28 @@ namespace Server.Battles
             if (summonMapper.BreakoutMultipliers == null || summonMapper.BreakoutMultipliers.Length == 0)
                 return;
 
-            _logger.LogError($"[Story][Battle] breakout_multis loaded but formula unknown summonId = {unitSnapshot.Id} level = {unitSnapshot.Level} valuesCount = {summonMapper.BreakoutMultipliers.Length}; hook no-op");
+            _logger.LogError($"[Story][Battle]: breakout_multis loaded but formula unknown, summonId = {unitSnapshot.Id}, level = {unitSnapshot.Level}, valuesCount = {summonMapper.BreakoutMultipliers.Length}; hook no-op");
         }
 
         private void GrantTrainingBonuses(UnitState unitState, int trainingLevel)
         {
             if (trainingLevel <= 0)
-                return;
-
-            if (_configDistributor.Trainings.Collection.Count == 0)
             {
-                _logger.LogDebug($"[Story][Battle] training grant skipped; Trainings manager empty trainingLevel = {trainingLevel}");
+                _logger.LogDebug($"[Story][Battle]: Training grant skipped, trainingLevel = {trainingLevel}");
 
                 return;
             }
 
             if (_configDistributor.Trainings.TryGet(trainingLevel, out var trainingMapper) == false)
             {
-                _logger.LogWarning($"[Story][Battle] unknown trainingLevel = {trainingLevel}");
+                _logger.LogError($"[Story][Battle]: Training missing, trainingLevel = {trainingLevel}, trainingsCount = {_configDistributor.Trainings.Collection.Count}");
 
-                return;
+                throw new InvalidOperationException($"[Story][Battle]: Training missing, trainingLevel = {trainingLevel}");
             }
 
             GrantBonusPairs(unitState, trainingMapper.BonusIds, trainingMapper.BonusValues, $"build:training:{trainingLevel}");
-            _logger.LogDebug($"[Story][Battle] training bonuses granted trainingLevel = {trainingLevel} bonusCount = {trainingMapper.BonusIds.Length}");
+
+            _logger.LogDebug($"[Story][Battle]: Training bonuses granted, trainingLevel = {trainingLevel}, bonusCount = {trainingMapper.BonusIds.Length}");
         }
 
         private void GrantArtifactBonuses(UnitState unitState, IUnitSnapshot unitSnapshot)
@@ -319,7 +318,7 @@ namespace Server.Battles
 
             if (_configDistributor.Artifacts.Collection.Count == 0)
             {
-                _logger.LogDebug($"[Story][Battle] artifact grant skipped; Artifacts manager empty requestedCount = {artifactIds.Count}");
+                _logger.LogDebug($"[Story][Battle]: Artifact grant skipped; artifacts manager empty, requestedCount = {artifactIds.Count}");
 
                 return;
             }
@@ -330,13 +329,14 @@ namespace Server.Battles
 
                 if (_configDistributor.Artifacts.TryGet(artifactId, out var artifactMapper) == false)
                 {
-                    _logger.LogWarning($"[Story][Battle] unknown artifact id = {artifactId}");
+                    _logger.LogWarning($"[Story][Battle]: Unknown artifact, id = {artifactId}");
 
                     continue;
                 }
 
                 GrantBonusPairs(unitState, artifactMapper.BonusIds, artifactMapper.BonusValues, $"build:artifact:{artifactId}");
-                _logger.LogDebug($"[Story][Battle] artifact bonuses granted artifactId = {artifactId} bonusCount = {artifactMapper.BonusIds.Length}");
+
+                _logger.LogDebug($"[Story][Battle]: Artifact bonuses granted, artifactId = {artifactId}, bonusCount = {artifactMapper.BonusIds.Length}");
             }
         }
 
@@ -349,7 +349,7 @@ namespace Server.Battles
 
             if (_configDistributor.Aspects.Collection.Count == 0)
             {
-                _logger.LogDebug($"[Story][Battle] aspect grant skipped; Aspects manager empty requestedCount = {aspectIds.Count}");
+                _logger.LogDebug($"[Story][Battle]: Aspect grant skipped; aspects manager empty, requestedCount = {aspectIds.Count}");
 
                 return;
             }
@@ -360,13 +360,14 @@ namespace Server.Battles
 
                 if (_configDistributor.Aspects.TryGet(aspectId, out var aspectMapper) == false)
                 {
-                    _logger.LogWarning($"[Story][Battle] unknown aspect id = {aspectId}");
+                    _logger.LogWarning($"[Story][Battle]: Unknown aspect id = {aspectId}");
 
                     continue;
                 }
 
                 GrantBonusPairs(unitState, aspectMapper.BonusIds, aspectMapper.BonusValues, $"build:aspect:{aspectId}");
-                _logger.LogDebug($"[Story][Battle] aspect bonuses granted aspectId = {aspectId} bonusCount = {aspectMapper.BonusIds.Length}");
+
+                _logger.LogDebug($"[Story][Battle]: Aspect bonuses granted, aspectId = {aspectId}, bonusCount = {aspectMapper.BonusIds.Length}");
             }
         }
 
@@ -393,6 +394,13 @@ namespace Server.Battles
 
         private void GrantCharacterUpgradeBonuses(UnitState unitState, ICharacterMapper characterMapper, int characterLevel)
         {
+            if (characterLevel <= 0)
+            {
+                _logger.LogError($"[Story][Battle]: Invalid character level = {characterLevel}, characterId = {characterMapper.Id}");
+
+                throw new InvalidOperationException($"[Story][Battle]: Invalid character level = {characterLevel}, characterId = {characterMapper.Id}");
+            }
+
             var purchasedUpgrades = characterLevel - 1;
 
             if (purchasedUpgrades <= 0)
@@ -404,7 +412,7 @@ namespace Server.Battles
 
             if (upgradeCosts.Length == 0)
             {
-                _logger.LogDebug($"[Story][Battle] character upgrades skipped id = {characterMapper.Id}; upgrade_costs empty");
+                _logger.LogDebug($"[Story][Battle]: Character upgrades skipped, id = {characterMapper.Id}; upgrade_costs empty");
 
                 return;
             }
@@ -418,14 +426,14 @@ namespace Server.Battles
             {
                 if (upgradeBonusTypes.Length <= upgradeIndex)
                 {
-                    _logger.LogWarning($"[Story][Battle] character upgrade type missing characterId = {characterMapper.Id} upgrade = {upgradeIndex + 1}");
+                    _logger.LogWarning($"[Story][Battle]: Character upgrade type missing, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}");
 
                     break;
                 }
 
                 if (upgradeBonusValues.Length <= upgradeIndex)
                 {
-                    _logger.LogWarning($"[Story][Battle] character upgrade value missing characterId = {characterMapper.Id} upgrade = {upgradeIndex + 1}");
+                    _logger.LogWarning($"[Story][Battle]: Character upgrade value missing, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}");
 
                     break;
                 }
@@ -433,21 +441,23 @@ namespace Server.Battles
                 var bonusId = upgradeBonusTypes[upgradeIndex];
                 var value = upgradeBonusValues[upgradeIndex];
                 var sourceKey = $"build:upgrade:{characterMapper.Id}:{upgradeIndex + 1}";
+
                 GrantBuildBonus(unitState, bonusId, value, sourceKey);
-                _logger.LogDebug($"[Story][Battle] character upgrade grant characterId = {characterMapper.Id} upgrade = {upgradeIndex + 1} cost = {upgradeCosts[upgradeIndex]} bonusId = {bonusId} value = {value}");
+
+                _logger.LogDebug($"[Story][Battle]: Character upgrade grant, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}, cost = {upgradeCosts[upgradeIndex]}, bonusId = {bonusId}, value = {value}");
             }
 
             if (upgradeCosts.Length < purchasedUpgrades)
-                _logger.LogDebug($"[Story][Battle] character upgrades capped characterId = {characterMapper.Id} level = {characterLevel} purchased = {purchasedUpgrades} maxFromCosts = {upgradeCosts.Length}");
+                _logger.LogDebug($"[Story][Battle]: Character upgrades capped, characterId = {characterMapper.Id}, level = {characterLevel}, purchased = {purchasedUpgrades}, maxFromCosts = {upgradeCosts.Length}");
         }
 
         public void GrantSummonAccountBonuses(IUnitState mainUnit, IUnitSnapshot summonSnapshot)
         {
             if (_configDistributor.Summons.TryGet(summonSnapshot.Id, out var summonMapper) == false)
             {
-                _logger.LogWarning($"[Story][Battle] summon account bonuses skipped; missing summon id = {summonSnapshot.Id}");
+                _logger.LogError($"[Story][Battle]: Summon account bonuses skipped; missing summon id = {summonSnapshot.Id}");
 
-                return;
+                throw new InvalidOperationException($"[Story][Battle]: Summon missing id = {summonSnapshot.Id}");
             }
 
             var masteryLevel = summonSnapshot.MasteryLevel;
@@ -515,20 +525,20 @@ namespace Server.Battles
 
                 if (_configDistributor.Equipments.TryGet(entry.Id, out var equipmentMapper) == false)
                 {
-                    _logger.LogWarning($"[Story][Battle] equipment missing for melee resolve id = {entry.Id}");
+                    _logger.LogWarning($"[Story][Battle]: Equipment missing for melee resolve, id = {entry.Id}");
 
                     continue;
                 }
 
                 if (bool.TryParse(equipmentMapper.IsMelee, out var isMelee) && isMelee)
                 {
-                    _logger.LogDebug($"[Story][Battle] character melee flags unitId = {unitSnapshot.Id} equipmentId = {entry.Id} flags = Melee");
+                    _logger.LogDebug($"[Story][Battle]: Character melee flags, unitId = {unitSnapshot.Id}, equipmentId = {entry.Id}, flags = Melee");
 
                     return UnitFlags.Melee;
                 }
             }
 
-            _logger.LogDebug($"[Story][Battle] character melee flags unitId = {unitSnapshot.Id} flags = Range");
+            _logger.LogDebug($"[Story][Battle]: Character melee flags, unitId = {unitSnapshot.Id}, flags = Range");
 
             return UnitFlags.Range;
         }
@@ -546,13 +556,13 @@ namespace Server.Battles
             buckets.HealthBase = GetConstant(ConstantKeys.HealthBaseKey);
             buckets.DamageBase = GetConstant(ConstantKeys.DamageBaseKey);
             buckets.AttackMultiplierBase = GetConstant(ConstantKeys.AttackMultiplierBaseKey);
-            buckets.DefenceBase = GetConstant(ConstantKeys.DefenceBaseKey);
+            buckets.ArmorBase = GetConstant(ConstantKeys.DefenceBaseKey);
             buckets.EvasionBase = GetConstant(ConstantKeys.EvasionBaseKey);
             buckets.CriticalChanceBase = GetConstant(ConstantKeys.CriticalChanceBaseKey);
             buckets.CriticalMultiplierBase = GetConstant(ConstantKeys.CriticalMultiplierBaseKey);
             buckets.Combo1ChanceBase = GetConstant(ConstantKeys.ComboOneChanceBaseKey);
             buckets.Combo2ChanceBase = GetConstant(ConstantKeys.ComboTwoChanceBaseKey);
-            SeedComboMultiplierBases(buckets);
+            buckets.ComboMultiplierBase = GetConstant(ConstantKeys.ComboMultiplierBaseKey);
             buckets.CounterChanceBase = GetConstant(ConstantKeys.CounterChanceBaseKey);
             buckets.CounterMultiplierBase = GetConstant(ConstantKeys.CounterMultiplierBaseKey);
             buckets.SkillMultiplierBase = GetConstant(ConstantKeys.SkillMultiplierBaseKey);
@@ -560,7 +570,9 @@ namespace Server.Battles
             buckets.EnergyMaxBase = GetConstant(ConstantKeys.EnergyMaxBaseKey);
             buckets.DefenceCoefficient = GetConstant(ConstantKeys.DefenceCoefficientKey);
             buckets.HealingBoostBase = GetConstant(ConstantKeys.HealingBoostBaseKey);
-            buckets.VampyrismBase = 0f;
+            buckets.VampyrismBase = GetConstant(ConstantKeys.VampyrismBaseKey);
+
+            _logger.LogDebug($"[Story][Battle]: Constants buckets seeded, maxHealthBase = {buckets.HealthBase}, damageBase = {buckets.DamageBase}, armorBase = {buckets.ArmorBase}, vampyrismBase = {buckets.VampyrismBase}, comboMnBase = {buckets.ComboMultiplierBase}");
         }
 
         private void GrantEquipmentBonuses(UnitState unitState, IUnitSnapshot unitSnapshot)
@@ -579,9 +591,9 @@ namespace Server.Battles
 
                 if (_configDistributor.Equipments.TryGet(equipmentId, out var equipmentMapper) == false)
                 {
-                    _logger.LogWarning($"[Story][Battle] equipment missing id = {equipmentId}");
+                    _logger.LogError($"[Story][Battle]: Equipment missing id = {equipmentId}");
 
-                    continue;
+                    throw new InvalidOperationException($"[Story][Battle]: Equipment missing id = {equipmentId}");
                 }
 
                 GrantEquipmentBonusSlot(unitState, equipmentMapper.EquipmentBonusTypeOne, equipmentMapper.EquipmentBonusValuesOne, equipmentLevel, $"build:equip:{equipmentId}:1");
@@ -601,6 +613,7 @@ namespace Server.Battles
                 return;
 
             var value = ParseEquipmentBonusValue(bonusValueRaw, equipmentLevel);
+
             _logger.LogDebug($"[Story][Battle] equipment grant slot sourceKey = {sourceKey} level = {equipmentLevel} bonusId = {bonusId} value = {value}");
 
             GrantBuildBonus(unitState, bonusId, value, sourceKey);
@@ -619,7 +632,7 @@ namespace Server.Battles
             {
                 if (bonusId <= 0)
                 {
-                    _logger.LogWarning($"[Story][Battle] equipment bonus id invalid raw = {bonusTypeRaw}");
+                    _logger.LogWarning($"[Story][Battle]: Equipment bonus id invalid raw = {bonusTypeRaw}");
 
                     return false;
                 }
@@ -629,7 +642,7 @@ namespace Server.Battles
 
             if (TryParseBonusTypeName(trimmed, out var bonusType) == false || bonusType == BonusType.Unknown)
             {
-                _logger.LogWarning($"[Story][Battle] equipment bonus type parse failed raw = {bonusTypeRaw}");
+                _logger.LogWarning($"[Story][Battle]: Equipment bonus type parse failed raw = {bonusTypeRaw}");
 
                 return false;
             }
@@ -655,13 +668,13 @@ namespace Server.Battles
 
             if (hasFirstMatch == false)
             {
-                _logger.LogWarning($"[Story][Battle] equipment bonus type missing type = {bonusType}, raw = {bonusTypeRaw}");
+                _logger.LogWarning($"[Story][Battle]: Equipment bonus type missing, type = {bonusType}, raw = {bonusTypeRaw}");
 
                 return false;
             }
 
             if (1 < matchCount)
-                _logger.LogWarning($"[Story][Battle] equipment bonus type ambiguous type = {bonusType}, matches = {matchCount}, usingId = {firstMatch.Id}");
+                _logger.LogWarning($"[Story][Battle]: Equipment bonus type ambiguous, type = {bonusType}, matches = {matchCount}, usingId = {firstMatch.Id}");
 
             bonusId = firstMatch.Id;
 
@@ -747,7 +760,7 @@ namespace Server.Battles
             if (float.TryParse(segment, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
                 return value;
 
-            _logger.LogWarning($"[Story][Battle] equipment bonus value parse failed raw = {bonusValueRaw} level = {equipmentLevel} segment = {segment}");
+            _logger.LogWarning($"[Story][Battle]: Equipment bonus value parse failed, raw = {bonusValueRaw}, level = {equipmentLevel}, segment = {segment}");
 
             return 0f;
         }
@@ -788,9 +801,9 @@ namespace Server.Battles
                 if (grant == null)
                     continue;
 
-                if (grant.Id <= 0 || grant.Count <= 0)
+                if (grant.Id <= 0 || grant.Count == 0)
                 {
-                    _logger.LogWarning($"[Story][Battle] run bonus skip invalid id = {grant.Id}, count = {grant.Count}");
+                    _logger.LogError($"[Story][Battle]: Run bonus skip invalid, id = {grant.Id}, count = {grant.Count}");
 
                     continue;
                 }
@@ -847,7 +860,7 @@ namespace Server.Battles
                 return;
             }
 
-            var workMode = BonusWorkModeParser.ParseCore(bonusMapper.WorkModeParameters);
+            var workMode = _bonusWorkModeParser.Parse(bonusMapper.WorkModeParameters);
             var grantValue = value;
 
             if (MathF.Abs(grantValue) <= 0.0001f)
@@ -863,7 +876,7 @@ namespace Server.Battles
                     workMode,
                     sourceKey));
 
-            _logger.LogDebug($"[Story][Battle] build bonus queued id = {bonusId} type = {bonusMapper.BonusType} value = {grantValue} operator = {bonusMapper.OperatorType} workMode = {workMode.Kind} sourceKey = {sourceKey}");
+            _logger.LogDebug($"[Story][Battle]: Build bonus queued, id = {bonusId}, type = {bonusMapper.BonusType}, value = {grantValue}, operator = {bonusMapper.OperatorType}, workMode = {workMode.Kind}, sourceKey = {sourceKey}");
         }
 
         private List<IPerk> BuildPerks(IUnitSnapshot unitSnapshot)
@@ -877,14 +890,14 @@ namespace Server.Battles
 
                 if (_configDistributor.Perks.TryGet(perkId, out var perkMapper) == false)
                 {
-                    _logger.LogWarning($"[Story][Battle] perk missing id = {perkId}");
+                    _logger.LogWarning($"[Story][Battle]: Perk missing, id = {perkId}");
 
                     continue;
                 }
 
                 if (perkMapper.PerkType == PerkType.Unknown)
                 {
-                    _logger.LogError($"[Config] perk unknown type id = {perkId}, raw type unresolved");
+                    _logger.LogError($"[Config]: Perk unknown type, id = {perkId}, raw type unresolved");
 
                     continue;
                 }
@@ -896,7 +909,7 @@ namespace Server.Battles
                 }
                 catch (Exception exception)
                 {
-                    _logger.LogWarning(exception, $"[Story][Battle] perk create failed id = {perkId} type = {perkMapper.PerkType}");
+                    _logger.LogWarning(exception, $"[Story][Battle]: Perk create failed, id = {perkId}, type = {perkMapper.PerkType}");
                 }
             }
 
@@ -912,7 +925,12 @@ namespace Server.Battles
                 AddUniqueSkillId(skillIds, activeSkillIds[i]);
 
             if (isSummon && _configDistributor.Summons.TryGet(unitSnapshot.Id, out var summonMapper))
-                AddUniqueSkillId(skillIds, summonMapper.SkillId);
+            {
+                var mapperSkillIds = summonMapper.SkillIds;
+
+                for (int i = 0; i < mapperSkillIds.Length; i++)
+                    AddUniqueSkillId(skillIds, mapperSkillIds[i]);
+            }
 
             if (isSummon == false)
             {
@@ -929,13 +947,14 @@ namespace Server.Battles
 
                 if (skill.SkillType == SkillType.Unknown)
                 {
-                    _logger.LogWarning($"[Story][Battle] skill skipped unknown id = {skillId}, unitId = {unitSnapshot.Id}");
+                    _logger.LogWarning($"[Story][Battle]: Skill skipped unknown id = {skillId}, unitId = {unitSnapshot.Id}");
 
                     continue;
                 }
 
                 skills.Add(skill);
-                _logger.LogDebug($"[Story][Battle] skill bound unitId = {unitSnapshot.Id}, skillId = {skillId}, type = {skill.SkillType}");
+
+                _logger.LogDebug($"[Story][Battle]: Skill bound, unitId = {unitSnapshot.Id}, skillId = {skillId}, type = {skill.SkillType}");
             }
 
             return skills;
@@ -956,7 +975,7 @@ namespace Server.Battles
                 AddUniqueSkillId(skillIds, skillId);
 
                 if (beforeCount < skillIds.Count)
-                    _logger.LogDebug($"[Story][Battle] character skill injected unitId = {unitSnapshot.Id} skillId = {skillId}");
+                    _logger.LogDebug($"[Story][Battle]: Character skill injected, unitId = {unitSnapshot.Id}, skillId = {skillId}");
             }
         }
 
@@ -984,16 +1003,17 @@ namespace Server.Battles
 
                 if (probe.SkillType == SkillType.Unknown)
                 {
-                    _logger.LogWarning($"[Story][Battle] equipment skill_id unknown skipped equipmentId = {entry.Id} skillId = {trimmed} unitId = {unitSnapshot.Id}");
+                    _logger.LogWarning($"[Story][Battle]: Equipment skill_id unknown skipped, equipmentId = {entry.Id}, skillId = {trimmed}, unitId = {unitSnapshot.Id}");
 
                     continue;
                 }
 
                 var beforeCount = skillIds.Count;
+
                 AddUniqueSkillId(skillIds, trimmed);
 
                 if (beforeCount < skillIds.Count)
-                    _logger.LogDebug($"[Story][Battle] equipment skill injected unitId = {unitSnapshot.Id} equipmentId = {entry.Id} skillId = {trimmed} type = {probe.SkillType}");
+                    _logger.LogDebug($"[Story][Battle]: Equipment skill injected, unitId = {unitSnapshot.Id}, equipmentId = {entry.Id}, skillId = {trimmed}, type = {probe.SkillType}");
             }
         }
 
@@ -1026,24 +1046,21 @@ namespace Server.Battles
 
                 if (_configDistributor.Statuses.TryGet(statusId, out var statusMapper) == false)
                 {
-                    _logger.LogWarning($"[Story][Battle] status missing id = {statusId}");
+                    _logger.LogError($"[Story][Battle]: Status missing, id = {statusId}");
 
                     continue;
                 }
 
                 if (statusMapper.StatusType == StatusType.Unknown)
                 {
-                    _logger.LogError($"[Config] status unknown type id = {statusId}");
+                    _logger.LogError($"[Config]: Status unknown type, id = {statusId}");
 
                     continue;
                 }
 
-                var parameters = _statusParametersParser.Parse(statusMapper.Parameters);
-                var currentStacks = CountStatusStacks(activeStatuses, statusId);
-
-                if (parameters.MaxStacks <= currentStacks)
+                if (statusMapper.StatusType == StatusType.BonusChange)
                 {
-                    _logger.LogWarning($"[Story][Battle] status max stacks reached id = {statusId}, maxStacks = {parameters.MaxStacks}");
+                    _logger.LogError($"[Story][Battle]: bonus_change cannot hang in snapshot, id = {statusId}, unitId = {unitState.Id}");
 
                     continue;
                 }

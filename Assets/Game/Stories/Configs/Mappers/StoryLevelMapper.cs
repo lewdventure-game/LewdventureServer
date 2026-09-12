@@ -31,11 +31,5 @@ namespace Server.Stories
         [JsonProperty("trigger_values")]
         [JsonConverter(typeof(DelimitedIntArrayConverter), ';')]
         public int[] TriggerValues { get; init; } = Array.Empty<int>();
-
-        [JsonProperty("enemies_attack_multiplier")]
-        public float EnemiesAttackMultiplier { get; init; } = 1f;
-
-        [JsonProperty("enemies_health_multiplier")]
-        public float EnemiesHealthMultiplier { get; init; } = 1f;
     }
 }

@@ -96,7 +96,7 @@ namespace Server.Battles
                     _battleCommandFactory.SetEnergy(actor.Id, actor.SlotIndex, characteristics.Energy),
                 });
 
-            _logger.LogDebug($"[Story][Battle] energy gain unitId = {actor.Id}, gain = {characteristics.EnergyGain}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}");
+            _logger.LogDebug($"[Story][Battle]: Energy gain unitId = {actor.Id}, gain = {characteristics.EnergyGain}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}");
         }
 
         public void TryCastEnergySkill(
@@ -116,19 +116,19 @@ namespace Server.Battles
             {
                 if (characteristics.Energy < characteristics.MaxEnergy)
                 {
-                    _logger.LogDebug($"[Story][Battle] energy skill skip no skill unitId = {actor.Id} energy = {characteristics.Energy} maxEnergy = {characteristics.MaxEnergy}");
+                    _logger.LogDebug($"[Story][Battle]: Energy skill skip no skill, unitId = {actor.Id}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}");
 
                     return;
                 }
 
-                _logger.LogWarning($"[Story][Battle] energy skill skip bar full without skill unitId = {actor.Id} energy = {characteristics.Energy} maxEnergy = {characteristics.MaxEnergy}");
+                _logger.LogWarning($"[Story][Battle]: Energy skill skip bar full without skill, unitId = {actor.Id}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}");
 
                 return;
             }
 
             if (characteristics.Energy < characteristics.MaxEnergy)
             {
-                _logger.LogDebug($"[Story][Battle] energy skill skip bar not full unitId = {actor.Id} energy = {characteristics.Energy} maxEnergy = {characteristics.MaxEnergy}");
+                _logger.LogDebug($"[Story][Battle]: Energy skill skip bar not full, unitId = {actor.Id}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}");
 
                 return;
             }
@@ -139,7 +139,7 @@ namespace Server.Battles
                 return;
 
             var target = defender.MainUnits[targetIndex];
-            var cooldown = GetUnitsCooldown();
+            var cooldown = GetConstant(ConstantKeys.UnitsCooldownKey);
             var context = CreateContext(
                 steps,
                 actor,
@@ -152,7 +152,7 @@ namespace Server.Battles
                 cooldown,
                 seededRandomService);
 
-            _logger.LogInformation($"[Story][Battle] energy skill cast unitId = {actor.Id}, targetId = {target.Id}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}");
+            _logger.LogInformation($"[Story][Battle]: Energy skill cast, unitId = {actor.Id}, targetId = {target.Id}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}");
 
             var commands = new List<BattleCommand>
             {
@@ -199,7 +199,7 @@ namespace Server.Battles
             if (skills.Count == 0)
                 return;
 
-            var cooldown = GetUnitsCooldown();
+            var cooldown = GetConstant(ConstantKeys.UnitsCooldownKey);
 
             for (int i = 0; i < skills.Count; i++)
             {
@@ -213,7 +213,7 @@ namespace Server.Battles
 
                 if (skill.SkillType == SkillType.Energy)
                 {
-                    _logger.LogDebug($"[Story][Battle] skill cast skip energy in unit phase unitId = {actor.Id} skillId = {skill.SkillKey} turn = {currentTurn}");
+                    _logger.LogDebug($"[Story][Battle]: Skill cast skip energy in unit phase, unitId = {actor.Id}, skillId = {skill.SkillKey}, turn = {currentTurn}");
 
                     continue;
                 }
@@ -225,7 +225,7 @@ namespace Server.Battles
 
                 var target = defender.MainUnits[targetIndex];
 
-                _logger.LogDebug($"[Story][Battle] skill cast unitId = {actor.Id}, skillId = {skill.SkillKey}, type = {skill.SkillType}, targetId = {target.Id}, turn = {currentTurn}");
+                _logger.LogDebug($"[Story][Battle]: Skill cast, unitId = {actor.Id}, skillId = {skill.SkillKey}, type = {skill.SkillType}, targetId = {target.Id}, turn = {currentTurn}");
 
                 var context = CreateContext(
                     steps,
@@ -314,25 +314,13 @@ namespace Server.Battles
             return false;
         }
 
-        private float GetUnitsCooldown()
-        {
-            if (_configDistributor.Constants.TryGet(ConstantKeys.UnitsCooldownKey, out var constant) == false)
-            {
-                _logger.LogWarning($"[Story][Battle] constant missing key = {ConstantKeys.UnitsCooldownKey}");
-
-                return 0f;
-            }
-
-            return float.Parse(constant.ConstantValue, System.Globalization.CultureInfo.InvariantCulture);
-        }
-
         private float GetConstant(string constantKey)
         {
             if (_configDistributor.Constants.TryGet(constantKey, out var constant) == false)
             {
-                _logger.LogWarning($"[Story][Battle] constant missing key = {constantKey}");
+                _logger.LogError($"[Error][Story][Battle]: Constant missing key = {constantKey}");
 
-                return 0f;
+                throw new InvalidOperationException($"[Error][Story][Battle]: Constant missing key = {constantKey}");
             }
 
             return float.Parse(constant.ConstantValue, System.Globalization.CultureInfo.InvariantCulture);

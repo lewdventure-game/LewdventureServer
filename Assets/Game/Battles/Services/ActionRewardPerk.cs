@@ -33,11 +33,12 @@ namespace Server.Battles
 
         public override void OnEquipped(IUnitState owner, List<BattleCommand> commands)
         {
-            _logger.LogDebug($"[Story][Battle] perk action reward grant perkId = {Id}, ownerId = {owner.Id}, rewards = {_rewardsOnGrant.Count}");
+            _logger.LogDebug($"[Story][Battle]: Perk action reward grant, perkId = {Id}, ownerId = {owner.Id}, rewards = {_rewardsOnGrant.Count}");
 
             _battleRewardService.Apply(_rewardsOnGrant, owner, owner, commands, 0);
         }
 
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public override bool CanTrigger(int currentTurn)
         {
             return false;
@@ -70,7 +71,7 @@ namespace Server.Battles
             current += 1;
             _actionCounters[actionType] = current;
 
-            _logger.LogDebug($"[Story][Battle] perk action progress perkId = {Id}, action = {actionType}, current = {current}, threshold = {threshold}");
+            _logger.LogDebug($"[Story][Battle]: Perk action progress, perkId = {Id}, action = {actionType}, current = {current}, threshold = {threshold}");
 
             if (current < threshold)
                 return;
@@ -79,7 +80,7 @@ namespace Server.Battles
 
             var roll = context.SeededRandomService.GetRandomValue();
 
-            _logger.LogDebug($"[Story][Battle] perk action reward roll perkId = {Id}, action = {actionType}, roll = {roll}, rewardsChance = {_rewardsChance}");
+            _logger.LogDebug($"[Story][Battle]: Perk action reward roll, perkId = {Id}, action = {actionType}, roll = {roll}, rewardsChance = {_rewardsChance}");
 
             if (_rewardsChance <= roll)
                 return;

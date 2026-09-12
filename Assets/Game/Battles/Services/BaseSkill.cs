@@ -33,7 +33,7 @@ namespace Server.Battles
         {
             if (context.Phase == BattlePhaseType.UnitSkill)
             {
-                context.Logger.LogDebug($"[Story][Battle] skill EndCast skip Wait unit phase skillKey = {SkillKey} unitId = {context.Actor.Id}");
+                context.Logger.LogDebug($"[Story][Battle]: Skill EndCast skip Wait unit phase, skillKey = {SkillKey}, unitId = {context.Actor.Id}");
                 context.AddStep(commands, target);
 
                 return;

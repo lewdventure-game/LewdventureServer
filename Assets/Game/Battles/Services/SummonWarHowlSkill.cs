@@ -1,20 +1,23 @@
 using Microsoft.Extensions.Logging;
+using Server.Configs;
 
 namespace Server.Battles
 {
-    // Summon 2: chip damage, heal ally main, grant damage bonus, apply crit-status to ally.
     internal sealed class SummonWarHowlSkill : BaseSkill
     {
-        private const float ChipDamageRatio = 0.35f;
-        private const float AllyHealFromMaxRatio = 0.12f;
-        // Bonuses id=2 = damage_local (+5), if_equipped:characters:1. Not id=1 (max_health_perk).
-        private const int AllyDamageBonusId = 2;
-        private const int AllyDamageBonusCount = 1;
-        private const int AllyCritStatusId = 5;
+        private readonly float _damageRatio;
+        private readonly float _healFromMaxRatio;
+        private readonly string _allyRewards;
 
         internal SummonWarHowlSkill(ISkillMapper mapper)
             : base(mapper)
         {
+            var dictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ParserUtils.ParseToDictionary(mapper.Parameters, dictionary);
+
+            _damageRatio = ParserUtils.GetFloat(dictionary, "damage_ratio", 0f);
+            _healFromMaxRatio = ParserUtils.GetFloat(dictionary, "heal_from_max_ratio", 0f);
+            _allyRewards = ParserUtils.GetString(dictionary, "ally_rewards", string.Empty);
         }
 
         public override void Execute(ISkillExecutionContext context)
@@ -24,7 +27,7 @@ namespace Server.Battles
 
             if (context.Target.IsAlive())
             {
-                var chipMultiplier = context.Actor.CharacteristicState.SkillMultiplier * ChipDamageRatio;
+                var chipMultiplier = context.Actor.CharacteristicState.SkillMultiplier * _damageRatio;
                 context.TryDealStrike(commands, chipMultiplier, out _, out _);
             }
 
@@ -32,33 +35,30 @@ namespace Server.Battles
 
             if (allyIndex < 0)
             {
-                context.Logger.LogWarning($"[Story][Battle] skill war howl no ally main skillId = {SkillKey}, actorId = {context.Actor.Id}");
+                context.Logger.LogWarning($"[Story][Battle]: Skill war howl no ally main, skillId = {SkillKey}, actorId = {context.Actor.Id}");
                 EndCast(context, commands, context.Target);
 
                 return;
             }
 
             var ally = context.Attacker.MainUnits[allyIndex];
-            var healAmount = ally.CharacteristicState.MaxHealth * AllyHealFromMaxRatio;
+            var healAmount = ally.CharacteristicState.MaxHealth * _healFromMaxRatio;
             context.Heal(ally, healAmount, commands);
 
-            context.BattleBonusService.Grant(
-                ally,
-                AllyDamageBonusId,
-                AllyDamageBonusCount,
-                $"skill:{SkillKey}",
-                commands,
-                context.CurrentTurn);
+            if (string.IsNullOrWhiteSpace(_allyRewards) == false)
+            {
+                var rewards = context.BattleRewardService.Parse(_allyRewards);
+                context.BattleRewardService.Apply(
+                    rewards,
+                    context.Actor,
+                    ally,
+                    context.Attacker,
+                    context.Defender,
+                    commands,
+                    context.CurrentTurn);
+            }
 
-            var statusRewards = context.BattleRewardService.Parse($"status:{AllyCritStatusId}:1");
-            context.BattleRewardService.Apply(
-                statusRewards,
-                ally,
-                context.Target,
-                commands,
-                context.CurrentTurn);
-
-            context.Logger.LogDebug($"[Story][Battle] skill war howl buffed ally skillId = {SkillKey}, actorId = {context.Actor.Id}, allyId = {ally.Id}, heal = {healAmount}, bonusId = {AllyDamageBonusId}, statusId = {AllyCritStatusId}");
+            context.Logger.LogDebug($"[Story][Battle]: Skill war howl buffed ally, skillId = {SkillKey}, actorId = {context.Actor.Id}, allyId = {ally.Id}, heal = {healAmount}");
 
             EndCast(context, commands, ally);
         }

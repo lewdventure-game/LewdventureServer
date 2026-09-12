@@ -9,7 +9,7 @@ namespace Server.Entities
         private float _defence;
         private float _evasion;
         private float _vampyrism;
-        private float _healingBoost = 1f;
+        private float _healingBoost;
         private float _criticalChance;
         private float _criticalMultiplier;
         private float _comboChance;

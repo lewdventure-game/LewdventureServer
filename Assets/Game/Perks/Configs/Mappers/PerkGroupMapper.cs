@@ -15,6 +15,10 @@ namespace Server.Perks
         [JsonConverter(typeof(DelimitedIntArrayConverter), ';')]
         public int[] PerkIds { get; init; } = Array.Empty<int>();
 
+        [JsonProperty("perk_chances")]
+        [JsonConverter(typeof(DelimitedIntArrayConverter), ';')]
+        public int[] PerkChances { get; init; } = Array.Empty<int>();
+
         [JsonProperty("random_perks_count")]
         public int RandomPerksCount { get; init; }
 

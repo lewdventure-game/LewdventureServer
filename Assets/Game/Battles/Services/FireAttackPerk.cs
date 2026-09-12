@@ -25,7 +25,7 @@ namespace Server.Battles
             if (hasDebuff)
                 chance = RewardsChance * DebuffRewardsChance;
 
-            context.Logger.LogDebug($"[Story][Battle] fire hit rewards chance perkId = {Id} rewardsChance = {RewardsChance} debuffRewardsChance = {DebuffRewardsChance} poisonStacks = {poisonStacks} hasDebuff = {hasDebuff} effectiveChance = {chance}");
+            context.Logger.LogDebug($"[Story][Battle]: Fire hit rewards chance, perkId = {Id}, rewardsChance = {RewardsChance}, debuffRewardsChance = {DebuffRewardsChance}, poisonStacks = {poisonStacks}, hasDebuff = {hasDebuff}, effectiveChance = {chance}");
 
             return chance;
         }

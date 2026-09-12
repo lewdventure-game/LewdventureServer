@@ -50,18 +50,18 @@ namespace Server
             var environment = application.Services.GetRequiredService<IHostEnvironment>();
             var logger = application.Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(Program));
 
-            logger.LogInformation("[Config] startup sync begin (same path as POST /api/config/update)");
+            logger.LogInformation("[Config]: Startup sync begin (same path as POST /api/config/update)");
 
             var (success, message) = await configService.UpdateAllConfigsAsync(environment.IsDevelopment());
 
             if (success == false)
             {
-                logger.LogError($"[Config] startup sync failed: {message}");
+                logger.LogError($"[Config]: Startup sync failed: {message}");
 
                 return;
             }
 
-            logger.LogInformation($"[Config] startup sync ok: {message}");
+            logger.LogInformation($"[Config]: Startup sync ok: {message}");
         }
 
         private static void ConfigureServices(IServiceCollection services)
@@ -89,6 +89,7 @@ namespace Server
                 .AddSingleton<IBattleSkillSimulator, BattleSkillSimulator>()
                 .AddSingleton<IBattleStatusSimulator, BattleStatusSimulator>()
                 .AddSingleton<IBattleSummonSimulator, BattleSummonSimulator>()
+                .AddSingleton<ICharacteristicBucketApplicator, CharacteristicBucketApplicator>()
                 .AddSingleton<ICharacteristicCalculator, CharacteristicCalculator>()
                 .AddSingleton<IPerkFactory, PerkFactory>()
                 .AddSingleton<ISkillFactory, SkillFactory>()
@@ -145,7 +146,7 @@ namespace Server
 
                     var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
                     var exceptionFeature = context.Features.Get<IExceptionHandlerFeature>();
-                    logger.LogError(exceptionFeature?.Error, "[Error] unhandled exception");
+                    logger.LogError(exceptionFeature?.Error, "[Error]: Unhandled exception");
                 });
             });
 

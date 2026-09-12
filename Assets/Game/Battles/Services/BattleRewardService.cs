@@ -48,7 +48,7 @@ namespace Server.Battles
             {
                 var reward = rewards[i];
 
-                _logger.LogDebug($"[Story][Battle] reward entry type = {reward.Type}, id = {reward.Id}, rewardKey = {reward.RewardKey}, count = {reward.Count}, sourceId = {source.Id}, targetId = {target.Id}, turn = {currentTurn}");
+                _logger.LogDebug($"[Story][Battle]: Reward entry, type = {reward.Type}, id = {reward.Id}, rewardKey = {reward.RewardKey}, count = {reward.Count}, sourceId = {source.Id}, targetId = {target.Id}, turn = {currentTurn}");
 
                 switch (reward.Type)
                 {
@@ -65,7 +65,7 @@ namespace Server.Battles
                         EmitMetaGrantReward(reward, target, commands);
                         break;
                     default:
-                        _logger.LogWarning($"[Story][Battle] reward unknown type skipped id = {reward.Id}, count = {reward.Count}, type = {reward.Type}");
+                        _logger.LogWarning($"[Story][Battle]: Reward unknown type skipped, id = {reward.Id}, count = {reward.Count}, type = {reward.Type}");
                         break;
                 }
             }
@@ -77,7 +77,7 @@ namespace Server.Battles
 
             if (string.IsNullOrEmpty(rewardType))
             {
-                _logger.LogWarning($"[Story][Battle] grant meta reward unknown type = {reward.Type} id = {reward.Id}");
+                _logger.LogWarning($"[Story][Battle]: Grant meta reward unknown, type = {reward.Type}, id = {reward.Id}");
 
                 return;
             }
@@ -85,17 +85,17 @@ namespace Server.Battles
             if (reward.HasStringRewardKey)
             {
                 commands.Add(_battleCommandFactory.GrantReward(rewardType, reward.RewardKey, reward.Count, target.Id));
-                _logger.LogDebug($"[Story][Battle] grant resource key = {reward.RewardKey} count = {reward.Count} targetId = {target.Id}");
-                _logger.LogInformation($"[Story][Battle] grant meta reward type = {rewardType} rewardId = {reward.RewardKey} count = {reward.Count} targetId = {target.Id}");
+                _logger.LogDebug($"[Story][Battle]: Grant resource, key = {reward.RewardKey}, count = {reward.Count}, targetId = {target.Id}");
+                _logger.LogInformation($"[Story][Battle]: Grant meta reward, type = {rewardType}, rewardId = {reward.RewardKey}, count = {reward.Count}, targetId = {target.Id}");
 
                 return;
             }
 
             commands.Add(_battleCommandFactory.GrantReward(rewardType, reward.Id, reward.Count, target.Id));
-            _logger.LogInformation($"[Story][Battle] grant meta reward type = {rewardType} rewardId = {reward.Id} count = {reward.Count} targetId = {target.Id}");
+            _logger.LogInformation($"[Story][Battle]: Grant meta reward, type = {rewardType}, rewardId = {reward.Id}, count = {reward.Count}, targetId = {target.Id}");
         }
 
-        private static string ResolveMetaRewardTypeName(BattleRewardType rewardType)
+        private string ResolveMetaRewardTypeName(BattleRewardType rewardType)
         {
             if (rewardType == BattleRewardType.Resource)
                 return "resource";
@@ -116,7 +116,7 @@ namespace Server.Battles
         {
             if (_configDistributor.Bonuses.TryGet(reward.Id, out _) == false)
             {
-                _logger.LogWarning($"[Story][Battle] reward bonus missing id = {reward.Id}");
+                _logger.LogWarning($"[Story][Battle]: Reward bonus missing, id = {reward.Id}");
 
                 return;
             }
@@ -139,14 +139,14 @@ namespace Server.Battles
         {
             if (_configDistributor.Statuses.TryGet(reward.Id, out var statusMapper) == false)
             {
-                _logger.LogWarning($"[Story][Battle] reward status missing id = {reward.Id}");
+                _logger.LogError($"[Story][Battle]: Reward status missing, id = {reward.Id}");
 
                 return;
             }
 
             if (statusMapper.StatusType == StatusType.Unknown)
             {
-                _logger.LogError($"[Config] status unknown type id = {reward.Id}");
+                _logger.LogError($"[Config]: Status unknown type, id = {reward.Id}");
 
                 return;
             }

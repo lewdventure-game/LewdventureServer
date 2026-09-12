@@ -15,6 +15,8 @@ namespace Server.Perks
 
         public string PerkParameters { get; }
 
+        public bool IsMultiplePicks { get; }
+
         public int TriggerOrder { get; }
 
         public string NameLocalizationKey { get; }

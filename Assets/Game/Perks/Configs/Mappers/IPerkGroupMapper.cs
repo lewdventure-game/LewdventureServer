@@ -10,6 +10,8 @@ namespace Server.Perks
 
         public int[] PerkIds { get; }
 
+        public int[] PerkChances { get; }
+
         public int RandomPerksCount { get; }
 
         public int ChoiceCount { get; }

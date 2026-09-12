@@ -1,4 +1,5 @@
 using Newtonsoft.Json;
+using Server.Configs;
 
 namespace Server.Entities
 {
@@ -17,12 +18,15 @@ namespace Server.Entities
         public int MasteryRequirement { get; init; }
 
         [JsonProperty("resource_types")]
-        public string ResourceTypes { get; init; } = string.Empty;
+        [JsonConverter(typeof(DelimitedStringArrayConverter), ';')]
+        public string[] ResourceTypes { get; init; } = Array.Empty<string>();
 
         [JsonProperty("resource_ids")]
-        public string ResourceIds { get; init; } = string.Empty;
+        [JsonConverter(typeof(DelimitedStringArrayConverter), ';')]
+        public string[] ResourceIds { get; init; } = Array.Empty<string>();
 
         [JsonProperty("resource_values")]
-        public int ResourceValues { get; init; }
+        [JsonConverter(typeof(DelimitedIntArrayConverter), ';')]
+        public int[] ResourceValues { get; init; } = Array.Empty<int>();
     }
 }

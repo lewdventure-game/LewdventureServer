@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Server.Services;
 
 namespace Server.Battles
@@ -112,7 +111,7 @@ namespace Server.Battles
             if (_battlePerkSimulator.TryResurrectOnDeath(unit, _steps, _currentTurn))
                 return;
 
-            _logger.LogDebug($"[Story][Battle] death unitId = {unit.Id}, turn = {_currentTurn}");
+            _logger.LogDebug($"[Story][Battle]: Death, unitId = {unit.Id}, turn = {_currentTurn}");
 
             _battleScriptBuilder.Add(
                 _steps,

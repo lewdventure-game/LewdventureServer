@@ -21,11 +21,5 @@ namespace Server.Bonuses
         public int EquippedEntityId { get; }
 
         public int Count { get; }
-
-        public static BonusWorkMode Unknown { get; } = new BonusWorkMode(
-            BonusWorkModeKind.Unknown,
-            string.Empty,
-            0,
-            0);
     }
 }

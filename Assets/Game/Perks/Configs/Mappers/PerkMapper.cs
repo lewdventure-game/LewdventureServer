@@ -20,6 +20,9 @@ namespace Server.Perks
         [JsonProperty("perk_parameters")]
         public string PerkParameters { get; init; } = string.Empty;
 
+        [JsonProperty("multiple_picks")]
+        public bool IsMultiplePicks { get; init; }
+
         [JsonProperty("proc_order")]
         public int TriggerOrder { get; init; }
 
