@@ -28,13 +28,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
+          global-json-file: global.json
       - name: restore
-        run: dotnet restore LewdventureServer.sln
+        run: dotnet restore LewdventureServer.slnx --locked-mode
       - name: build
-        run: dotnet build LewdventureServer.sln -c Release --no-restore
+        run: dotnet build LewdventureServer.slnx -c Release --no-restore
       - name: format
-        run: dotnet format whitespace LewdventureServer.sln --verify-no-changes --no-restore
+        run: dotnet format whitespace LewdventureServer.slnx --verify-no-changes --no-restore
       - name: golden tests
         run: dotnet test tests/Lewdventure.Server.GoldenTests -c Release --no-build --logger "trx;LogFileName=golden.trx" --results-directory TestResults
       - name: upload test results
@@ -48,5 +48,5 @@ jobs:
           if-no-files-found: ignore
       - name: vulnerable packages
         run: |
-          dotnet list LewdventureServer.sln package --vulnerable --include-transitive | tee vulnerable.txt
+          dotnet list LewdventureServer.slnx package --vulnerable --include-transitive | tee vulnerable.txt
           if grep -qE "\b(High|Critical)\b" vulnerable.txt; then exit 1; fi

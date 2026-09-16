@@ -68,7 +68,6 @@ namespace Server
         {
             // 1. Инфраструктура
             services
-                .AddHttpClient()
                 .AddEndpointsApiExplorer()
                 .AddSwaggerGen();
 
@@ -98,17 +97,6 @@ namespace Server
 
             // 3. JSON — Newtonsoft канон; Minimal API по умолчанию жрёт System.Text.Json, его для battle не используем.
             services.AddSingleton(CreateNewtonsoftSerializerSettings());
-
-            services
-                .AddControllers()
-                .ConfigureApiBehaviorOptions(options =>
-                {
-                    options.InvalidModelStateResponseFactory = context => new BadRequestObjectResult(context.ModelState);
-                })
-                .AddNewtonsoftJson(options =>
-                {
-                    ApplyNewtonsoftSerializerSettings(options.SerializerSettings);
-                });
         }
 
         private static JsonSerializerSettings CreateNewtonsoftSerializerSettings()
