@@ -8,6 +8,8 @@ namespace Server.Battles
 
         public SkillType SkillType { get; }
 
+        public float CastDurationSeconds { get; }
+
         public void Execute(ISkillExecutionContext context);
     }
 }

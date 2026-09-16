@@ -1,22 +1,43 @@
-using Server.Configs;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using Microsoft.Extensions.Logging;
+using Server.Statuses;
 
 namespace Server.Battles
 {
     internal sealed class StatusParametersParser : IStatusParametersParser
     {
-        private readonly IBattleRewardParser _battleRewardParser;
+        private const string BonusesKey = "bonuses";
+        private const string DamageLengthKey = "damage_length";
+        private const string DamageRatioKey = "damage_ratio";
+        private const string MaxStacksKey = "max_stacks";
 
-        public StatusParametersParser(IBattleRewardParser battleRewardParser)
+        private readonly ILogger<StatusParametersParser> _logger;
+
+        public StatusParametersParser(ILogger<StatusParametersParser> logger)
         {
-            _battleRewardParser = battleRewardParser;
+            _logger = logger;
         }
 
-        public StatusParameters Parse(string parameters)
+        public bool TryParse(string parameters, StatusType statusType, [MaybeNullWhen(false)] out StatusParameters parsed)
         {
+            parsed = null;
+
+            if (string.IsNullOrWhiteSpace(parameters))
+            {
+                _logger.LogError($"[Config]: Status parameters empty, statusType = {statusType}");
+
+                return false;
+            }
+
             var pairs = SplitTopLevel(parameters, ';');
+            var hasDamageRatio = false;
+            var hasDamageLength = false;
+            var hasMaxStacks = false;
+            var hasBonuses = false;
             var damageRatio = 0f;
             var damageLength = 0;
-            var maxStacks = 1;
+            var maxStacks = 0;
             IReadOnlyList<RewardBonus> bonuses = Array.Empty<RewardBonus>();
 
             for (int i = 0; i < pairs.Count; i++)
@@ -29,32 +50,229 @@ namespace Server.Battles
                 var separator = pair.IndexOf(':');
 
                 if (separator < 0)
-                    continue;
+                {
+                    _logger.LogError($"[Config]: Status parameters pair without key, statusType = {statusType}, raw = {parameters}");
+
+                    return false;
+                }
 
                 var key = pair.Slice(0, separator).Trim().ToString();
                 var value = UnwrapBrackets(pair.Slice(separator + 1).Trim());
 
-                switch (key)
+                if (key == DamageRatioKey)
                 {
-                    case "damage_ratio":
-                        damageRatio = ParserUtils.GetFloat(value, 0f);
-                        break;
-                    case "damage_length":
-                        damageLength = ParserUtils.GetInt(value, 0);
-                        break;
-                    case "max_stacks":
-                        maxStacks = ParserUtils.GetInt(value, 1);
-                        break;
-                    case "bonuses":
-                        bonuses = _battleRewardParser.ParseBonuses(value);
-                        break;
+                    if (TryParseFloat(value, out damageRatio) == false)
+                    {
+                        _logger.LogError($"[Config]: Status damage_ratio invalid, statusType = {statusType}, raw = {parameters}");
+
+                        return false;
+                    }
+
+                    hasDamageRatio = true;
+                    continue;
+                }
+
+                if (key == DamageLengthKey)
+                {
+                    if (TryParseInt(value, out damageLength) == false)
+                    {
+                        _logger.LogError($"[Config]: Status damage_length invalid, statusType = {statusType}, raw = {parameters}");
+
+                        return false;
+                    }
+
+                    hasDamageLength = true;
+                    continue;
+                }
+
+                if (key == MaxStacksKey)
+                {
+                    if (TryParseInt(value, out maxStacks) == false)
+                    {
+                        _logger.LogError($"[Config]: Status max_stacks invalid, statusType = {statusType}, raw = {parameters}");
+
+                        return false;
+                    }
+
+                    hasMaxStacks = true;
+                    continue;
+                }
+
+                if (key == BonusesKey)
+                {
+                    var bonusSeparator = ResolveBonusListSeparator(statusType);
+
+                    if (bonusSeparator == 0)
+                    {
+                        _logger.LogError($"[Config]: Status bonuses unexpected, statusType = {statusType}, raw = {parameters}");
+
+                        return false;
+                    }
+
+                    if (TryParseBonusList(value, bonusSeparator, statusType, parameters, out bonuses) == false)
+                        return false;
+
+                    hasBonuses = true;
+                    continue;
+                }
+
+                _logger.LogError($"[Config]: Status parameters unknown key = {key}, statusType = {statusType}, raw = {parameters}");
+
+                return false;
+            }
+
+            if (IsDamageOverTime(statusType))
+            {
+                if (hasDamageRatio == false || hasDamageLength == false || hasMaxStacks == false)
+                {
+                    _logger.LogError($"[Config]: Status damage over time keys missing, statusType = {statusType}, raw = {parameters}");
+
+                    return false;
+                }
+
+                if (damageLength <= 0 || maxStacks <= 0)
+                {
+                    _logger.LogError($"[Config]: Status damage over time values invalid, statusType = {statusType}, damageLength = {damageLength}, maxStacks = {maxStacks}, raw = {parameters}");
+
+                    return false;
                 }
             }
 
-            if (maxStacks < 1)
-                maxStacks = 1;
+            if (IsStrongDamageOverTime(statusType) || statusType == StatusType.BonusChange)
+            {
+                if (hasBonuses == false || bonuses.Count == 0)
+                {
+                    _logger.LogError($"[Config]: Status bonuses missing, statusType = {statusType}, raw = {parameters}");
 
-            return new StatusParameters(damageRatio, damageLength, maxStacks, bonuses);
+                    return false;
+                }
+            }
+
+            parsed = new StatusParameters(damageRatio, damageLength, maxStacks, bonuses);
+
+            return true;
+        }
+
+        private char ResolveBonusListSeparator(StatusType statusType)
+        {
+            if (statusType == StatusType.BurningStrong || statusType == StatusType.PoisonStrong)
+                return ';';
+
+            if (statusType == StatusType.BonusChange)
+                return ',';
+
+            return (char)0;
+        }
+
+        private bool TryParseBonusList(
+            string value,
+            char listSeparator,
+            StatusType statusType,
+            string rawParameters,
+            out IReadOnlyList<RewardBonus> bonuses)
+        {
+            bonuses = Array.Empty<RewardBonus>();
+
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                _logger.LogError($"[Config]: Status bonuses empty, statusType = {statusType}, raw = {rawParameters}");
+
+                return false;
+            }
+
+            var parts = SplitTopLevel(value, listSeparator);
+            var result = new List<RewardBonus>();
+
+            for (int i = 0; i < parts.Count; i++)
+            {
+                var part = parts[i].Trim();
+
+                if (part.Length == 0)
+                    continue;
+
+                if (TryParseBonusTriple(part, out var bonus) == false)
+                {
+                    _logger.LogError($"[Config]: Status bonus triple invalid, statusType = {statusType}, part = {part}, raw = {rawParameters}");
+
+                    return false;
+                }
+
+                result.Add(bonus);
+            }
+
+            if (result.Count == 0)
+            {
+                _logger.LogError($"[Config]: Status bonuses parsed empty, statusType = {statusType}, raw = {rawParameters}");
+
+                return false;
+            }
+
+            bonuses = result;
+
+            return true;
+        }
+
+        private bool TryParseBonusTriple(string part, out RewardBonus bonus)
+        {
+            bonus = default;
+
+            var first = part.IndexOf(':');
+
+            if (first < 0)
+                return false;
+
+            var typeSpan = part.AsSpan(0, first).Trim();
+            var rest = part.AsSpan(first + 1);
+            var second = rest.IndexOf(':');
+
+            if (second < 0)
+                return false;
+
+            var idSpan = rest.Slice(0, second).Trim();
+            var countSpan = rest.Slice(second + 1).Trim();
+
+            if (typeSpan.Equals("bonus", StringComparison.OrdinalIgnoreCase) == false)
+                return false;
+
+            if (int.TryParse(idSpan, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) == false)
+                return false;
+
+            if (id <= 0)
+                return false;
+
+            if (int.TryParse(countSpan, NumberStyles.Integer, CultureInfo.InvariantCulture, out var count) == false)
+                return false;
+
+            if (count <= 0)
+                return false;
+
+            bonus = new RewardBonus(id, count);
+
+            return true;
+        }
+
+        private bool TryParseFloat(string value, out float parsed)
+        {
+            return float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out parsed);
+        }
+
+        private bool TryParseInt(string value, out int parsed)
+        {
+            return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed);
+        }
+
+        private bool IsDamageOverTime(StatusType statusType)
+        {
+            return statusType == StatusType.Burning
+                || statusType == StatusType.BurningStrong
+                || statusType == StatusType.Poison
+                || statusType == StatusType.PoisonStrong;
+        }
+
+        private bool IsStrongDamageOverTime(StatusType statusType)
+        {
+            return statusType == StatusType.BurningStrong
+                || statusType == StatusType.PoisonStrong;
         }
 
         private string UnwrapBrackets(ReadOnlySpan<char> value)

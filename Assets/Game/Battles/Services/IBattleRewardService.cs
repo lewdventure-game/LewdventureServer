@@ -10,5 +10,14 @@ namespace Server.Battles
             IUnitState target,
             List<BattleCommand> commands,
             int currentTurn);
+
+        public void Apply(
+            IReadOnlyList<BattleReward> rewards,
+            IUnitState source,
+            IUnitState target,
+            ITeamSimulationState? attacker,
+            ITeamSimulationState? defender,
+            List<BattleCommand> commands,
+            int currentTurn);
     }
 }

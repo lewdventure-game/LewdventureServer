@@ -91,7 +91,7 @@ namespace Server.Battles
                 context.BattleCommandFactory.TriggerPerk(owner.Id, owner.SlotIndex, owner.Id, owner.SlotIndex, Id),
             };
 
-            _battleRewardService.Apply(_rewardsOnAction, owner, owner, commands, context.CurrentTurn);
+            _battleRewardService.Apply(_rewardsOnAction, owner, owner, context.Attacker, context.Defender, commands, context.CurrentTurn);
 
             context.BattleScriptBuilder.Add(
                 context.Steps,

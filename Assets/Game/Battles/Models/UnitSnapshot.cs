@@ -27,5 +27,7 @@ namespace Server.Battles
         public List<IBonusGrantSnapshot> ActiveBonuses { get; set; } = new();
 
         public int SlotIndex { get; set; }
+
+        public float CurrentHealth { get; set; }
     }
 }

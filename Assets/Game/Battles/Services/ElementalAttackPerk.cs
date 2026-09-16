@@ -93,6 +93,8 @@ namespace Server.Battles
                     anyDamageHits += 1;
             }
 
+            AppendIdleIfAlive(context, commands, owner);
+
             context.BattleScriptBuilder.Add(
                 context.Steps,
                 context.CurrentTurn,
@@ -199,8 +201,8 @@ namespace Server.Battles
 
             for (int i = 0; i < times; i++)
             {
-                context.BattleRewardService.Apply(_hitRewards, owner, target, commands, context.CurrentTurn);
-                context.Logger.LogDebug($"[Story][Battle] perk elemental extra reward apply perkId = {Id} index = {i + 1} of {times}");
+                context.BattleRewardService.Apply(_hitRewards, owner, target, context.Attacker, context.Defender, commands, context.CurrentTurn);
+                context.Logger.LogDebug($"[Story][Battle]: Perk elemental extra reward apply, perkId = {Id} index = {i + 1} of {times}");
             }
         }
 
@@ -313,8 +315,17 @@ namespace Server.Battles
                 return;
             }
 
-            context.BattleRewardService.Apply(_hitRewards, owner, target, commands, context.CurrentTurn);
-            context.Logger.LogDebug($"[Story][Battle] perk hit rewards applied perkId = {Id} targetId = {target.Id}");
+            context.BattleRewardService.Apply(_hitRewards, owner, target, context.Attacker, context.Defender, commands, context.CurrentTurn);
+            context.Logger.LogDebug($"[Story][Battle]: Perk hit rewards applied, perkId = {Id}, targetId = {target.Id}");
+        }
+
+        private void AppendIdleIfAlive(IPerkExecutionContext context, List<BattleCommand> commands, IUnitState unit)
+        {
+            if (unit.IsAlive() == false)
+                return;
+
+            commands.Add(context.BattleCommandFactory.PlayAnimation(unit.Id, unit.SlotIndex, "idle"));
+            context.Logger.LogDebug($"[Story][Battle]: Perk idle after cast, perkId = {Id}, ownerId = {unit.Id}");
         }
 
         private void AppendMissWait(IPerkExecutionContext context, List<BattleCommand> commands)

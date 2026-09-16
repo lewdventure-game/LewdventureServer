@@ -223,6 +223,8 @@ namespace Server.Battles
 
         public void AddStep(List<BattleCommand> commands, IUnitState target)
         {
+            AppendIdleIfAlive(commands);
+
             _battleScriptBuilder.Add(
                 _steps,
                 _currentTurn,
@@ -232,6 +234,16 @@ namespace Server.Battles
                 target);
 
             FlushPendingAnyDamage();
+        }
+
+        private void AppendIdleIfAlive(List<BattleCommand> commands)
+        {
+            if (_actor.IsAlive() == false)
+                return;
+
+            commands.Add(_battleCommandFactory.PlayAnimation(_actor.Id, _actor.SlotIndex, "idle"));
+
+            _logger.LogDebug($"[Story][Battle]: Idle after skill, actorId = {_actor.Id}, phase = {_phase}");
         }
 
         private void FlushPendingAnyDamage()

@@ -589,7 +589,7 @@ namespace Server.Battles
                 var activeStatus = activeStatuses[i];
 
                 if (activeStatus.StatusId == statusId)
-                    stacks += 1;
+                    ++stacks;
             }
 
             return stacks;
