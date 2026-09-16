@@ -415,7 +415,7 @@ namespace Server.Battles
             if (isEvaded)
             {
                 commands.Add(_battleCommandFactory.ShowMiss(actor.Id, actor.SlotIndex, target.Id, target.SlotIndex));
-                
+
                 AppendMissWait(commands);
 
                 return false;

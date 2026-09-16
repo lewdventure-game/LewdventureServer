@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_call:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: restore
+        run: dotnet restore LewdventureServer.sln
+      - name: build
+        run: dotnet build LewdventureServer.sln -c Release --no-restore
+      - name: format
+        run: dotnet format whitespace LewdventureServer.sln --verify-no-changes --no-restore
+      - name: golden tests
+        run: dotnet test tests/Lewdventure.Server.GoldenTests -c Release --no-build --logger "trx;LogFileName=golden.trx" --results-directory TestResults
+      - name: upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            TestResults
+            tests/**/TestResults/golden-diff
+          if-no-files-found: ignore
+      - name: vulnerable packages
+        run: |
+          dotnet list LewdventureServer.sln package --vulnerable --include-transitive | tee vulnerable.txt
+          if grep -qE "\b(High|Critical)\b" vulnerable.txt; then exit 1; fi
