@@ -24,10 +24,17 @@ namespace Server
             var builder = WebApplication.CreateBuilder(args);
 
             builder.WebHost.UseUrls(url);
+            builder.Host.UseDefaultServiceProvider(ConfigureServiceProvider);
 
             ConfigureServices(builder.Services);
 
             return builder;
+        }
+
+        private static void ConfigureServiceProvider(ServiceProviderOptions options)
+        {
+            options.ValidateScopes = true;
+            options.ValidateOnBuild = true;
         }
 
         private static async Task BuildWebApplication(WebApplicationBuilder builder, string url)
@@ -75,25 +82,27 @@ namespace Server
             services
                 .AddSingleton<IConfigDistributor, ConfigDistributor>()
                 .AddSingleton<IGameConfigService, GameConfigService>()
-                .AddSingleton<IBonusWorkModeParser, BonusWorkModeParser>()
-                .AddSingleton<IBattleAttackService, BattleAttackService>()
-                .AddSingleton<IBattleBonusService, BattleBonusService>()
-                .AddSingleton<IBattleCommandFactory, BattleCommandFactory>()
-                .AddSingleton<IBattleParameterParser, BattleParameterParser>()
-                .AddSingleton<IBattlePerkSimulator, BattlePerkSimulator>()
-                .AddSingleton<IBattleRewardParser, BattleRewardParser>()
-                .AddSingleton<IBattleRewardService, BattleRewardService>()
-                .AddSingleton<IBattleScriptBuilder, BattleScriptBuilder>()
-                .AddSingleton<IBattleSimulationValidator, BattleSimulationValidator>()
-                .AddSingleton<IBattleSkillSimulator, BattleSkillSimulator>()
-                .AddSingleton<IBattleStatusSimulator, BattleStatusSimulator>()
-                .AddSingleton<IBattleSummonSimulator, BattleSummonSimulator>()
-                .AddSingleton<ICharacteristicCalculator, CharacteristicCalculator>()
-                .AddSingleton<IPerkFactory, PerkFactory>()
-                .AddSingleton<ISkillFactory, SkillFactory>()
-                .AddSingleton<IStatusParametersParser, StatusParametersParser>()
-                .AddSingleton<IUnitStateBuilder, UnitStateBuilder>()
-                .AddSingleton<BattleSimulatorService>();
+                .AddSingleton<IBonusWorkModeParser, BonusWorkModeParser>();
+
+            services
+                .AddScoped<IBattleAttackService, BattleAttackService>()
+                .AddScoped<IBattleBonusService, BattleBonusService>()
+                .AddScoped<IBattleCommandFactory, BattleCommandFactory>()
+                .AddScoped<IBattleParameterParser, BattleParameterParser>()
+                .AddScoped<IBattlePerkSimulator, BattlePerkSimulator>()
+                .AddScoped<IBattleRewardParser, BattleRewardParser>()
+                .AddScoped<IBattleRewardService, BattleRewardService>()
+                .AddScoped<IBattleScriptBuilder, BattleScriptBuilder>()
+                .AddScoped<IBattleSimulationValidator, BattleSimulationValidator>()
+                .AddScoped<IBattleSkillSimulator, BattleSkillSimulator>()
+                .AddScoped<IBattleStatusSimulator, BattleStatusSimulator>()
+                .AddScoped<IBattleSummonSimulator, BattleSummonSimulator>()
+                .AddScoped<ICharacteristicCalculator, CharacteristicCalculator>()
+                .AddScoped<IPerkFactory, PerkFactory>()
+                .AddScoped<ISkillFactory, SkillFactory>()
+                .AddScoped<IStatusParametersParser, StatusParametersParser>()
+                .AddScoped<IUnitStateBuilder, UnitStateBuilder>()
+                .AddScoped<BattleSimulatorService>();
 
             // 3. JSON — Newtonsoft канон; Minimal API по умолчанию жрёт System.Text.Json, его для battle не используем.
             services.AddSingleton(CreateNewtonsoftSerializerSettings());

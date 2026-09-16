@@ -6,7 +6,6 @@ namespace Tests.Golden
 {
     [TestFixture]
     [Category("Golden")]
-    [Explicit("Сервисы боя пока singleton с состоянием в полях; тест включается в фазе 4")]
     public sealed class ParallelReplayTests
     {
         private const int TaskCount = 32;

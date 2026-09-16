@@ -11,6 +11,16 @@ namespace Tests.Golden.Infrastructure
 {
     internal sealed class GoldenWebApplicationFactory : WebApplicationFactory<Program>
     {
+        private const string ContentRootVariablePrefix = "ASPNETCORE_TEST_CONTENTROOT_";
+
+        public GoldenWebApplicationFactory(GoldenPaths goldenPaths)
+        {
+            var assemblyName = typeof(Program).Assembly.GetName().Name ?? string.Empty;
+            var variableName = ContentRootVariablePrefix + assemblyName.ToUpperInvariant().Replace(".", "_");
+
+            Environment.SetEnvironmentVariable(variableName, goldenPaths.ServerProjectDirectory);
+        }
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");

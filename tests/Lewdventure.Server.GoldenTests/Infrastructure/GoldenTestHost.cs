@@ -6,8 +6,8 @@ namespace Tests.Golden.Infrastructure
 
         public GoldenTestHost()
         {
-            _factory = new GoldenWebApplicationFactory();
             Paths = new GoldenPaths();
+            _factory = new GoldenWebApplicationFactory(Paths);
             Settings = new GoldenSettings();
             Catalog = new GoldenCaseCatalog(Paths);
             RequestBuilder = new GoldenRequestBuilder();

@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/tests/">
+    <Project Path="tests/Lewdventure.Server.Benchmarks/Lewdventure.Server.Benchmarks.csproj" />
     <Project Path="tests/Lewdventure.Server.GoldenTests/Lewdventure.Server.GoldenTests.csproj" />
   </Folder>
   <Project Path="LewdventureServer.csproj" />
