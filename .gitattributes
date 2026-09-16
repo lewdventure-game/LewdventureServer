@@ -1,0 +1,15 @@
+* text=auto
+*.cs text diff=csharp
+*.csproj text
+*.sln text eol=crlf
+*.slnx text
+*.sh text eol=lf
+*.js text eol=lf
+*.gs text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf
+Caddyfile text eol=lf
+*.png binary
+*.jpg binary
+*.pdf binary
