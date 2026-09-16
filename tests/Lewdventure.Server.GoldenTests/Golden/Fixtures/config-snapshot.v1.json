@@ -1,0 +1,2012 @@
+{
+  "format": "lewdventure-config-snapshot",
+  "formatVersion": 1,
+  "capturedAt": "2026-09-16T13:33:27.5987039Z",
+  "domains": [
+    {
+      "domain": "Constants",
+      "spreadsheetId": "1LIw9xcJQmsn4GThnsLQITpRLJ_6avKv-wTBj0MpsVNM",
+      "range": "B:E",
+      "rows": [
+        {
+          "is_off": false,
+          "constant_name": "character_overflow_resource",
+          "constant_value": "resource:hard_money:500",
+          "constant_type": "Array"
+        },
+        {
+          "is_off": false,
+          "constant_name": "equipment_lvl_drop_proportion",
+          "constant_value": "0.8",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "rare_summon_overflow_resource",
+          "constant_value": "resource:hard_money:100",
+          "constant_type": "Array"
+        },
+        {
+          "is_off": false,
+          "constant_name": "epic_summon_overflow_resource",
+          "constant_value": "resource:hard_money:200",
+          "constant_type": "Array"
+        },
+        {
+          "is_off": false,
+          "constant_name": "legendary_summon_overflow_resource",
+          "constant_value": "resource:hard_money:300",
+          "constant_type": "Array"
+        },
+        {
+          "is_off": false,
+          "constant_name": "is_equipment_enabled",
+          "constant_value": false,
+          "constant_type": "Bool"
+        },
+        {
+          "is_off": false,
+          "constant_name": "health_base",
+          "constant_value": "600",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "healing_boost_base",
+          "constant_value": "0",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "vampyrism_base",
+          "constant_value": "0",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "damage_base",
+          "constant_value": "57",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "atk_multiplier_base",
+          "constant_value": "1",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "evasion_base",
+          "constant_value": "0",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "crit_chance_base",
+          "constant_value": "0",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "crit_multiplier_base",
+          "constant_value": "0",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "combo_1_chance_base",
+          "constant_value": "0",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "combo_2_chance_base",
+          "constant_value": "0",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "combo_multiplier_base",
+          "constant_value": "0",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "counter_chance_base",
+          "constant_value": "0",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "counter_multiplier_base",
+          "constant_value": "0",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "spell_multiplier_base",
+          "constant_value": "0",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "defence_base",
+          "constant_value": "7",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "defence_coeff",
+          "constant_value": "0.003",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "energy_base",
+          "constant_value": "30",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "energy_max_base",
+          "constant_value": "90",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "perks_cooldown",
+          "constant_value": "0.5",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "statuses_cooldown",
+          "constant_value": "0.5",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "summons_cooldown",
+          "constant_value": "0.35",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "battle_flytext_timer",
+          "constant_value": "0.75",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "mythic_summon_overflow_resource",
+          "constant_value": "resource:hard_money:400",
+          "constant_type": "Array"
+        },
+        {
+          "is_off": false,
+          "constant_name": "units_cooldown",
+          "constant_value": "0.35",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "counterattack_cooldown",
+          "constant_value": "0.3",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "comboattack_cooldown",
+          "constant_value": "0.3",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "summon_level_reset_coeff",
+          "constant_value": "0.85",
+          "constant_type": "Float"
+        },
+        {
+          "is_off": false,
+          "constant_name": "summon_level_reset_resource",
+          "constant_value": "resource:hard_money:100",
+          "constant_type": "Array"
+        }
+      ]
+    },
+    {
+      "domain": "Characters",
+      "spreadsheetId": "1rB22U8FrboY1hHqg1AwhEvDBzb1OxK9JTUWZ_1isRTg",
+      "range": "B:J",
+      "rows": [
+        {
+          "is_off": false,
+          "id": "1",
+          "is_melee": true,
+          "upgrade_costs": "10",
+          "start_bonus_type": "1",
+          "start_bonus_value": "10",
+          "upgrade_bonus_types": "1",
+          "upgrade_bonus_values": "10",
+          "art_name": "pizduk"
+        }
+      ]
+    },
+    {
+      "domain": "Bonuses",
+      "spreadsheetId": "1jrzVDp9dTRtJBjyFFP1adtkbcqMEHIfnWs3XsJuR2ac",
+      "range": "B:G",
+      "rows": [
+        {
+          "is_off": false,
+          "id": "1",
+          "operator": "add",
+          "bonus_type": "max_health_perk",
+          "bonus_value": "0.15",
+          "work_modes": "permanent"
+        },
+        {
+          "is_off": false,
+          "id": "2",
+          "operator": "add",
+          "bonus_type": "damage_local",
+          "bonus_value": "5",
+          "work_modes": "if_equipped:characters:1;first_turns:3"
+        },
+        {
+          "is_off": false,
+          "id": "3",
+          "operator": "add",
+          "bonus_type": "evasion_local",
+          "bonus_value": "0.05",
+          "work_modes": "end_of_game"
+        },
+        {
+          "is_off": false,
+          "id": "4",
+          "operator": "add",
+          "bonus_type": "crit_chance_local",
+          "bonus_value": "0.15",
+          "work_modes": "end_of_battle"
+        },
+        {
+          "is_off": false,
+          "id": "5",
+          "operator": "add",
+          "bonus_type": "damage_perk",
+          "bonus_value": "-0.15",
+          "work_modes": "next_battles:5"
+        },
+        {
+          "is_off": false,
+          "id": "6",
+          "operator": "add",
+          "bonus_type": "combo_1_chance_perk",
+          "bonus_value": "1",
+          "work_modes": "first_turns:1"
+        },
+        {
+          "is_off": false,
+          "id": "7",
+          "operator": "add",
+          "bonus_type": "damage_perk",
+          "bonus_value": "-0.05",
+          "work_modes": "permanent"
+        },
+        {
+          "is_off": false,
+          "id": "8",
+          "operator": "replace",
+          "bonus_type": "crit_chance_local",
+          "bonus_value": "1",
+          "work_modes": "first_turns:1"
+        },
+        {
+          "is_off": false,
+          "id": "9",
+          "operator": "add",
+          "bonus_type": "healing_from_max",
+          "bonus_value": "0.5",
+          "work_modes": "permanent"
+        }
+      ]
+    },
+    {
+      "domain": "Statuses",
+      "spreadsheetId": "1Dwm4eRVQmLegaxulMk2RdNeOT7GlGu6QORQqeKnuUiY",
+      "range": "B:H",
+      "rows": [
+        {
+          "is_off": false,
+          "id": "1",
+          "status_type": "burning",
+          "proc_order": "1",
+          "icon_art_name": "burning_icon",
+          "parameters": "damage_ratio:[0.1];\ndamage_length:[3];\nmax_stacks:[5]",
+          "status_target": "enemy"
+        },
+        {
+          "is_off": false,
+          "id": "2",
+          "status_type": "burning_strong",
+          "proc_order": "2",
+          "icon_art_name": "burning_strong_icon",
+          "parameters": "damage_ratio:[0.2];\ndamage_length:[3];\nmax_stacks:[5];\nbonuses:[bonus:7:1]",
+          "status_target": "enemy"
+        },
+        {
+          "is_off": false,
+          "id": "3",
+          "status_type": "poison",
+          "proc_order": "3",
+          "icon_art_name": "poison_icon",
+          "parameters": "damage_ratio:[0.1];\ndamage_length:[3];\nmax_stacks:[5]",
+          "status_target": "enemy"
+        },
+        {
+          "is_off": false,
+          "id": "4",
+          "status_type": "poison_strong",
+          "proc_order": "4",
+          "icon_art_name": "poison_strong_icon",
+          "parameters": "damage_ratio:[0.2];\ndamage_length:[3];\nmax_stacks:[5];\nbonuses:[bonus:7:1]",
+          "status_target": "enemy"
+        },
+        {
+          "is_off": false,
+          "id": "5",
+          "status_type": "bonus_change",
+          "proc_order": "0",
+          "icon_art_name": "crit_replacement_icon",
+          "parameters": "bonuses:[bonus:8:1]",
+          "status_target": "caster"
+        }
+      ]
+    },
+    {
+      "domain": "Summons",
+      "spreadsheetId": "1QstDNh059XftqtZcIdIL3o80o_g8qQs_akKFe5jChCk",
+      "range": "B:J",
+      "rows": [
+        {
+          "is_off": false,
+          "id": "1",
+          "art_name": "",
+          "is_melee": true,
+          "rarity": "rare",
+          "dmg_on_lvls": "23",
+          "breakout_multis": "1",
+          "attack_cooldown": "1",
+          "skill_ids": "2"
+        },
+        {
+          "is_off": false,
+          "id": "2",
+          "art_name": "",
+          "is_melee": true,
+          "rarity": "epic",
+          "dmg_on_lvls": "29",
+          "breakout_multis": "1",
+          "attack_cooldown": "1",
+          "skill_ids": "3"
+        },
+        {
+          "is_off": false,
+          "id": "3",
+          "art_name": "",
+          "is_melee": false,
+          "rarity": "legendary",
+          "dmg_on_lvls": "35",
+          "breakout_multis": "1",
+          "attack_cooldown": "2",
+          "skill_ids": "4"
+        }
+      ]
+    },
+    {
+      "domain": "Summon_levels",
+      "spreadsheetId": "18swHo4NuLgys6_oGk_zqqpwadSm94KsBm-OoJIdoxR8",
+      "range": "B:I",
+      "rows": [
+        {
+          "is_off": false,
+          "id": "1",
+          "pattern_id": "1",
+          "level": "1",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "10"
+        },
+        {
+          "is_off": false,
+          "id": "2",
+          "pattern_id": "1",
+          "level": "2",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "12"
+        },
+        {
+          "is_off": false,
+          "id": "3",
+          "pattern_id": "1",
+          "level": "3",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "14"
+        },
+        {
+          "is_off": false,
+          "id": "4",
+          "pattern_id": "1",
+          "level": "4",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "16"
+        },
+        {
+          "is_off": false,
+          "id": "5",
+          "pattern_id": "1",
+          "level": "5",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "18"
+        },
+        {
+          "is_off": false,
+          "id": "6",
+          "pattern_id": "1",
+          "level": "6",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "20"
+        },
+        {
+          "is_off": false,
+          "id": "7",
+          "pattern_id": "1",
+          "level": "7",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "22"
+        },
+        {
+          "is_off": false,
+          "id": "8",
+          "pattern_id": "1",
+          "level": "8",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "24"
+        },
+        {
+          "is_off": false,
+          "id": "9",
+          "pattern_id": "1",
+          "level": "9",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "26"
+        },
+        {
+          "is_off": false,
+          "id": "10",
+          "pattern_id": "1",
+          "level": "10",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "28"
+        },
+        {
+          "is_off": false,
+          "id": "11",
+          "pattern_id": "1",
+          "level": "11",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "30"
+        },
+        {
+          "is_off": false,
+          "id": "12",
+          "pattern_id": "1",
+          "level": "12",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "32"
+        },
+        {
+          "is_off": false,
+          "id": "13",
+          "pattern_id": "1",
+          "level": "13",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "34"
+        },
+        {
+          "is_off": false,
+          "id": "14",
+          "pattern_id": "1",
+          "level": "14",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "36"
+        },
+        {
+          "is_off": false,
+          "id": "15",
+          "pattern_id": "1",
+          "level": "15",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "38"
+        },
+        {
+          "is_off": false,
+          "id": "16",
+          "pattern_id": "1",
+          "level": "16",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "40"
+        },
+        {
+          "is_off": false,
+          "id": "17",
+          "pattern_id": "1",
+          "level": "17",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "42"
+        },
+        {
+          "is_off": false,
+          "id": "18",
+          "pattern_id": "1",
+          "level": "18",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "44"
+        },
+        {
+          "is_off": false,
+          "id": "19",
+          "pattern_id": "1",
+          "level": "19",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "46"
+        },
+        {
+          "is_off": false,
+          "id": "20",
+          "pattern_id": "1",
+          "level": "20",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "48"
+        },
+        {
+          "is_off": false,
+          "id": "21",
+          "pattern_id": "1",
+          "level": "21",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "50"
+        },
+        {
+          "is_off": false,
+          "id": "22",
+          "pattern_id": "1",
+          "level": "22",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "52"
+        },
+        {
+          "is_off": false,
+          "id": "23",
+          "pattern_id": "1",
+          "level": "23",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "54"
+        },
+        {
+          "is_off": false,
+          "id": "24",
+          "pattern_id": "1",
+          "level": "24",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "56"
+        },
+        {
+          "is_off": false,
+          "id": "25",
+          "pattern_id": "1",
+          "level": "25",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "58"
+        },
+        {
+          "is_off": false,
+          "id": "26",
+          "pattern_id": "1",
+          "level": "26",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "60"
+        },
+        {
+          "is_off": false,
+          "id": "27",
+          "pattern_id": "1",
+          "level": "27",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "62"
+        },
+        {
+          "is_off": false,
+          "id": "28",
+          "pattern_id": "1",
+          "level": "28",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "64"
+        },
+        {
+          "is_off": false,
+          "id": "29",
+          "pattern_id": "1",
+          "level": "29",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "66"
+        },
+        {
+          "is_off": false,
+          "id": "30",
+          "pattern_id": "1",
+          "level": "30",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "68"
+        },
+        {
+          "is_off": false,
+          "id": "31",
+          "pattern_id": "1",
+          "level": "31",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "70"
+        },
+        {
+          "is_off": false,
+          "id": "32",
+          "pattern_id": "1",
+          "level": "32",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "72"
+        },
+        {
+          "is_off": false,
+          "id": "33",
+          "pattern_id": "1",
+          "level": "33",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "74"
+        },
+        {
+          "is_off": false,
+          "id": "34",
+          "pattern_id": "1",
+          "level": "34",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "76"
+        },
+        {
+          "is_off": false,
+          "id": "35",
+          "pattern_id": "1",
+          "level": "35",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "78"
+        },
+        {
+          "is_off": false,
+          "id": "36",
+          "pattern_id": "1",
+          "level": "36",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "80"
+        },
+        {
+          "is_off": false,
+          "id": "37",
+          "pattern_id": "1",
+          "level": "37",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "82"
+        },
+        {
+          "is_off": false,
+          "id": "38",
+          "pattern_id": "1",
+          "level": "38",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "84"
+        },
+        {
+          "is_off": false,
+          "id": "39",
+          "pattern_id": "1",
+          "level": "39",
+          "mastery_requirement": "0",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "86"
+        },
+        {
+          "is_off": false,
+          "id": "40",
+          "pattern_id": "1",
+          "level": "40",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "88"
+        },
+        {
+          "is_off": false,
+          "id": "41",
+          "pattern_id": "1",
+          "level": "41",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "90"
+        },
+        {
+          "is_off": false,
+          "id": "42",
+          "pattern_id": "1",
+          "level": "42",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "92"
+        },
+        {
+          "is_off": false,
+          "id": "43",
+          "pattern_id": "1",
+          "level": "43",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "94"
+        },
+        {
+          "is_off": false,
+          "id": "44",
+          "pattern_id": "1",
+          "level": "44",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "96"
+        },
+        {
+          "is_off": false,
+          "id": "45",
+          "pattern_id": "1",
+          "level": "45",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "98"
+        },
+        {
+          "is_off": false,
+          "id": "46",
+          "pattern_id": "1",
+          "level": "46",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "100"
+        },
+        {
+          "is_off": false,
+          "id": "47",
+          "pattern_id": "1",
+          "level": "47",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "102"
+        },
+        {
+          "is_off": false,
+          "id": "48",
+          "pattern_id": "1",
+          "level": "48",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "104"
+        },
+        {
+          "is_off": false,
+          "id": "49",
+          "pattern_id": "1",
+          "level": "49",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "106"
+        },
+        {
+          "is_off": false,
+          "id": "50",
+          "pattern_id": "1",
+          "level": "50",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "108"
+        },
+        {
+          "is_off": false,
+          "id": "51",
+          "pattern_id": "1",
+          "level": "51",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "110"
+        },
+        {
+          "is_off": false,
+          "id": "52",
+          "pattern_id": "1",
+          "level": "52",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "112"
+        },
+        {
+          "is_off": false,
+          "id": "53",
+          "pattern_id": "1",
+          "level": "53",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "114"
+        },
+        {
+          "is_off": false,
+          "id": "54",
+          "pattern_id": "1",
+          "level": "54",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "116"
+        },
+        {
+          "is_off": false,
+          "id": "55",
+          "pattern_id": "1",
+          "level": "55",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "118"
+        },
+        {
+          "is_off": false,
+          "id": "56",
+          "pattern_id": "1",
+          "level": "56",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "120"
+        },
+        {
+          "is_off": false,
+          "id": "57",
+          "pattern_id": "1",
+          "level": "57",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "122"
+        },
+        {
+          "is_off": false,
+          "id": "58",
+          "pattern_id": "1",
+          "level": "58",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "124"
+        },
+        {
+          "is_off": false,
+          "id": "59",
+          "pattern_id": "1",
+          "level": "59",
+          "mastery_requirement": "1",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "126"
+        },
+        {
+          "is_off": false,
+          "id": "60",
+          "pattern_id": "1",
+          "level": "60",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "128"
+        },
+        {
+          "is_off": false,
+          "id": "61",
+          "pattern_id": "1",
+          "level": "61",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "130"
+        },
+        {
+          "is_off": false,
+          "id": "62",
+          "pattern_id": "1",
+          "level": "62",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "132"
+        },
+        {
+          "is_off": false,
+          "id": "63",
+          "pattern_id": "1",
+          "level": "63",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "134"
+        },
+        {
+          "is_off": false,
+          "id": "64",
+          "pattern_id": "1",
+          "level": "64",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "136"
+        },
+        {
+          "is_off": false,
+          "id": "65",
+          "pattern_id": "1",
+          "level": "65",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "138"
+        },
+        {
+          "is_off": false,
+          "id": "66",
+          "pattern_id": "1",
+          "level": "66",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "140"
+        },
+        {
+          "is_off": false,
+          "id": "67",
+          "pattern_id": "1",
+          "level": "67",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "142"
+        },
+        {
+          "is_off": false,
+          "id": "68",
+          "pattern_id": "1",
+          "level": "68",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "144"
+        },
+        {
+          "is_off": false,
+          "id": "69",
+          "pattern_id": "1",
+          "level": "69",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "146"
+        },
+        {
+          "is_off": false,
+          "id": "70",
+          "pattern_id": "1",
+          "level": "70",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "148"
+        },
+        {
+          "is_off": false,
+          "id": "71",
+          "pattern_id": "1",
+          "level": "71",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "150"
+        },
+        {
+          "is_off": false,
+          "id": "72",
+          "pattern_id": "1",
+          "level": "72",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "152"
+        },
+        {
+          "is_off": false,
+          "id": "73",
+          "pattern_id": "1",
+          "level": "73",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "154"
+        },
+        {
+          "is_off": false,
+          "id": "74",
+          "pattern_id": "1",
+          "level": "74",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "156"
+        },
+        {
+          "is_off": false,
+          "id": "75",
+          "pattern_id": "1",
+          "level": "75",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "158"
+        },
+        {
+          "is_off": false,
+          "id": "76",
+          "pattern_id": "1",
+          "level": "76",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "160"
+        },
+        {
+          "is_off": false,
+          "id": "77",
+          "pattern_id": "1",
+          "level": "77",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "162"
+        },
+        {
+          "is_off": false,
+          "id": "78",
+          "pattern_id": "1",
+          "level": "78",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "164"
+        },
+        {
+          "is_off": false,
+          "id": "79",
+          "pattern_id": "1",
+          "level": "79",
+          "mastery_requirement": "2",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "166"
+        },
+        {
+          "is_off": false,
+          "id": "80",
+          "pattern_id": "1",
+          "level": "80",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "168"
+        },
+        {
+          "is_off": false,
+          "id": "81",
+          "pattern_id": "1",
+          "level": "81",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "170"
+        },
+        {
+          "is_off": false,
+          "id": "82",
+          "pattern_id": "1",
+          "level": "82",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "172"
+        },
+        {
+          "is_off": false,
+          "id": "83",
+          "pattern_id": "1",
+          "level": "83",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "174"
+        },
+        {
+          "is_off": false,
+          "id": "84",
+          "pattern_id": "1",
+          "level": "84",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "176"
+        },
+        {
+          "is_off": false,
+          "id": "85",
+          "pattern_id": "1",
+          "level": "85",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "178"
+        },
+        {
+          "is_off": false,
+          "id": "86",
+          "pattern_id": "1",
+          "level": "86",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "180"
+        },
+        {
+          "is_off": false,
+          "id": "87",
+          "pattern_id": "1",
+          "level": "87",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "182"
+        },
+        {
+          "is_off": false,
+          "id": "88",
+          "pattern_id": "1",
+          "level": "88",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "184"
+        },
+        {
+          "is_off": false,
+          "id": "89",
+          "pattern_id": "1",
+          "level": "89",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "186"
+        },
+        {
+          "is_off": false,
+          "id": "90",
+          "pattern_id": "1",
+          "level": "90",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "188"
+        },
+        {
+          "is_off": false,
+          "id": "91",
+          "pattern_id": "1",
+          "level": "91",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "190"
+        },
+        {
+          "is_off": false,
+          "id": "92",
+          "pattern_id": "1",
+          "level": "92",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "192"
+        },
+        {
+          "is_off": false,
+          "id": "93",
+          "pattern_id": "1",
+          "level": "93",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "194"
+        },
+        {
+          "is_off": false,
+          "id": "94",
+          "pattern_id": "1",
+          "level": "94",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "196"
+        },
+        {
+          "is_off": false,
+          "id": "95",
+          "pattern_id": "1",
+          "level": "95",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "198"
+        },
+        {
+          "is_off": false,
+          "id": "96",
+          "pattern_id": "1",
+          "level": "96",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "200"
+        },
+        {
+          "is_off": false,
+          "id": "97",
+          "pattern_id": "1",
+          "level": "97",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "202"
+        },
+        {
+          "is_off": false,
+          "id": "98",
+          "pattern_id": "1",
+          "level": "98",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "204"
+        },
+        {
+          "is_off": false,
+          "id": "99",
+          "pattern_id": "1",
+          "level": "99",
+          "mastery_requirement": "3",
+          "resource_types": "resource",
+          "resource_ids": "summon_exp",
+          "resource_values": "206"
+        }
+      ]
+    },
+    {
+      "domain": "Mastery",
+      "spreadsheetId": "1grplwUHMfdcs0-0QvFZvhQqsrcS4ywwe6nTQsEB6EOg",
+      "range": "B:H",
+      "rows": [
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "1",
+          "copies_to_upgrade": "1",
+          "bonus_id": "1",
+          "art_name": "",
+          "dmg_multiplier": "1.05"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "2",
+          "copies_to_upgrade": "1",
+          "bonus_id": "0",
+          "art_name": "",
+          "dmg_multiplier": "1.10"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "3",
+          "copies_to_upgrade": "2",
+          "bonus_id": "1",
+          "art_name": "",
+          "dmg_multiplier": "1.16"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "4",
+          "copies_to_upgrade": "2",
+          "bonus_id": "0",
+          "art_name": "",
+          "dmg_multiplier": "1.22"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "5",
+          "copies_to_upgrade": "3",
+          "bonus_id": "1",
+          "art_name": "",
+          "dmg_multiplier": "1.28"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "6",
+          "copies_to_upgrade": "3",
+          "bonus_id": "0",
+          "art_name": "",
+          "dmg_multiplier": "1.34"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "7",
+          "copies_to_upgrade": "4",
+          "bonus_id": "1",
+          "art_name": "",
+          "dmg_multiplier": "1.41"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "8",
+          "copies_to_upgrade": "4",
+          "bonus_id": "0",
+          "art_name": "",
+          "dmg_multiplier": "1.48"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "9",
+          "copies_to_upgrade": "5",
+          "bonus_id": "1",
+          "art_name": "",
+          "dmg_multiplier": "1.55"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "10",
+          "copies_to_upgrade": "5",
+          "bonus_id": "0",
+          "art_name": "",
+          "dmg_multiplier": "1.63"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "11",
+          "copies_to_upgrade": "5",
+          "bonus_id": "1",
+          "art_name": "",
+          "dmg_multiplier": "1.71"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "12",
+          "copies_to_upgrade": "5",
+          "bonus_id": "0",
+          "art_name": "",
+          "dmg_multiplier": "1.80"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "13",
+          "copies_to_upgrade": "5",
+          "bonus_id": "1",
+          "art_name": "",
+          "dmg_multiplier": "1.89"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "14",
+          "copies_to_upgrade": "5",
+          "bonus_id": "0",
+          "art_name": "",
+          "dmg_multiplier": "1.98"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "15",
+          "copies_to_upgrade": "5",
+          "bonus_id": "1",
+          "art_name": "",
+          "dmg_multiplier": "2.08"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "16",
+          "copies_to_upgrade": "5",
+          "bonus_id": "0",
+          "art_name": "",
+          "dmg_multiplier": "2.19"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "mastery_level": "17",
+          "copies_to_upgrade": "5",
+          "bonus_id": "1",
+          "art_name": "",
+          "dmg_multiplier": "2.29"
+        }
+      ]
+    },
+    {
+      "domain": "Enemies",
+      "spreadsheetId": "1GLSin50lIGoTOZbmV3OQU8TXB_XAdUcnsnsfBK0AsKk",
+      "range": "B:Q",
+      "rows": [
+        {
+          "is_off": false,
+          "id": "10101",
+          "skin_name": "dildo_monster",
+          "is_melee": true,
+          "health": "500",
+          "damage": "130",
+          "skill_ids": "1",
+          "other_characteristics": "defence:[10];\nevasion:[0];\nvampyrism:[0];\nhealing_boost:[0];\ncrit_chance:[0];\ncrit_multiplier:[0];\ncombo_1_chance:[0];\ncombo_2_chance:[0];\ncombo_multiplier:[0];\ncounter_chance:[0];\ncounter_multiplier:[0];\nspell_multiplier:[0];\nenergy:[30];\nenergy_max:[90];"
+        },
+        {
+          "is_off": false,
+          "id": "10102",
+          "skin_name": "spermomet",
+          "is_melee": false,
+          "health": "200",
+          "damage": "40",
+          "skill_ids": "1",
+          "other_characteristics": "defence:[10];\nevasion:[0];\nvampyrism:[0];\nhealing_boost:[0];\ncrit_chance:[0];\ncrit_multiplier:[0];\ncombo_1_chance:[0];\ncombo_2_chance:[0];\ncombo_multiplier:[0];\ncounter_chance:[0];\ncounter_multiplier:[0];\nspell_multiplier:[0];\nenergy:[30];\nenergy_max:[90];"
+        }
+      ]
+    },
+    {
+      "domain": "Equipments",
+      "spreadsheetId": "1XP47_4sQ5uK2_6rGSBH4bkWgXVDBLfiYIYtVk9qIB0E",
+      "range": "B:R",
+      "rows": [
+        {
+          "is_off": false
+        }
+      ]
+    },
+    {
+      "domain": "Story_levels",
+      "spreadsheetId": "1gz8t6fmWwIwvz93U7pKZ8rrBu9RdfyJB5Yn9G2ITuCE",
+      "range": "B:I",
+      "rows": [
+        {
+          "is_off": false,
+          "id": "1",
+          "background": "Forest",
+          "start_phrase_loc_key": "story.level.1.start",
+          "stage_ids": "1;2;3;4;5",
+          "exp_level_id": "1",
+          "max_battle_turns": "25",
+          "enemy_stats_multiplier": "1"
+        },
+        {
+          "is_off": false,
+          "id": "2",
+          "background": "Forest",
+          "start_phrase_loc_key": "story.level.2.start",
+          "stage_ids": "11;12;13;14;15;16;17;18;19;20",
+          "exp_level_id": "2",
+          "max_battle_turns": "25",
+          "enemy_stats_multiplier": "1.1"
+        }
+      ]
+    },
+    {
+      "domain": "Story_stages",
+      "spreadsheetId": "1csDHVX7F0bStlHAayJV_3TOLOoyIbbCdg4O3ORTpx8g",
+      "range": "B:G",
+      "rows": [
+        {
+          "is_off": false,
+          "id": "1",
+          "is_boss_lvl": false,
+          "event_ids": "1",
+          "event_chances": "1",
+          "enemy_stats_multiplier": "1.0"
+        },
+        {
+          "is_off": false,
+          "id": "2",
+          "is_boss_lvl": false,
+          "event_ids": "1",
+          "event_chances": "1",
+          "enemy_stats_multiplier": "1.0"
+        },
+        {
+          "is_off": false,
+          "id": "3",
+          "is_boss_lvl": false,
+          "event_ids": "1;2",
+          "event_chances": "1;1",
+          "enemy_stats_multiplier": "1.2"
+        },
+        {
+          "is_off": false,
+          "id": "4",
+          "is_boss_lvl": false,
+          "event_ids": "1;2",
+          "event_chances": "3;1",
+          "enemy_stats_multiplier": "1.3"
+        },
+        {
+          "is_off": false,
+          "id": "5",
+          "is_boss_lvl": true,
+          "event_ids": "2",
+          "event_chances": "1",
+          "enemy_stats_multiplier": "1.4"
+        },
+        {
+          "is_off": false,
+          "id": "6",
+          "is_boss_lvl": false,
+          "event_ids": "1",
+          "event_chances": "1",
+          "enemy_stats_multiplier": "1.5"
+        },
+        {
+          "is_off": false,
+          "id": "7",
+          "is_boss_lvl": false,
+          "event_ids": "3",
+          "event_chances": "1",
+          "enemy_stats_multiplier": "1.6"
+        },
+        {
+          "is_off": false,
+          "id": "8",
+          "is_boss_lvl": false,
+          "event_ids": "1;2;3",
+          "event_chances": "3;1;3",
+          "enemy_stats_multiplier": "1.7"
+        },
+        {
+          "is_off": false,
+          "id": "9",
+          "is_boss_lvl": false,
+          "event_ids": "1;2;3",
+          "event_chances": "1;2;1",
+          "enemy_stats_multiplier": "1.8"
+        },
+        {
+          "is_off": false,
+          "id": "10",
+          "is_boss_lvl": false,
+          "event_ids": "2",
+          "event_chances": "1",
+          "enemy_stats_multiplier": "1.9"
+        }
+      ]
+    },
+    {
+      "domain": "Story_events",
+      "spreadsheetId": "1chWPFzItT87MzdrEQAp7DvAkhEiY_xuLwor42fyFGDk",
+      "range": "B:G",
+      "rows": [
+        {
+          "is_off": false,
+          "id": "1",
+          "event_type": "default_event",
+          "event_art_preset": "",
+          "event_parameters": "loc_key:[narrative.event.1.text];\nrewards:[bonus:1:1]",
+          "level_exp": "0"
+        },
+        {
+          "is_off": false,
+          "id": "2",
+          "event_type": "fight",
+          "event_art_preset": "",
+          "event_parameters": "loc_key_start:[narrative.event.2.start];\nloc_key_end:[narrative.event.2.end];\nenemies:[10101]",
+          "level_exp": "20"
+        },
+        {
+          "is_off": false,
+          "id": "3",
+          "event_type": "fork_event",
+          "event_art_preset": "ForkEventForestTree",
+          "event_parameters": "loc_key_start:[narrative.event.3.start];\nloc_key_button1:[narrative.event.3.button.1];\nchance_event1:[0.7];\nloc_key_event1:[narrative.event.3.outcome.1];\nrewards_event1:[resource:hard_money:100];\nreward_lenght_event1:[0];\nloc_key_event2:[narrative.event.3.outcome.2];\nrewards_event2:[resource:hard_money:100,bonus:1:1];\nreward_lenght_event2:[0];\nloc_key_button2:[narrative.event.3.button.2];\nchance_event3:[0.1];\nloc_key_event3:[narrative.event.3.outcome.3];\nrewards_event3:[resource:hard_money:100,bonus:1:1];\nreward_lenght_event3:[3];\nloc_key_event4:[narrative.event.3.outcome.4];\nrewards_event4:[resource:hard_money:100];\nreward_lenght_event4:[0]",
+          "level_exp": "50"
+        },
+        {
+          "is_off": false,
+          "id": "4",
+          "event_type": "default_event",
+          "event_art_preset": "",
+          "event_parameters": "loc_key:[narrative.event.1.text];\nrewards:[bonus:1:1]",
+          "level_exp": "0"
+        },
+        {
+          "is_off": false,
+          "id": "5",
+          "event_type": "fight",
+          "event_art_preset": "",
+          "event_parameters": "loc_key_start:[narrative.event.2.start];\nloc_key_end:[narrative.event.2.end];\nenemies:[10101,10102]",
+          "level_exp": "20"
+        },
+        {
+          "is_off": false,
+          "id": "6",
+          "event_type": "fork_event",
+          "event_art_preset": "fork_event_lava_dildo",
+          "event_parameters": "loc_key_start:[narrative.event.3.start];\nloc_key_button1:[narrative.event.3.button.1];\nchance_event1:[0.7];\nloc_key_event1:[narrative.event.3.outcome.1];\nrewards_event1:[resource:hard_money:100];\nreward_lenght_event1:[0];\nloc_key_event2:[narrative.event.3.outcome.2];\nrewards_event2:[resource:hard_money:100,bonus:1:1];\nreward_lenght_event2:[0];\nloc_key_button2:[narrative.event.3.button.2];\nchance_event3:[0.1];\nloc_key_event3:[narrative.event.3.outcome.3];\nrewards_event3:[resource:hard_money:100,bonus:1:1];\nreward_lenght_event3:[3];\nloc_key_event4:[narrative.event.3.outcome.4];\nrewards_event4:[resource:hard_money:100];\nreward_lenght_event4:[0]",
+          "level_exp": "50"
+        },
+        {
+          "is_off": false,
+          "id": "7",
+          "event_type": "fight",
+          "event_art_preset": "",
+          "event_parameters": "loc_key_start:[Battle with 1 enemy is about to start];\nloc_key_end:[If you see this - you won the battle. Tap button to go next];\nenemies:[10101]",
+          "level_exp": "20"
+        },
+        {
+          "is_off": false,
+          "id": "8",
+          "event_type": "fight",
+          "event_art_preset": "",
+          "event_parameters": "loc_key_start:[Battle with 2 enemies is about to start];\nloc_key_end:[If you see this - you won the battle. Tap button to go next];\nenemies:[10101,10102]",
+          "level_exp": "20"
+        }
+      ]
+    },
+    {
+      "domain": "Exp_levels_patterns",
+      "spreadsheetId": "1YC9UR3RLOU-0r14ovkXeR_Dp1dtkkJCX_veZxLSBmVM",
+      "range": "B:G",
+      "rows": [
+        {
+          "is_off": false,
+          "id": "1",
+          "exp_level": "1",
+          "exp_for_next_lvl": "20",
+          "perk_preset_ids": "1;2;3;4",
+          "perk_preset_weights": "1;1;1;1"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "exp_level": "2",
+          "exp_for_next_lvl": "20",
+          "perk_preset_ids": "1;2;3;4",
+          "perk_preset_weights": "1;1;1;1"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "exp_level": "3",
+          "exp_for_next_lvl": "20",
+          "perk_preset_ids": "1;2;3;4",
+          "perk_preset_weights": "1;1;1;1"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "exp_level": "4",
+          "exp_for_next_lvl": "20",
+          "perk_preset_ids": "1;2;3;4",
+          "perk_preset_weights": "1;1;1;1"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "exp_level": "5",
+          "exp_for_next_lvl": "20",
+          "perk_preset_ids": "1;2;3;4",
+          "perk_preset_weights": "1;1;1;1"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "exp_level": "6",
+          "exp_for_next_lvl": "20",
+          "perk_preset_ids": "1;2;3;4",
+          "perk_preset_weights": "1;1;1;1"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "exp_level": "7",
+          "exp_for_next_lvl": "20",
+          "perk_preset_ids": "1;2;3;4",
+          "perk_preset_weights": "1;1;1;1"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "exp_level": "8",
+          "exp_for_next_lvl": "20",
+          "perk_preset_ids": "1;2;3;4",
+          "perk_preset_weights": "1;1;1;1"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "exp_level": "9",
+          "exp_for_next_lvl": "20",
+          "perk_preset_ids": "1;2;3;4",
+          "perk_preset_weights": "1;1;1;1"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "exp_level": "10",
+          "exp_for_next_lvl": "20",
+          "perk_preset_ids": "1;2;3;4",
+          "perk_preset_weights": "1;1;1;1"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "exp_level": "11",
+          "exp_for_next_lvl": "20",
+          "perk_preset_ids": "1;2;3;4",
+          "perk_preset_weights": "1;1;1;1"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "exp_level": "12",
+          "exp_for_next_lvl": "20",
+          "perk_preset_ids": "1;2;3;4",
+          "perk_preset_weights": "1;1;1;1"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "exp_level": "13",
+          "exp_for_next_lvl": "20",
+          "perk_preset_ids": "1;2;3;4",
+          "perk_preset_weights": "1;1;1;1"
+        },
+        {
+          "is_off": false,
+          "id": "1",
+          "exp_level": "14",
+          "exp_for_next_lvl": "20",
+          "perk_preset_ids": "1;2;3;4",
+          "perk_preset_weights": "1;1;1;1"
+        }
+      ]
+    },
+    {
+      "domain": "Perks",
+      "spreadsheetId": "1UyW7R_DZHDTiDtZoicZQ9GhDctVaK_zA7C0aBP0T6Hk",
+      "range": "B:J",
+      "rows": [
+        {
+          "is_off": false,
+          "id": "1",
+          "icon_art": "icon_1",
+          "rarity": "common",
+          "perk_type": "reward",
+          "perk_parameters": "rewards:[resource:exp_lvl:20,bonus:1:1]",
+          "multiple_picks": true,
+          "proc_order": "0",
+          "name_loc": "perk.1.name"
+        },
+        {
+          "is_off": false,
+          "id": "2",
+          "icon_art": "icon_2",
+          "rarity": "rare",
+          "perk_type": "fire_attack",
+          "perk_parameters": "projectile_count:[3];\ndamage_ratio:[0.15];\nhit_rewards:[status:1:1];\nrewards_chance:[0.5];\ndebuff_rewards_chance:[0.15];\nproc_rounds:[1,3,5,7,9,11,13,15,17,19,21,23,25]",
+          "multiple_picks": false,
+          "proc_order": "0",
+          "name_loc": "perk.2.name"
+        },
+        {
+          "is_off": false,
+          "id": "3",
+          "icon_art": "icon_3",
+          "rarity": "legendary",
+          "perk_type": "earth_attack",
+          "perk_parameters": "projectile_count:[3];\ndamage_ratio:[0.15];\nhit_rewards:[status:3:1];\nrewards_chance:[0.5];\ndebuff_rewards_chance:[0.15];\nproc_rounds:[1,3,5,7,9,11,13,15,17,19,21,23,25]",
+          "multiple_picks": false,
+          "proc_order": "0",
+          "name_loc": "perk.3.name"
+        },
+        {
+          "is_off": false,
+          "id": "4",
+          "icon_art": "icon_4",
+          "rarity": "mythic",
+          "perk_type": "air_attack",
+          "perk_parameters": "projectile_count:[3];\ndamage_ratio:[0.15];\nhit_rewards:[status:2:1];\nrewards_chance:[0.15];\nproc_rounds:[1,3,5,7,9,11,13,15,17,19,21,23,25]",
+          "multiple_picks": false,
+          "proc_order": "0",
+          "name_loc": "perk.4.name"
+        },
+        {
+          "is_off": false,
+          "id": "5",
+          "icon_art": "icon_5",
+          "rarity": "rare",
+          "perk_type": "water_attack",
+          "perk_parameters": "projectile_count:[3];\ndamage_ratio:[0.15];\nhit_rewards:[status:4:1];\nrewards_chance:[0.15];\nproc_rounds:[1,3,5,7,9,11,13,15,17,19,21,23,25]",
+          "multiple_picks": false,
+          "proc_order": "0",
+          "name_loc": "perk.5.name"
+        },
+        {
+          "is_off": false,
+          "id": "6",
+          "icon_art": "icon_6",
+          "rarity": "legendary",
+          "perk_type": "action_reward",
+          "perk_parameters": "rewards:[resource:exp_lvl:15];\nrewards_on_action:[bonus:1:1];\nactions:[attack:1,counterattack:1,comboattack:1,any_damage:4];\nrewards_chance:[1]",
+          "multiple_picks": false,
+          "proc_order": "0",
+          "name_loc": "perk.6.name"
+        },
+        {
+          "is_off": false,
+          "id": "7",
+          "icon_art": "icon_7",
+          "rarity": "mythic",
+          "perk_type": "resurrection",
+          "perk_parameters": "health_ratio:[0.8];\nresurrections_count:[1]",
+          "multiple_picks": false,
+          "proc_order": "0",
+          "name_loc": "perk.7.name"
+        }
+      ]
+    },
+    {
+      "domain": "Perk_groups",
+      "spreadsheetId": "1USA6a-252oCKSmCqUDMtQn78pMiubIIj2garPm0pyBU",
+      "range": "B:G",
+      "rows": [
+        {
+          "is_off": false,
+          "id": "1",
+          "choice_type": "manual",
+          "perk_ids": "1;2;3;4;5;6;7",
+          "perk_chances": "7;6;5;4;3;1;2",
+          "random_perks_count": "3"
+        },
+        {
+          "is_off": false,
+          "id": "2",
+          "choice_type": "manual",
+          "perk_ids": "1;2;3;4;5;6;7",
+          "perk_chances": "1;1;3;3;4;4;4",
+          "random_perks_count": "3"
+        }
+      ]
+    }
+  ]
+}
