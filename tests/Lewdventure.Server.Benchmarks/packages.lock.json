@@ -327,14 +327,6 @@
           "Microsoft.Extensions.Options": "10.0.12"
         }
       },
-      "Microsoft.Extensions.Logging.Abstractions": {
-        "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "+24lC4plfbEDNfLAdTV/SWKS7dW+16X4HdydO3R++134kSNTzcbYA4KpR1Hdh6uWisB8Za3AzwyOn+K+NxWIug==",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.12"
-        }
-      },
       "Microsoft.Extensions.Logging.Configuration": {
         "type": "Transitive",
         "resolved": "10.0.12",
@@ -538,10 +530,41 @@
         "resolved": "4.7.0",
         "contentHash": "VybpaOQQhqE6siHppMktjfGBw1GCwvCqiufqmP8F1nj7fTUNtW35LOEt3UZTEsECfo+ELAl/9o9nJx3U91i7vA=="
       },
+      "lewdventure.server.api": {
+        "type": "Project",
+        "dependencies": {
+          "Lewdventure.Server.Battle": "[1.0.0, )",
+          "Lewdventure.Server.Contracts": "[1.0.0, )",
+          "Lewdventure.Server.GameConfig": "[1.0.0, )",
+          "Lewdventure.Server.Infrastructure": "[1.0.0, )",
+          "Swashbuckle.AspNetCore": "[10.2.3, )"
+        }
+      },
+      "lewdventure.server.battle": {
+        "type": "Project",
+        "dependencies": {
+          "Lewdventure.Server.Contracts": "[1.0.0, )",
+          "Lewdventure.Server.GameConfig": "[1.0.0, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.12, )"
+        }
+      },
+      "lewdventure.server.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "Newtonsoft.Json": "[13.0.4, )"
+        }
+      },
+      "lewdventure.server.gameconfig": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.12, )",
+          "Newtonsoft.Json": "[13.0.4, )"
+        }
+      },
       "lewdventure.server.goldentests": {
         "type": "Project",
         "dependencies": {
-          "LewdventureServer": "[1.0.0, )",
+          "Lewdventure.Server.Api": "[1.0.0, )",
           "Microsoft.AspNetCore.Mvc.Testing": "[10.0.12, )",
           "Microsoft.NET.Test.Sdk": "[18.10.1, )",
           "NUnit": "[4.6.1, )",
@@ -550,12 +573,12 @@
           "coverlet.collector": "[10.0.1, )"
         }
       },
-      "lewdventureserver": {
+      "lewdventure.server.infrastructure": {
         "type": "Project",
         "dependencies": {
           "Google.Apis.Sheets.v4": "[1.75.0.4178, )",
-          "Newtonsoft.Json": "[13.0.4, )",
-          "Swashbuckle.AspNetCore": "[10.2.3, )"
+          "Lewdventure.Server.GameConfig": "[1.0.0, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.12, )"
         }
       },
       "coverlet.collector": {
@@ -583,6 +606,15 @@
           "Microsoft.AspNetCore.TestHost": "10.0.12",
           "Microsoft.Extensions.DependencyModel": "10.0.12",
           "Microsoft.Extensions.Hosting": "10.0.12"
+        }
+      },
+      "Microsoft.Extensions.Logging.Abstractions": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.12, )",
+        "resolved": "10.0.12",
+        "contentHash": "+24lC4plfbEDNfLAdTV/SWKS7dW+16X4HdydO3R++134kSNTzcbYA4KpR1Hdh6uWisB8Za3AzwyOn+K+NxWIug==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.12"
         }
       },
       "Microsoft.NET.Test.Sdk": {

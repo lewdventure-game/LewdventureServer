@@ -9,7 +9,7 @@ namespace Tests.Golden.Infrastructure
         {
             ProjectDirectory = FindProjectDirectory();
             RepositoryDirectory = Path.GetFullPath(Path.Combine(ProjectDirectory, "..", ".."));
-            ServerProjectDirectory = RepositoryDirectory;
+            ServerProjectDirectory = Path.Combine(RepositoryDirectory, "src", "Lewdventure.Server.Api");
             CasesDirectory = Path.Combine(ProjectDirectory, "Golden", "Cases");
             FixturePath = Path.Combine(ProjectDirectory, "Golden", "Fixtures", "config-snapshot.v1.json");
             DiffDirectory = Path.Combine(ProjectDirectory, "TestResults", "golden-diff");

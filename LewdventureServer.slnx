@@ -1,7 +1,13 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Lewdventure.Server.Api/Lewdventure.Server.Api.csproj" />
+    <Project Path="src/Lewdventure.Server.Battle/Lewdventure.Server.Battle.csproj" />
+    <Project Path="src/Lewdventure.Server.Contracts/Lewdventure.Server.Contracts.csproj" />
+    <Project Path="src/Lewdventure.Server.GameConfig/Lewdventure.Server.GameConfig.csproj" />
+    <Project Path="src/Lewdventure.Server.Infrastructure/Lewdventure.Server.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Lewdventure.Server.Benchmarks/Lewdventure.Server.Benchmarks.csproj" />
     <Project Path="tests/Lewdventure.Server.GoldenTests/Lewdventure.Server.GoldenTests.csproj" />
   </Folder>
-  <Project Path="LewdventureServer.csproj" />
 </Solution>

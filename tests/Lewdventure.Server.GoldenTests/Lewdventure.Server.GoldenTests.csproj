@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\LewdventureServer.csproj" />
+    <ProjectReference Include="..\..\src\Lewdventure.Server.Api\Lewdventure.Server.Api.csproj" />
   </ItemGroup>
 
 </Project>
