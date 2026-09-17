@@ -3,6 +3,7 @@
   <PropertyGroup>
     <RootNamespace>Server</RootNamespace>
     <AssemblyName>Lewdventure.Server.Api</AssemblyName>
+    <UserSecretsId>lewdventure-server-api</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

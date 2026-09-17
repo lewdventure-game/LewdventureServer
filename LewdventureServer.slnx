@@ -9,5 +9,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/Lewdventure.Server.Benchmarks/Lewdventure.Server.Benchmarks.csproj" />
     <Project Path="tests/Lewdventure.Server.GoldenTests/Lewdventure.Server.GoldenTests.csproj" />
+    <Project Path="tests/Lewdventure.Server.UnitTests/Lewdventure.Server.UnitTests.csproj" />
   </Folder>
 </Solution>

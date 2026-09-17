@@ -1,6 +1,8 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Server.Bonuses;
+using Server.Infrastructure.GoogleSheets;
 using Server.Services;
 using Tests.Golden.Infrastructure;
 
@@ -28,7 +30,7 @@ namespace Tests.Golden
 
             loader.Save(paths.FixturePath, snapshot);
 
-            using var provider = CreateLiveProvider();
+            using var provider = CreateLiveProvider(paths, credentialsPath);
 
             var liveDistributor = provider.GetRequiredService<IConfigDistributor>();
             var liveService = provider.GetRequiredService<IGameConfigService>();
@@ -59,11 +61,19 @@ namespace Tests.Golden
             return Path.Combine(paths.RepositoryDirectory, "google-credentials.json");
         }
 
-        private ServiceProvider CreateLiveProvider()
+        private ServiceProvider CreateLiveProvider(GoldenPaths paths, string credentialsPath)
         {
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(paths.ServerProjectDirectory)
+                .AddJsonFile("appsettings.json", false)
+                .Build();
             var services = new ServiceCollection();
 
             services.AddLogging(ConfigureLogging);
+            services.AddOptions<GoogleSheetsOptions>()
+                .Bind(configuration.GetSection(GoogleSheetsOptions.SectionName))
+                .PostConfigure(options => options.CredentialsPath = credentialsPath);
+            services.AddSingleton<GoogleCredentialProvider>();
             services.AddSingleton<IConfigDistributor, ConfigDistributor>();
             services.AddSingleton<IBonusWorkModeParser, BonusWorkModeParser>();
             services.AddSingleton<IGameConfigService, GameConfigService>();

@@ -1,13 +1,14 @@
-﻿using Core.Collections;
-using Google.Apis.Auth.OAuth2;
+using Core.Collections;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using Server.Bonuses;
 using Server.Configs;
 using Server.Entities;
+using Server.Infrastructure.GoogleSheets;
 using Server.Equipments;
 using Server.Perks;
 using Server.Statuses;
@@ -21,31 +22,28 @@ namespace Server.Services
         private readonly IBonusWorkModeParser _bonusWorkModeParser;
         private readonly IConfigDistributor _configDistributor;
 
+        private readonly GoogleSheetsOptions _options;
         private readonly SheetsService _sheetsService;
         private readonly ReaderWriterLockSlim _cacheLock = new();
 
         public GameConfigService(
             ILogger<IGameConfigService> logger,
             IBonusWorkModeParser bonusWorkModeParser,
-            IConfigDistributor configDistributor)
+            IConfigDistributor configDistributor,
+            IOptions<GoogleSheetsOptions> options,
+            GoogleCredentialProvider googleCredentialProvider)
         {
             _logger = logger;
             _bonusWorkModeParser = bonusWorkModeParser;
             _configDistributor = configDistributor;
+            _options = options.Value;
 
-            var credentialPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "google-credentials.json");
-
-            if (File.Exists(credentialPath) == false)
-                throw new FileNotFoundException("Файл google-credentials.json не найден. Убедитесь, что он добавлен в проект и имеет свойство 'Копировать, если новее'.");
-
-            var credential = CredentialFactory.FromFile<ServiceAccountCredential>(credentialPath)
-                .ToGoogleCredential()
-                .CreateScoped(SheetsService.Scope.SpreadsheetsReadonly);
+            var credential = googleCredentialProvider.Create(_options);
 
             _sheetsService = new SheetsService(new BaseClientService.Initializer()
             {
                 HttpClientInitializer = credential,
-                ApplicationName = "GameConfigReader"
+                ApplicationName = _options.ApplicationName
             });
         }
 
@@ -55,63 +53,63 @@ namespace Server.Services
 
             try
             {
-                var tempConstants = await DownloadWithRetryAsync<ConstantsMapper>(request, "1LIw9xcJQmsn4GThnsLQITpRLJ_6avKv-wTBj0MpsVNM", "B:E", "Constants");
+                var tempConstants = await DownloadWithRetryAsync<ConstantsMapper>(request, GetSheet(GoogleSheetDomains.Constants));
 
-                await Task.Delay(150);
+                await Task.Delay(_options.DelayBetweenSheetsMs);
 
-                var tempCharacters = await DownloadWithRetryAsync<CharacterMapper>(request, "1rB22U8FrboY1hHqg1AwhEvDBzb1OxK9JTUWZ_1isRTg", "B:J", "Characters");
+                var tempCharacters = await DownloadWithRetryAsync<CharacterMapper>(request, GetSheet(GoogleSheetDomains.Characters));
 
-                await Task.Delay(150);
+                await Task.Delay(_options.DelayBetweenSheetsMs);
 
-                var tempBonuses = await DownloadWithRetryAsync<BonusMapper>(request, "1jrzVDp9dTRtJBjyFFP1adtkbcqMEHIfnWs3XsJuR2ac", "B:G", "Bonuses");
+                var tempBonuses = await DownloadWithRetryAsync<BonusMapper>(request, GetSheet(GoogleSheetDomains.Bonuses));
 
-                await Task.Delay(150);
+                await Task.Delay(_options.DelayBetweenSheetsMs);
 
-                var tempStatuses = await DownloadWithRetryAsync<StatusMapper>(request, "1Dwm4eRVQmLegaxulMk2RdNeOT7GlGu6QORQqeKnuUiY", "B:H", "Statuses");
+                var tempStatuses = await DownloadWithRetryAsync<StatusMapper>(request, GetSheet(GoogleSheetDomains.Statuses));
 
-                await Task.Delay(150);
+                await Task.Delay(_options.DelayBetweenSheetsMs);
 
-                var tempSummons = await DownloadWithRetryAsync<SummonMapper>(request, "1QstDNh059XftqtZcIdIL3o80o_g8qQs_akKFe5jChCk", "B:J", "Summons");
+                var tempSummons = await DownloadWithRetryAsync<SummonMapper>(request, GetSheet(GoogleSheetDomains.Summons));
 
-                await Task.Delay(150);
+                await Task.Delay(_options.DelayBetweenSheetsMs);
 
-                var tempSummonLevels = await DownloadWithRetryAsync<SummonLevelMapper>(request, "18swHo4NuLgys6_oGk_zqqpwadSm94KsBm-OoJIdoxR8", "B:I", "Summon_levels");
+                var tempSummonLevels = await DownloadWithRetryAsync<SummonLevelMapper>(request, GetSheet(GoogleSheetDomains.SummonLevels));
 
-                await Task.Delay(150);
+                await Task.Delay(_options.DelayBetweenSheetsMs);
 
-                var tempMasteries = await DownloadWithRetryAsync<MasteryMapper>(request, "1grplwUHMfdcs0-0QvFZvhQqsrcS4ywwe6nTQsEB6EOg", "B:H", "Mastery");
+                var tempMasteries = await DownloadWithRetryAsync<MasteryMapper>(request, GetSheet(GoogleSheetDomains.Mastery));
 
-                await Task.Delay(150);
+                await Task.Delay(_options.DelayBetweenSheetsMs);
 
-                var tempEnemies = await DownloadWithRetryAsync<EnemyMapper>(request, "1GLSin50lIGoTOZbmV3OQU8TXB_XAdUcnsnsfBK0AsKk", "B:Q", "Enemies");
+                var tempEnemies = await DownloadWithRetryAsync<EnemyMapper>(request, GetSheet(GoogleSheetDomains.Enemies));
 
-                await Task.Delay(150);
+                await Task.Delay(_options.DelayBetweenSheetsMs);
 
-                var tempEquipments = await DownloadWithRetryAsync<EquipmentMapper>(request, "1XP47_4sQ5uK2_6rGSBH4bkWgXVDBLfiYIYtVk9qIB0E", "B:R", "Equipments");
+                var tempEquipments = await DownloadWithRetryAsync<EquipmentMapper>(request, GetSheet(GoogleSheetDomains.Equipments));
 
-                await Task.Delay(150);
+                await Task.Delay(_options.DelayBetweenSheetsMs);
 
-                var tempStoryLevels = await DownloadWithRetryAsync<StoryLevelMapper>(request, "1gz8t6fmWwIwvz93U7pKZ8rrBu9RdfyJB5Yn9G2ITuCE", "B:I", "Story_levels");
+                var tempStoryLevels = await DownloadWithRetryAsync<StoryLevelMapper>(request, GetSheet(GoogleSheetDomains.StoryLevels));
 
-                await Task.Delay(150);
+                await Task.Delay(_options.DelayBetweenSheetsMs);
 
-                var tempStoryStages = await DownloadWithRetryAsync<StoryStageMapper>(request, "1csDHVX7F0bStlHAayJV_3TOLOoyIbbCdg4O3ORTpx8g", "B:G", "Story_stages");
+                var tempStoryStages = await DownloadWithRetryAsync<StoryStageMapper>(request, GetSheet(GoogleSheetDomains.StoryStages));
 
-                await Task.Delay(150);
+                await Task.Delay(_options.DelayBetweenSheetsMs);
 
-                var tempStoryEvents = await DownloadWithRetryAsync<StoryEventMapper>(request, "1chWPFzItT87MzdrEQAp7DvAkhEiY_xuLwor42fyFGDk", "B:G", "Story_events");
+                var tempStoryEvents = await DownloadWithRetryAsync<StoryEventMapper>(request, GetSheet(GoogleSheetDomains.StoryEvents));
 
-                await Task.Delay(150);
+                await Task.Delay(_options.DelayBetweenSheetsMs);
 
-                var tempExpPatterns = await DownloadWithRetryAsync<ExperienceLevelPatternMapper>(request, "1YC9UR3RLOU-0r14ovkXeR_Dp1dtkkJCX_veZxLSBmVM", "B:G", "Exp_levels_patterns");
+                var tempExpPatterns = await DownloadWithRetryAsync<ExperienceLevelPatternMapper>(request, GetSheet(GoogleSheetDomains.ExpLevelsPatterns));
 
-                await Task.Delay(150);
+                await Task.Delay(_options.DelayBetweenSheetsMs);
 
-                var tempPerks = await DownloadWithRetryAsync<PerkMapper>(request, "1UyW7R_DZHDTiDtZoicZQ9GhDctVaK_zA7C0aBP0T6Hk", "B:J", "Perks");
+                var tempPerks = await DownloadWithRetryAsync<PerkMapper>(request, GetSheet(GoogleSheetDomains.Perks));
 
-                await Task.Delay(150);
+                await Task.Delay(_options.DelayBetweenSheetsMs);
 
-                var tempPerkGroups = await DownloadWithRetryAsync<PerkGroupMapper>(request, "1USA6a-252oCKSmCqUDMtQn78pMiubIIj2garPm0pyBU", "B:G", "Perk_groups");
+                var tempPerkGroups = await DownloadWithRetryAsync<PerkGroupMapper>(request, GetSheet(GoogleSheetDomains.PerkGroups));
 
                 _cacheLock.EnterWriteLock();
 
@@ -191,14 +189,26 @@ namespace Server.Services
             _logger.LogInformation($"[Config] {sheetName} count = {manager.Collection.Count}");
         }
 
+        private GoogleSheetDefinition GetSheet(string domain)
+        {
+            for (int i = 0; i < _options.Sheets.Count; i++)
+            {
+                if (string.Equals(_options.Sheets[i].Domain, domain, StringComparison.Ordinal))
+                    return _options.Sheets[i];
+            }
+
+            throw new InvalidOperationException($"GoogleSheets sheet for domain {domain} is not configured.");
+        }
+
         private async Task<List<T>> DownloadWithRetryAsync<T>(
             SpreadsheetsResource.ValuesResource request,
-            string sheetId,
-            string range,
-            string sheetName)
+            GoogleSheetDefinition sheet)
             where T : class, IConfigMapper, new()
         {
-            var maxRetries = 3;
+            var maxRetries = _options.MaxRetries;
+            var sheetId = sheet.SpreadsheetId;
+            var range = sheet.Range;
+            var sheetName = sheet.Domain;
 
             for (int attempt = 1; attempt <= maxRetries; attempt++)
             {

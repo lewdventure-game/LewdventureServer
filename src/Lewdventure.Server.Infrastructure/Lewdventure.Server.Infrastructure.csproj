@@ -16,6 +16,7 @@
   <ItemGroup>
     <PackageReference Include="Google.Apis.Sheets.v4" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
   </ItemGroup>
 
   <ItemGroup>
