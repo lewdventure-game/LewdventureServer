@@ -1,14 +1,16 @@
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.Extensions.Options;
+using Server.Api.Endpoints;
 using Server.Api.Health;
 using Server.Api.Hosting;
+using Server.Api.Http;
 using Server.Api.Json;
 using Server.Api.Options;
 using Server.Api.Security;
-using Server.Api.Http;
 using Server.Bonuses;
 using Server.GameConfigs;
 using Server.Infrastructure.GoogleSheets;
+using Server.Infrastructure.Mongo.ConfigSnapshots;
 using Server.Infrastructure.Mongo;
 using Server.Services;
 
@@ -45,6 +47,7 @@ namespace Server.Api.Composition
 
             services.AddOptions<GameConfigOptions>()
                 .Bind(_configuration.GetSection(GameConfigOptions.SectionName))
+                .ValidateDataAnnotations()
                 .ValidateOnStart();
 
             services.AddOptions<GoogleSheetsOptions>()
@@ -105,8 +108,16 @@ namespace Server.Api.Composition
             }
 
             new MongoServicesRegistrar().Register(services);
+            new ConfigSnapshotStoreRegistrar().Register(services);
 
             services.AddHealthChecks().AddCheck<MongoHealthCheck>("mongo", tags: new[] { HealthTags.Ready });
+
+            var gameConfigOptions = new GameConfigOptions();
+
+            _configuration.GetSection(GameConfigOptions.SectionName).Bind(gameConfigOptions);
+
+            if (gameConfigOptions.Source == GameConfigSourceType.Mongo && gameConfigOptions.ReloadMode == GameConfigReloadMode.Poll)
+                services.AddHostedService<ActiveConfigWatcher>();
         }
 
         private IConfigDistributor ResolveConfigDistributor(IServiceProvider serviceProvider)
@@ -131,6 +142,7 @@ namespace Server.Api.Composition
                 .AddSingleton<GoogleSheetsConfigImporter>()
                 .AddSingleton<IGameConfigService, GameConfigService>()
                 .AddSingleton<GameConfigReadyFilter>()
+                .AddSingleton<ConfigResponseFactory>()
                 .AddScoped(ResolveConfigDistributor);
         }
     }

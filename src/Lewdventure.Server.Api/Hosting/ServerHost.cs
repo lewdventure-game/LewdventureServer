@@ -102,6 +102,7 @@ namespace Server.Api.Hosting
         {
             new SystemEndpoints().Map(application);
             new ConfigEndpoints().Map(application);
+            new AdminConfigEndpoints().Map(application);
             new BattleEndpoints().Map(application);
             new HealthEndpoints(serverOptions).Map(application);
         }
