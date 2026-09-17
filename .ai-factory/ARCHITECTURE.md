@@ -1,79 +1,70 @@
-# Architecture: Modular Monolith (Structured Modules / Technical Layer)
+# Architecture: Modular Monolith (projects per layer)
 
 ## Overview
 
-LewdventureServer — один deployable ASP.NET Core сервис с чёткими модульными границами: `Core` (инфраструктура и конфиги) и `Game` (доменные подсистемы). Battle simulation — изолированный bounded context внутри `Game/Battles`.
+LewdventureServer — один deployable ASP.NET Core сервис (.NET 10), разнесённый на проекты: контракт, конфиги, бой, инфраструктура, хост. Границы слоёв держит компилятор через ссылки проектов. Battle simulation — изолированный bounded context без ASP.NET, Mongo и Google.
 
-Паттерн соответствует Unity-клиенту Lewdventure: общий контракт данных, но без Zenject/ECS/Addressables — только чистый C# и ASP.NET DI. Документ описывает **текущую** структуру репозитория (adapt to reality), а не целевой рефакторинг.
+Подробная схема, окружения и наблюдаемость: `docs/architecture/README.md`. Mongo: `docs/architecture/mongo-conventions.md`.
 
 ## Decision Rationale
 
-- **Project type:** headless battle simulator + config sync API.
-- **Tech stack:** .NET 9, ASP.NET Core, Google Sheets, Newtonsoft.Json.
-- **Key factor:** доменные границы уже выражены через `Core`/`Game`, managers и services; новые конфиг-домены (trainings / artifacts / aspects) живут рядом с Entities/Equipments по тому же mapper+manager шаблону.
+- **Project type:** headless battle simulator + управление версиями игровых конфигов.
+- **Tech stack:** .NET 10, ASP.NET Core Minimal API, Newtonsoft.Json, MongoDB, Google Sheets, Docker.
+- **Key factor:** механики боя и wire-контракт должны оставаться неизменными при любой инфраструктурной работе; это обеспечивают отдельные проекты и golden-тесты.
 
 ## Folder Structure
 
 ```text
-Assets/
-  Core/
-    Collections/               # BaseManager / BaseDictionaryManager
-    Configs/                   # UrlConfig, parsers, delimited converters, ConstantsMapper
-    Managers/                  # ConstantsMapperManager
-    Services/
-      ConfigDistributor/       # Aggregates all mapper managers (runtime owner)
-      GameConfigService/       # Google Sheets download + cache update
-  Documents/                   # GDD + Server API/sync docs
-  Game/
-    Artifacts/                 # Artifact mappers + managers (Sheets sync stub-capable)
-    Aspects/                   # Aspect mappers + managers
-    Battles/
-      Models/                  # DTO: simulation request/response, steps, commands
-      Services/                # BattleSimulatorService, perks, skills, unit state
-    Bonuses/                   # Bonus mappers + managers
-    Common/                    # Shared mappers (skins, XP patterns)
-    Entities/                  # Characters, enemies, summons, masteries
-    Equipments/
-    Perks/
-    Statuses/
-    Stories/                   # Story levels, stages, events
-    Trainings/                 # Training mappers + managers
-Program.cs                     # Composition root, endpoints, middleware
-.ai-factory/                   # AI context, specs, rules
+src/
+  Lewdventure.Server.Contracts/        Battles/                   DTO request/response, steps, commands, enum'ы протокола
+  Lewdventure.Server.GameConfig/       Collections/ Configs/      BaseManager, парсеры, конвертеры
+                                       <Domain>/                  Artifacts, Aspects, Bonuses, Common, Entities, Equipments,
+                                                                  Perks, Statuses, Stories, Trainings: mappers + managers
+                                       Services/                  ConfigDistributor
+                                       GameConfigs/               Snapshots, Building, Sources, Validation, Diff, провайдер набора
+  Lewdventure.Server.Battle/           Battles/Services/          BattleSimulatorService, перки, статусы, саммоны, скиллы
+                                       Services/                  RNG
+  Lewdventure.Server.Infrastructure/   Mongo/                     клиент, индексы, транзакции, ConfigSnapshots/
+                                       GoogleSheets/              импорт листов, credentials
+                                       Alerts/                    очередь, троттлинг, Discord
+  Lewdventure.Server.Api/              Hosting/ Composition/ Endpoints/ Options/ Security/ Http/ Health/ Metrics/ Json/
+tools/                                 ConfigTool, LoadTest, apps-script
+tests/                                 GoldenTests, UnitTests, IntegrationTests, Benchmarks
+deploy/                                docker, compose, mongo, proxy, scripts
+docs/                                  gdd, server, architecture, runbooks
 ```
 
 ## Dependency Rules
 
-- Allowed: `Game` depends on `Core`.
-- Allowed: domain services depend on `IConfigDistributor` for configs (managers живут внутри distributor).
-- Allowed: `Program.cs` registers concrete implementations in DI.
-- Forbidden: `Core` depends on `Game`.
-- Forbidden: mapper classes содержат lookup/cache logic — только managers.
-- Forbidden: battle logic обращается к HTTP/Google API напрямую.
-- Forbidden: регистрировать отдельные `I*MapperManager` в DI рядом с `IConfigDistributor` (получатся пустые дубликаты инстансов).
+- `Contracts` ни от чего не зависит.
+- `Battle` → `Contracts`, `GameConfig`.
+- `Infrastructure` → `GameConfig`.
+- `Api` → все проекты `src/`.
+- `ConfigTool` → `GameConfig`, `Infrastructure`. `LoadTest` → только HTTP.
+- Forbidden: `Battle` и `GameConfig` ссылаются на ASP.NET, Mongo, Google API, HTTP.
+- Forbidden: mapper-классы содержат lookup/cache — только managers.
+- Forbidden: регистрировать отдельные `I*MapperManager` в DI; конфиги доступны только через `IConfigDistributor`.
+- Forbidden: состояние боя в singleton; сервисы боя scoped.
 
 ## Layer Communication
 
-- ASP.NET DI (`IServiceCollection`) — единственный composition root.
-- Config flow: Google Sheets → `GameConfigService` → `IConfigDistributor` → list (`BaseManager`) / dictionary (`BaseDictionaryManager`) indexes.
-- Battle flow: HTTP POST → `BattleSimulationData` → `BattleSimulatorService.Simulate` → `BattleScriptResponse`.
-- Cross-domain: через `IConfigDistributor`, не через static globals и не через отдельные manager singletons.
-- Battle script ordering: мутации HP/статов могут идти в локальный `List<BattleCommand>`, но side-effect notify (`NotifyAnyDamage` / perk action steps) — только **после** `BattleScriptBuilder.Add` родительского damage-step (как status damage over time).
+- Composition root: `Api/Composition/ServerComposition` + регистраторы (`BattleServicesRegistrar`, `SecurityRegistrar`, `AlertsRegistrar`, `MongoServicesRegistrar`, `ConfigSnapshotStoreRegistrar`). Регистраторы — экземпляры, не static.
+- Config flow: Google Sheets → `GoogleSheetsConfigImporter` → `GameConfigSnapshot` → `ConfigSnapshotValidator` → `GameConfigSetBuilder` → `ConfigPublishingService` (Mongo) → `IGameConfigSetProvider.Swap`.
+- Runtime config access: scoped `IConfigDistributor` = `IGameConfigSetProvider.Current.Distributor`, фиксируется на весь запрос.
+- Battle flow: HTTP POST → endpoint filters (метрики, готовность конфигов) → `BattleSimulatorService.Simulate` → `BattleScriptResponse`.
+- Ops: health и admin только на ops-порту (`OpsPortOnlyMetadata` + `OpsPortGuardMiddleware`).
+- Battle script ordering: мутации HP/статов идут в локальный `List<BattleCommand>`, side-effect notify (`NotifyAnyDamage` / perk action steps) — только **после** `BattleScriptBuilder.Add` родительского damage-step.
 
 ## Key Principles
 
-1. Держать `Core` стабильным и без gameplay-логики.
-2. Новая battle-механика — в `Game/Battles/Services`, не в `Program.cs`.
+1. Механики, формулы, порядок RNG, JSON-поля и enum-числа меняются только осознанно, с обновлением golden-эталонов отдельным изменением.
+2. Новая battle-механика — в `Battle`, не в `Api`.
 3. Mappers data-only; индексы и lookup — в managers.
-4. Детерминированность: `SeededRandomService` + `Seed` в response для replay на клиенте.
-5. API DTO и simulation state — раздельные типы; не смешивать HTTP models с internal state.
-6. Новый конфиг-домен: `Assets/Game/<Domain>/{Configs,Managers}` + wiring в `IConfigDistributor` / `GameConfigService` + grants в `UnitStateBuilder` при необходимости.
-
-## Code Organization Note
-
-- **New Features:** Новый код следует границам и шаблонам этого документа, где это практично.
-- **Existing Code:** Структура задокументирована as-is. При правках предпочитаем эти conventions, без rewrite ради выравнивания.
-- **Interoperability:** Новые домены подключаются через `IConfigDistributor`, не через прямые зависимости battle → Google Sheets.
+4. Детерминированность: seeded RNG + `Seed` в response для replay.
+5. API DTO (`Contracts`) и simulation state — раздельные типы.
+6. Новый конфиг-домен: `GameConfig/<Domain>/{Configs,Managers}` + регистрация в `ConfigDistributor` и `GameConfigSetBuilder` + обязательный лист в `GoogleSheets:Sheets` и `ConfigDomainNames`.
+7. Настройки — typed options с `ValidateOnStart` и валидаторами; ничего не хардкодить в коде.
+8. Код и конфиги без комментариев; пояснения в `docs/`.
 
 ## Code Examples
 
@@ -95,30 +86,35 @@ internal sealed class BattleSimulatorService : IBattleSimulatorService
 }
 ```
 
-### Manager Lookup (not in mapper)
+### Options Registration
 
 ```csharp
-public ICharacterMapper GetById(int id)
-{
-    return _characters[id];
-}
+services.AddOptions<AlertsOptions>()
+    .Bind(_configuration.GetSection(AlertsOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+services.AddSingleton<IValidateOptions<AlertsOptions>, AlertsOptionsValidator>();
 ```
 
 ## Anti-Patterns
 
-- Вызывать `NotifyAnyDamage` / perk `BattleScriptBuilder.Add` пока родительский damage ещё только в локальном `commands` (ActionReward окажется в script раньше ShowDamage).
-- Регистрировать mapper managers и в DI, и внутри `ConfigDistributor` как разные инстансы.
-- Класть lookup/cache в mapper classes.
-- Тянуть Google Sheets / HTTP из `Game/Battles`.
+- Вызывать `NotifyAnyDamage` / perk `BattleScriptBuilder.Add`, пока родительский damage ещё только в локальном `commands`.
+- Держать состояние боя в полях сервисов или регистрировать сервисы боя singleton.
+- Мутировать `ConfigDistributor` текущей версии вместо сборки нового набора.
+- Тянуть Google Sheets, Mongo или HTTP из `Battle` и `GameConfig`.
+- Публиковать ops-порт или `/admin/*` наружу.
+- Хранить секреты в `appsettings*.json` или git.
 
 ## API Surface
 
-| Endpoint | Method | Purpose |
+| Endpoint | Port | Purpose |
 | --- | --- | --- |
-| `/` | GET | Health hello |
-| `/api/ping` | GET | Server status + UTC time |
-| `/api/battle/simulate` | POST | Run battle simulation |
-| `/api/battle/replay` | POST | Replay battle with fixed seed |
-| `/api/config/update` | POST | Refresh configs from Google Sheets (header secret) |
+| `GET /`, `GET /api/ping` | public | hello, статус и время |
+| `POST /api/battle/simulate` | public | симуляция боя |
+| `POST /api/battle/replay` | public | повтор боя по seed |
+| `POST /api/config/publish`, `POST /api/config/update`, `GET /api/config/status` | public | публикация конфигов из Sheets (dev/stage) |
+| `GET /health`, `/health/live`, `/health/ready` | ops | health |
+| `/admin/config/status`, `snapshots`, `activate`, `reload` | ops | управление снапшотами |
 
-Default URL: `http://localhost:5000` (`ServerConfig.Port`).
+Порты по умолчанию: public `5000`, ops `9090`.

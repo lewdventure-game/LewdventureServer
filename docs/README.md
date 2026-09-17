@@ -4,9 +4,11 @@
 
 | Папка | Содержание |
 | --- | --- |
-| [GDD/](GDD/README.md) | Игровая логика из GDD, раскладка под серверную ответственность |
-| [Server/](Server/README.md) | Серверный контракт: API, config sync, operational docs |
+| [gdd/](gdd/README.md) | Игровая логика из GDD, раскладка под серверную ответственность |
+| [server/](server/README.md) | Серверный контракт: API боя, конфиги |
+| [architecture/](architecture/README.md) | Проекты и зависимости, окружения, безопасность, наблюдаемость, Mongo |
+| [runbooks/](runbooks/README.md) | Эксплуатация: локальный запуск, ключи конфигурации, VPS, деплой, публикация конфигов, секреты, тесты |
 
-Исходный монолит GDD: [`Assets/Lewdventure GDD.md`](../Lewdventure%20GDD.md).
+Исходный монолит GDD: [`gdd/Lewdventure GDD.md`](gdd/Lewdventure%20GDD.md).
 
-`paths.docs` в `.ai-factory/config.yaml` указывает на `Assets/Documents/Server` (сюда пишет `/aif-docs`).
+`paths.docs` в `.ai-factory/config.yaml` указывает на `docs/server` (сюда пишет `/aif-docs`).

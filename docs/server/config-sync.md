@@ -2,16 +2,92 @@
 
 # Config Sync
 
-Загрузка игровых таблиц из Google Sheets в runtime-индексы сервера.
+Как игровые таблицы из Google Sheets попадают в runtime-индексы сервера.
 
 ## Summary
 
 | | |
 | --- | --- |
-| Endpoint | `POST /api/config/update` |
-| Header | `X-Config-Secret` |
-| Owner | `GameConfigService` → `IConfigDistributor` |
-| Log tag | `[Config]` |
+| Единица конфигов | снапшот: сырые строки всех листов + версия `sha256:<hex>` |
+| Хранилище | Mongo: `config_snapshots`, `config_state`, `config_activations` |
+| Публикация dev/stage | Apps Script в таблице → `POST /api/config/publish` (`X-Config-Key`) |
+| Публикация prod | GitHub Actions `config-promote` (stage → prod, с одобрением) |
+| Runtime | `IGameConfigSetProvider.Current` → неизменяемый `ConfigDistributor` на версию |
+| Log tags | `[Config]`, `[Config][Snapshot]` |
+
+## Поток
+
+```text
+Google Sheets
+  → GoogleSheetsConfigImporter (сырые строки листов)
+  → GameConfigSnapshot (version = sha256 по domain + rows)
+  → ConfigSnapshotValidator (ошибки блокируют, warnings по колонкам)
+  → GameConfigSetBuilder (новый ConfigDistributor, те же парсеры и managers)
+  → Mongo config_snapshots (идемпотентно по version)
+  → активация в транзакции: config_state.active + запись в config_activations
+  → IGameConfigSetProvider.Swap (атомарная подмена, бой в полёте дорабатывает на старой версии)
+```
+
+Одинаковые таблицы дают одинаковую версию, повторная публикация ничего не меняет. Короткая форма версии в логах и health: `cfg-<12 hex>`.
+
+## Источники при старте
+
+`GameConfig:Source` выбирает, откуда сервер берёт конфиги:
+
+| Source | Где используется | Поведение |
+| --- | --- | --- |
+| `Mongo` | dev, stage, prod, локальный compose | грузит `PinnedVersion` или активную версию; если активной нет и `BootstrapFromGoogleSheetsIfEmpty=true` — импортирует из Sheets и активирует; при недоступности Mongo — файловый кэш `LocalCachePath` |
+| `GoogleSheets` | `dotnet run` без Mongo | импорт при старте, как раньше |
+| `File` | тесты, CI, нагрузка | снапшот из `FilePath` (например `tests/Lewdventure.Server.GoldenTests/Golden/Fixtures/config-snapshot.v1.json`) |
+
+`FailStartupIfUnavailable=true` роняет старт, если конфиги получить не удалось; иначе сервер поднимается, `/health/ready` отдаёт critical, а бой отвечает `503`.
+
+Перезагрузка активной версии: `ReloadMode=Poll` (dev/stage, раз в `PollIntervalSeconds`) или вручную `POST /admin/config/reload` на ops-порту (prod, `ReloadMode=Manual`; скрипт `config-transfer.sh` делает это сам).
+
+## Endpoints
+
+| Endpoint | Порт | Доступ | Назначение |
+| --- | --- | --- | --- |
+| `POST /api/config/publish` | public | `X-Config-Key`, только если `ConfigPublisher:Enabled` (dev/stage/local) | импорт из Sheets → валидация → сохранение → активация; ответ: version, warnings, errors, diff по доменам |
+| `POST /api/config/update` | public | как publish, плюс устаревший заголовок `X-Config-Secret` с warning в логе | alias publish для старых вызовов |
+| `GET /api/config/status` | public | `X-Config-Key` | активная и загруженная версии |
+| `GET /admin/config/status` | ops | `X-Admin-Key` | состояние провайдера и Mongo |
+| `GET /admin/config/snapshots` | ops | `X-Admin-Key` | последние снапшоты |
+| `GET /admin/config/snapshots/{version}` | ops | `X-Admin-Key` | экспорт снапшота |
+| `POST /admin/config/snapshots` | ops | `X-Admin-Key` | загрузка снапшота файлом |
+| `POST /admin/config/activate` | ops | `X-Admin-Key` | активировать сохранённую версию |
+| `POST /admin/config/reload` | ops | `X-Admin-Key` | перечитать активную версию |
+
+Ops-порт (9090) никогда не публикуется наружу: на VPS он слушает `127.0.0.1`, Caddy режет `/admin/*` и `/health*`.
+
+## ConfigTool
+
+`tools/Lewdventure.Server.ConfigTool` (образ `lewdventure-config-tool`):
+
+| Команда | Нужен Mongo | Что делает |
+| --- | --- | --- |
+| `import --out file` | нет | снять снапшот из Google Sheets в файл |
+| `validate --file file` | нет | ошибки и warnings по колонкам |
+| `hash --file file` | нет | версия снапшота |
+| `diff --from a --to b` | нет | изменения по доменам и id |
+| `publish --file file [--activate] [--actor name] [--reason text]` | да | сохранить (и активировать) снапшот |
+| `activate --version v [--actor name] [--reason text]` | да | активировать сохранённую версию |
+| `list` | да | 50 последних снапшотов, `*` — активный |
+| `export --version v|active --out file` | да | выгрузить снапшот в файл |
+| `status` | да | активная версия |
+
+Процесс для геймдизайнера: [runbooks/config-publish.md](../runbooks/config-publish.md).
+
+## Известные расхождения таблиц и маппинга
+
+Найдены валидатором при снятии фикстуры, логика не менялась:
+
+- Bonuses: колонка в таблице называется `work_modes`, маппер читает `work_mode` — у всех бонусов режим `Unknown` (всегда активен).
+- Диапазоны листов отрезают колонки: Characters `skill_ids`; Summons часть полей; Story_levels trigger и multipliers; Story_events `reward_xp_value`; Perks `desc_loc`; Perk_groups `choice_count`.
+- Enemies: плоских колонок нет, используется только упакованная `other_characteristics`.
+- Equipments: ожидаемых колонок нет.
+
+Диапазоны задаются в `GoogleSheets:Sheets[*].Range` (`appsettings.json`), менять только по решению владельца.
 
 ## Источник правды
 
@@ -84,5 +160,5 @@ Constants: `combo_1_multiplier_base` / `combo_2_multiplier_base`; fallback с le
 ## See Also
 
 - [Battle API](battle-api.md)
-- [Battle simulation spec](../../../.ai-factory/specs/battle-simulation.md)
-- [Architecture](../../../.ai-factory/ARCHITECTURE.md)
+- [Battle simulation spec](../../.ai-factory/specs/battle-simulation.md)
+- [Architecture](../../.ai-factory/ARCHITECTURE.md)

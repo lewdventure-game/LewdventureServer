@@ -1,13 +1,13 @@
 # GDD (серверная раскладка)
 
 Источник игровой истины для реализации на сервере Lewdventure.  
-Исходный монолит: [`Assets/Lewdventure GDD.md`](../../Lewdventure%20GDD.md).
+Исходный монолит: [`Lewdventure GDD.md`](Lewdventure%20GDD.md).
 
 Эти файлы — рабочая раскладка GDD под серверную ответственность.  
 По каждому документу позже можно сделать отдельный подробный план с декомпозицией.
 
 Оглавление Documents: [../README.md](../README.md).  
-Серверные docs (API/sync): [../Server/README.md](../Server/README.md).
+Серверные docs (API/sync): [../server/README.md](../server/README.md).
 
 ## Оглавление
 

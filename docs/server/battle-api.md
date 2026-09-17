@@ -4,7 +4,7 @@
 
 Headless симуляция боя: клиент шлёт snapshot сторон, сервер считает истину и возвращает battle script для презентации в Unity.
 
-Полный protocol: [`.ai-factory/specs/battle-simulation.md`](../../../.ai-factory/specs/battle-simulation.md).
+Полный protocol: [`.ai-factory/specs/battle-simulation.md`](../../.ai-factory/specs/battle-simulation.md).
 
 ## Summary
 
@@ -13,11 +13,24 @@ Headless симуляция боя: клиент шлёт snapshot сторон,
 | Endpoint | `POST /api/battle/simulate` |
 | Replay | `POST /api/battle/replay` (тот же snapshot + `seed`) |
 | Base URL (local) | `http://localhost:5000` |
+| Base URL (VPS) | `https://<домен окружения>` через Caddy, см. [deploy-and-rollback](../runbooks/deploy-and-rollback.md) |
 | Body | `BattleSimulationData` / `BattleReplayData` (JSON camelCase) |
 | Response | `BattleScriptResponse` |
-| Auth | нет (сейчас) |
+| Auth | нет (сейчас); авторизация игроков запланирована отдельно |
+| Limits | rate limit по IP (`RateLimit:Battle`), параллелизм (`RateLimit:BattleConcurrencyLimit`), тело до `RequestLimits:BattleMaxRequestBodyBytes` |
 
-Перед боем конфиги должны быть загружены. На старте сервер сам вызывает тот же sync, что и `POST /api/config/update`; ручной POST нужен только для hot-reload без рестарта.
+Перед боем конфиги должны быть загружены: сервер берёт активный снапшот (Mongo на VPS, Google Sheets или файл локально), см. [config-sync](config-sync.md).
+
+## Коды ответов
+
+| Код | Когда | Тело |
+| --- | --- | --- |
+| `200` | бой посчитан | `BattleScriptResponse` |
+| `400` | битый JSON, пустое тело, неизвестный skill и другие ошибки входных данных | `{"error": "..."}` |
+| `413` | тело больше лимита | `{"error":"Request body is too large."}` |
+| `429` | превышен rate limit или лимит параллелизма | пустое |
+| `500` | необработанное исключение (уходит алерт в Discord) | `{"error": "Внутренняя ошибка сервера"}` |
+| `503` | конфиги ещё не загружены | `{"error": "..."}` |
 
 ## Flow
 
@@ -179,7 +192,7 @@ Response тот же `BattleScriptResponse`; поле `seed` = переданн�
 
 Каждый step: `index`, `turn`, `phase`, `actorId`, `targetId` (`-1` если нет цели), `commands[]`.
 
-Каждая command: `commandType` (int enum) + `parameters` (схема ключей — в [battle-simulation.md](../../../.ai-factory/specs/battle-simulation.md)).
+Каждая command: `commandType` (int enum) + `parameters` (схема ключей — в [battle-simulation.md](../../.ai-factory/specs/battle-simulation.md)).
 
 Фрагмент response:
 
@@ -216,19 +229,19 @@ Response тот же `BattleScriptResponse`; поле `seed` = переданн�
 - Seed в response simulate — для `/api/battle/replay`, не для локального пересчёта боя на клиенте.
 - Legacy `BattleEvent` / `BattleActionType` — deprecate; цель — command playback.
 
-Презентация (анимации, flytext, approach): [`GDD/02-presentation-contract.md`](../GDD/02-presentation-contract.md).  
-Handoff для ИИ (клиент целиком): [`GDD/10-client-battle-ai.md`](../GDD/10-client-battle-ai.md).
+Презентация (анимации, flytext, approach): [`gdd/02-presentation-contract.md`](../gdd/02-presentation-contract.md).  
+Handoff для ИИ (клиент целиком): [`gdd/10-client-battle-ai.md`](../gdd/10-client-battle-ai.md).
 
 ## Unity touchpoints
 
-| Что | Где (клиент `D:\Project\Lewdventure`) |
+| Что | Где (клиент `C:\UnityProjects\Lewdventure`) |
 | --- | --- |
 | Сборка request / POST | `Assets/Scripts/Game/Battles/Services/BattleService.cs` |
 | Локальный симулятор (legacy) | `.../Simulations/BattleSimulatorService.cs` |
 | Playback | `.../Simulations/BattlePlaybackSystem.cs` |
 | Snapshot | `.../Simulations/UnitSnapshot.cs`, `TeamSnapshot.cs` |
 
-Серверные точки: `Program.cs` (`MapPost`), `Assets/Game/Battles/Services/BattleSimulatorService.cs`, DTO в `Assets/Game/Battles/Models/`.
+Серверные точки: `src/Lewdventure.Server.Api/Endpoints/BattleEndpoints.cs`, `src/Lewdventure.Server.Battle/Battles/Services/BattleSimulatorService.cs`, DTO в `src/Lewdventure.Server.Contracts/Battles/`.
 
 ## Troubleshooting
 
@@ -242,7 +255,8 @@ Handoff для ИИ (клиент целиком): [`GDD/10-client-battle-ai.md`
 
 ## See Also
 
-- [Config Sync](config-sync.md) — Google Sheets sync, managers, источник правды
-- [Battle Simulation Spec](../../../.ai-factory/specs/battle-simulation.md) — канон protocol + Decisions
-- [Presentation contract](../GDD/02-presentation-contract.md) — обязанности Unity
-- [Architecture](../../../.ai-factory/ARCHITECTURE.md) — Modular Monolith, battle flow
+- [Config Sync](config-sync.md) — снапшоты конфигов, Google Sheets, managers, источник правды
+- [Golden-тесты](../runbooks/golden-tests.md) — эталоны ответов боя
+- [Battle Simulation Spec](../../.ai-factory/specs/battle-simulation.md) — канон protocol + Decisions
+- [Presentation contract](../gdd/02-presentation-contract.md) — обязанности Unity
+- [Architecture](../../.ai-factory/ARCHITECTURE.md) — Modular Monolith, battle flow

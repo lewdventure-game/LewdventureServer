@@ -66,11 +66,11 @@
 
 | Артефакт                                                                                 | Назначение                     |
 | ---------------------------------------------------------------------------------------- | ------------------------------ |
-| `[Assets/Lewdventure GDD.md](../../Lewdventure%20GDD.md)`                                   | Исходный GDD                   |
+| `[Lewdventure GDD.md](Lewdventure%20GDD.md)`                                   | Исходный GDD                   |
 | `[.ai-factory/specs/battle-simulation.md](../../../.ai-factory/specs/battle-simulation.md)` | Текущий API/protocol симуляции |
 | `[09-implementation-roadmap.md](09-implementation-roadmap.md)`                              | Краткий план реализации        |
 | `[10-client-battle-ai.md](10-client-battle-ai.md)`                                          | Handoff: клиентский battle под protocol |
-| `[Server docs](../Server/README.md)`                                                        | API / config sync              |
+| `[Server docs](../server/README.md)`                                                        | API / config sync              |
 
 
 

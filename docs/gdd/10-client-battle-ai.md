@@ -4,7 +4,7 @@
 > **Цель:** реализовать сборку request и playback battle script так, чтобы клиент работал по протоколу и GDD.  
 > **Канон протокола (сервер):** [`.ai-factory/specs/battle-simulation.md`](../../../.ai-factory/specs/battle-simulation.md).  
 > **Презентация (UX):** [`02-presentation-contract.md`](02-presentation-contract.md).  
-> **API кратко:** [`../Server/battle-api.md`](../Server/battle-api.md).  
+> **API кратко:** [`../server/battle-api.md`](../server/battle-api.md).  
 > **protocolVersion:** `1`. При рассинхроне с сервером — сначала сверяй этот номер и Decisions в spec.
 
 Этот файл — handoff-документ. Его можно отдать другому ИИ целиком. Не пересчитывай бой на клиенте. Не «улучшай» логику. Играй script.
@@ -447,7 +447,7 @@ Dictionary<(int configId, int slotIndex), Entity>  // или аналог
 | Документ | Зачем |
 | --- | --- |
 | [`.ai-factory/specs/battle-simulation.md`](../../../.ai-factory/specs/battle-simulation.md) | Канон API + Decisions |
-| [`../Server/battle-api.md`](../Server/battle-api.md) | Операционный API |
+| [`../server/battle-api.md`](../server/battle-api.md) | Операционный API |
 | [`01-battle-loop.md`](01-battle-loop.md) | GDD цикл хода (серверная логика) |
 | [`02-presentation-contract.md`](02-presentation-contract.md) | UX презентации |
 | [`00-overview.md`](00-overview.md) | Роли сервер/клиент |
