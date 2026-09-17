@@ -39,7 +39,7 @@ jobs:
       SSH_TARGET: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
       SSH_PORT: ${{ vars.SSH_PORT || '22' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/ssh-setup
         with:

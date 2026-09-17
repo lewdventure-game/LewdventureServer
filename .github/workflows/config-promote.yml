@@ -36,7 +36,7 @@ jobs:
         run: |
           [[ "$REQUESTED_VERSION" =~ ^(active|sha256:[0-9a-f]{64})$ ]] || { echo "version must be 'active' or sha256:<64 hex>" >&2; exit 1; }
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/ssh-setup
         with:
@@ -84,7 +84,7 @@ jobs:
       SSH_TARGET: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
       SSH_PORT: ${{ vars.SSH_PORT || '22' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/download-artifact@v4
         with:
