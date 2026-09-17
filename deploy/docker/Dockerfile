@@ -15,7 +15,8 @@ ARG SOURCE_REVISION=unknown
 COPY src/ src/
 COPY tools/ tools/
 RUN dotnet publish src/Lewdventure.Server.Api/Lewdventure.Server.Api.csproj -c Release -o /out/api --no-restore /p:UseAppHost=false /p:SourceRevisionId=${SOURCE_REVISION} \
- && dotnet publish tools/Lewdventure.Server.ConfigTool/Lewdventure.Server.ConfigTool.csproj -c Release -o /out/tool --no-restore /p:UseAppHost=false /p:SourceRevisionId=${SOURCE_REVISION}
+ && dotnet publish tools/Lewdventure.Server.ConfigTool/Lewdventure.Server.ConfigTool.csproj -c Release -o /out/tool --no-restore /p:UseAppHost=false /p:SourceRevisionId=${SOURCE_REVISION} \
+ && mkdir -p /out/api/cache
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra AS api
 WORKDIR /app

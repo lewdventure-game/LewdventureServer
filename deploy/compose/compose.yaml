@@ -8,7 +8,8 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-      - /app/cache:uid=1654,gid=1654,mode=0700
+    volumes:
+      - api-cache:/app/cache
     cap_drop:
       - ALL
     security_opt:
@@ -88,5 +89,6 @@ networks:
   backend: {}
 
 volumes:
+  api-cache: {}
   mongo-data: {}
   mongo-config: {}

@@ -46,7 +46,14 @@ namespace Server.Api.Hosting
             if (mongoOptions.Enabled == false)
                 return;
 
-            await services.GetRequiredService<MongoStartupInitializer>().InitializeAsync(CancellationToken.None);
+            try
+            {
+                await services.GetRequiredService<MongoStartupInitializer>().InitializeAsync(CancellationToken.None);
+            }
+            catch (Exception exception) when (exception is TimeoutException || exception is MongoDB.Driver.MongoException)
+            {
+                services.GetRequiredService<ILogger<ServerHost>>().LogError("[Mongo] startup initialization failed, continuing without topology and index check error = {Error}", exception.Message);
+            }
         }
 
         private ServerOptions BindServerOptions(IConfiguration configuration)
