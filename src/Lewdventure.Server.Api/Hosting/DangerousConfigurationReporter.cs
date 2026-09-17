@@ -28,7 +28,9 @@ namespace Server.Api.Hosting
             if (_serverOptions.EnableSwagger && isLocal == false && _hostEnvironment.IsDevelopment() == false)
                 _logger.LogWarning("[Startup] swagger is enabled outside Local and Development environment = {Environment}", _hostEnvironment.EnvironmentName);
 
-            if (isLocal && _serverOptions.BindAddress == BindAddressType.Any)
+            var isContainer = string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
+
+            if (isLocal && isContainer == false && _serverOptions.BindAddress == BindAddressType.Any)
                 _logger.LogWarning("[Startup] Local environment listens on all interfaces; ops port {OpsPort} is reachable from the network", _serverOptions.OpsPort);
 
             return Task.CompletedTask;

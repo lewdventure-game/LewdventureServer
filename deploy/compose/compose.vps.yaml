@@ -1,0 +1,40 @@
+services:
+  api:
+    env_file:
+      - .env
+    environment:
+      Mongo__ConnectionString: mongodb://${MONGO_APP_USERNAME:?}:${MONGO_APP_PASSWORD:?}@mongo:27017/?replicaSet=rs0&authSource=${MONGO_DATABASE:?}
+      Mongo__DatabaseName: ${MONGO_DATABASE:?}
+    ports:
+      - 127.0.0.1:${API_HOST_PORT:?}:5000
+      - 127.0.0.1:${OPS_HOST_PORT:?}:9090
+    networks:
+      backend: {}
+      edge:
+        aliases:
+          - lewdventure-${DEPLOY_ENVIRONMENT:?}-api
+
+  mongo:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?}
+
+  mongo-init:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?}
+      MONGO_APP_DATABASE: ${MONGO_DATABASE:?}
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:?}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?}
+
+  config-tool:
+    env_file:
+      - .env
+    environment:
+      Mongo__ConnectionString: mongodb://${MONGO_APP_USERNAME:?}:${MONGO_APP_PASSWORD:?}@mongo:27017/?replicaSet=rs0&authSource=${MONGO_DATABASE:?}
+      Mongo__DatabaseName: ${MONGO_DATABASE:?}
+
+networks:
+  edge:
+    external: true
+    name: lewdventure-edge

@@ -1,0 +1,62 @@
+name: lewdventure-local
+
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      target: api
+    image: lewdventure-server:local
+    environment:
+      ASPNETCORE_ENVIRONMENT: Local
+      Server__EnableSwagger: "true"
+      Mongo__ConnectionString: mongodb://lewdventure_app:local-app-password@mongo:27017/?replicaSet=rs0&authSource=lewdventure_local
+      Mongo__DatabaseName: lewdventure_local
+      GameConfig__FailStartupIfUnavailable: "true"
+      GameConfig__BootstrapFromGoogleSheetsIfEmpty: "true"
+      GameConfig__ReloadMode: Poll
+      GoogleSheets__CredentialsPath: /run/secrets/google-credentials.json
+      Admin__Enabled: "true"
+      Admin__ApiKey: local-admin-key
+      ConfigPublisher__Enabled: "true"
+      ConfigPublisher__ApiKey: local-config-key
+      RateLimit__Enabled: "false"
+      Logging__Console__FormatterName: simple
+    secrets:
+      - google-credentials.json
+    ports:
+      - 127.0.0.1:5000:5000
+      - 127.0.0.1:9090:9090
+
+  mongo:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: local-root-password
+    ports:
+      - 127.0.0.1:27017:27017
+
+  mongo-init:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: local-root-password
+      MONGO_APP_DATABASE: lewdventure_local
+      MONGO_APP_USERNAME: lewdventure_app
+      MONGO_APP_PASSWORD: local-app-password
+
+  config-tool:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      target: config-tool
+    image: lewdventure-config-tool:local
+    environment:
+      DOTNET_ENVIRONMENT: Local
+      Mongo__ConnectionString: mongodb://lewdventure_app:local-app-password@mongo:27017/?replicaSet=rs0&authSource=lewdventure_local
+      Mongo__DatabaseName: lewdventure_local
+      GoogleSheets__CredentialsPath: /run/secrets/google-credentials.json
+    secrets:
+      - google-credentials.json
+
+secrets:
+  google-credentials.json:
+    file: ${GOOGLE_CREDENTIALS_FILE:-../../google-credentials.json}

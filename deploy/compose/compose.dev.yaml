@@ -1,0 +1,30 @@
+services:
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      GoogleSheets__CredentialsPath: /run/secrets/google-credentials.json
+    secrets:
+      - google-credentials.json
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768M
+
+  config-tool:
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      GoogleSheets__CredentialsPath: /run/secrets/google-credentials.json
+    secrets:
+      - google-credentials.json
+
+  mongo:
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+secrets:
+  google-credentials.json:
+    file: ./secrets/google-credentials.json

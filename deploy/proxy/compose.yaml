@@ -1,0 +1,31 @@
+name: lewdventure-proxy
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+      - 443:443/udp
+    env_file:
+      - .env
+    volumes:
+      - ./${CADDYFILE:?}:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - edge
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+
+networks:
+  edge:
+    name: lewdventure-edge
+
+volumes:
+  caddy-data: {}
+  caddy-config: {}
