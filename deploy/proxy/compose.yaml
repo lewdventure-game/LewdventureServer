@@ -24,6 +24,7 @@ services:
 
 networks:
   edge:
+    external: true
     name: lewdventure-edge
 
 volumes:
