@@ -1,19 +1,35 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Server.Api.Options;
+using Server.Api.Security;
 using Server.Battles;
 
 namespace Server.Api.Endpoints
 {
     internal sealed class BattleEndpoints
     {
+        private const string InvalidJsonMessage = "Request body is not valid JSON.";
+
         public void Map(WebApplication application)
         {
+            var requestLimits = application.Services.GetRequiredService<IOptions<RequestLimitsOptions>>().Value;
+            var concurrencyLimiter = application.Services.GetRequiredService<BattleConcurrencyLimiter>();
+            var sizeLimit = new RequestSizeLimitAttribute(requestLimits.BattleMaxRequestBodyBytes);
+
             application.MapPost(ApiRoutes.SimulateBattle, SimulateAsync)
+                .WithMetadata(sizeLimit)
+                .RequireRateLimiting(SecurityNames.BattleRateLimitPolicy)
+                .AddEndpointFilter(concurrencyLimiter.InvokeAsync)
                 .Accepts<BattleSimulationData>("application/json")
                 .Produces<BattleScriptResponse>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status400BadRequest);
 
             application.MapPost(ApiRoutes.ReplayBattle, ReplayAsync)
+                .WithMetadata(sizeLimit)
+                .RequireRateLimiting(SecurityNames.BattleRateLimitPolicy)
+                .AddEndpointFilter(concurrencyLimiter.InvokeAsync)
                 .Accepts<BattleReplayData>("application/json")
                 .Produces<BattleScriptResponse>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status400BadRequest);
@@ -26,7 +42,16 @@ namespace Server.Api.Endpoints
             [FromServices] BattleSimulatorService simulator)
         {
             var body = await ReadBodyAsync(httpRequest);
-            var request = JsonConvert.DeserializeObject<BattleSimulationData>(body, serializerSettings);
+            BattleSimulationData? request;
+
+            try
+            {
+                request = JsonConvert.DeserializeObject<BattleSimulationData>(body, serializerSettings);
+            }
+            catch (JsonException) when (IsMalformedJson(body))
+            {
+                return Results.BadRequest(new { error = InvalidJsonMessage });
+            }
 
             if (request == null)
                 return Results.BadRequest(new { error = "Request body is required." });
@@ -47,7 +72,16 @@ namespace Server.Api.Endpoints
             [FromServices] BattleSimulatorService simulator)
         {
             var body = await ReadBodyAsync(httpRequest);
-            var request = JsonConvert.DeserializeObject<BattleReplayData>(body, serializerSettings);
+            BattleReplayData? request;
+
+            try
+            {
+                request = JsonConvert.DeserializeObject<BattleReplayData>(body, serializerSettings);
+            }
+            catch (JsonException) when (IsMalformedJson(body))
+            {
+                return Results.BadRequest(new { error = InvalidJsonMessage });
+            }
 
             if (request == null)
                 return Results.BadRequest(new { error = "Request body is required." });
@@ -59,6 +93,20 @@ namespace Server.Api.Endpoints
             var responseJson = JsonConvert.SerializeObject(script, serializerSettings);
 
             return Results.Content(responseJson, "application/json");
+        }
+
+        private bool IsMalformedJson(string body)
+        {
+            try
+            {
+                JToken.Parse(body);
+
+                return false;
+            }
+            catch (JsonReaderException)
+            {
+                return true;
+            }
         }
 
         private async Task<string> ReadBodyAsync(HttpRequest httpRequest)

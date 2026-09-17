@@ -4,6 +4,7 @@ using Server.Api.Health;
 using Server.Api.Hosting;
 using Server.Api.Json;
 using Server.Api.Options;
+using Server.Api.Security;
 using Server.Bonuses;
 using Server.Infrastructure.GoogleSheets;
 using Server.Services;
@@ -25,6 +26,7 @@ namespace Server.Api.Composition
             RegisterHosting(services);
             RegisterConfigs(services);
 
+            new SecurityRegistrar(_configuration).Register(services);
             new BattleServicesRegistrar().Register(services);
 
             services.AddSingleton(new NewtonsoftSettingsFactory().Create());

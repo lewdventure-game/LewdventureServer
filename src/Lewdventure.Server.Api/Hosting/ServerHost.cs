@@ -1,8 +1,10 @@
+using Microsoft.Extensions.Options;
 using Server.Api.Composition;
 using Server.Api.Endpoints;
 using Server.Api.Health;
 using Server.Api.Http;
 using Server.Api.Options;
+using Server.Api.Security;
 
 namespace Server.Api.Hosting
 {
@@ -52,6 +54,11 @@ namespace Server.Api.Hosting
 
         private void ConfigureMiddleware(WebApplication application, ServerOptions serverOptions)
         {
+            var reverseProxyOptions = application.Services.GetRequiredService<IOptions<ReverseProxyOptions>>().Value;
+
+            if (reverseProxyOptions.Enabled)
+                application.UseForwardedHeaders();
+
             application.UseExceptionHandler(new UnhandledExceptionResponder().Configure);
             application.UseMiddleware<CorrelationIdMiddleware>();
             application.UseWhen(new HttpLoggingFilter().ShouldLog, ConfigureHttpLogging);
@@ -61,6 +68,12 @@ namespace Server.Api.Hosting
                 application.UseSwagger();
                 application.UseSwaggerUI(ConfigureSwaggerUi);
             }
+
+            application.UseRouting();
+            application.UseMiddleware<OpsPortGuardMiddleware>();
+            application.UseRateLimiter();
+            application.UseAuthentication();
+            application.UseAuthorization();
         }
 
         private void ConfigureHttpLogging(IApplicationBuilder applicationBuilder)

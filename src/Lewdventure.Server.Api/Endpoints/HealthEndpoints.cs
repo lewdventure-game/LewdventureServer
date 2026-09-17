@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Server.Api.Health;
 using Server.Api.Options;
+using Server.Api.Security;
 
 namespace Server.Api.Endpoints
 {
@@ -17,11 +18,11 @@ namespace Server.Api.Endpoints
 
         public void Map(WebApplication application)
         {
-            var opsHost = $"*:{_serverOptions.OpsPort}";
+            var opsPortOnly = new OpsPortOnlyMetadata();
 
-            application.MapHealthChecks(ApiRoutes.HealthLive, CreateOptions(IsLive)).RequireHost(opsHost);
-            application.MapHealthChecks(ApiRoutes.HealthReady, CreateOptions(IsReady)).RequireHost(opsHost);
-            application.MapHealthChecks(ApiRoutes.Health, CreateOptions(IsAny)).RequireHost(opsHost);
+            application.MapHealthChecks(ApiRoutes.HealthLive, CreateOptions(IsLive)).WithMetadata(opsPortOnly);
+            application.MapHealthChecks(ApiRoutes.HealthReady, CreateOptions(IsReady)).WithMetadata(opsPortOnly);
+            application.MapHealthChecks(ApiRoutes.Health, CreateOptions(IsAny)).WithMetadata(opsPortOnly);
         }
 
         private HealthCheckOptions CreateOptions(Func<HealthCheckRegistration, bool> predicate)

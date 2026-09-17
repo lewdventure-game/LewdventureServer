@@ -1,26 +1,29 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using Server.Api.Options;
+using Server.Api.Security;
 using Server.Services;
 
 namespace Server.Api.Endpoints
 {
     internal sealed class ConfigEndpoints
     {
-        private const string SecretHeaderName = "X-Config-Secret";
-        private const string LegacySecret = "1";
-
         public void Map(WebApplication application)
         {
-            application.MapPost(ApiRoutes.UpdateConfig, UpdateConfigsAsync);
+            var publisherOptions = application.Services.GetRequiredService<IOptions<ConfigPublisherOptions>>().Value;
+
+            if (publisherOptions.Enabled == false)
+                return;
+
+            application.MapPost(ApiRoutes.UpdateConfig, UpdateConfigsAsync)
+                .RequireAuthorization(SecurityNames.ConfigPublisherPolicy)
+                .RequireRateLimiting(SecurityNames.ConfigRateLimitPolicy);
         }
 
         private async Task<IResult> UpdateConfigsAsync(
-            [FromHeader(Name = SecretHeaderName)] string? secretKey,
             [FromServices] IGameConfigService configService,
             IHostEnvironment environment)
         {
-            if (secretKey != LegacySecret)
-                return Results.Unauthorized();
-
             var (success, message) = await configService.UpdateAllConfigsAsync(environment.IsDevelopment());
 
             return success
