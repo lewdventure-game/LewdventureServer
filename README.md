@@ -6,6 +6,8 @@
 
 Нужен .NET SDK 10.0.401 (`global.json`) и Docker Desktop.
 
+Windows, для игры из Unity: `local-server.bat` (Docker Desktop, api, MongoDB, ожидание готовности; команды `stop`, `restart`, `logs`, `status`, `reset`).
+
 Полный стек как на VPS (api + Mongo replica set), конфиги при первом старте импортируются из Google Sheets:
 
 ```bash

@@ -8,6 +8,27 @@
 - Docker Desktop (compose, интеграционные тесты).
 - Ключ service account Google `google-credentials.json` в корне репозитория (в `.gitignore`), если нужен импорт из Sheets. Выдаёт владелец.
 
+## Быстрый путь: local-server.bat (Windows)
+
+Для игры из Unity против локального сервера:
+
+```bat
+local-server.bat
+```
+
+Скрипт проверяет `google-credentials.json`, при необходимости запускает Docker Desktop, собирает образ из текущего кода, поднимает api и MongoDB (вариант 1 ниже), ждёт загрузки конфигов и печатает адреса. В Unity выбрать `RunMode / Server / Local` и запускать `CoreScene`.
+
+| Команда | Что делает |
+| --- | --- |
+| `local-server.bat` или `start` | собрать и поднять, дождаться готовности |
+| `restart` | пересобрать api после правок кода |
+| `logs` | логи api в реальном времени |
+| `status` | контейнеры и `/health` |
+| `stop` | остановить, данные Mongo сохраняются |
+| `reset` | остановить и удалить данные Mongo и кэш конфигов (при следующем старте конфиги заново импортируются из таблиц) |
+
+Свежие изменения из таблиц без перезапуска: `curl -X POST -H "X-Config-Key: local-config-key" http://localhost:5000/api/config/publish`.
+
 ## Вариант 1. Весь стек в Docker
 
 Так же, как на VPS: api + Mongo replica set + mongo-init. Конфиги при пустой базе импортируются из Google Sheets.
