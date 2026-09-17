@@ -33,7 +33,7 @@ namespace Server.Api.Hosting
             ConfigureMiddleware(application, serverOptions);
             MapEndpoints(application, serverOptions);
 
-            await new ConfigStartupSync().RunAsync(application.Services);
+            await new GameConfigStartupLoader().RunAsync(application.Services);
             await application.RunAsync();
         }
 

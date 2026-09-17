@@ -49,27 +49,5 @@ namespace Server.Services
         public ISummonMapperManager Summons { get; } = new SummonMapperManager();
 
         public ITrainingMapperManager Trainings { get; } = new TrainingMapperManager();
-
-        public void ClearAll()
-        {
-            Constants.Clear();
-            Artifacts.Clear();
-            Aspects.Clear();
-            Bonuses.Clear();
-            Characters.Clear();
-            Enemies.Clear();
-            Equipments.Clear();
-            ExperienceLevelPatterns.Clear();
-            Masteries.Clear();
-            PerkGroups.Clear();
-            Perks.Clear();
-            Statuses.Clear();
-            StoryEvents.Clear();
-            StoryLevels.Clear();
-            StoryStages.Clear();
-            SummonLevels.Clear();
-            Summons.Clear();
-            Trainings.Clear();
-        }
     }
 }

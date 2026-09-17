@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Server.GameConfigs;
 
 namespace Server.Infrastructure.GoogleSheets
 {
@@ -6,21 +7,21 @@ namespace Server.Infrastructure.GoogleSheets
     {
         private readonly string[] _requiredDomains =
         {
-            GoogleSheetDomains.Constants,
-            GoogleSheetDomains.Characters,
-            GoogleSheetDomains.Bonuses,
-            GoogleSheetDomains.Statuses,
-            GoogleSheetDomains.Summons,
-            GoogleSheetDomains.SummonLevels,
-            GoogleSheetDomains.Mastery,
-            GoogleSheetDomains.Enemies,
-            GoogleSheetDomains.Equipments,
-            GoogleSheetDomains.StoryLevels,
-            GoogleSheetDomains.StoryStages,
-            GoogleSheetDomains.StoryEvents,
-            GoogleSheetDomains.ExpLevelsPatterns,
-            GoogleSheetDomains.Perks,
-            GoogleSheetDomains.PerkGroups,
+            ConfigDomainNames.Constants,
+            ConfigDomainNames.Characters,
+            ConfigDomainNames.Bonuses,
+            ConfigDomainNames.Statuses,
+            ConfigDomainNames.Summons,
+            ConfigDomainNames.SummonLevels,
+            ConfigDomainNames.Mastery,
+            ConfigDomainNames.Enemies,
+            ConfigDomainNames.Equipments,
+            ConfigDomainNames.StoryLevels,
+            ConfigDomainNames.StoryStages,
+            ConfigDomainNames.StoryEvents,
+            ConfigDomainNames.ExpLevelsPatterns,
+            ConfigDomainNames.Perks,
+            ConfigDomainNames.PerkGroups,
         };
 
         public ValidateOptionsResult Validate(string? name, GoogleSheetsOptions options)

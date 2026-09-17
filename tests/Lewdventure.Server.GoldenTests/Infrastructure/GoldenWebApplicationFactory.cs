@@ -1,11 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Server;
-using Server.Services;
 
 namespace Tests.Golden.Infrastructure
 {
@@ -13,8 +9,12 @@ namespace Tests.Golden.Infrastructure
     {
         private const string ContentRootVariablePrefix = "ASPNETCORE_TEST_CONTENTROOT_";
 
+        private readonly GoldenPaths _goldenPaths;
+
         public GoldenWebApplicationFactory(GoldenPaths goldenPaths)
         {
+            _goldenPaths = goldenPaths;
+
             var assemblyName = typeof(Program).Assembly.GetName().Name ?? string.Empty;
             var variableName = ContentRootVariablePrefix + assemblyName.ToUpperInvariant().Replace(".", "_");
 
@@ -24,22 +24,15 @@ namespace Tests.Golden.Infrastructure
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
+            builder.UseSetting("GameConfig:Source", "File");
+            builder.UseSetting("GameConfig:FilePath", _goldenPaths.FixturePath);
+            builder.UseSetting("GameConfig:FailStartupIfUnavailable", "true");
             builder.ConfigureLogging(ConfigureLogging);
-            builder.ConfigureTestServices(ConfigureTestServices);
         }
 
         private void ConfigureLogging(ILoggingBuilder loggingBuilder)
         {
             loggingBuilder.ClearProviders();
-        }
-
-        private void ConfigureTestServices(IServiceCollection services)
-        {
-            services.RemoveAll<IGameConfigService>();
-            services.AddSingleton<GoldenPaths>();
-            services.AddSingleton<ConfigSnapshotLoader>();
-            services.AddSingleton<ConfigDistributorFiller>();
-            services.AddSingleton<IGameConfigService, FixtureGameConfigService>();
         }
     }
 }

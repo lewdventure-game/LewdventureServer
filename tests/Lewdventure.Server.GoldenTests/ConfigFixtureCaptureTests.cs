@@ -1,9 +1,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Server.Bonuses;
+using Server.GameConfigs;
 using Server.Infrastructure.GoogleSheets;
-using Server.Services;
 using Tests.Golden.Infrastructure;
 
 namespace Tests.Golden
@@ -16,39 +15,25 @@ namespace Tests.Golden
         private const string CredentialsVariable = "LEWD_GOOGLE_CREDENTIALS_PATH";
 
         [Test]
-        public async Task Capture_FromGoogleSheets_WritesFixtureMatchingLiveConfigService()
+        public async Task Capture_FromGoogleSheets_WritesFixture()
         {
             var paths = new GoldenPaths();
-            var loader = new ConfigSnapshotLoader();
             var credentialsPath = ResolveCredentialsPath(paths);
 
             if (File.Exists(credentialsPath) == false)
                 Assert.Inconclusive($"[Golden] credentials not found path = {credentialsPath}");
 
-            var capturer = new GoogleSheetsSnapshotCapturer(new ConfigSheetCatalog(), loader, new SheetRowsBuilder());
-            var snapshot = await capturer.CaptureAsync(credentialsPath);
+            using var provider = CreateProvider(paths, credentialsPath);
 
-            loader.Save(paths.FixturePath, snapshot);
+            var importer = provider.GetRequiredService<GoogleSheetsConfigImporter>();
+            var fileSource = provider.GetRequiredService<FileConfigSnapshotSource>();
+            var snapshot = await importer.ImportAsync(CancellationToken.None);
 
-            using var provider = CreateLiveProvider(paths, credentialsPath);
+            await fileSource.SaveAsync(paths.FixturePath, snapshot, CancellationToken.None);
 
-            var liveDistributor = provider.GetRequiredService<IConfigDistributor>();
-            var liveService = provider.GetRequiredService<IGameConfigService>();
-            var (success, message) = await liveService.UpdateAllConfigsAsync(true);
+            var reloaded = await fileSource.LoadAsync(paths.FixturePath, CancellationToken.None);
 
-            Assert.That(success, Is.True, message);
-
-            var fixtureDistributor = new ConfigDistributor();
-            var filler = new ConfigDistributorFiller(provider.GetRequiredService<IBonusWorkModeParser>());
-
-            filler.Fill(fixtureDistributor, loader.Load(paths.FixturePath));
-
-            var dump = new ConfigDistributorDump();
-            var liveDump = dump.Create(liveDistributor);
-            var fixtureDump = dump.Create(fixtureDistributor);
-
-            foreach (var pair in liveDump)
-                Assert.That(fixtureDump[pair.Key], Is.EqualTo(pair.Value), $"[Golden] manager mismatch = {pair.Key}");
+            Assert.That(reloaded.Version, Is.EqualTo(snapshot.Version));
         }
 
         private string ResolveCredentialsPath(GoldenPaths paths)
@@ -61,7 +46,7 @@ namespace Tests.Golden
             return Path.Combine(paths.RepositoryDirectory, "google-credentials.json");
         }
 
-        private ServiceProvider CreateLiveProvider(GoldenPaths paths, string credentialsPath)
+        private ServiceProvider CreateProvider(GoldenPaths paths, string credentialsPath)
         {
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(paths.ServerProjectDirectory)
@@ -73,10 +58,12 @@ namespace Tests.Golden
             services.AddOptions<GoogleSheetsOptions>()
                 .Bind(configuration.GetSection(GoogleSheetsOptions.SectionName))
                 .PostConfigure(options => options.CredentialsPath = credentialsPath);
+            services.AddSingleton<ConfigDomainNames>();
+            services.AddSingleton<ConfigSnapshotHasher>();
+            services.AddSingleton<ConfigSnapshotSerializer>();
+            services.AddSingleton<FileConfigSnapshotSource>();
             services.AddSingleton<GoogleCredentialProvider>();
-            services.AddSingleton<IConfigDistributor, ConfigDistributor>();
-            services.AddSingleton<IBonusWorkModeParser, BonusWorkModeParser>();
-            services.AddSingleton<IGameConfigService, GameConfigService>();
+            services.AddSingleton<GoogleSheetsConfigImporter>();
 
             return services.BuildServiceProvider();
         }

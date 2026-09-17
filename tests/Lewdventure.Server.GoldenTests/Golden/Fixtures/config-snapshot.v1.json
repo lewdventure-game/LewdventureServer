@@ -1,7 +1,9 @@
 {
   "format": "lewdventure-config-snapshot",
   "formatVersion": 1,
-  "capturedAt": "2026-09-16T13:33:27.5987039Z",
+  "version": "sha256:ae188ad83fe3b475e1fde952f7e6ee49bbf4003de69446d33f03ca8244a566cd",
+  "createdAt": "2026-09-17T08:38:00.7764976Z",
+  "sourceKind": "GoogleSheets",
   "domains": [
     {
       "domain": "Constants",

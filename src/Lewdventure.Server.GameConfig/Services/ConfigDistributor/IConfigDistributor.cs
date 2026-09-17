@@ -49,7 +49,5 @@ namespace Server.Services
         public ISummonMapperManager Summons { get; }
 
         public ITrainingMapperManager Trainings { get; }
-
-        public void ClearAll();
     }
 }

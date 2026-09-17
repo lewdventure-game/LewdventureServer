@@ -27,6 +27,8 @@ namespace Tests.Unit.Api
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
+            builder.UseSetting("GameConfig:Source", "File");
+            builder.UseSetting("GameConfig:FilePath", new ApiDirectoryLocator().FindFixture());
             builder.ConfigureLogging(ConfigureLogging);
 
             foreach (var pair in _settings)

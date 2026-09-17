@@ -18,5 +18,12 @@ namespace Tests.Unit.Api
 
             throw new InvalidOperationException("src/Lewdventure.Server.Api not found");
         }
+
+        public string FindFixture()
+        {
+            var apiDirectory = Find();
+
+            return Path.GetFullPath(Path.Combine(apiDirectory, "..", "..", "tests", "Lewdventure.Server.GoldenTests", "Golden", "Fixtures", "config-snapshot.v1.json"));
+        }
     }
 }

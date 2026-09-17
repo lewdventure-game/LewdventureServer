@@ -1,25 +1,27 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Server.Services;
+using Server.GameConfigs;
 
 namespace Server.Api.Health
 {
     internal sealed class GameConfigLoadedHealthCheck : IHealthCheck
     {
-        private readonly IConfigDistributor _configDistributor;
+        private readonly ConfigSnapshotHasher _configSnapshotHasher;
+        private readonly IGameConfigSetProvider _gameConfigSetProvider;
 
-        public GameConfigLoadedHealthCheck(IConfigDistributor configDistributor)
+        public GameConfigLoadedHealthCheck(ConfigSnapshotHasher configSnapshotHasher, IGameConfigSetProvider gameConfigSetProvider)
         {
-            _configDistributor = configDistributor;
+            _configSnapshotHasher = configSnapshotHasher;
+            _gameConfigSetProvider = gameConfigSetProvider;
         }
 
         public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
-            var constantsCount = _configDistributor.Constants.Collection.Count;
+            var current = _gameConfigSetProvider.Current;
 
-            if (constantsCount <= 0)
+            if (current.IsEmpty)
                 return Task.FromResult(HealthCheckResult.Unhealthy("game configs are not loaded"));
 
-            return Task.FromResult(HealthCheckResult.Healthy($"constants = {constantsCount}"));
+            return Task.FromResult(HealthCheckResult.Healthy($"version = {_configSnapshotHasher.ToShortVersion(current.Version)} source = {current.Source}"));
         }
     }
 }

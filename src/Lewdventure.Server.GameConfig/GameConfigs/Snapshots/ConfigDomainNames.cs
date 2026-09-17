@@ -1,6 +1,6 @@
-namespace Server.Infrastructure.GoogleSheets
+namespace Server.GameConfigs
 {
-    internal sealed class GoogleSheetDomains
+    internal sealed class ConfigDomainNames
     {
         public const string Constants = "Constants";
         public const string Characters = "Characters";
@@ -17,5 +17,26 @@ namespace Server.Infrastructure.GoogleSheets
         public const string ExpLevelsPatterns = "Exp_levels_patterns";
         public const string Perks = "Perks";
         public const string PerkGroups = "Perk_groups";
+
+        private readonly string[] _ordered =
+        {
+            Constants,
+            Characters,
+            Bonuses,
+            Statuses,
+            Summons,
+            SummonLevels,
+            Mastery,
+            Enemies,
+            Equipments,
+            StoryLevels,
+            StoryStages,
+            StoryEvents,
+            ExpLevelsPatterns,
+            Perks,
+            PerkGroups,
+        };
+
+        public IReadOnlyList<string> Ordered => _ordered;
     }
 }

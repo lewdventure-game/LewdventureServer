@@ -6,6 +6,9 @@
     <Project Path="src/Lewdventure.Server.GameConfig/Lewdventure.Server.GameConfig.csproj" />
     <Project Path="src/Lewdventure.Server.Infrastructure/Lewdventure.Server.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Lewdventure.Server.ConfigTool/Lewdventure.Server.ConfigTool.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Lewdventure.Server.Benchmarks/Lewdventure.Server.Benchmarks.csproj" />
     <Project Path="tests/Lewdventure.Server.GoldenTests/Lewdventure.Server.GoldenTests.csproj" />

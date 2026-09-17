@@ -1,9 +1,9 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Tests.Golden.Infrastructure
+namespace Server.GameConfigs
 {
-    internal sealed class ConfigSnapshotDomain
+    internal sealed class ConfigSnapshotFileDomain
     {
         [JsonProperty("domain")]
         public string Domain { get; set; } = string.Empty;

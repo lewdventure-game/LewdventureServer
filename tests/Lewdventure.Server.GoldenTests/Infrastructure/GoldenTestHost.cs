@@ -15,6 +15,8 @@ namespace Tests.Golden.Infrastructure
             Client = new GoldenHttpClient(_factory.CreateClient());
         }
 
+        public IServiceProvider Services => _factory.Services;
+
         public GoldenPaths Paths { get; }
 
         public GoldenSettings Settings { get; }

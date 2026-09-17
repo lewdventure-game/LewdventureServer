@@ -5,7 +5,9 @@ using Server.Api.Hosting;
 using Server.Api.Json;
 using Server.Api.Options;
 using Server.Api.Security;
+using Server.Api.Http;
 using Server.Bonuses;
+using Server.GameConfigs;
 using Server.Infrastructure.GoogleSheets;
 using Server.Services;
 
@@ -39,6 +41,10 @@ namespace Server.Api.Composition
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
+            services.AddOptions<GameConfigOptions>()
+                .Bind(_configuration.GetSection(GameConfigOptions.SectionName))
+                .ValidateOnStart();
+
             services.AddOptions<GoogleSheetsOptions>()
                 .Bind(_configuration.GetSection(GoogleSheetsOptions.SectionName))
                 .ValidateDataAnnotations()
@@ -46,6 +52,7 @@ namespace Server.Api.Composition
 
             services.AddSingleton<IValidateOptions<ServerOptions>, ServerOptionsValidator>();
             services.AddSingleton<IValidateOptions<GoogleSheetsOptions>, GoogleSheetsOptionsValidator>();
+            services.AddSingleton<IValidateOptions<GameConfigOptions>, GameConfigOptionsValidator>();
             services.AddOptions<HostOptions>().Configure<IOptions<ServerOptions>>(ConfigureHostOptions);
         }
 
@@ -77,13 +84,29 @@ namespace Server.Api.Composition
             httpLoggingOptions.CombineLogs = true;
         }
 
+        private IConfigDistributor ResolveConfigDistributor(IServiceProvider serviceProvider)
+        {
+            return serviceProvider.GetRequiredService<IGameConfigSetProvider>().Current.Distributor;
+        }
+
         private void RegisterConfigs(IServiceCollection services)
         {
             services
-                .AddSingleton<IConfigDistributor, ConfigDistributor>()
+                .AddSingleton<ConfigDomainNames>()
+                .AddSingleton<ConfigSnapshotHasher>()
+                .AddSingleton<ConfigSnapshotSerializer>()
+                .AddSingleton<ConfigSnapshotValidator>()
+                .AddSingleton<ConfigSnapshotDiff>()
+                .AddSingleton<ConfigRowsParser>()
+                .AddSingleton<FileConfigSnapshotSource>()
+                .AddSingleton<GameConfigSetBuilder>()
+                .AddSingleton<IGameConfigSetProvider, GameConfigSetProvider>()
                 .AddSingleton<IBonusWorkModeParser, BonusWorkModeParser>()
                 .AddSingleton<GoogleCredentialProvider>()
-                .AddSingleton<IGameConfigService, GameConfigService>();
+                .AddSingleton<GoogleSheetsConfigImporter>()
+                .AddSingleton<IGameConfigService, GameConfigService>()
+                .AddSingleton<GameConfigReadyFilter>()
+                .AddScoped(ResolveConfigDistributor);
         }
     }
 }
