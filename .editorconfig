@@ -1,0 +1,42 @@
+root = true
+
+[*]
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.cs]
+indent_size = 4
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_style_namespace_declarations = block_scoped:none
+csharp_using_directive_placement = outside_namespace:none
+csharp_prefer_braces = false:none
+csharp_style_var_for_built_in_types = true:none
+csharp_style_var_when_type_is_apparent = true:none
+csharp_style_var_elsewhere = true:none
+csharp_style_expression_bodied_methods = false:none
+csharp_style_expression_bodied_constructors = false:none
+csharp_style_expression_bodied_properties = true:none
+csharp_style_prefer_not_pattern = false:none
+csharp_style_prefer_primary_constructors = false:none
+csharp_prefer_simple_using_statement = true:none
+dotnet_sort_system_directives_first = true
+dotnet_style_qualification_for_field = false:none
+dotnet_style_qualification_for_method = false:none
+dotnet_style_qualification_for_property = false:none
+dotnet_diagnostic.IDE0005.severity = none
+
+[*.{csproj,props,targets,slnx,xml}]
+indent_size = 2
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false

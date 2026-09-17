@@ -1,0 +1,94 @@
+name: lewdventure
+
+services:
+  api:
+    image: ${IMAGE_REGISTRY:-ghcr.io/abromus}/lewdventure-server:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    stop_grace_period: 35s
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - api-cache:/app/cache
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      Server__BindAddress: Any
+      Server__PublicPort: "5000"
+      Server__OpsPort: "9090"
+      Mongo__Enabled: "true"
+      GameConfig__Source: Mongo
+      GameConfig__LocalCachePath: /app/cache/config-snapshot.json
+      TZ: UTC
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+    networks:
+      - backend
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+
+  mongo:
+    image: mongo:8.0.15
+    restart: unless-stopped
+    entrypoint: ["bash", "/opt/lewdventure/mongod-entrypoint.sh"]
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+      - ../mongo/mongod-entrypoint.sh:/opt/lewdventure/mongod-entrypoint.sh:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - backend
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+
+  mongo-init:
+    image: mongo:8.0.15
+    restart: "no"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      - ../mongo/init-replica.js:/opt/lewdventure/init-replica.js:ro
+    entrypoint:
+      - bash
+      - -c
+      - mongosh --host mongo --username "$$MONGO_INITDB_ROOT_USERNAME" --password "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --quiet /opt/lewdventure/init-replica.js
+    networks:
+      - backend
+
+  config-tool:
+    image: ${IMAGE_REGISTRY:-ghcr.io/abromus}/lewdventure-config-tool:${IMAGE_TAG:-local}
+    profiles:
+      - tools
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - ./transfer:/transfer
+    environment:
+      Mongo__Enabled: "true"
+      TZ: UTC
+    networks:
+      - backend
+
+networks:
+  backend: {}
+
+volumes:
+  api-cache: {}
+  mongo-data: {}
+  mongo-config: {}

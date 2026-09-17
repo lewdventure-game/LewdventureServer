@@ -1,0 +1,35 @@
+name: lewdventure-ci
+
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      target: api
+    image: lewdventure-server:ci
+    environment:
+      ASPNETCORE_ENVIRONMENT: Testing
+      Mongo__ConnectionString: mongodb://lewdventure_app:ci-app-password@mongo:27017/?replicaSet=rs0&authSource=lewdventure_ci
+      Mongo__DatabaseName: lewdventure_ci
+      GameConfig__Source: File
+      GameConfig__FilePath: /fixtures/config-snapshot.v1.json
+      GameConfig__FailStartupIfUnavailable: "true"
+      RateLimit__Enabled: "false"
+    volumes:
+      - ../../tests/Lewdventure.Server.GoldenTests/Golden/Fixtures:/fixtures:ro
+    ports:
+      - 127.0.0.1:5000:5000
+      - 127.0.0.1:9090:9090
+
+  mongo:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ci-root-password
+
+  mongo-init:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ci-root-password
+      MONGO_APP_DATABASE: lewdventure_ci
+      MONGO_APP_USERNAME: lewdventure_app
+      MONGO_APP_PASSWORD: ci-app-password

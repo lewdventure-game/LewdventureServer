@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Server</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lewdventure.Server.Api" />
+    <InternalsVisibleTo Include="Lewdventure.Server.GoldenTests" />
+    <InternalsVisibleTo Include="Lewdventure.Server.UnitTests" />
+    <InternalsVisibleTo Include="Lewdventure.Server.IntegrationTests" />
+    <InternalsVisibleTo Include="Lewdventure.Server.Benchmarks" />
+    <InternalsVisibleTo Include="Lewdventure.Server.ConfigTool" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Lewdventure.Server.Contracts\Lewdventure.Server.Contracts.csproj" />
+    <ProjectReference Include="..\Lewdventure.Server.GameConfig\Lewdventure.Server.GameConfig.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+</Project>

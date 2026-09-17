@@ -1,0 +1,21 @@
+* text=auto
+*.cs text diff=csharp
+*.csproj text
+*.sln text eol=crlf
+*.slnx text
+*.sh text eol=lf
+*.js text eol=lf
+*.gs text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf
+Caddyfile* text eol=lf
+*.caddy text eol=lf
+*.service text eol=lf
+*.timer text eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.pdf binary
+
+tests/**/Golden/** -text

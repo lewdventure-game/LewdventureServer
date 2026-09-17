@@ -1,0 +1,127 @@
+name: config-promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        required: false
+        default: active
+      reason:
+        type: string
+        required: true
+
+concurrency:
+  group: config-promote
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: stage
+    outputs:
+      version: ${{ steps.snapshot.outputs.version }}
+    env:
+      REQUESTED_VERSION: ${{ inputs.version }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/lewdventure/stage' }}
+      SSH_TARGET: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+      SSH_PORT: ${{ vars.SSH_PORT || '22' }}
+    steps:
+      - name: validate inputs
+        run: |
+          [[ "$REQUESTED_VERSION" =~ ^(active|sha256:[0-9a-f]{64})$ ]] || { echo "version must be 'active' or sha256:<64 hex>" >&2; exit 1; }
+
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/ssh-setup
+        with:
+          private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known-hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+      - name: export snapshot from stage
+        id: snapshot
+        run: |
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "$(printf '%q' "$DEPLOY_PATH/scripts/config-transfer.sh") stage export $(printf '%q' "$REQUESTED_VERSION")" > snapshot.json
+          format="$(jq -r .format snapshot.json)"
+          version="$(jq -r .version snapshot.json)"
+          [ "$format" = "lewdventure-config-snapshot" ] || { echo "unexpected snapshot format '$format'" >&2; exit 1; }
+          [[ "$version" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "unexpected snapshot version '$version'" >&2; exit 1; }
+          if [ "$REQUESTED_VERSION" != "active" ] && [ "$REQUESTED_VERSION" != "$version" ]; then
+            echo "exported $version instead of $REQUESTED_VERSION" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Config snapshot from stage"
+            echo "- version: \`$version\`"
+            echo "- created: $(jq -r .createdAt snapshot.json)"
+            echo "- source: $(jq -r .sourceKind snapshot.json)"
+            echo "- domains: $(jq -r '[.domains[].domain] | join(", ")' snapshot.json)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: config-snapshot
+          path: snapshot.json
+          retention-days: 30
+          if-no-files-found: error
+
+  publish:
+    needs: export
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: prod
+    env:
+      VERSION: ${{ needs.export.outputs.version }}
+      REASON: ${{ inputs.reason }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/lewdventure/prod' }}
+      SSH_TARGET: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+      SSH_PORT: ${{ vars.SSH_PORT || '22' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: config-snapshot
+
+      - name: verify artifact
+        run: |
+          [ "$(jq -r .version snapshot.json)" = "$VERSION" ] || { echo "artifact version mismatch" >&2; exit 1; }
+
+      - uses: ./.github/actions/ssh-setup
+        with:
+          private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known-hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+      - name: publish and activate on prod
+        run: |
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "$(printf '%q' "$DEPLOY_PATH/scripts/config-transfer.sh") prod import $(printf '%q' "github:$GITHUB_ACTOR") $(printf '%q' "$REASON")" < snapshot.json | tee publish.log
+          grep -q "^version $VERSION " publish.log || { echo "prod reported a different version" >&2; exit 1; }
+          {
+            echo "### Config published to prod"
+            echo "- version: \`$VERSION\`"
+            echo '```'
+            cat publish.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: verify active version
+        run: |
+          status="$(ssh -p "$SSH_PORT" "$SSH_TARGET" "$(printf '%q' "$DEPLOY_PATH/scripts/config-transfer.sh") prod status")"
+          echo "$status"
+          printf '%s\n' "$status" | grep -qx "active $VERSION" || { echo "prod active version is not $VERSION" >&2; exit 1; }
+
+      - uses: ./.github/actions/discord-notify
+        if: always()
+        with:
+          webhook-url: ${{ secrets.DISCORD_DEPLOY_WEBHOOK_URL }}
+          title: Config promote
+          description: "version ${{ needs.export.outputs.version }}: ${{ inputs.reason }}"
+          status: ${{ job.status }}
+          environment: prod

@@ -1,0 +1,142 @@
+name: _deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      image_tag:
+        type: string
+        required: true
+    outputs:
+      deployed_tag:
+        value: ${{ jobs.deploy.outputs.deployed_tag }}
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: ${{ inputs.environment }}
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    outputs:
+      deployed_tag: ${{ steps.result.outputs.deployed_tag }}
+    env:
+      DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+      IMAGE_TAG: ${{ inputs.image_tag }}
+      IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || format('/opt/lewdventure/{0}', inputs.environment) }}
+      SSH_TARGET: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+      SSH_PORT: ${{ vars.SSH_PORT || '22' }}
+    steps:
+      - name: validate inputs
+        run: |
+          case "$DEPLOY_ENVIRONMENT" in
+            dev|stage|prod) ;;
+            *) echo "invalid environment $DEPLOY_ENVIRONMENT" >&2; exit 1 ;;
+          esac
+          [[ "$IMAGE_TAG" =~ ^(sha-[0-9a-f]{12}|rollback)$ ]] || { echo "invalid image tag $IMAGE_TAG" >&2; exit 1; }
+          echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: checkout deploy files of the image commit
+        if: inputs.image_tag != 'rollback'
+        run: git checkout "${IMAGE_TAG#sha-}" -- deploy
+
+      - uses: docker/login-action@v3
+        if: inputs.image_tag != 'rollback'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: verify images
+        if: inputs.image_tag != 'rollback'
+        run: |
+          {
+            echo "### Images"
+            for image in lewdventure-server lewdventure-config-tool; do
+              digest="$(docker buildx imagetools inspect "$IMAGE_REGISTRY/$image:$IMAGE_TAG" --format '{{json .Manifest}}' | jq -r .digest)"
+              echo "- \`$image:$IMAGE_TAG\` \`$digest\`"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: ./.github/actions/ssh-setup
+        with:
+          private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known-hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+      - name: upload deploy bundle
+        if: inputs.image_tag != 'rollback'
+        run: |
+          bundle="$(mktemp -d)"
+          mkdir -p "$bundle/compose" "$bundle/mongo" "$bundle/scripts"
+          cp deploy/compose/compose.yaml deploy/compose/compose.vps.yaml "deploy/compose/compose.$DEPLOY_ENVIRONMENT.yaml" "$bundle/compose/"
+          cp deploy/mongo/* "$bundle/mongo/"
+          cp deploy/scripts/deploy.sh deploy/scripts/collect-logs.sh deploy/scripts/config-transfer.sh "$bundle/scripts/"
+          chmod 755 "$bundle"/scripts/*.sh "$bundle/mongo/mongod-entrypoint.sh"
+          tar -czf bundle.tgz -C "$bundle" .
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "mkdir -p $(printf '%q' "$DEPLOY_PATH") && tar -xzf - -C $(printf '%q' "$DEPLOY_PATH")" < bundle.tgz
+
+      - name: registry login on host
+        env:
+          GHCR_PULL_USER: ${{ vars.GHCR_PULL_USER }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        run: |
+          if [ -z "$GHCR_PULL_TOKEN" ]; then
+            echo "GHCR_PULL_TOKEN is not configured, relying on existing registry login on host"
+            exit 0
+          fi
+          printf '%s' "$GHCR_PULL_TOKEN" | ssh -p "$SSH_PORT" "$SSH_TARGET" "docker login ghcr.io -u $(printf '%q' "$GHCR_PULL_USER") --password-stdin"
+
+      - name: deploy
+        id: deploy
+        run: |
+          set +e
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "DEPLOY_ACTOR=$(printf '%q' "github:$GITHUB_ACTOR") $(printf '%q' "$DEPLOY_PATH/scripts/deploy.sh") $DEPLOY_ENVIRONMENT $IMAGE_TAG"
+          status=$?
+          set -e
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          [ "$status" -eq 0 ] || exit "$status"
+
+      - name: readiness
+        id: readiness
+        run: |
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "port=\$(grep -E '^OPS_HOST_PORT=' $(printf '%q' "$DEPLOY_PATH/compose/.env") | cut -d= -f2) && curl -fsS --retry 20 --retry-delay 3 --retry-all-errors http://127.0.0.1:\$port/health/ready"
+
+      - name: roll back after failed readiness
+        if: failure() && steps.readiness.outcome == 'failure' && inputs.image_tag != 'rollback'
+        run: ssh -p "$SSH_PORT" "$SSH_TARGET" "DEPLOY_ACTOR=$(printf '%q' "github:$GITHUB_ACTOR") $(printf '%q' "$DEPLOY_PATH/scripts/deploy.sh") $DEPLOY_ENVIRONMENT rollback"
+
+      - name: result
+        id: result
+        if: always() && steps.deploy.outcome != 'skipped'
+        run: |
+          tag="$(ssh -p "$SSH_PORT" "$SSH_TARGET" "$(printf '%q' "$DEPLOY_PATH/scripts/deploy.sh") $DEPLOY_ENVIRONMENT current" || true)"
+          echo "deployed_tag=$tag" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Deploy $DEPLOY_ENVIRONMENT"
+            echo "- requested: \`$IMAGE_TAG\`"
+            echo "- running: \`${tag:-unknown}\`"
+            echo "- deploy status: ${{ steps.deploy.outcome }}"
+            echo "- readiness: ${{ steps.readiness.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: ./.github/actions/discord-notify
+        if: always()
+        with:
+          webhook-url: ${{ secrets.DISCORD_DEPLOY_WEBHOOK_URL }}
+          title: ${{ inputs.image_tag == 'rollback' && 'Rollback' || 'Deploy' }}
+          description: "requested ${{ inputs.image_tag }}, running ${{ steps.result.outputs.deployed_tag || 'unknown' }}${{ steps.deploy.outputs.status == '1' && ', previous version restored' || '' }}${{ steps.deploy.outputs.status == '3' && ', restore FAILED' || '' }}"
+          status: ${{ job.status }}
+          environment: ${{ inputs.environment }}

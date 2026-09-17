@@ -1,0 +1,35 @@
+{
+	auto_https disable_certs
+	servers {
+		trusted_proxies static {$CLOUDFLARE_IPS}
+		client_ip_headers CF-Connecting-IP
+	}
+}
+
+(origin_tls) {
+	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem
+}
+
+(api_site) {
+	import origin_tls
+	encode zstd gzip
+	request_body {
+		max_size 1MB
+	}
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	@ops path /health* /admin/* /swagger*
+	respond @ops 404
+}
+
+(api_upstream) {
+	reverse_proxy {args[0]} {
+		header_up X-Forwarded-For {client_ip}
+	}
+}
+
+import sites/*.caddy

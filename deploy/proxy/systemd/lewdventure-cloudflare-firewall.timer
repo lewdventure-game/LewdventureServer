@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh Lewdventure Cloudflare-only firewall daily
+
+[Timer]
+OnBootSec=2min
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target

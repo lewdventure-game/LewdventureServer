@@ -1,116 +1,83 @@
-# [AGENTS.md](http://AGENTS.md)
+# AGENTS.md
 
-> Карта проекта для AI agents и новых разработчиков. Обновляй при существенных изменениях структуры.
+> Карта проекта для AI-агентов и новых разработчиков. Обновляй при существенных изменениях структуры.
 
-## Обзор проекта
+## Обзор
 
-LewdventureServer — ASP.NET Core 9 Web API для Lewdventure. Загружает конфиги из Google Sheets, воспроизводит бой детерминированно и возвращает battle script для Unity-клиента. Подробности — `.ai-factory/DESCRIPTION.md`.
+LewdventureServer — ASP.NET Core (.NET 10) сервис, который детерминированно считает бой Lewdventure и отдаёт battle script Unity-клиенту. Конфиги игры — версионные снапшоты Google Sheets в MongoDB. Окружения: Local, Development (dev), Staging (stage), Production (prod), Testing.
 
-## Tech Stack
+## Стек
 
-- **Язык:** C# (.NET 9).
-- **Framework:** ASP.NET Core Minimal API + controllers.
-- **JSON:** Newtonsoft.Json.
-- **Конфиги:** Google Sheets API v4, CsvHelper.
-- **API docs:** Swashbuckle (Development).
-- **Тесты:** NUnit (целевой стандарт, skill `csharp-nunit`).
+- C# / .NET 10, ASP.NET Core Minimal API, Newtonsoft.Json для контракта боя.
+- MongoDB 8 (replica set `rs0`), MongoDB.Driver 3.
+- Google Sheets API v4 для импорта конфигов.
+- Docker (chiseled non-root образы), docker compose, Caddy.
+- GitHub Actions + GHCR.
+- NUnit, WebApplicationFactory, Testcontainers, BenchmarkDotNet.
+- Центральное управление пакетами (`Directory.Packages.props`) с lock-файлами.
 
-
-
-## Структура проекта
+## Структура
 
 ```text
-Assets/
-  Documents/                   # вся документация
-    GDD/                       # игровая логика из GDD
-    Server/                    # API, config sync (/aif-docs)
-  Core/
-    Configs/                   # UrlConfig, parsers, converters
-    Managers/                  # ConstantsMapperManager
-    Services/
-      ConfigDistributor/       # Агрегатор всех mapper managers
-      GameConfigService/       # Google Sheets sync
-  Game/
-    Battles/                   # Simulation core
-      Models/                  # DTO: request, response, steps
-      Services/                # BattleSimulatorService, perks, skills
-    Artifacts/                 # Artifact bonus mappers (sheet stub)
-    Aspects/                   # Aspect bonus mappers (sheet stub)
-    Bonuses/
-    Common/
-    Entities/
-    Equipments/
-    Perks/
-    Statuses/
-    Stories/
-    Trainings/                 # Training level bonus mappers (sheet stub)
-Program.cs                     # Composition root + endpoints
-.ai-factory/                   # AI Factory context
-.cursor/
-  rules/                       # Cursor style rules
-  skills/                      # aif-* built-in skills
-.agents/skills/                # External skills (csharp-nunit)
+src/Lewdventure.Server.Contracts/        Battles/            wire DTO боя
+src/Lewdventure.Server.GameConfig/       <Domain>/           mappers, managers
+                                         Services/           ConfigDistributor
+                                         GameConfigs/        снапшоты, builder, provider, diff, validator
+src/Lewdventure.Server.Battle/           Battles/Services/   симуляция
+src/Lewdventure.Server.Infrastructure/   Mongo/              клиент, индексы, транзакции, репозитории снапшотов
+                                         GoogleSheets/       импорт листов
+                                         Alerts/             очередь, троттлинг, Discord
+src/Lewdventure.Server.Api/              Hosting/            ServerHost, startup loader, фоновые сервисы
+                                         Composition/        регистрация DI
+                                         Endpoints/          battle, config, admin, health
+                                         Security/ Options/ Http/ Health/ Metrics/ Json/
+tools/Lewdventure.Server.ConfigTool/     CLI снапшотов
+tools/Lewdventure.Server.LoadTest/       нагрузка по golden-кейсам
+tools/apps-script/                       меню публикации в таблице
+tests/                                   Golden, Unit, Integration, Benchmarks
+deploy/                                  docker, compose, mongo, proxy, scripts
+.github/                                 workflows, composite actions, dependabot
+docs/                                    gdd, server, architecture, runbooks
 ```
 
+## Точки входа
 
-
-## Ключевые точки входа
-
-
-| Файл                                                          | Назначение                                                   |
-| ------------------------------------------------------------- | ------------------------------------------------------------ |
-| `Program.cs`                                                  | DI, middleware, `/api/battle/simulate`, `/api/battle/replay`, `/api/config/update` |
-| `Assets/Core/Services/ConfigDistributor/ConfigDistributor.cs` | Все mapper managers (единственный runtime-владелец)          |
-| `Assets/Core/Services/GameConfigService/GameConfigService.cs` | Загрузка конфигов из Google Sheets (`[Config]`)              |
-| `Assets/Game/Battles/Services/BattleSimulatorService.cs`      | Основной battle loop                                         |
-| `Assets/Core/Configs/UrlConfig.cs`                            | URL paths для endpoints                                      |
-| `Assets/Documents/Server/config-sync.md`                      | Sync contract, Sheets > JSON, list/dictionary managers       |
-| `Assets/Documents/GDD/`                                       | GDD раскладка под серверную ответственность                  |
-| `LewdventureServer.csproj`                                    | .NET 9 Web SDK, package refs                                 |
-
-
-
+| Файл | Назначение |
+| --- | --- |
+| `src/Lewdventure.Server.Api/Program.cs` | `--health-probe` или запуск `ServerHost` |
+| `src/Lewdventure.Server.Api/Hosting/ServerHost.cs` | Kestrel, middleware, эндпоинты, инициализация Mongo и конфигов |
+| `src/Lewdventure.Server.Api/Composition/ServerComposition.cs` | корень DI |
+| `src/Lewdventure.Server.Api/Composition/BattleServicesRegistrar.cs` | scoped граф сервисов боя |
+| `src/Lewdventure.Server.Api/Hosting/GameConfigStartupLoader.cs` | загрузка конфигов при старте |
+| `src/Lewdventure.Server.GameConfig/GameConfigs/Building/GameConfigSetBuilder.cs` | снапшот → `ConfigDistributor` |
+| `src/Lewdventure.Server.Infrastructure/Mongo/ConfigSnapshots/ConfigPublishingService.cs` | публикация, активация, загрузка активной версии |
+| `src/Lewdventure.Server.Battle/Battles/Services/BattleSimulatorService.cs` | основной цикл боя |
+| `src/Lewdventure.Server.Api/appsettings*.json` | настройки по окружениям, Sheet ID |
+| `deploy/scripts/deploy.sh` | деплой и откат на VPS |
 
 ## Документация
 
+| Документ | Путь |
+| --- | --- |
+| Оглавление | `docs/README.md` |
+| API боя | `docs/server/battle-api.md` |
+| Конфиги | `docs/server/config-sync.md` |
+| Архитектура | `docs/architecture/README.md`, `.ai-factory/ARCHITECTURE.md` |
+| Mongo | `docs/architecture/mongo-conventions.md` |
+| Runbooks | `docs/runbooks/README.md` |
+| Спека боя | `.ai-factory/specs/battle-simulation.md` |
+| GDD | `docs/gdd/README.md` |
+| Правила кода | `.ai-factory/rules/base.md`, `.ai-factory/rules/csharp-author-style.mdc`, `.ai-factory/RULES.md` |
 
-| Документ            | Путь                                        | Описание                           |
-| ------------------- | ------------------------------------------- | ---------------------------------- |
-| README              | `README.md`                                 | Quick start, endpoints             |
-| Documents           | `Assets/Documents/README.md`                | Корень GDD + Server docs           |
-| Battle API          | `Assets/Documents/Server/battle-api.md`     | Simulate endpoint / flow           |
-| Client battle (AI)  | `Assets/Documents/GDD/10-client-battle-ai.md` | Handoff: Unity client под protocol |
-| Config Sync         | `Assets/Documents/Server/config-sync.md`    | Sheets sync, managers, source of truth |
-| GDD                 | `Assets/Documents/GDD/README.md`            | Игровая логика под сервер          |
-| Project description | `.ai-factory/DESCRIPTION.md`                | Стек и соглашения                  |
-| Architecture        | `.ai-factory/ARCHITECTURE.md`               | Modular Monolith, dependency rules |
-| Battle spec         | `.ai-factory/specs/battle-simulation.md`    | API contract симуляции             |
-| Base rules          | `.ai-factory/rules/base.md`                 | C#/ASP.NET conventions             |
-| C# author style     | `.ai-factory/rules/csharp-author-style.mdc` | Форматирование кода                |
+## Правила для агентов
 
-
-
-
-## AI Context Files
-
-
-| Файл                          | Назначение              |
-| ----------------------------- | ----------------------- |
-| `AGENTS.md`                   | Быстрая карта проекта   |
-| `.ai-factory/DESCRIPTION.md`  | Описание и stack        |
-| `.ai-factory/ARCHITECTURE.md` | Архитектура             |
-| `.ai-factory/RULES.md`        | Короткие аксиомы        |
-| `.ai-factory/rules/`          | Детальные правила       |
-| `.cursor/rules/`              | Cursor mirror для style |
-
-
-
-
-## Agent Rules
-
-- C# runtime: no LINQ, `_camelCase`, `internal sealed`, без лишних null checks для DI/config.
-- Battle-задачи: читать `.ai-factory/specs/battle-simulation.md` перед изменениями.
+- Код и конфиги без комментариев: C#, yaml, compose, Dockerfile, workflows, `.env.example`, Caddyfile, shell, Apps Script. Пояснения — только в `docs/`.
+- C#: `internal sealed`, `_camelCase`, без LINQ, без `static` (кроме `Main`), `== false`, один тип на файл, однострочные `if` без скобок.
+- Механики и контракт боя меняются только осознанно: golden-тесты должны упасть, эталоны обновляются отдельным изменением (`LEWD_GOLDEN_UPDATE=1`).
+- Сервисы боя scoped: состояние боя не хранить в singleton.
+- Конфиги в рантайме — только через `IConfigDistributor` (scoped, берётся из `IGameConfigSetProvider.Current`).
+- Новые лог-теги согласовывать с владельцем. Используются: `[Startup]`, `[Shutdown]`, `[Health]`, `[Alert]`, `[Mongo]`, `[Security]`, `[Config]`, `[Config][Snapshot]`, `[Error]`, `[Story][Battle]`.
+- Секреты только через env и `secrets/` на хосте; `google-credentials.json` не коммитить и не выводить.
+- Не менять Sheet ID и диапазоны листов без запроса владельца.
 - Не выполнять destructive git без явного запроса.
-- Shell-команды — по одной; не склеивать `git checkout master && git pull`.
-- Парный клиент: `D:\Project\Lewdventure` — синхронизировать battle contract при protocol changes.
-
+- Изменения протокола боя — синхронно с клиентом `C:\UnityProjects\Lewdventure` и спекой.

@@ -1,0 +1,76 @@
+name: promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        type: choice
+        required: true
+        options:
+          - stage
+          - prod
+      image_tag:
+        type: string
+        required: false
+        default: ""
+
+concurrency:
+  group: promote-${{ inputs.target }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    environment:
+      name: ${{ inputs.target == 'prod' && 'stage' || 'dev' }}
+    outputs:
+      image_tag: ${{ steps.tag.outputs.image_tag }}
+    env:
+      SOURCE_ENVIRONMENT: ${{ inputs.target == 'prod' && 'stage' || 'dev' }}
+      REQUESTED_TAG: ${{ inputs.image_tag }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || format('/opt/lewdventure/{0}', inputs.target == 'prod' && 'stage' || 'dev') }}
+      SSH_TARGET: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+      SSH_PORT: ${{ vars.SSH_PORT || '22' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/ssh-setup
+        with:
+          private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known-hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+      - name: resolve tag from source environment
+        id: tag
+        run: |
+          history="$(ssh -p "$SSH_PORT" "$SSH_TARGET" "$(printf '%q' "$DEPLOY_PATH/scripts/deploy.sh") $SOURCE_ENVIRONMENT history")"
+          current="$(printf '%s\n' "$history" | tail -n 1)"
+          tag="${REQUESTED_TAG:-$current}"
+          [[ "$tag" =~ ^sha-[0-9a-f]{12}$ ]] || { echo "invalid image tag '$tag'" >&2; exit 1; }
+          if ! printf '%s\n' "$history" | grep -qx "$tag"; then
+            echo "$tag was never successfully deployed to $SOURCE_ENVIRONMENT" >&2
+            exit 1
+          fi
+          echo "image_tag=$tag" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Promote to ${{ inputs.target }}"
+            echo "- source: $SOURCE_ENVIRONMENT (running \`$current\`)"
+            echo "- tag: \`$tag\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: resolve
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      environment: ${{ inputs.target }}
+      image_tag: ${{ needs.resolve.outputs.image_tag }}
+    secrets: inherit

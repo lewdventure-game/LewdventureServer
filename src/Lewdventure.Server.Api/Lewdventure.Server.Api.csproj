@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>Server</RootNamespace>
+    <AssemblyName>Lewdventure.Server.Api</AssemblyName>
+    <UserSecretsId>lewdventure-server-api</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lewdventure.Server.GoldenTests" />
+    <InternalsVisibleTo Include="Lewdventure.Server.UnitTests" />
+    <InternalsVisibleTo Include="Lewdventure.Server.IntegrationTests" />
+    <InternalsVisibleTo Include="Lewdventure.Server.Benchmarks" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Lewdventure.Server.Battle\Lewdventure.Server.Battle.csproj" />
+    <ProjectReference Include="..\Lewdventure.Server.Contracts\Lewdventure.Server.Contracts.csproj" />
+    <ProjectReference Include="..\Lewdventure.Server.GameConfig\Lewdventure.Server.GameConfig.csproj" />
+    <ProjectReference Include="..\Lewdventure.Server.Infrastructure\Lewdventure.Server.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('..\..\google-credentials.json')">
+    <None Include="..\..\google-credentials.json" Link="google-credentials.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

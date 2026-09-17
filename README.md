@@ -1,71 +1,102 @@
 # LewdventureServer
 
-> ASP.NET Core 9 headless battle simulator для Lewdventure. Google Sheets configs + детерминированная симуляция + battle script для Unity-клиента.
+Серверный симулятор боя для Lewdventure на ASP.NET Core (.NET 10). Считает бой детерминированно по snapshot двух команд и возвращает пошаговый battle script, который проигрывает Unity-клиент. Игровые конфиги берутся из Google Sheets как версионные снапшоты в MongoDB.
 
-Сервер воспроизводит бой по snapshot двух команд и возвращает пошаговый script с seed для replay на клиенте. Конфиги (characters, perks, statuses, story levels и др.) подтягиваются из Google Sheets.
+## Быстрый старт
 
-## Quick Start
+Нужен .NET SDK 10.0.401 (`global.json`) и Docker Desktop.
 
-```powershell
-# Требуется .NET 9 SDK
-cd D:\Project\LewdventureServer
+Windows, для игры из Unity: `local-server.bat` (Docker Desktop, api, MongoDB, ожидание готовности; команды `stop`, `restart`, `logs`, `status`, `reset`).
 
-# Положить google-credentials.json в output dir (или root с Copy if newer)
-dotnet run
+Полный стек как на VPS (api + Mongo replica set), конфиги при первом старте импортируются из Google Sheets:
 
-# Сервер стартует на http://localhost:5000
-# На старте сам дергает sync конфигов (тот же путь, что POST /api/config/update)
-# Swagger UI: http://localhost:5000/swagger (Development only)
+```bash
+docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.local.yaml up -d --build --wait
+curl -s http://127.0.0.1:9090/health/ready
 ```
 
-## API
+Без Docker, на замороженной фикстуре конфигов:
 
-| Endpoint | Method | Описание |
-| --- | --- | --- |
-| `/` | GET | Hello World |
-| `/api/ping` | GET | Status + UTC time |
-| `/api/battle/simulate` | POST | Симуляция боя |
-| `/api/battle/replay` | POST | Replay боя по seed + тому же snapshot |
-| `/api/config/update` | POST | Обновить конфиги из Google Sheets (`X-Config-Secret` header); на старте вызывается автоматически |
+```bash
+dotnet build -c Release
+ASPNETCORE_ENVIRONMENT=Local GameConfig__Source=File GameConfig__FilePath=tests/Lewdventure.Server.GoldenTests/Golden/Fixtures/config-snapshot.v1.json dotnet run -c Release --project src/Lewdventure.Server.Api
+```
 
-## Key Features
+Клиент ходит на `http://localhost:5000`. Подробно: [docs/runbooks/local-dev.md](docs/runbooks/local-dev.md).
 
-- **Modular layout** — `Core` (infra) + `Game` (domains).
-- **Google Sheets configs** — live sync через `GameConfigService`.
-- **Deterministic battles** — `Seed` в response для client replay.
-- **Mapper/Manager pipeline** — data-only mappers, runtime indexes в managers.
-- **Battle script** — `BattleStep` + `BattleCommand` для Unity presentation layer.
+## Порты и эндпоинты
 
-## Documentation
-
-| Документ | Описание |
+| Порт | Назначение |
 | --- | --- |
-| [AGENTS.md](AGENTS.md) | Карта проекта для AI agents |
-| [Documents](Assets/Documents/README.md) | Корень: GDD + Server docs |
-| [Battle API](Assets/Documents/Server/battle-api.md) | Endpoint, flow, примеры request/response |
-| [Config Sync](Assets/Documents/Server/config-sync.md) | Google Sheets sync, managers, источник правды |
-| [GDD](Assets/Documents/GDD/README.md) | Игровая логика (раскладка под сервер) |
-| [Description](.ai-factory/DESCRIPTION.md) | Стек и соглашения |
-| [Architecture](.ai-factory/ARCHITECTURE.md) | Modular Monolith, dependency rules |
-| [Battle Simulation](.ai-factory/specs/battle-simulation.md) | API contract симуляции |
+| `5000` | публичный API: бой, публикация конфигов (dev/stage), Swagger (Local/dev) |
+| `9090` | ops: `/health`, `/health/live`, `/health/ready`, `/admin/config/*`; наружу не публикуется |
 
-## AI Factory
+| Endpoint | Описание |
+| --- | --- |
+| `POST /api/battle/simulate` | симуляция боя, seed в ответе |
+| `POST /api/battle/replay` | повтор боя по seed |
+| `POST /api/config/publish` | импорт конфигов из Sheets и активация (dev/stage, `X-Config-Key`) |
+| `GET /api/config/status` | активная версия конфигов (`X-Config-Key`) |
+| `GET /health/ready` | готовность: конфиги и Mongo |
+| `/admin/config/*` | управление снапшотами (ops-порт, `X-Admin-Key`) |
 
-Проект настроен для AI Factory / Cursor:
+## Окружения
 
-- `/aif` — анализ и контекст
-- `/aif-plan` — планирование фич
-- `/aif-implement` — выполнение плана
-- `/aif-fix` — багфиксы
+| Окружение | `ASPNETCORE_ENVIRONMENT` | Где | Конфиги |
+| --- | --- | --- | --- |
+| local | `Local` | машина разработчика | Sheets / файл / локальный Mongo |
+| dev | `Development` | VPS | Mongo, публикация из таблицы, poll |
+| stage | `Staging` | VPS | Mongo, публикация из таблицы, poll |
+| prod | `Production` | VPS | Mongo, только `config-promote` со stage |
+| tests | `Testing` | CI, тесты | файл-фикстура |
 
-Конфиг: `.ai-factory/config.yaml` (`ui/artifacts: ru`, `base_branch: master`).
+Все окружения живут на одном VPS отдельными compose-проектами за Cloudflare и Caddy; любое окружение можно вынести на свой VPS без изменений кода ([vps-bootstrap](docs/runbooks/vps-bootstrap.md)).
 
-## Related
+Поток релиза: merge в `master` → CI → образы `sha-<12>` в GHCR → деплой dev → `promote` на stage → `promote` на prod с одобрением. Схема и откат: [docs/runbooks/deploy-and-rollback.md](docs/runbooks/deploy-and-rollback.md).
 
-- Unity client: `D:\Project\Lewdventure`
-- GDD: `Assets/Lewdventure GDD.md`
+## Структура
 
-## Notes
+```text
+src/
+  Lewdventure.Server.Contracts        wire DTO боя
+  Lewdventure.Server.GameConfig       mappers, managers, ConfigDistributor, снапшоты конфигов
+  Lewdventure.Server.Battle           симуляция боя
+  Lewdventure.Server.Infrastructure   Mongo, Google Sheets, алерты Discord
+  Lewdventure.Server.Api              хост, эндпоинты, options, health, безопасность, метрики
+tools/
+  Lewdventure.Server.ConfigTool       CLI снапшотов: import, validate, diff, publish, activate, export
+  Lewdventure.Server.LoadTest         нагрузочный прогон replay по golden-кейсам
+  apps-script/                        меню публикации конфигов в Google-таблице
+tests/
+  Lewdventure.Server.GoldenTests      эталоны ответов боя байт-в-байт
+  Lewdventure.Server.UnitTests        options, безопасность, алерты, снапшоты
+  Lewdventure.Server.IntegrationTests Mongo через Testcontainers
+  Lewdventure.Server.Benchmarks       BenchmarkDotNet
+deploy/                               Dockerfile, compose, Mongo, Caddy, скрипты VPS
+.github/                              CI, CD, promote, rollback, config-promote
+docs/                                 GDD, API, runbooks, архитектура
+```
 
-- `google-credentials.json` обязателен для config sync; без него сервер не стартует.
-- Secret для `/api/config/update` сейчас hardcoded в `Program.cs` — вынести в appsettings.
+## Тесты
+
+```bash
+dotnet test LewdventureServer.slnx -c Release
+LEWD_IT_ENABLED=1 dotnet test tests/Lewdventure.Server.IntegrationTests -c Release
+dotnet run -c Release --project tools/Lewdventure.Server.LoadTest -- --target http://localhost:5000
+```
+
+Golden-тесты защищают механики: любое изменение ответа боя роняет их. Как обновлять эталоны: [docs/runbooks/golden-tests.md](docs/runbooks/golden-tests.md).
+
+## Документация
+
+| Документ | О чём |
+| --- | --- |
+| [docs/README.md](docs/README.md) | оглавление всей документации |
+| [docs/server/battle-api.md](docs/server/battle-api.md) | API боя, коды ответов |
+| [docs/server/config-sync.md](docs/server/config-sync.md) | снапшоты конфигов, публикация, ConfigTool |
+| [docs/architecture/README.md](docs/architecture/README.md) | проекты, зависимости, окружения, наблюдаемость |
+| [docs/runbooks/README.md](docs/runbooks/README.md) | эксплуатация: локальный запуск, ключи конфигурации, VPS, деплой, секреты |
+| [.ai-factory/specs/battle-simulation.md](.ai-factory/specs/battle-simulation.md) | канон протокола боя |
+| [AGENTS.md](AGENTS.md) | карта проекта для AI-агентов |
+
+Парный Unity-клиент: `C:\UnityProjects\Lewdventure`.

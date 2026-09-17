@@ -1,0 +1,20 @@
+services:
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+
+  config-tool:
+    environment:
+      DOTNET_ENVIRONMENT: Production
+
+  mongo:
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1536M

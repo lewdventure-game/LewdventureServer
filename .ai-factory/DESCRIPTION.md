@@ -2,42 +2,39 @@
 
 ## Обзор
 
-LewdventureServer — ASP.NET Core 9 Web API для headless симуляции боёв Lewdventure. Сервер загружает игровые конфиги из Google Sheets, держит runtime-индексы в mapper managers и воспроизводит бой по детерминированному seed, возвращая пошаговый battle script для Unity-клиента.
+LewdventureServer — ASP.NET Core Web API для серверной симуляции боёв Lewdventure. Сервер детерминированно считает бой по snapshot двух команд и seed и возвращает пошаговый battle script для Unity-клиента. Игровые конфиги импортируются из Google Sheets, хранятся как версионные снапшоты в MongoDB и атомарно подменяются без рестарта.
 
-Парный Unity-клиент: `D:\Project\Lewdventure`.
+Парный Unity-клиент: `C:\UnityProjects\Lewdventure`.
 
-## Обнаруженный стек
+## Стек
 
-- **Runtime:** .NET 9.0, ASP.NET Core Minimal API + controllers.
-- **Язык:** C# (nullable enabled, implicit usings).
-- **JSON:** Newtonsoft.Json (camelCase, ignore nulls).
-- **Конфиги:** Google Sheets API v4, CsvHelper, mapper/manager pipeline.
-- **Документация API:** Swashbuckle (Swagger UI в Development).
-- **Тесты:** пока не выделены в отдельный проект (целевой стандарт — NUnit + `dotnet test`).
+- **Runtime:** .NET 10, ASP.NET Core Minimal API.
+- **Язык:** C# (nullable enabled, implicit usings, `LangVersion latest`).
+- **JSON:** Newtonsoft.Json для контракта боя (camelCase, ignore nulls).
+- **Данные:** MongoDB 8 replica set, MongoDB.Driver 3.
+- **Конфиги:** Google Sheets API v4, mapper/manager pipeline, снапшоты sha256.
+- **Поставка:** Docker (chiseled non-root), docker compose, Caddy, GitHub Actions, GHCR.
+- **Наблюдаемость:** Microsoft.Extensions.Logging (JSON), health checks, `System.Diagnostics.Metrics`, алерты в Discord.
+- **Тесты:** NUnit, WebApplicationFactory, Testcontainers.MongoDb, BenchmarkDotNet, собственный LoadTest.
+- **Пакеты:** Central Package Management + lock-файлы.
 
-## Архитектурные наблюдения
+## Архитектура
 
-- Код живёт в `Assets/` с разделением `Core` (инфраструктура, конфиги, constants) и `Game` (доменные области: Battles, Entities, Stories, Perks, Statuses, Bonuses, Equipments, Trainings, Artifacts, Aspects).
-- `Program.cs` — composition root: DI registrations, middleware, minimal API endpoints.
-- `IConfigDistributor` агрегирует все `*MapperManager`; `GameConfigService` обновляет данные из Google Sheets.
-- Battle simulation: `BattleSimulatorService` + `BattleStatusSimulator`, perks/skills через factories.
-- Namespace root: `Server.*` (не совпадает с путями `Assets/`, это legacy convention).
+Модульный монолит из проектов `Contracts`, `GameConfig`, `Battle`, `Infrastructure`, `Api`. Подробно: `.ai-factory/ARCHITECTURE.md`, `docs/architecture/README.md`.
 
-## Выявленные соглашения
+Окружения: `Local`, `Development`, `Staging`, `Production`, `Testing`.
 
-- Типы, методы, свойства — `PascalCase`; локальные и параметры — `camelCase`.
-- Private fields — `_camelCase`; новый код — `internal sealed` где возможно.
-- Интерфейсы с префиксом `I`; один тип на файл.
-- Условия: `== false` вместо `!`; без LINQ в runtime-коде.
-- Mapper configs — data + read-only properties; lookup/indexing в managers.
+Namespace root: `Server.*` (исторический, не совпадает с именами проектов).
+
+## Соглашения
+
+- Типы, методы, свойства — `PascalCase`; локальные и параметры — `camelCase`; private fields — `_camelCase`.
+- Новый код — `internal sealed`; интерфейсы с префиксом `I`; один тип на файл.
+- `== false` вместо `!`; без LINQ и без static в проектном коде.
+- Mapper configs — data-only; lookup и индексы в managers.
+- Без комментариев в коде и конфигах.
 
 ## Рекомендуемые skills
 
-- `csharp-nunit` — unit-тесты для battle logic и mappers.
+- `csharp-nunit` — unit-тесты.
 - Встроенные `aif-*` skills — планирование, implement, fix, verify.
-
-## Architecture
-
-Подробные архитектурные правила — `.ai-factory/ARCHITECTURE.md`.
-
-**Pattern:** Modular Monolith (Core / Game domains)
