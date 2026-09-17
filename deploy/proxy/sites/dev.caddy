@@ -1,0 +1,4 @@
+{$DEV_DOMAIN} {
+	import api_site
+	import api_upstream lewdventure-dev-api:5000
+}

@@ -6,7 +6,7 @@ services:
       resources:
         limits:
           cpus: "2.0"
-          memory: 1536M
+          memory: 1G
 
   config-tool:
     environment:
@@ -17,4 +17,4 @@ services:
       resources:
         limits:
           cpus: "2.0"
-          memory: 2G
+          memory: 1536M

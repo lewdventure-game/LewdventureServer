@@ -1,0 +1,4 @@
+{$STAGE_DOMAIN} {
+	import api_site
+	import api_upstream lewdventure-stage-api:5000
+}

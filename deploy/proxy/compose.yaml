@@ -7,11 +7,13 @@ services:
     ports:
       - 80:80
       - 443:443
-      - 443:443/udp
     env_file:
       - .env
+      - cloudflare.env
     volumes:
-      - ./${CADDYFILE:?}:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/etc/caddy/sites:ro
+      - ./certs:/etc/caddy/certs:ro
       - caddy-data:/data
       - caddy-config:/config
     networks:

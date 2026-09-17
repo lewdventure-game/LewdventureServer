@@ -3,13 +3,14 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       GoogleSheets__CredentialsPath: /run/secrets/google-credentials.json
+      DOTNET_gcServer: "0"
     secrets:
       - google-credentials.json
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: 768M
+          memory: 512M
 
   config-tool:
     environment:
@@ -23,7 +24,7 @@ services:
       resources:
         limits:
           cpus: "1.0"
-          memory: 1G
+          memory: 768M
 
 secrets:
   google-credentials.json:

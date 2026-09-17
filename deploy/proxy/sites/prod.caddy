@@ -1,0 +1,6 @@
+{$PROD_DOMAIN} {
+	import api_site
+	@config path /api/config/*
+	respond @config 404
+	import api_upstream lewdventure-prod-api:5000
+}

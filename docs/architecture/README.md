@@ -70,11 +70,22 @@ POST /api/battle/replay
 
 Ключи сравниваются через `CryptographicOperations.FixedTimeEquals`. За Caddy включается `ForwardedHeaders` с доверенными сетями из `ReverseProxy:KnownNetworks`, чтобы rate limit считал реальный IP клиента.
 
+## Сетевой периметр
+
+```text
+клиент → Cloudflare (DNS proxy, DDoS, TLS) → VPS :443 (firewall: только IP Cloudflare)
+       → Caddy (origin-сертификат, CF-Connecting-IP → X-Forwarded-For) → api <env> :5000
+```
+
+- Один VPS, окружения — отдельные compose-проекты (`lewdventure-dev`, `-stage`, `-prod`) со своими базами, томами, портами и `.env`; общий только прокси и сеть `lewdventure-edge`.
+- Сайты Caddy — отдельные файлы `deploy/proxy/sites/<env>.caddy`, на VPS кладутся только нужные: перенос окружения на другой сервер не требует правок кода и workflows.
+- `cloudflare-firewall.sh` (systemd timer) держит правила `DOCKER-USER`/`INPUT` для 80/443 и список доверенных прокси Caddy в актуальном состоянии.
+
 ## Окружения
 
 | | Local | Development | Staging | Production | Testing |
 | --- | --- | --- | --- | --- | --- |
-| Хост | машина разработчика | VPS 1 | VPS 1 | VPS 2 | CI |
+| Хост | машина разработчика | VPS | VPS | VPS | CI |
 | Bind | Loopback | Any в контейнере | Any в контейнере | Any в контейнере | тестовый сервер |
 | Swagger | да | да | нет | нет | нет |
 | Конфиги | Sheets / файл / Mongo | Mongo, bootstrap из Sheets, poll | Mongo, bootstrap из Sheets, poll | Mongo, без Google, manual reload | файл |

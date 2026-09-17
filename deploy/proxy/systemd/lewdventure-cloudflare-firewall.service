@@ -1,0 +1,12 @@
+[Unit]
+Description=Lewdventure Cloudflare-only firewall for ports 80 and 443
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/lewdventure/proxy/cloudflare-firewall.sh /opt/lewdventure/proxy
+
+[Install]
+WantedBy=multi-user.target

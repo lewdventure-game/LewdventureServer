@@ -43,10 +43,12 @@ ASPNETCORE_ENVIRONMENT=Local GameConfig__Source=File GameConfig__FilePath=tests/
 | Окружение | `ASPNETCORE_ENVIRONMENT` | Где | Конфиги |
 | --- | --- | --- | --- |
 | local | `Local` | машина разработчика | Sheets / файл / локальный Mongo |
-| dev | `Development` | VPS 1 | Mongo, публикация из таблицы, poll |
-| stage | `Staging` | VPS 1 | Mongo, публикация из таблицы, poll |
-| prod | `Production` | VPS 2 | Mongo, только `config-promote` со stage |
+| dev | `Development` | VPS | Mongo, публикация из таблицы, poll |
+| stage | `Staging` | VPS | Mongo, публикация из таблицы, poll |
+| prod | `Production` | VPS | Mongo, только `config-promote` со stage |
 | tests | `Testing` | CI, тесты | файл-фикстура |
+
+Все окружения живут на одном VPS отдельными compose-проектами за Cloudflare и Caddy; любое окружение можно вынести на свой VPS без изменений кода ([vps-bootstrap](docs/runbooks/vps-bootstrap.md)).
 
 Поток релиза: merge в `master` → CI → образы `sha-<12>` в GHCR → деплой dev → `promote` на stage → `promote` на prod с одобрением. Схема и откат: [docs/runbooks/deploy-and-rollback.md](docs/runbooks/deploy-and-rollback.md).
 

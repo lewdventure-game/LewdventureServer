@@ -135,8 +135,8 @@
 | `DEPLOY_ENVIRONMENT` | `dev`, `stage` или `prod`; даёт алиас `lewdventure-<env>-api` в сети Caddy |
 | `IMAGE_REGISTRY` | реестр образов, по умолчанию `ghcr.io/abromus` |
 | `IMAGE_TAG` | не задавать: выставляет `deploy.sh` |
-| `API_HOST_PORT` | порт API на `127.0.0.1` хоста (dev `5001`, stage `5002`, prod `5000` — любые свободные) |
-| `OPS_HOST_PORT` | ops-порт на `127.0.0.1` хоста (dev `9091`, stage `9092`, prod `9090`) |
+| `API_HOST_PORT` | порт API на `127.0.0.1` хоста: dev `5001`, stage `5002`, prod `5000`; на одном VPS должны различаться |
+| `OPS_HOST_PORT` | ops-порт на `127.0.0.1` хоста: dev `9091`, stage `9092`, prod `9090`; на одном VPS должны различаться |
 | `MONGO_DATABASE` | `lewdventure_<env>` |
 | `MONGO_ROOT_USERNAME`, `MONGO_ROOT_PASSWORD` | root Mongo, используется только `mongo-init` и бэкапами |
 | `MONGO_APP_USERNAME`, `MONGO_APP_PASSWORD` | пользователь приложения с `readWrite` на свою базу |
@@ -150,10 +150,11 @@
 
 | Переменная | Описание |
 | --- | --- |
-| `CADDYFILE` | `Caddyfile.dev-stage` на VPS 1, `Caddyfile.prod` на VPS 2 |
-| `ACME_EMAIL` | почта для Let's Encrypt |
-| `DEV_DOMAIN`, `STAGE_DOMAIN` | домены dev и stage (VPS 1) |
-| `PROD_DOMAIN` | домен prod (VPS 2) |
+| `DEV_DOMAIN`, `STAGE_DOMAIN`, `PROD_DOMAIN` | домены окружений; нужны только те, чьи файлы лежат в `proxy/sites/` |
+
+Файл `/opt/lewdventure/proxy/cloudflare.env` не редактируется вручную: `CLOUDFLARE_IPS` пишет `cloudflare-firewall.sh`.
+
+Сертификат origin Cloudflare: `proxy/certs/origin.pem` и `proxy/certs/origin-key.pem`.
 
 ## Переменные локального compose и тестов
 

@@ -6,7 +6,8 @@
 
 | Секрет | Где | Кто использует |
 | --- | --- | --- |
-| Ключ service account Google | `compose/secrets/google-credentials.json` на VPS 1 (dev, stage); локально `google-credentials.json` в корне, вне git | импорт Sheets |
+| Ключ service account Google | `compose/secrets/google-credentials.json` окружений dev и stage на VPS; локально `google-credentials.json` в корне, вне git | импорт Sheets |
+| Origin-сертификат Cloudflare | `/opt/lewdventure/proxy/certs/` | TLS между Cloudflare и Caddy |
 | `Admin__ApiKey` | `.env` окружения | `/admin/config/*`, `config-transfer.sh` |
 | `ConfigPublisher__ApiKey` | `.env` dev/stage, Script Properties Apps Script | публикация из таблицы |
 | `Alerts__DiscordWebhookUrl` | `.env` окружения | алерты сервера |
@@ -22,7 +23,7 @@
 Старый ключ был закоммичен в историю репозитория, поэтому считается скомпрометированным.
 
 1. GCP → IAM → Service Accounts → аккаунт чтения таблиц → Keys → Add key (JSON).
-2. Положить новый ключ на VPS 1 в `/opt/lewdventure/dev/compose/secrets/` и `/opt/lewdventure/stage/compose/secrets/`, права `600`, и локально разработчикам.
+2. Положить новый ключ на VPS в `/opt/lewdventure/dev/compose/secrets/` и `/opt/lewdventure/stage/compose/secrets/`, права `600`, и локально разработчикам.
 3. Перезапустить api dev и stage: `scripts/deploy.sh <env> $(scripts/deploy.sh <env> current)`.
 4. Проверить публикацию из таблицы на dev.
 5. Удалить старый ключ в GCP.
@@ -56,6 +57,10 @@ docker compose ... exec mongo mongosh -u root -p "$MONGO_ROOT_PASSWORD" --authen
 ## Discord webhook
 
 Удалить webhook в настройках канала, создать новый, обновить `.env` и перезапустить api. Для деплойного канала — секрет `DISCORD_DEPLOY_WEBHOOK_URL`.
+
+## Origin-сертификат Cloudflare
+
+Срок 15 лет, при компрометации ключа: Cloudflare → SSL/TLS → Origin Server → Create Certificate, заменить файлы в `proxy/certs/`, `docker compose restart caddy` в `/opt/lewdventure/proxy`, затем Revoke старого сертификата.
 
 ## SSH и GHCR
 
