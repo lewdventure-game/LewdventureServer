@@ -5,6 +5,7 @@ using Server.Api.Health;
 using Server.Api.Http;
 using Server.Api.Options;
 using Server.Api.Security;
+using Server.Infrastructure.Mongo;
 
 namespace Server.Api.Hosting
 {
@@ -33,8 +34,19 @@ namespace Server.Api.Hosting
             ConfigureMiddleware(application, serverOptions);
             MapEndpoints(application, serverOptions);
 
+            await InitializeMongoAsync(application.Services);
             await new GameConfigStartupLoader().RunAsync(application.Services);
             await application.RunAsync();
+        }
+
+        private async Task InitializeMongoAsync(IServiceProvider services)
+        {
+            var mongoOptions = services.GetRequiredService<IOptions<MongoOptions>>().Value;
+
+            if (mongoOptions.Enabled == false)
+                return;
+
+            await services.GetRequiredService<MongoStartupInitializer>().InitializeAsync(CancellationToken.None);
         }
 
         private ServerOptions BindServerOptions(IConfiguration configuration)

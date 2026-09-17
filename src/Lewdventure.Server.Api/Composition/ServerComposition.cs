@@ -9,6 +9,7 @@ using Server.Api.Http;
 using Server.Bonuses;
 using Server.GameConfigs;
 using Server.Infrastructure.GoogleSheets;
+using Server.Infrastructure.Mongo;
 using Server.Services;
 
 namespace Server.Api.Composition
@@ -27,6 +28,7 @@ namespace Server.Api.Composition
             RegisterOptions(services);
             RegisterHosting(services);
             RegisterConfigs(services);
+            RegisterMongo(services);
 
             new SecurityRegistrar(_configuration).Register(services);
             new BattleServicesRegistrar().Register(services);
@@ -82,6 +84,29 @@ namespace Server.Api.Composition
                 | HttpLoggingFields.ResponseStatusCode
                 | HttpLoggingFields.Duration;
             httpLoggingOptions.CombineLogs = true;
+        }
+
+        private void RegisterMongo(IServiceCollection services)
+        {
+            services.AddOptions<MongoOptions>()
+                .Bind(_configuration.GetSection(MongoOptions.SectionName))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
+            var mongoOptions = new MongoOptions();
+
+            _configuration.GetSection(MongoOptions.SectionName).Bind(mongoOptions);
+
+            if (mongoOptions.Enabled == false)
+            {
+                services.AddSingleton<IValidateOptions<MongoOptions>, MongoOptionsValidator>();
+
+                return;
+            }
+
+            new MongoServicesRegistrar().Register(services);
+
+            services.AddHealthChecks().AddCheck<MongoHealthCheck>("mongo", tags: new[] { HealthTags.Ready });
         }
 
         private IConfigDistributor ResolveConfigDistributor(IServiceProvider serviceProvider)

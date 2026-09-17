@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using Server.Api.Options;
 using Server.Infrastructure.GoogleSheets;
+using Server.Infrastructure.Mongo;
 
 namespace Server.Api.Hosting
 {
@@ -12,6 +13,7 @@ namespace Server.Api.Hosting
         private readonly IHostEnvironment _hostEnvironment;
         private readonly ILogger<StartupBannerService> _logger;
         private readonly GoogleSheetsOptions _googleSheetsOptions;
+        private readonly MongoOptions _mongoOptions;
         private readonly ServerOptions _serverOptions;
 
         public StartupBannerService(
@@ -21,6 +23,7 @@ namespace Server.Api.Hosting
             IHostEnvironment hostEnvironment,
             ILogger<StartupBannerService> logger,
             IOptions<GoogleSheetsOptions> googleSheetsOptions,
+            IOptions<MongoOptions> mongoOptions,
             IOptions<ServerOptions> serverOptions)
         {
             _buildInfo = buildInfo;
@@ -29,6 +32,7 @@ namespace Server.Api.Hosting
             _hostEnvironment = hostEnvironment;
             _logger = logger;
             _googleSheetsOptions = googleSheetsOptions.Value;
+            _mongoOptions = mongoOptions.Value;
             _serverOptions = serverOptions.Value;
         }
 
@@ -53,7 +57,7 @@ namespace Server.Api.Hosting
                 : "inline json";
 
             _logger.LogInformation(
-                "[Startup] environment = {Environment} version = {Version} runtime = {Runtime} publicPort = {PublicPort} opsPort = {OpsPort} bind = {BindAddress} swagger = {Swagger} sheets = {SheetsCount} credentials = {CredentialsSource}",
+                "[Startup] environment = {Environment} version = {Version} runtime = {Runtime} publicPort = {PublicPort} opsPort = {OpsPort} bind = {BindAddress} swagger = {Swagger} sheets = {SheetsCount} credentials = {CredentialsSource} mongo = {MongoEnabled} database = {MongoDatabase}",
                 _hostEnvironment.EnvironmentName,
                 _buildInfo.Version,
                 _buildInfo.Runtime,
@@ -62,7 +66,9 @@ namespace Server.Api.Hosting
                 _serverOptions.BindAddress,
                 _serverOptions.EnableSwagger,
                 _googleSheetsOptions.Sheets.Count,
-                credentialsSource);
+                credentialsSource,
+                _mongoOptions.Enabled,
+                _mongoOptions.DatabaseName);
         }
     }
 }
