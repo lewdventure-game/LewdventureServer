@@ -14,7 +14,7 @@ namespace Server.ConfigTool
 {
     internal sealed class ConfigToolApplication
     {
-        private const string Usage = "Usage: config-tool <import|validate|hash|diff|publish|activate|list|export|status> [--out file] [--credentials file] [--file file] [--from file] [--to file] [--version version] [--reason text] [--activate]";
+        private const string Usage = "Usage: config-tool <import|validate|hash|diff|publish|activate|list|export|status> [--out file] [--credentials file] [--file file] [--from file] [--to file] [--version version] [--reason text] [--actor name] [--activate]";
         private const string EnvironmentVariable = "DOTNET_ENVIRONMENT";
         private const string LocalEnvironmentName = "Local";
 
@@ -75,13 +75,14 @@ namespace Server.ConfigTool
             await services.GetRequiredService<MongoStartupInitializer>().InitializeAsync(CancellationToken.None);
 
             var reason = arguments.TryGet("reason", out var reasonValue) ? reasonValue : string.Empty;
+            var actor = arguments.TryGet("actor", out var actorValue) ? actorValue : "config-tool:" + Environment.UserName;
 
             switch (arguments.Command)
             {
                 case "publish":
-                    return await commands.PublishAsync(arguments.GetRequired("file"), arguments.TryGet("activate", out _), reason);
+                    return await commands.PublishAsync(arguments.GetRequired("file"), arguments.TryGet("activate", out _), actor, reason);
                 case "activate":
-                    return await commands.ActivateAsync(arguments.GetRequired("version"), reason);
+                    return await commands.ActivateAsync(arguments.GetRequired("version"), actor, reason);
                 case "list":
                     return await commands.ListAsync();
                 case "export":

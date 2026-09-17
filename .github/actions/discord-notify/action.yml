@@ -1,0 +1,47 @@
+name: discord-notify
+description: Post a deployment notification to a Discord webhook
+
+inputs:
+  webhook-url:
+    required: false
+    default: ""
+  title:
+    required: true
+  description:
+    required: false
+    default: ""
+  status:
+    required: true
+  environment:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        WEBHOOK_URL: ${{ inputs.webhook-url }}
+        TITLE: ${{ inputs.title }}
+        DESCRIPTION: ${{ inputs.description }}
+        STATUS: ${{ inputs.status }}
+        TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        if [ -z "$WEBHOOK_URL" ]; then
+          echo "discord webhook is not configured, notification skipped"
+          exit 0
+        fi
+        case "$STATUS" in
+          success) COLOR=3066993 ;;
+          cancelled|skipped) COLOR=9807270 ;;
+          *) COLOR=15158332 ;;
+        esac
+        PAYLOAD="$(jq -n \
+          --arg title "[$TARGET_ENVIRONMENT] $TITLE: $STATUS" \
+          --arg description "$DESCRIPTION" \
+          --arg url "$RUN_URL" \
+          --arg actor "$GITHUB_ACTOR" \
+          --arg environment "$TARGET_ENVIRONMENT" \
+          --argjson color "$COLOR" \
+          '{username: "Lewdventure Deploy", embeds: [{title: $title[0:256], description: $description[0:4000], url: $url, color: $color, fields: [{name: "environment", value: $environment, inline: true}, {name: "actor", value: $actor, inline: true}]}]}')"
+        curl -fsS --retry 3 --retry-delay 2 -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK_URL" > /dev/null || echo "discord notification failed"

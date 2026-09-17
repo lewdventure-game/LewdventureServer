@@ -5,6 +5,8 @@ namespace Server.ConfigTool
 {
     internal sealed class MongoConfigToolCommands
     {
+        private const string ActiveVersionAlias = "active";
+
         private readonly ConfigPublishingService _configPublishingService;
         private readonly ConfigSnapshotHasher _configSnapshotHasher;
         private readonly FileConfigSnapshotSource _fileConfigSnapshotSource;
@@ -19,17 +21,17 @@ namespace Server.ConfigTool
             _fileConfigSnapshotSource = fileConfigSnapshotSource;
         }
 
-        public async Task<int> PublishAsync(string path, bool activate, string reason)
+        public async Task<int> PublishAsync(string path, bool activate, string actor, string reason)
         {
             var snapshot = await _fileConfigSnapshotSource.LoadAsync(path, CancellationToken.None);
-            var result = await _configPublishingService.PublishAsync(snapshot, CreateActor(), reason, activate, CancellationToken.None);
+            var result = await _configPublishingService.PublishAsync(snapshot, actor, reason, activate, CancellationToken.None);
 
             return Report(result);
         }
 
-        public async Task<int> ActivateAsync(string version, string reason)
+        public async Task<int> ActivateAsync(string version, string actor, string reason)
         {
-            var result = await _configPublishingService.ActivateAsync(version, CreateActor(), reason, CancellationToken.None);
+            var result = await _configPublishingService.ActivateAsync(version, actor, reason, CancellationToken.None);
 
             return Report(result);
         }
@@ -52,6 +54,16 @@ namespace Server.ConfigTool
 
         public async Task<int> ExportAsync(string version, string outputPath)
         {
+            if (version == ActiveVersionAlias)
+                version = await _configPublishingService.GetActiveVersionAsync(CancellationToken.None);
+
+            if (string.IsNullOrEmpty(version))
+            {
+                Console.Error.WriteLine("no active snapshot");
+
+                return 1;
+            }
+
             var snapshot = await _configPublishingService.GetSnapshotAsync(version, CancellationToken.None);
 
             if (snapshot == null)
@@ -63,7 +75,7 @@ namespace Server.ConfigTool
 
             await _fileConfigSnapshotSource.SaveAsync(outputPath, snapshot, CancellationToken.None);
 
-            Console.WriteLine($"saved {outputPath}");
+            Console.WriteLine($"saved {outputPath} version {snapshot.Version}");
 
             return 0;
         }
@@ -93,11 +105,6 @@ namespace Server.ConfigTool
                 Console.Error.WriteLine($"error: {result.Errors[i]}");
 
             return result.Succeeded ? 0 : 1;
-        }
-
-        private string CreateActor()
-        {
-            return "config-tool:" + Environment.UserName;
         }
     }
 }

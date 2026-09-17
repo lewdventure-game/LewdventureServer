@@ -1,0 +1,26 @@
+name: ssh-setup
+description: Configure SSH access to a deployment host
+
+inputs:
+  private-key:
+    required: true
+  known-hosts:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        SSH_PRIVATE_KEY: ${{ inputs.private-key }}
+        SSH_KNOWN_HOSTS: ${{ inputs.known-hosts }}
+      run: |
+        [ -n "$SSH_PRIVATE_KEY" ] || { echo "SSH_PRIVATE_KEY is not configured for this environment" >&2; exit 1; }
+        [ -n "$SSH_KNOWN_HOSTS" ] || { echo "SSH_KNOWN_HOSTS is not configured for this environment" >&2; exit 1; }
+        install -d -m 700 ~/.ssh
+        printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+        chmod 644 ~/.ssh/known_hosts
+        printf 'Host *\n  IdentityFile ~/.ssh/deploy_key\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n  ServerAliveInterval 30\n' > ~/.ssh/config
+        chmod 600 ~/.ssh/config
