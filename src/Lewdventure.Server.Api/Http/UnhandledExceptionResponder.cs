@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics;
+using Server.Infrastructure.Alerts;
 
 namespace Server.Api.Http
 {
@@ -38,6 +39,15 @@ namespace Server.Api.Http
             await response.WriteAsync(InternalErrorBody);
 
             logger.LogError(exception, "[Error] unhandled exception");
+
+            var exceptionType = exception == null ? "unknown" : exception.GetType().Name;
+            var alert = new AlertMessage(AlertSeverity.Critical, "Unhandled exception", exception == null ? string.Empty : exception.Message, "exception:" + exceptionType + ":" + context.Request.Path);
+
+            alert.Fields.Add(new KeyValuePair<string, string>("type", exceptionType));
+            alert.Fields.Add(new KeyValuePair<string, string>("path", context.Request.Path.ToString()));
+            alert.Fields.Add(new KeyValuePair<string, string>("correlationId", context.TraceIdentifier));
+
+            context.RequestServices.GetRequiredService<IAlertPublisher>().Publish(alert);
         }
     }
 }

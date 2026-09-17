@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Server.Api.Http;
+using Server.Api.Metrics;
 using Server.Api.Options;
 using Server.Api.Security;
 using Server.Battles;
@@ -17,12 +18,14 @@ namespace Server.Api.Endpoints
         {
             var requestLimits = application.Services.GetRequiredService<IOptions<RequestLimitsOptions>>().Value;
             var concurrencyLimiter = application.Services.GetRequiredService<BattleConcurrencyLimiter>();
+            var metricsFilter = application.Services.GetRequiredService<BattleMetricsFilter>();
             var readyFilter = application.Services.GetRequiredService<GameConfigReadyFilter>();
             var sizeLimit = new RequestSizeLimitAttribute(requestLimits.BattleMaxRequestBodyBytes);
 
             application.MapPost(ApiRoutes.SimulateBattle, SimulateAsync)
                 .WithMetadata(sizeLimit)
                 .RequireRateLimiting(SecurityNames.BattleRateLimitPolicy)
+                .AddEndpointFilter(metricsFilter.InvokeAsync)
                 .AddEndpointFilter(readyFilter.InvokeAsync)
                 .AddEndpointFilter(concurrencyLimiter.InvokeAsync)
                 .Accepts<BattleSimulationData>("application/json")
@@ -32,6 +35,7 @@ namespace Server.Api.Endpoints
             application.MapPost(ApiRoutes.ReplayBattle, ReplayAsync)
                 .WithMetadata(sizeLimit)
                 .RequireRateLimiting(SecurityNames.BattleRateLimitPolicy)
+                .AddEndpointFilter(metricsFilter.InvokeAsync)
                 .AddEndpointFilter(readyFilter.InvokeAsync)
                 .AddEndpointFilter(concurrencyLimiter.InvokeAsync)
                 .Accepts<BattleReplayData>("application/json")

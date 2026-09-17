@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Server.Api.Options;
+using Server.Infrastructure.Alerts;
 using Server.Infrastructure.GoogleSheets;
 using Server.Infrastructure.Mongo;
 
@@ -7,6 +8,8 @@ namespace Server.Api.Hosting
 {
     internal sealed class StartupBannerService : IHostedService
     {
+        private readonly IAlertPublisher _alertPublisher;
+        private readonly AlertsOptions _alertsOptions;
         private readonly BuildInfo _buildInfo;
         private readonly GoogleCredentialProvider _googleCredentialProvider;
         private readonly IHostApplicationLifetime _hostApplicationLifetime;
@@ -17,6 +20,8 @@ namespace Server.Api.Hosting
         private readonly ServerOptions _serverOptions;
 
         public StartupBannerService(
+            IAlertPublisher alertPublisher,
+            IOptions<AlertsOptions> alertsOptions,
             BuildInfo buildInfo,
             GoogleCredentialProvider googleCredentialProvider,
             IHostApplicationLifetime hostApplicationLifetime,
@@ -26,6 +31,8 @@ namespace Server.Api.Hosting
             IOptions<MongoOptions> mongoOptions,
             IOptions<ServerOptions> serverOptions)
         {
+            _alertPublisher = alertPublisher;
+            _alertsOptions = alertsOptions.Value;
             _buildInfo = buildInfo;
             _googleCredentialProvider = googleCredentialProvider;
             _hostApplicationLifetime = hostApplicationLifetime;
@@ -45,8 +52,6 @@ namespace Server.Api.Hosting
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("[Shutdown] server stopping");
-
             return Task.CompletedTask;
         }
 
@@ -69,6 +74,15 @@ namespace Server.Api.Hosting
                 credentialsSource,
                 _mongoOptions.Enabled,
                 _mongoOptions.DatabaseName);
+
+            if (_alertsOptions.NotifyOnStartup == false)
+                return;
+
+            var alert = new AlertMessage(AlertSeverity.Info, "Server started", "version " + _buildInfo.Version, string.Empty);
+
+            alert.Fields.Add(new KeyValuePair<string, string>("environment", _hostEnvironment.EnvironmentName));
+
+            _alertPublisher.Publish(alert);
         }
     }
 }

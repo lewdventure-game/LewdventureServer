@@ -73,6 +73,7 @@ namespace Tests.Integration.Mongo
             var builder = _environment.Services.GetRequiredService<GameConfigSetBuilder>();
             var otherProvider = new GameConfigSetProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GameConfigSetProvider>.Instance);
             var otherService = new ConfigPublishingService(
+                new Server.Infrastructure.Alerts.NullAlertPublisher(),
                 _environment.Services.GetRequiredService<ConfigActivationRepository>(),
                 _environment.Services.GetRequiredService<ConfigSnapshotDiff>(),
                 _environment.Services.GetRequiredService<ConfigSnapshotRepository>(),

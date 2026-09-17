@@ -1,10 +1,12 @@
 using Server.GameConfigs;
+using Server.Infrastructure.Alerts;
 using Server.Infrastructure.GoogleSheets;
 
 namespace Server.Infrastructure.Mongo.ConfigSnapshots
 {
     internal sealed class ConfigPublishingService
     {
+        private readonly IAlertPublisher _alertPublisher;
         private readonly ConfigActivationRepository _configActivationRepository;
         private readonly ConfigSnapshotDiff _configSnapshotDiff;
         private readonly ConfigSnapshotRepository _configSnapshotRepository;
@@ -15,6 +17,7 @@ namespace Server.Infrastructure.Mongo.ConfigSnapshots
         private readonly SemaphoreSlim _lock = new(1, 1);
 
         public ConfigPublishingService(
+            IAlertPublisher alertPublisher,
             ConfigActivationRepository configActivationRepository,
             ConfigSnapshotDiff configSnapshotDiff,
             ConfigSnapshotRepository configSnapshotRepository,
@@ -23,6 +26,7 @@ namespace Server.Infrastructure.Mongo.ConfigSnapshots
             GoogleSheetsConfigImporter googleSheetsConfigImporter,
             ILogger<ConfigPublishingService> logger)
         {
+            _alertPublisher = alertPublisher;
             _configActivationRepository = configActivationRepository;
             _configSnapshotDiff = configSnapshotDiff;
             _configSnapshotRepository = configSnapshotRepository;
@@ -199,6 +203,14 @@ namespace Server.Infrastructure.Mongo.ConfigSnapshots
                 result.Activated = true;
 
                 _logger.LogInformation("[Config][Snapshot] activated version = {Version} previous = {PreviousVersion} by = {Actor} reason = {Reason}", configSet.Version, result.PreviousVersion, actor, reason);
+
+                var alert = new AlertMessage(AlertSeverity.Info, "Game configs activated", string.IsNullOrEmpty(reason) ? "no reason" : reason, string.Empty);
+
+                alert.Fields.Add(new KeyValuePair<string, string>("version", configSet.Version));
+                alert.Fields.Add(new KeyValuePair<string, string>("previous", string.IsNullOrEmpty(result.PreviousVersion) ? "none" : result.PreviousVersion));
+                alert.Fields.Add(new KeyValuePair<string, string>("by", actor));
+
+                _alertPublisher.Publish(alert);
             }
 
             if (string.Equals(_gameConfigSetProvider.Current.Version, configSet.Version, StringComparison.Ordinal) == false)

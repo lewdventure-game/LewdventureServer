@@ -87,6 +87,11 @@ jobs:
           jq -c '. + {seed: 1337}' "$case_dir/request.json" > replay.json
           curl -fsS -X POST http://127.0.0.1:5000/api/battle/replay -H 'Content-Type: application/json' --data-binary @replay.json -o replay.out
           cmp replay.out "$case_dir/seed-1337.response.json"
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: load smoke
+        run: dotnet run -c Release --project tools/Lewdventure.Server.LoadTest -- --target http://127.0.0.1:5000 --concurrency 8 --duration 15 --warmup 3 --max-error-rate 0
       - name: logs on failure
         if: failure()
         run: docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.ci.yaml logs --no-color

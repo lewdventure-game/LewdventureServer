@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Server.Bonuses;
 using Server.GameConfigs;
+using Server.Infrastructure.Alerts;
 using Server.Infrastructure.GoogleSheets;
 using Server.Infrastructure.Mongo;
 using Server.Infrastructure.Mongo.ConfigSnapshots;
@@ -112,6 +113,7 @@ namespace Server.ConfigTool
             builder.Services.AddSingleton<GoogleSheetsConfigImporter>();
             builder.Services.AddSingleton<IGameConfigSetProvider, GameConfigSetProvider>();
             builder.Services.AddSingleton<ConfigToolCommands>();
+            builder.Services.AddSingleton<IAlertPublisher, NullAlertPublisher>();
             builder.Services.AddOptions<MongoOptions>().Bind(builder.Configuration.GetSection(MongoOptions.SectionName));
 
             var mongoOptions = new MongoOptions();

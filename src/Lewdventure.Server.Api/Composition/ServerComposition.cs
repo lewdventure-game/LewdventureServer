@@ -5,6 +5,7 @@ using Server.Api.Health;
 using Server.Api.Hosting;
 using Server.Api.Http;
 using Server.Api.Json;
+using Server.Api.Metrics;
 using Server.Api.Options;
 using Server.Api.Security;
 using Server.Bonuses;
@@ -33,6 +34,7 @@ namespace Server.Api.Composition
             RegisterMongo(services);
 
             new SecurityRegistrar(_configuration).Register(services);
+            new AlertsRegistrar(_configuration).Register(services);
             new BattleServicesRegistrar().Register(services);
 
             services.AddSingleton(new NewtonsoftSettingsFactory().Create());
@@ -68,7 +70,10 @@ namespace Server.Api.Composition
 
         private void RegisterHosting(IServiceCollection services)
         {
+            services.AddHostedService<GracefulShutdownService>();
             services.AddSingleton<BuildInfo>();
+            services.AddSingleton<BattleMetrics>();
+            services.AddSingleton<BattleMetricsFilter>();
             services.AddHostedService<StartupBannerService>();
             services.AddHostedService<DangerousConfigurationReporter>();
             services.AddEndpointsApiExplorer();
