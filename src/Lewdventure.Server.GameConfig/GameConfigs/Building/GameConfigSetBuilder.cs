@@ -5,6 +5,7 @@ using Server.Entities;
 using Server.Equipments;
 using Server.Perks;
 using Server.Services;
+using Server.Skills;
 using Server.Statuses;
 using Server.Stories;
 
@@ -79,6 +80,7 @@ namespace Server.GameConfigs
             var tempExpPatterns = Parse<ExperienceLevelPatternMapper>(snapshot, ConfigDomainNames.ExpLevelsPatterns);
             var tempPerks = Parse<PerkMapper>(snapshot, ConfigDomainNames.Perks);
             var tempPerkGroups = Parse<PerkGroupMapper>(snapshot, ConfigDomainNames.PerkGroups);
+            var tempSkills = Parse<SkillMapper>(snapshot, ConfigDomainNames.Skills);
 
             var distributor = new ConfigDistributor();
 
@@ -97,11 +99,12 @@ namespace Server.GameConfigs
             AddList(distributor.ExperienceLevelPatterns, tempExpPatterns, ConfigDomainNames.ExpLevelsPatterns);
             AddList(distributor.Perks, tempPerks, ConfigDomainNames.Perks);
             AddList(distributor.PerkGroups, tempPerkGroups, ConfigDomainNames.PerkGroups);
+            AddList(distributor.Skills, tempSkills, ConfigDomainNames.Skills);
 
             _logger.LogInformation($"[Config] Trainings stub empty; sheet id not wired count = {distributor.Trainings.Collection.Count}");
             _logger.LogInformation($"[Config] Artifacts stub empty; sheet id not wired count = {distributor.Artifacts.Collection.Count}");
             _logger.LogInformation($"[Config] Aspects stub empty; sheet id not wired count = {distributor.Aspects.Collection.Count}");
-            _logger.LogInformation($"[Config] inventory summary bonuses = {distributor.Bonuses.Count}, statuses = {distributor.Statuses.Collection.Count}, perks = {distributor.Perks.Collection.Count}, perkGroups = {distributor.PerkGroups.Collection.Count}, trainings = {distributor.Trainings.Collection.Count}, artifacts = {distributor.Artifacts.Collection.Count}, aspects = {distributor.Aspects.Collection.Count}");
+            _logger.LogInformation($"[Config] inventory summary bonuses = {distributor.Bonuses.Count}, statuses = {distributor.Statuses.Collection.Count}, perks = {distributor.Perks.Collection.Count}, perkGroups = {distributor.PerkGroups.Collection.Count}, skills = {distributor.Skills.Collection.Count}, trainings = {distributor.Trainings.Collection.Count}, artifacts = {distributor.Artifacts.Collection.Count}, aspects = {distributor.Aspects.Collection.Count}");
 
             return distributor;
         }
@@ -119,7 +122,9 @@ namespace Server.GameConfigs
             for (int i = 0; i < items.Count; i++)
             {
                 var item = items[i];
-                var workMode = _bonusWorkModeParser.Parse(item.WorkModeParameters);
+
+                if (_bonusWorkModeParser.TryParse(item.WorkModeParameters, out var workMode) == false)
+                    _logger.LogError($"[Config] bonus work_mode parse failed id = {item.Id}");
 
                 if (distributor.Bonuses.Add(item.Id, item) == false)
                 {
@@ -128,7 +133,7 @@ namespace Server.GameConfigs
                     continue;
                 }
 
-                _logger.LogDebug($"[Config] bonus loaded id = {item.Id} type = {item.BonusType} workMode = {workMode.Kind}");
+                _logger.LogDebug($"[Config] bonus loaded id = {item.Id} type = {item.BonusType} workMode = {workMode.Format()}");
             }
 
             _logger.LogInformation($"[Config] Bonuses count = {distributor.Bonuses.Count}");

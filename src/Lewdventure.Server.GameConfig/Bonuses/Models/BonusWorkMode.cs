@@ -2,24 +2,54 @@ namespace Server.Bonuses
 {
     internal sealed class BonusWorkMode
     {
-        public BonusWorkMode(
-            BonusWorkModeKind kind,
-            string equippedEntityType,
-            int equippedEntityId,
-            int count)
+        private readonly List<BonusWorkModePart> _parts;
+
+        public BonusWorkMode(List<BonusWorkModePart> parts)
         {
-            Kind = kind;
-            EquippedEntityType = equippedEntityType;
-            EquippedEntityId = equippedEntityId;
-            Count = count;
+            _parts = parts;
         }
 
-        public BonusWorkModeKind Kind { get; }
+        public IReadOnlyList<BonusWorkModePart> Parts => _parts;
 
-        public string EquippedEntityType { get; }
+        public bool Contains(BonusWorkModeKind kind)
+        {
+            for (int i = 0; i < _parts.Count; i++)
+            {
+                if (_parts[i].Kind == kind)
+                    return true;
+            }
 
-        public int EquippedEntityId { get; }
+            return false;
+        }
 
-        public int Count { get; }
+        public bool TryGetPart(BonusWorkModeKind kind, out BonusWorkModePart part)
+        {
+            for (int i = 0; i < _parts.Count; i++)
+            {
+                if (_parts[i].Kind != kind)
+                    continue;
+
+                part = _parts[i];
+
+                return true;
+            }
+
+            part = new BonusWorkModePart(BonusWorkModeKind.Unknown, string.Empty, 0, 0);
+
+            return false;
+        }
+
+        public string Format()
+        {
+            if (_parts.Count == 0)
+                return BonusWorkModeKind.Unknown.ToString();
+
+            var result = _parts[0].Kind.ToString();
+
+            for (int i = 1; i < _parts.Count; i++)
+                result = result + ";" + _parts[i].Kind;
+
+            return result;
+        }
     }
 }

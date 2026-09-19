@@ -129,6 +129,7 @@ DI: runtime доступ к конфигам **только** через `IConfi
 | Exp_levels_patterns | `ExperienceLevelPatterns` | load-only |
 | Perks | `Perks` | |
 | Perk_groups | `PerkGroups` | load-only |
+| Skills | `Skills` | `id` + `type` + `parameters`; lookup по numeric id или `type` (`fireball`, `energy`) |
 
 ## work_mode
 

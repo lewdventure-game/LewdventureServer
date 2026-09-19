@@ -139,7 +139,7 @@ namespace Server.Battles
             if (_parameterCache.TryGetValue("actions", out var raw) == false || string.IsNullOrWhiteSpace(raw))
                 return [];
 
-            var parts = raw.Split(',');
+            var parts = raw.Split(SeparatorFormat.ListSeparator);
             var result = new List<PerkActionThreshold>();
 
             for (int i = 0; i < parts.Length; i++)
@@ -149,7 +149,7 @@ namespace Server.Battles
                 if (part.Length == 0)
                     continue;
 
-                var separator = part.IndexOf(':');
+                var separator = part.IndexOf(SeparatorFormat.KeyValueSeparator);
 
                 if (separator < 0)
                 {
@@ -160,9 +160,6 @@ namespace Server.Battles
 
                 var actionKey = part.Substring(0, separator).Trim();
                 var thresholdRaw = part.Substring(separator + 1).Trim();
-
-                if (string.Equals(actionKey, "atack", StringComparison.OrdinalIgnoreCase))
-                    actionKey = "attack";
 
                 if (TryParseActionType(actionKey, out var actionType) == false)
                 {

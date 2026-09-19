@@ -195,7 +195,7 @@ namespace Server.Battles
             if (dealtDamage <= 0f || state.Vampyrism <= 0f)
                 return 0f;
 
-            var heal = Mathf.Ceiling(dealtDamage * state.Vampyrism * state.HealingBoost);
+            var heal = MathF.Ceiling(dealtDamage * state.Vampyrism * state.HealingBoost);
 
             if (heal < 0f)
                 heal = 0f;
@@ -407,7 +407,7 @@ namespace Server.Battles
 
         private float RoundMathematical(float value)
         {
-            return Mathf.Round(value, MidpointRounding.AwayFromZero);
+            return MathF.Round(value, MidpointRounding.AwayFromZero);
         }
 
         private float ApplyDefenceFormula(float armor, float coefficient)

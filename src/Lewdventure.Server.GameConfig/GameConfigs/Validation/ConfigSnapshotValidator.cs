@@ -7,6 +7,7 @@ using Server.Entities;
 using Server.Equipments;
 using Server.Perks;
 using Server.Services;
+using Server.Skills;
 using Server.Statuses;
 using Server.Stories;
 
@@ -32,6 +33,7 @@ namespace Server.GameConfigs
             [ConfigDomainNames.ExpLevelsPatterns] = typeof(ExperienceLevelPatternMapper),
             [ConfigDomainNames.Perks] = typeof(PerkMapper),
             [ConfigDomainNames.PerkGroups] = typeof(PerkGroupMapper),
+            [ConfigDomainNames.Skills] = typeof(SkillMapper),
         };
 
         public ConfigSnapshotValidator(ConfigDomainNames configDomainNames)

@@ -1,8 +1,8 @@
 {
   "format": "lewdventure-config-snapshot",
   "formatVersion": 1,
-  "version": "sha256:ae188ad83fe3b475e1fde952f7e6ee49bbf4003de69446d33f03ca8244a566cd",
-  "createdAt": "2026-09-17T08:38:00.7764976Z",
+  "version": "sha256:2184f21cbae28fe6c81875f6bcf523572a2810721d75c564196583f29958dab2",
+  "createdAt": "2026-09-19T12:21:46.2797853Z",
   "sourceKind": "GoogleSheets",
   "domains": [
     {
@@ -2007,6 +2007,41 @@
           "perk_ids": "1;2;3;4;5;6;7",
           "perk_chances": "1;1;3;3;4;4;4",
           "random_perks_count": "3"
+        }
+      ]
+    },
+    {
+      "domain": "Skills",
+      "spreadsheetId": "1I6krV3fGIHHxpNXem0jvKYoMOmC5pSeHN0pOavOjmrw",
+      "range": "C:F",
+      "rows": [
+        {
+          "id": "1",
+          "type": "fireball",
+          "proc_order": "1",
+          "parameters": "damage_ratio:[1];\nprojectile_count:[1];\nduration:[2,5]"
+        },
+        {
+          "id": "2",
+          "type": "summon_1_skill_1",
+          "proc_order": "1",
+          "parameters": "damage_ratio:[1];\nhit_rewards:[status:3:2];\nduration:[2,5]"
+        },
+        {
+          "id": "3",
+          "type": "summon_2_skill_1",
+          "proc_order": "1",
+          "parameters": "damage_ratio:[0.35];\nheal_from_max_ratio:[0.12];\nally_rewards:[bonus:2:1,status:5:1];\nduration:[2,5]"
+        },
+        {
+          "id": "4",
+          "type": "summon_3_skill_1",
+          "proc_order": "1",
+          "parameters": "damage_ratio:[1.25];\nlife_steal_ratio:[0.5];\nhit_rewards:[status:1:1];\nally_rewards:[bonus:8:1];\nduration:[2,5]"
+        },
+        {
+          "id": "5",
+          "type": "bonus"
         }
       ]
     }

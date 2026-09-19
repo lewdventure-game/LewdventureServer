@@ -2,6 +2,6 @@ namespace Server.Bonuses
 {
     internal interface IBonusWorkModeParser
     {
-        public BonusWorkMode Parse(string raw);
+        public bool TryParse(string raw, out BonusWorkMode workMode);
     }
 }

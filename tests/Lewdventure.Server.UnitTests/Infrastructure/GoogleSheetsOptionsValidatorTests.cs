@@ -8,7 +8,7 @@ namespace Tests.Unit.Infrastructure
         private readonly string[] _domains =
         {
             "Constants", "Characters", "Bonuses", "Statuses", "Summons", "Summon_levels", "Mastery", "Enemies",
-            "Equipments", "Story_levels", "Story_stages", "Story_events", "Exp_levels_patterns", "Perks", "Perk_groups",
+            "Equipments", "Story_levels", "Story_stages", "Story_events", "Exp_levels_patterns", "Perks", "Perk_groups", "Skills",
         };
 
         [Test]
@@ -25,7 +25,7 @@ namespace Tests.Unit.Infrastructure
             var result = new GoogleSheetsOptionsValidator().Validate(null, CreateOptions(_domains.Length - 1));
 
             Assert.That(result.Failed, Is.True);
-            Assert.That(result.FailureMessage, Does.Contain("Perk_groups"));
+            Assert.That(result.FailureMessage, Does.Contain("Skills"));
         }
 
         [Test]

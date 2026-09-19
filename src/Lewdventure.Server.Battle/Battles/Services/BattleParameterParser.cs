@@ -1,3 +1,5 @@
+using Server.Configs;
+
 namespace Server.Battles
 {
     internal sealed class BattleParameterParser : IBattleParameterParser
@@ -9,7 +11,7 @@ namespace Server.Battles
             if (string.IsNullOrWhiteSpace(parameters))
                 return;
 
-            var pairs = SplitTopLevel(parameters, ';');
+            var pairs = SplitTopLevel(parameters, SeparatorFormat.PairSeparator);
 
             for (int i = 0; i < pairs.Count; i++)
             {
@@ -18,7 +20,7 @@ namespace Server.Battles
                 if (pair.IsEmpty)
                     continue;
 
-                var separator = pair.IndexOf(':');
+                var separator = pair.IndexOf(SeparatorFormat.KeyValueSeparator);
 
                 if (separator < 0)
                     continue;

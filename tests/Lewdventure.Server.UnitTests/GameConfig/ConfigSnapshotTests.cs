@@ -26,7 +26,7 @@ namespace Tests.Unit.GameConfig
                 var reloaded = await source.LoadAsync(path, CancellationToken.None);
 
                 Assert.That(reloaded.Version, Is.EqualTo(snapshot.Version));
-                Assert.That(reloaded.Domains, Has.Count.EqualTo(15));
+                Assert.That(reloaded.Domains, Has.Count.EqualTo(16));
             }
             finally
             {
@@ -72,7 +72,7 @@ namespace Tests.Unit.GameConfig
             var result = builder.Build(snapshot, "test");
 
             Assert.That(result.Succeeded, Is.False);
-            Assert.That(result.Errors, Has.Count.GreaterThanOrEqualTo(15));
+            Assert.That(result.Errors, Has.Count.GreaterThanOrEqualTo(16));
         }
 
         [Test]

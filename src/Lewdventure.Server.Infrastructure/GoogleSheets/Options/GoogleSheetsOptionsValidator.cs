@@ -22,6 +22,7 @@ namespace Server.Infrastructure.GoogleSheets
             ConfigDomainNames.ExpLevelsPatterns,
             ConfigDomainNames.Perks,
             ConfigDomainNames.PerkGroups,
+            ConfigDomainNames.Skills,
         };
 
         public ValidateOptionsResult Validate(string? name, GoogleSheetsOptions options)
