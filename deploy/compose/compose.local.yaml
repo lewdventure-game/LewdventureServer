@@ -13,17 +13,16 @@ services:
       Mongo__ConnectionString: mongodb://lewdventure_app:local-app-password@mongo:27017/?replicaSet=rs0&authSource=lewdventure_local
       Mongo__DatabaseName: lewdventure_local
       GameConfig__FailStartupIfUnavailable: "true"
-      GameConfig__BootstrapFromGoogleSheetsIfEmpty: "true"
+      GameConfig__BootstrapFilePath: /fixtures/config-snapshot.v1.json
       GameConfig__ReloadMode: Poll
-      GoogleSheets__CredentialsPath: /run/secrets/google-credentials.json
       Admin__Enabled: "true"
       Admin__ApiKey: local-admin-key
       ConfigPublisher__Enabled: "true"
       ConfigPublisher__ApiKey: local-config-key
       RateLimit__Enabled: "false"
       Logging__Console__FormatterName: simple
-    secrets:
-      - google-credentials.json
+    volumes:
+      - ../../tests/Lewdventure.Server.GoldenTests/Golden/Fixtures:/fixtures:ro
     ports:
       - 127.0.0.1:5000:5000
       - 127.0.0.1:9090:9090
@@ -53,10 +52,3 @@ services:
       DOTNET_ENVIRONMENT: Local
       Mongo__ConnectionString: mongodb://lewdventure_app:local-app-password@mongo:27017/?replicaSet=rs0&authSource=lewdventure_local
       Mongo__DatabaseName: lewdventure_local
-      GoogleSheets__CredentialsPath: /run/secrets/google-credentials.json
-    secrets:
-      - google-credentials.json
-
-secrets:
-  google-credentials.json:
-    file: ${GOOGLE_CREDENTIALS_FILE:-../../google-credentials.json}

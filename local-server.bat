@@ -4,18 +4,21 @@ chcp 65001 >nul
 cd /d "%~dp0"
 
 set "COMPOSE=docker compose -f deploy\compose\compose.yaml -f deploy\compose\compose.local.yaml"
+set "COMPOSE_SHEETS=%COMPOSE% -f deploy\compose\compose.local-sheets.yaml"
 set "COMMAND=%~1"
 if "%COMMAND%"=="" set "COMMAND=start"
 
 if /i "%COMMAND%"=="start" goto start
+if /i "%COMMAND%"=="sheets" goto sheets
 if /i "%COMMAND%"=="stop" goto stop
 if /i "%COMMAND%"=="restart" goto restart
 if /i "%COMMAND%"=="logs" goto logs
 if /i "%COMMAND%"=="status" goto status
 if /i "%COMMAND%"=="reset" goto reset
 
-echo Использование: local-server.bat [start^|stop^|restart^|logs^|status^|reset]
-echo   start    собрать и поднять api + MongoDB, дождаться готовности (по умолчанию)
+echo Использование: local-server.bat [start^|sheets^|stop^|restart^|logs^|status^|reset]
+echo   start    собрать и поднять api + MongoDB на встроенном снимке конфигов (по умолчанию)
+echo   sheets   то же, но конфиги из Google Sheets, нужен google-credentials.json
 echo   stop     остановить, данные Mongo сохраняются
 echo   restart  пересобрать api из текущего кода и перезапустить
 echo   logs     логи api в реальном времени
@@ -24,7 +27,6 @@ echo   reset    остановить и удалить данные Mongo и к�
 exit /b 2
 
 :start
-call :ensure_credentials || exit /b 1
 call :ensure_docker || exit /b 1
 call :ensure_ports || exit /b 1
 echo [local] Сборка и запуск api и MongoDB, первый запуск займёт несколько минут...
@@ -34,8 +36,19 @@ call :wait_ready || goto failed
 call :print_info
 exit /b 0
 
-:restart
+:sheets
 call :ensure_credentials || exit /b 1
+call :ensure_docker || exit /b 1
+call :ensure_ports || exit /b 1
+set "COMPOSE=%COMPOSE_SHEETS%"
+echo [local] Сборка и запуск api и MongoDB с конфигами из Google Sheets...
+%COMPOSE% up -d --build --wait --wait-timeout 300
+if errorlevel 1 goto failed
+call :wait_ready || goto failed
+call :print_info
+exit /b 0
+
+:restart
 call :ensure_docker || exit /b 1
 echo [local] Пересборка api...
 %COMPOSE% up -d --build --wait --wait-timeout 300 api
@@ -77,8 +90,8 @@ exit /b 1
 :ensure_credentials
 if exist "google-credentials.json" exit /b 0
 if defined GOOGLE_CREDENTIALS_FILE if exist "%GOOGLE_CREDENTIALS_FILE%" exit /b 0
-echo [local] Нет google-credentials.json в корне репозитория: без него конфиги не импортируются из Google Sheets.
-echo [local] Положите ключ в корень или задайте GOOGLE_CREDENTIALS_FILE.
+echo [local] Нет google-credentials.json в корне репозитория: он нужен только режиму sheets.
+echo [local] Положите ключ в корень, задайте GOOGLE_CREDENTIALS_FILE или запустите local-server.bat без аргументов.
 exit /b 1
 
 :ensure_docker
@@ -125,7 +138,7 @@ echo   API для Unity     http://localhost:5000   (в Unity: RunMode / Server 
 echo   Swagger           http://localhost:5000/swagger
 echo   Health            http://127.0.0.1:9090/health
 echo   MongoDB           mongodb://lewdventure_app:local-app-password@127.0.0.1:27017/?replicaSet=rs0^&authSource=lewdventure_local^&directConnection=true
-echo   Публикация        curl -X POST -H "X-Config-Key: local-config-key" http://localhost:5000/api/config/publish
+echo   Публикация        curl -X POST -H "X-Config-Key: local-config-key" http://localhost:5000/api/config/publish  (режим sheets)
 echo.
 echo   Логи: local-server.bat logs    Остановить: local-server.bat stop
 exit /b 0
