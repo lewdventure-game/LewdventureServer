@@ -11,6 +11,8 @@ namespace Server.Battles
 {
     internal sealed class UnitStateBuilder : IUnitStateBuilder
     {
+        private const float DefaultMasteryMultiplier = 1f;
+
         private readonly ILogger<UnitStateBuilder> _logger;
         private readonly IBattleBonusService _battleBonusService;
         private readonly IBonusWorkModeParser _bonusWorkModeParser;
@@ -273,23 +275,29 @@ namespace Server.Battles
                 return baseDamage;
             }
 
-            var masteryMapper = ResolveMastery(summonMapper.MasteryId, masteryLevel, unitSnapshot.Id);
+            var multiplier = ResolveMasteryMultiplier(summonMapper.MasteryId, masteryLevel, unitSnapshot.Id);
 
-            _logger.LogDebug($"[Story][Battle]: Summon mastery damage, summonId = {unitSnapshot.Id}, masteryId = {summonMapper.MasteryId}, masteryLevel = {masteryLevel}, multiplier = {masteryMapper.DamageMultiplier}, baseDamage = {baseDamage}");
+            _logger.LogDebug($"[Story][Battle]: Summon mastery damage, summonId = {unitSnapshot.Id}, masteryId = {summonMapper.MasteryId}, masteryLevel = {masteryLevel}, multiplier = {multiplier}, baseDamage = {baseDamage}");
 
-            return baseDamage * masteryMapper.DamageMultiplier;
+            return baseDamage * multiplier;
         }
 
-        private IMasteryMapper ResolveMastery(int masteryId, int masteryLevel, int summonId)
+        private float ResolveMasteryMultiplier(int masteryId, int masteryLevel, int summonId)
         {
-            var masteries = _configDistributor.Masteries;
+            if (TryResolveMastery(masteryId, masteryLevel, summonId, out var masteryMapper))
+                return masteryMapper.DamageMultiplier;
 
-            if (masteries.TryGet(masteryId, masteryLevel, out var masteryMapper))
-                return masteryMapper;
+            return DefaultMasteryMultiplier;
+        }
 
-            _logger.LogError($"[Story][Battle]: Mastery missing, masteryId = {masteryId}, masteryLevel = {masteryLevel}, summonId = {summonId}");
+        private bool TryResolveMastery(int masteryId, int masteryLevel, int summonId, out IMasteryMapper masteryMapper)
+        {
+            if (_configDistributor.Masteries.TryGet(masteryId, masteryLevel, out masteryMapper))
+                return true;
 
-            throw new InvalidOperationException($"[Story][Battle]: Mastery missing, masteryId = {masteryId}, masteryLevel = {masteryLevel}, summonId = {summonId}");
+            _logger.LogWarning($"[Story][Battle]: Mastery missing, masteryId = {masteryId}, masteryLevel = {masteryLevel}, summonId = {summonId}; using multiplier {DefaultMasteryMultiplier}");
+
+            return false;
         }
 
         private void ApplyBreakoutHook(IUnitSnapshot unitSnapshot, ISummonMapper summonMapper)
@@ -311,9 +319,9 @@ namespace Server.Battles
 
             if (_configDistributor.Trainings.TryGet(trainingLevel, out var trainingMapper) == false)
             {
-                _logger.LogError($"[Story][Battle]: Training missing, trainingLevel = {trainingLevel}, trainingsCount = {_configDistributor.Trainings.Collection.Count}");
+                _logger.LogWarning($"[Story][Battle]: Training missing, trainingLevel = {trainingLevel}, trainingsCount = {_configDistributor.Trainings.Collection.Count}; bonuses skipped");
 
-                throw new InvalidOperationException($"[Story][Battle]: Training missing, trainingLevel = {trainingLevel}");
+                return;
             }
 
             GrantBonusPairs(unitState, trainingMapper.BonusIds, trainingMapper.BonusValues, $"build:training:{trainingLevel}");
@@ -476,9 +484,7 @@ namespace Server.Battles
 
             if (0 < masteryLevel)
             {
-                var masteryMapper = ResolveMastery(summonMapper.MasteryId, masteryLevel, summonSnapshot.Id);
-
-                if (0 < masteryMapper.BonusId)
+                if (TryResolveMastery(summonMapper.MasteryId, masteryLevel, summonSnapshot.Id, out var masteryMapper) && 0 < masteryMapper.BonusId)
                 {
                     var sourceKey = $"build:summon-mastery:{summonSnapshot.Id}:{masteryLevel}";
 
