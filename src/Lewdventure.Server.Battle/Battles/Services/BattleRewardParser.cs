@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
+using Server.Configs;
 
 namespace Server.Battles
 {
@@ -49,7 +50,7 @@ namespace Server.Battles
                     if (0 < depth)
                         continue;
 
-                    if (character != ';' && character != ',')
+                    if (character != SeparatorFormat.PairSeparator && character != SeparatorFormat.ListSeparator)
                         continue;
                 }
 
@@ -94,14 +95,14 @@ namespace Server.Battles
         {
             reward = default;
 
-            var first = part.IndexOf(':');
+            var first = part.IndexOf(SeparatorFormat.KeyValueSeparator);
 
             if (first < 0)
                 return false;
 
             var typeSpan = part.Slice(0, first).Trim();
             var rest = part.Slice(first + 1);
-            var second = rest.IndexOf(':');
+            var second = rest.IndexOf(SeparatorFormat.KeyValueSeparator);
 
             if (second < 0)
                 return false;

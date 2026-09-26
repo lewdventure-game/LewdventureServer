@@ -39,7 +39,10 @@ namespace Server.Battles
             WorkMode = workMode;
             SourceKey = sourceKey;
             EveryTurnStacks = 0;
-            RemainingBattles = workMode.Kind == BonusWorkModeKind.NextBattles ? workMode.Count : 0;
+            RemainingBattles = 0;
+
+            if (workMode.TryGetPart(BonusWorkModeKind.NextBattles, out var nextBattlesPart))
+                RemainingBattles = nextBattlesPart.Count;
         }
     }
 }

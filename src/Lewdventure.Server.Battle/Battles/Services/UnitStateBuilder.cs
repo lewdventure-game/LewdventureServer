@@ -130,12 +130,15 @@ namespace Server.Battles
             var characteristics = unitState.CharacteristicState;
             var currentHealth = unitSnapshot.CurrentHealth;
 
-            if (currentHealth <= 0f)
+            if (currentHealth < 0f)
             {
                 _logger.LogError($"[Story][Battle]: Invalid currentHealth = {currentHealth}, unitId = {unitSnapshot.Id}, slot = {unitSnapshot.SlotIndex}");
 
                 throw new InvalidOperationException($"[Story][Battle]: Invalid currentHealth = {currentHealth}, unitId = {unitSnapshot.Id}, slot = {unitSnapshot.SlotIndex}");
             }
+
+            if (currentHealth == 0f)
+                currentHealth = characteristics.MaxHealth;
 
             if (characteristics.MaxHealth < currentHealth)
                 currentHealth = characteristics.MaxHealth;
@@ -817,9 +820,9 @@ namespace Server.Battles
                 if (string.Equals(activeBonus.SourceKey, sourceKey, StringComparison.Ordinal) == false)
                     continue;
 
-                if (activeBonus.WorkMode.Kind != BonusWorkModeKind.NextBattles)
+                if (activeBonus.WorkMode.Contains(BonusWorkModeKind.NextBattles) == false)
                 {
-                    _logger.LogDebug($"[Story][Battle]: Run bonus remaining override skipped, unitId = {unitState.Id}, bonusId = {bonusId}, kind = {activeBonus.WorkMode.Kind}, sourceKey = {sourceKey}");
+                    _logger.LogDebug($"[Story][Battle]: Run bonus remaining override skipped, unitId = {unitState.Id}, bonusId = {bonusId}, workMode = {activeBonus.WorkMode.Format()}, sourceKey = {sourceKey}");
 
                     return;
                 }
@@ -854,7 +857,13 @@ namespace Server.Battles
                 return;
             }
 
-            var workMode = _bonusWorkModeParser.Parse(bonusMapper.WorkModeParameters);
+            if (_bonusWorkModeParser.TryParse(bonusMapper.WorkModeParameters, out var workMode) == false)
+            {
+                _logger.LogError($"[Story][Battle]: work_mode parse failed, bonusId = {bonusId}");
+
+                return;
+            }
+
             var grantValue = value;
 
             if (MathF.Abs(grantValue) <= 0.0001f)
@@ -870,7 +879,7 @@ namespace Server.Battles
                     workMode,
                     sourceKey));
 
-            _logger.LogDebug($"[Story][Battle]: Build bonus queued, id = {bonusId}, type = {bonusMapper.BonusType}, value = {grantValue}, operator = {bonusMapper.OperatorType}, workMode = {workMode.Kind}, sourceKey = {sourceKey}");
+            _logger.LogDebug($"[Story][Battle]: Build bonus queued, id = {bonusId}, type = {bonusMapper.BonusType}, value = {grantValue}, operator = {bonusMapper.OperatorType}, workMode = {workMode.Format()}, sourceKey = {sourceKey}");
         }
 
         private List<IPerk> BuildPerks(IUnitSnapshot unitSnapshot)

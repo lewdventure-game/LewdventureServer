@@ -45,7 +45,7 @@
 | `GoogleSheets:ApplicationName` | `GameConfigReader` | имя клиента Google API |
 | `GoogleSheets:DelayBetweenSheetsMs` | `150` | пауза между листами против квот |
 | `GoogleSheets:MaxRetries` | `3` | повторы загрузки листа, 1–10 |
-| `GoogleSheets:Sheets` | список в `appsettings.json` | `Domain`, `SpreadsheetId`, `Range` на каждый из 15 обязательных доменов; менять только по решению владельца |
+| `GoogleSheets:Sheets` | список в `appsettings.json` | `Domain`, `SpreadsheetId`, `Range` на каждый из 16 обязательных доменов; менять только по решению владельца |
 
 ## Mongo
 

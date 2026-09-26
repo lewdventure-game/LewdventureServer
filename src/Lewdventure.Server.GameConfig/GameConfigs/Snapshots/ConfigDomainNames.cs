@@ -17,6 +17,7 @@ namespace Server.GameConfigs
         public const string ExpLevelsPatterns = "Exp_levels_patterns";
         public const string Perks = "Perks";
         public const string PerkGroups = "Perk_groups";
+        public const string Skills = "Skills";
 
         private readonly string[] _ordered =
         {
@@ -35,6 +36,7 @@ namespace Server.GameConfigs
             ExpLevelsPatterns,
             Perks,
             PerkGroups,
+            Skills,
         };
 
         public IReadOnlyList<string> Ordered => _ordered;

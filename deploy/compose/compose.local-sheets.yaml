@@ -1,0 +1,18 @@
+services:
+  api:
+    environment:
+      GameConfig__BootstrapFilePath: ""
+      GameConfig__BootstrapFromGoogleSheetsIfEmpty: "true"
+      GoogleSheets__CredentialsPath: /run/secrets/google-credentials.json
+    secrets:
+      - google-credentials.json
+
+  config-tool:
+    environment:
+      GoogleSheets__CredentialsPath: /run/secrets/google-credentials.json
+    secrets:
+      - google-credentials.json
+
+secrets:
+  google-credentials.json:
+    file: ${GOOGLE_CREDENTIALS_FILE:-../../google-credentials.json}

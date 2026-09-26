@@ -19,7 +19,7 @@ src/
   Lewdventure.Server.Contracts/        Battles/                   DTO request/response, steps, commands, enum'ы протокола
   Lewdventure.Server.GameConfig/       Collections/ Configs/      BaseManager, парсеры, конвертеры
                                        <Domain>/                  Artifacts, Aspects, Bonuses, Common, Entities, Equipments,
-                                                                  Perks, Statuses, Stories, Trainings: mappers + managers
+                                                                  Perks, Skills, Statuses, Stories, Trainings: mappers + managers
                                        Services/                  ConfigDistributor
                                        GameConfigs/               Snapshots, Building, Sources, Validation, Diff, провайдер набора
   Lewdventure.Server.Battle/           Battles/Services/          BattleSimulatorService, перки, статусы, саммоны, скиллы

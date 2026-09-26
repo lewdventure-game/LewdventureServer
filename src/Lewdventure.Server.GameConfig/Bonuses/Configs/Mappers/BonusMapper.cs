@@ -10,7 +10,7 @@ namespace Server.Bonuses
         [JsonProperty("operator")]
         public BonusOperatorType OperatorType { get; init; }
 
-        [JsonProperty("work_mode")]
+        [JsonProperty("work_modes")]
         public string WorkModeParameters { get; init; } = string.Empty;
 
         [JsonProperty("bonus_type")]

@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
+using Server.Configs;
 using Server.Statuses;
 
 namespace Server.Battles
@@ -30,7 +31,7 @@ namespace Server.Battles
                 return false;
             }
 
-            var pairs = SplitTopLevel(parameters, ';');
+            var pairs = SplitTopLevel(parameters, SeparatorFormat.PairSeparator);
             var hasDamageRatio = false;
             var hasDamageLength = false;
             var hasMaxStacks = false;
@@ -47,7 +48,7 @@ namespace Server.Battles
                 if (pair.IsEmpty)
                     continue;
 
-                var separator = pair.IndexOf(':');
+                var separator = pair.IndexOf(SeparatorFormat.KeyValueSeparator);
 
                 if (separator < 0)
                 {
@@ -156,10 +157,10 @@ namespace Server.Battles
         private char ResolveBonusListSeparator(StatusType statusType)
         {
             if (statusType == StatusType.BurningStrong || statusType == StatusType.PoisonStrong)
-                return ';';
+                return SeparatorFormat.PairSeparator;
 
             if (statusType == StatusType.BonusChange)
-                return ',';
+                return SeparatorFormat.ListSeparator;
 
             return (char)0;
         }
@@ -216,14 +217,14 @@ namespace Server.Battles
         {
             bonus = default;
 
-            var first = part.IndexOf(':');
+            var first = part.IndexOf(SeparatorFormat.KeyValueSeparator);
 
             if (first < 0)
                 return false;
 
             var typeSpan = part.AsSpan(0, first).Trim();
             var rest = part.AsSpan(first + 1);
-            var second = rest.IndexOf(':');
+            var second = rest.IndexOf(SeparatorFormat.KeyValueSeparator);
 
             if (second < 0)
                 return false;

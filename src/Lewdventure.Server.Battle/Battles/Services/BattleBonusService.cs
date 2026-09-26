@@ -61,7 +61,12 @@ namespace Server.Battles
                 return;
             }
 
-            var workMode = _bonusWorkModeParser.Parse(bonusMapper.WorkModeParameters);
+            if (_bonusWorkModeParser.TryParse(bonusMapper.WorkModeParameters, out var workMode) == false)
+            {
+                _logger.LogError($"[Story][Battle]: work_mode parse failed, bonusId = {bonusId}");
+
+                return;
+            }
 
             RemoveBonusesWithExactSourceKey(unit, sourceKey);
 
@@ -76,10 +81,10 @@ namespace Server.Battles
 
             unit.ActiveBonuses.Add(activeBonus);
 
-            if (workMode.Kind == BonusWorkModeKind.NextBattles)
+            if (workMode.Contains(BonusWorkModeKind.NextBattles))
                 _logger.LogDebug($"[Story][Battle]: Bonus next_battles grant, unitId = {unit.Id}, bonusId = {bonusId}, remainingBattles = {activeBonus.RemainingBattles}");
 
-            _logger.LogDebug($"[Story][Battle]: Bonus grant, unitId = {unit.Id}, bonusId = {bonusId}, count = {count}, type = {bonusMapper.BonusType}, operator = {bonusMapper.OperatorType}, workMode = {workMode.Kind}, sourceKey = {sourceKey}");
+            _logger.LogDebug($"[Story][Battle]: Bonus grant, unitId = {unit.Id}, bonusId = {bonusId}, count = {count}, type = {bonusMapper.BonusType}, operator = {bonusMapper.OperatorType}, workMode = {workMode.Format()}, sourceKey = {sourceKey}");
 
             Rebuild(unit, currentTurn, commands, true);
         }
@@ -148,7 +153,7 @@ namespace Server.Battles
             {
                 var activeBonus = activeBonuses[i];
 
-                if (activeBonus.WorkMode.Kind != BonusWorkModeKind.EveryTurn)
+                if (activeBonus.WorkMode.Contains(BonusWorkModeKind.EveryTurn) == false)
                     continue;
 
                 ++activeBonus.EveryTurnStacks;
@@ -173,17 +178,11 @@ namespace Server.Battles
             for (int i = activeBonuses.Count - 1; 0 <= i; i--)
             {
                 var activeBonus = activeBonuses[i];
-                var kind = activeBonus.WorkMode.Kind;
+                var workMode = activeBonus.WorkMode;
 
-                if (kind == BonusWorkModeKind.NextBattles)
+                if (workMode.Contains(BonusWorkModeKind.EndOfBattle))
                 {
-                    activeBonus.RemainingBattles -= 1;
-                    nextBattlesChanged = true;
-
-                    _logger.LogDebug($"[Story][Battle]: Bonus next_battles decrement, unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, remainingBattles = {activeBonus.RemainingBattles}");
-
-                    if (0 < activeBonus.RemainingBattles)
-                        continue;
+                    _logger.LogDebug($"[Story][Battle]: Bonus battle-end remove, unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, workMode = {workMode.Format()}");
 
                     commands.Add(_battleCommandFactory.SetBonus(unit.Id, unit.SlotIndex, activeBonus.BonusId, 0f, unit.Id));
                     activeBonuses.RemoveAt(i);
@@ -193,15 +192,34 @@ namespace Server.Battles
                     continue;
                 }
 
-                if (kind != BonusWorkModeKind.EndOfBattle && kind != BonusWorkModeKind.EveryTurn && kind != BonusWorkModeKind.FirstTurns)
+                if (workMode.Contains(BonusWorkModeKind.NextBattles))
+                {
+                    activeBonus.RemainingBattles -= 1;
+                    nextBattlesChanged = true;
+
+                    _logger.LogDebug($"[Story][Battle]: Bonus next_battles decrement, unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, remainingBattles = {activeBonus.RemainingBattles}");
+
+                    if (0 < activeBonus.RemainingBattles)
+                    {
+                        if (workMode.Contains(BonusWorkModeKind.EveryTurn))
+                            activeBonus.EveryTurnStacks = 0;
+
+                        continue;
+                    }
+
+                    commands.Add(_battleCommandFactory.SetBonus(unit.Id, unit.SlotIndex, activeBonus.BonusId, 0f, unit.Id));
+                    activeBonuses.RemoveAt(i);
+
+                    ++removed;
+
+                    continue;
+                }
+
+                if (workMode.Contains(BonusWorkModeKind.EveryTurn) == false)
                     continue;
 
-                _logger.LogDebug($"[Story][Battle]: Bonus battle-end remove, unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, workMode = {kind}");
-
-                commands.Add(_battleCommandFactory.SetBonus(unit.Id, unit.SlotIndex, activeBonus.BonusId, 0f, unit.Id));
-                activeBonuses.RemoveAt(i);
-
-                ++removed;
+                activeBonus.EveryTurnStacks = 0;
+                nextBattlesChanged = true;
             }
 
             if (removed == 0 && nextBattlesChanged == false)
@@ -225,7 +243,7 @@ namespace Server.Battles
 
                 var totalCount = activeBonus.Count;
 
-                if (activeBonus.WorkMode.Kind == BonusWorkModeKind.EveryTurn)
+                if (activeBonus.WorkMode.Contains(BonusWorkModeKind.EveryTurn))
                     totalCount = activeBonus.Count * Math.Max(activeBonus.EveryTurnStacks, 1);
 
                 var totalValue = activeBonus.BonusValue * totalCount;
@@ -308,8 +326,8 @@ namespace Server.Battles
 
                     if (IsActiveForTurn(unit, activeBonus, currentTurn) == false)
                     {
-                        if (activeBonus.WorkMode.Kind == BonusWorkModeKind.FirstTurns
-                            || activeBonus.WorkMode.Kind == BonusWorkModeKind.IfEquipped)
+                        if (activeBonus.WorkMode.Contains(BonusWorkModeKind.FirstTurns)
+                            || activeBonus.WorkMode.Contains(BonusWorkModeKind.IfEquipped))
                             hasInactivePresentationClear = true;
 
                         continue;
@@ -318,7 +336,7 @@ namespace Server.Battles
                     hasActiveEntry = true;
                     var totalCount = activeBonus.Count;
 
-                    if (activeBonus.WorkMode.Kind == BonusWorkModeKind.EveryTurn)
+                    if (activeBonus.WorkMode.Contains(BonusWorkModeKind.EveryTurn))
                         totalCount = activeBonus.Count * Math.Max(activeBonus.EveryTurnStacks, 1);
 
                     appliedValue += activeBonus.BonusValue * totalCount;
@@ -388,14 +406,40 @@ namespace Server.Battles
 
         private bool IsActiveForTurn(IUnitState unit, ActiveBattleBonus activeBonus, int currentTurn)
         {
-            var kind = activeBonus.WorkMode.Kind;
+            var parts = activeBonus.WorkMode.Parts;
+
+            if (parts.Count == 0)
+                return false;
+
+            for (int i = 0; i < parts.Count; i++)
+            {
+                if (IsPartActive(unit, activeBonus, currentTurn, parts[i]) == false)
+                    return false;
+            }
+
+            return true;
+        }
+
+        private bool IsPartActive(IUnitState unit, ActiveBattleBonus activeBonus, int currentTurn, BonusWorkModePart part)
+        {
+            var kind = part.Kind;
+
+            if (kind == BonusWorkModeKind.IfEquipped)
+            {
+                var isEquipped = unit.HasEquippedEntity(part.EquippedEntityType, part.EquippedEntityId);
+
+                if (isEquipped == false)
+                    _logger.LogWarning($"[Story][Battle]: if_equipped skip, unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, entityType = {part.EquippedEntityType}, entityId = {part.EquippedEntityId}");
+
+                return isEquipped;
+            }
 
             if (kind == BonusWorkModeKind.NextBattles)
                 return 0 < activeBonus.RemainingBattles;
 
             if (kind == BonusWorkModeKind.FirstTurns)
             {
-                var turnLimit = activeBonus.WorkMode.Count;
+                var turnLimit = part.Count;
 
                 if (turnLimit <= 0)
                 {
@@ -404,20 +448,7 @@ namespace Server.Battles
                     throw new InvalidOperationException($"[Story][Battle]: first_turns count <= 0, bonusId = {activeBonus.BonusId}");
                 }
 
-                // Turns in simulator are 0-based; first_turns:N covers turns 0..N-1.
                 return currentTurn < turnLimit;
-            }
-
-            if (kind == BonusWorkModeKind.IfEquipped)
-            {
-                var entityType = activeBonus.WorkMode.EquippedEntityType;
-                var entityId = activeBonus.WorkMode.EquippedEntityId;
-                var isEquipped = unit.HasEquippedEntity(entityType, entityId);
-
-                if (isEquipped == false)
-                    _logger.LogWarning($"[Story][Battle]: if_equipped skip, unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, entityType = {entityType}, entityId = {entityId}");
-
-                return isEquipped;
             }
 
             if (kind == BonusWorkModeKind.Permanent
@@ -435,7 +466,7 @@ namespace Server.Battles
         {
             for (int i = 0; i < activeBonuses.Count; i++)
             {
-                if (activeBonuses[i].WorkMode.Kind == BonusWorkModeKind.FirstTurns)
+                if (activeBonuses[i].WorkMode.Contains(BonusWorkModeKind.FirstTurns))
                     return true;
             }
 

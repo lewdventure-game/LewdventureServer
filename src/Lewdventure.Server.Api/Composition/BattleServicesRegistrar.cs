@@ -19,6 +19,7 @@ namespace Server.Api.Composition
                 .AddScoped<IBattleSkillSimulator, BattleSkillSimulator>()
                 .AddScoped<IBattleStatusSimulator, BattleStatusSimulator>()
                 .AddScoped<IBattleSummonSimulator, BattleSummonSimulator>()
+                .AddScoped<ICharacteristicBucketApplicator, CharacteristicBucketApplicator>()
                 .AddScoped<ICharacteristicCalculator, CharacteristicCalculator>()
                 .AddScoped<IPerkFactory, PerkFactory>()
                 .AddScoped<ISkillFactory, SkillFactory>()
