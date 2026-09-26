@@ -1,5 +1,7 @@
 using Newtonsoft.Json;
 
+using Server.Configs;
+
 namespace Server.Equipments
 {
     internal sealed class EquipmentMapper : IEquipmentMapper
@@ -52,6 +54,7 @@ namespace Server.Equipments
         [JsonProperty("is_melee")]
         public string IsMelee { get; init; } = string.Empty;
 
+        [OptionalColumn("колонка появится, когда экипировка начнёт выдавать скиллы")]
         [JsonProperty("skill_id")]
         public string SkillId { get; init; } = string.Empty;
     }

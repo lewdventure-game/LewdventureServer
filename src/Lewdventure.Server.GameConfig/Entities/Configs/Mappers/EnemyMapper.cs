@@ -42,42 +42,49 @@ namespace Server.Entities
         [JsonConverter(typeof(DelimitedIntArrayConverter), ';')]
         public int[] SkillIds { get; init; } = Array.Empty<int>();
 
+        [OptionalColumn("значение приходит в other_characteristics")]
         [JsonProperty("evasion")]
         private float EvasionRaw
         {
             set { _evasion = value; }
         }
 
+        [OptionalColumn("значение приходит в other_characteristics")]
         [JsonProperty("crit_chance")]
         private float CriticalChanceRaw
         {
             set { _criticalChance = value; }
         }
 
+        [OptionalColumn("значение приходит в other_characteristics")]
         [JsonProperty("crit_multiplier")]
         private float CriticalMultiplierRaw
         {
             set { _criticalMultiplier = value; }
         }
 
+        [OptionalColumn("значение приходит в other_characteristics")]
         [JsonProperty("combo_chance")]
         private float ComboChanceRaw
         {
             set { _comboChance = value; }
         }
 
+        [OptionalColumn("значение приходит в other_characteristics")]
         [JsonProperty("combo_1_multiplier")]
         private float Combo1MultiplierRaw
         {
             set { _combo1Multiplier = value; }
         }
 
+        [OptionalColumn("значение приходит в other_characteristics")]
         [JsonProperty("combo_2_multiplier")]
         private float Combo2MultiplierRaw
         {
             set { _combo2Multiplier = value; }
         }
 
+        [OptionalColumn("значение приходит в other_characteristics")]
         [JsonProperty("combo_multiplier")]
         private float ComboMultiplierRaw
         {
@@ -88,30 +95,35 @@ namespace Server.Entities
             }
         }
 
+        [OptionalColumn("значение приходит в other_characteristics")]
         [JsonProperty("counter_chance")]
         private float CounterChanceRaw
         {
             set { _counterChance = value; }
         }
 
+        [OptionalColumn("значение приходит в other_characteristics")]
         [JsonProperty("counter_multiplier")]
         private float CounterMultiplierRaw
         {
             set { _counterMultiplier = value; }
         }
 
+        [OptionalColumn("значение приходит в other_characteristics")]
         [JsonProperty("defence")]
         private float DefenceRaw
         {
             set { _defence = value; }
         }
 
+        [OptionalColumn("значение приходит в other_characteristics")]
         [JsonProperty("energy_per_hit")]
         private float EnergyPerHitRaw
         {
             set { _energy = value; }
         }
 
+        [OptionalColumn("значение приходит в other_characteristics")]
         [JsonProperty("energy_max")]
         private float EnergyMaxRaw
         {
