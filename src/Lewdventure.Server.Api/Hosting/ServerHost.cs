@@ -89,6 +89,7 @@ namespace Server.Api.Hosting
             }
 
             application.UseRouting();
+            application.UseMiddleware<GameConfigReadyMiddleware>();
             application.UseMiddleware<OpsPortGuardMiddleware>();
             application.UseRateLimiter();
             application.UseAuthentication();
