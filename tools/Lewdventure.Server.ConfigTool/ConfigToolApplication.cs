@@ -107,6 +107,8 @@ namespace Server.ConfigTool
             builder.Services.AddSingleton<ConfigSnapshotValidator>();
             builder.Services.AddSingleton<ConfigSnapshotDiff>();
             builder.Services.AddSingleton<ConfigRowsParser>();
+            builder.Services.AddSingleton<SheetRowsConverter>();
+            builder.Services.AddSingleton<UploadedSheetsSnapshotBuilder>();
             builder.Services.AddSingleton<FileConfigSnapshotSource>();
             builder.Services.AddSingleton<GameConfigSetBuilder>();
             builder.Services.AddSingleton<IBonusWorkModeParser, BonusWorkModeParser>();
