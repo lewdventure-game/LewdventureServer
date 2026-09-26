@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Server.Api.Options;
 using Server.Api.Security;
 using Server.GameConfigs;
+using Server.Infrastructure.GoogleSheets;
 using Server.Infrastructure.Mongo;
 using Server.Infrastructure.Mongo.ConfigSnapshots;
 using Server.Services;
@@ -29,6 +30,14 @@ namespace Server.Api.Endpoints
                 .RequireRateLimiting(SecurityNames.ConfigRateLimitPolicy);
 
             application.MapPost(ApiRoutes.UpdateConfig, UpdateAsync)
+                .RequireAuthorization(SecurityNames.ConfigPublisherPolicy)
+                .RequireRateLimiting(SecurityNames.ConfigRateLimitPolicy);
+
+            application.MapPost(ApiRoutes.ConfigUpload, UploadAsync)
+                .RequireAuthorization(SecurityNames.ConfigPublisherPolicy)
+                .RequireRateLimiting(SecurityNames.ConfigRateLimitPolicy);
+
+            application.MapGet(ApiRoutes.ConfigSheets, GetSheetsAsync)
                 .RequireAuthorization(SecurityNames.ConfigPublisherPolicy)
                 .RequireRateLimiting(SecurityNames.ConfigRateLimitPolicy);
 
@@ -83,6 +92,68 @@ namespace Server.Api.Endpoints
             return result.Succeeded
                 ? Results.Ok(new { status = "success", message = $"version = {result.Version}" })
                 : Results.Problem(detail: string.Join("; ", result.Errors), statusCode: 500);
+        }
+
+        private async Task<IResult> UploadAsync(
+            HttpContext httpContext,
+            [FromBody] ConfigUploadRequest? request,
+            [FromServices] ConfigResponseFactory responseFactory,
+            [FromServices] UploadedSheetsSnapshotBuilder snapshotBuilder)
+        {
+            if (_isMongoEnabled == false)
+                return Results.Problem(detail: "Config upload requires Mongo storage.", statusCode: 503);
+
+            if (request == null || request.Sheets.Count == 0)
+                return Results.BadRequest(new { error = "Payload must contain sheets." });
+
+            var uploaded = new List<UploadedSheet>(request.Sheets.Count);
+
+            for (int i = 0; i < request.Sheets.Count; i++)
+            {
+                var sheet = request.Sheets[i];
+                var values = new List<IReadOnlyList<object?>>(sheet.Values.Count);
+
+                for (int j = 0; j < sheet.Values.Count; j++)
+                    values.Add(sheet.Values[j]);
+
+                uploaded.Add(new UploadedSheet(sheet.Domain, sheet.SpreadsheetId, sheet.Range, values));
+            }
+
+            if (snapshotBuilder.TryBuild(uploaded, out var snapshot, out var errors) == false)
+            {
+                var invalid = new ConfigPublishResult { Succeeded = false };
+
+                invalid.Errors.AddRange(errors);
+
+                return responseFactory.CreatePublishResult(invalid);
+            }
+
+            var publishingService = httpContext.RequestServices.GetRequiredService<ConfigPublishingService>();
+            var result = await publishingService.PublishAsync(snapshot, CreateActor(httpContext), request.Reason, true, httpContext.RequestAborted);
+
+            return responseFactory.CreatePublishResult(result);
+        }
+
+        private IResult GetSheetsAsync([FromServices] IOptions<GoogleSheetsOptions> googleSheetsOptions, [FromServices] ConfigDomainNames configDomainNames)
+        {
+            var sheets = googleSheetsOptions.Value.Sheets;
+            var ordered = configDomainNames.Ordered;
+            var payload = new List<object>(ordered.Count);
+
+            for (int i = 0; i < ordered.Count; i++)
+            {
+                for (int j = 0; j < sheets.Count; j++)
+                {
+                    if (string.Equals(sheets[j].Domain, ordered[i], StringComparison.Ordinal) == false)
+                        continue;
+
+                    payload.Add(new { domain = sheets[j].Domain, spreadsheetId = sheets[j].SpreadsheetId, range = sheets[j].Range });
+
+                    break;
+                }
+            }
+
+            return Results.Ok(new { sheets = payload });
         }
 
         private async Task<IResult> GetStatusAsync(

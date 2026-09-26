@@ -32,6 +32,7 @@
 | `GameConfig:FailStartupIfUnavailable` | `false` | упасть на старте, если конфиги не загрузились; иначе старт с 503 на бою |
 | `GameConfig:PinnedVersion` | пусто | загружать эту версию вместо активной (`sha256:<hex>`), для аварийного закрепления |
 | `GameConfig:LocalCachePath` | пусто | файл последнего загруженного снапшота; используется, если Mongo недоступен при старте |
+| `GameConfig:BootstrapFilePath` | пусто | снимок в файле; публикуется и активируется, если в Mongo нет активной версии или она не собирается. Локально — фикстура из репозитория, поэтому ключ Google не нужен |
 | `GameConfig:BootstrapFromGoogleSheetsIfEmpty` | `false` | при пустой базе импортировать из Sheets и активировать; запрещён в Production |
 | `GameConfig:ReloadMode` | `Manual` | `Manual` (только `/admin/config/reload`) или `Poll` (опрос активной версии в Mongo) |
 | `GameConfig:PollIntervalSeconds` | `30` | период опроса при `Poll`, 5–3600 |
@@ -40,7 +41,7 @@
 
 | Ключ | По умолчанию | Описание |
 | --- | --- | --- |
-| `GoogleSheets:CredentialsPath` | `google-credentials.json` | файл ключа service account; в контейнерах `/run/secrets/google-credentials.json` |
+| `GoogleSheets:CredentialsPath` | `google-credentials.json` | файл ключа service account; нужен только для `POST /api/config/publish` и ConfigTool `import`. При публикации через Apps Script (`/api/config/upload`) ключ не требуется |
 | `GoogleSheets:CredentialsJson` | пусто | содержимое ключа строкой, имеет приоритет над путём |
 | `GoogleSheets:ApplicationName` | `GameConfigReader` | имя клиента Google API |
 | `GoogleSheets:DelayBetweenSheetsMs` | `150` | пауза между листами против квот |

@@ -6,7 +6,7 @@
 
 | Секрет | Где | Кто использует |
 | --- | --- | --- |
-| Ключ service account Google | `compose/secrets/google-credentials.json` окружений dev и stage на VPS; локально `google-credentials.json` в корне, вне git | импорт Sheets |
+| Ключ service account Google | только у того, кто запускает ConfigTool `import` вручную; на серверах и локально не нужен | ручной импорт Sheets |
 | Origin-сертификат Cloudflare | `/opt/lewdventure/proxy/certs/` | TLS между Cloudflare и Caddy |
 | `Admin__ApiKey` | `.env` окружения | `/admin/config/*`, `config-transfer.sh` |
 | `ConfigPublisher__ApiKey` | `.env` dev/stage, Script Properties Apps Script | публикация из таблицы |

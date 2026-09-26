@@ -139,6 +139,8 @@ namespace Server.Api.Composition
                 .AddSingleton<ConfigSnapshotValidator>()
                 .AddSingleton<ConfigSnapshotDiff>()
                 .AddSingleton<ConfigRowsParser>()
+                .AddSingleton<SheetRowsConverter>()
+                .AddSingleton<UploadedSheetsSnapshotBuilder>()
                 .AddSingleton<FileConfigSnapshotSource>()
                 .AddSingleton<GameConfigSetBuilder>()
                 .AddSingleton<IGameConfigSetProvider, GameConfigSetProvider>()
