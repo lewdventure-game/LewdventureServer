@@ -146,7 +146,6 @@ namespace Server.Api.Composition
                 .AddSingleton<GoogleCredentialProvider>()
                 .AddSingleton<GoogleSheetsConfigImporter>()
                 .AddSingleton<IGameConfigService, GameConfigService>()
-                .AddSingleton<GameConfigReadyFilter>()
                 .AddSingleton<ConfigResponseFactory>()
                 .AddScoped(ResolveConfigDistributor);
         }

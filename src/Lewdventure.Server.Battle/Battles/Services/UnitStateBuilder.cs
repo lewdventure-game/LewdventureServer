@@ -130,12 +130,15 @@ namespace Server.Battles
             var characteristics = unitState.CharacteristicState;
             var currentHealth = unitSnapshot.CurrentHealth;
 
-            if (currentHealth <= 0f)
+            if (currentHealth < 0f)
             {
                 _logger.LogError($"[Story][Battle]: Invalid currentHealth = {currentHealth}, unitId = {unitSnapshot.Id}, slot = {unitSnapshot.SlotIndex}");
 
                 throw new InvalidOperationException($"[Story][Battle]: Invalid currentHealth = {currentHealth}, unitId = {unitSnapshot.Id}, slot = {unitSnapshot.SlotIndex}");
             }
+
+            if (currentHealth == 0f)
+                currentHealth = characteristics.MaxHealth;
 
             if (characteristics.MaxHealth < currentHealth)
                 currentHealth = characteristics.MaxHealth;
