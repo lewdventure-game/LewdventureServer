@@ -42,8 +42,66 @@ function publishConfigs_(environmentName) {
     return;
   }
 
-  const response = request_(environment, 'post', '/api/config/publish', { reason: confirmation.getResponseText() });
+  const sheetsResponse = request_(environment, 'get', '/api/config/sheets', null);
+
+  if (sheetsResponse.code !== 200 || sheetsResponse.body === null) {
+    ui.alert('Публикация на ' + environment.title, 'Не удалось получить список листов
+HTTP ' + sheetsResponse.code + '
+' + sheetsResponse.text, ui.ButtonSet.OK);
+    return;
+  }
+
+  let payload;
+
+  try {
+    payload = collectSheets_(sheetsResponse.body.sheets, confirmation.getResponseText());
+  } catch (error) {
+    ui.alert('Публикация на ' + environment.title, String(error), ui.ButtonSet.OK);
+    return;
+  }
+
+  const response = request_(environment, 'post', '/api/config/upload', payload);
   ui.alert('Публикация на ' + environment.title, formatPublishResult_(response), ui.ButtonSet.OK);
+}
+
+function collectSheets_(sheets, reason) {
+  const collected = [];
+
+  for (let i = 0; i < sheets.length; i++) {
+    const definition = sheets[i];
+    const spreadsheet = SpreadsheetApp.openById(definition.spreadsheetId);
+    const sheet = spreadsheet.getSheets()[0];
+    const values = sheet.getRange(definition.range).getDisplayValues();
+
+    collected.push({
+      domain: definition.domain,
+      spreadsheetId: definition.spreadsheetId,
+      range: definition.range,
+      values: trimTrailingEmptyRows_(values),
+    });
+  }
+
+  return { reason: reason, sheets: collected };
+}
+
+function trimTrailingEmptyRows_(values) {
+  let last = values.length;
+
+  while (0 < last && isEmptyRow_(values[last - 1])) {
+    last--;
+  }
+
+  return values.slice(0, last);
+}
+
+function isEmptyRow_(row) {
+  for (let i = 0; i < row.length; i++) {
+    if (String(row[i]).trim() !== '') {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 function showStatus_(environmentName) {

@@ -69,7 +69,7 @@ chmod 700 /opt/lewdventure/*/compose/secrets /opt/lewdventure/proxy/certs
 
 Если Discord ещё не настроен: `Alerts__Enabled=false`.
 
-dev и stage: ключ Google в `compose/secrets/google-credentials.json`, права `600`. На prod ключ Google не кладётся.
+Ключ Google на серверы не кладётся: конфиги публикует Apps Script из таблицы, а prod получает снимок со stage. Ключ нужен только тому, кто запускает ConfigTool `import` вручную.
 
 Keyfile Mongo генерируется контейнером при первом старте.
 
@@ -160,8 +160,8 @@ Settings → Branches: защита `master` — merge через PR, обяза
 
 ## 7. Первый деплой
 
-1. Merge в `master` → `cd` деплоит dev. Конфиги dev создаются из Google Sheets автоматически.
-2. `promote` с `target=stage` — то же для stage.
+1. Merge в `master` → `cd` деплоит dev. Сервер стартует без конфигов и отвечает 503 на бой, пока геймдизайнер не нажмёт «Опубликовать конфиги на dev» в таблице.
+2. `promote` с `target=stage` — то же для stage, затем публикация на stage из таблицы.
 3. prod конфиги из Google не берёт:
    1. `promote` с `target=prod` — api не стартует без конфигов, деплой `failed`, Mongo поднят. Ожидаемо.
    2. `config-promote` с `version=active` — переносит активный снапшот stage.

@@ -52,11 +52,11 @@ namespace Server.Api.Hosting
             {
                 var result = await publishingService.LoadActiveAsync(options.PinnedVersion, CancellationToken.None);
 
-                if (result.Succeeded == false && string.IsNullOrEmpty(result.Version) && string.IsNullOrEmpty(options.BootstrapFilePath) == false)
+                if (result.Succeeded == false && string.IsNullOrEmpty(options.BootstrapFilePath) == false)
                 {
                     var bootstrapPath = ResolvePath(options.BootstrapFilePath, environment);
 
-                    logger.LogWarning("[Config][Snapshot] no active snapshot; bootstrapping from file {Path}", bootstrapPath);
+                    logger.LogWarning("[Config][Snapshot] active snapshot unusable or missing; bootstrapping from file {Path}", bootstrapPath);
 
                     var snapshot = await services.GetRequiredService<FileConfigSnapshotSource>().LoadAsync(bootstrapPath, CancellationToken.None);
 

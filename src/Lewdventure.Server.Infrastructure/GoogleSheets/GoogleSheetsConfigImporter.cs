@@ -1,7 +1,6 @@
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 using Server.GameConfigs;
 
 namespace Server.Infrastructure.GoogleSheets
@@ -13,6 +12,7 @@ namespace Server.Infrastructure.GoogleSheets
         private readonly ConfigDomainNames _configDomainNames;
         private readonly ConfigSnapshotHasher _configSnapshotHasher;
         private readonly GoogleCredentialProvider _googleCredentialProvider;
+        private readonly SheetRowsConverter _sheetRowsConverter;
         private readonly ILogger<GoogleSheetsConfigImporter> _logger;
         private readonly GoogleSheetsOptions _options;
         private readonly SemaphoreSlim _serviceLock = new(1, 1);
@@ -24,13 +24,15 @@ namespace Server.Infrastructure.GoogleSheets
             ConfigSnapshotHasher configSnapshotHasher,
             GoogleCredentialProvider googleCredentialProvider,
             ILogger<GoogleSheetsConfigImporter> logger,
-            IOptions<GoogleSheetsOptions> options)
+            IOptions<GoogleSheetsOptions> options,
+            SheetRowsConverter sheetRowsConverter)
         {
             _configDomainNames = configDomainNames;
             _configSnapshotHasher = configSnapshotHasher;
             _googleCredentialProvider = googleCredentialProvider;
             _logger = logger;
             _options = options.Value;
+            _sheetRowsConverter = sheetRowsConverter;
         }
 
         public async Task<GameConfigSnapshot> ImportAsync(CancellationToken cancellationToken)
@@ -137,60 +139,22 @@ namespace Server.Infrastructure.GoogleSheets
 
             var response = await request.Get(sheet.SpreadsheetId, sheet.Range).ExecuteAsync(cancellationToken);
             var values = response.Values;
-            var rowsData = new List<Dictionary<string, object>>();
+            var rows = new List<IReadOnlyList<object?>>(values == null ? 0 : values.Count);
 
-            if (values == null || values.Count < 2)
+            if (values != null)
             {
+                for (int i = 0; i < values.Count; i++)
+                    rows.Add((IReadOnlyList<object?>)values[i]);
+            }
+
+            if (rows.Count < 2)
                 _logger.LogWarning($"[Config] sheet empty sheet = {sheet.Domain}");
 
-                return JsonConvert.SerializeObject(rowsData);
-            }
+            var rowsJson = _sheetRowsConverter.ToRowsJson(rows);
 
-            var headers = new List<string>(values[0].Count);
+            _logger.LogInformation($"[Config] downloaded sheet = {sheet.Domain}");
 
-            for (int headerIndex = 0; headerIndex < values[0].Count; headerIndex++)
-            {
-                var header = values[0][headerIndex];
-                var headerText = header == null ? string.Empty : header.ToString();
-
-                headers.Add(headerText == null ? string.Empty : headerText.Trim());
-            }
-
-            for (int i = 1; i < values.Count; i++)
-            {
-                var row = values[i];
-                var rowDict = new Dictionary<string, object>();
-                var isActive = true;
-
-                for (int j = 0; j < headers.Count && j < row.Count; j++)
-                {
-                    var header = headers[j];
-
-                    if (string.IsNullOrEmpty(header))
-                        continue;
-
-                    var cellValue = row[j];
-
-                    if (cellValue is string stringValue
-                        && (stringValue.Equals("TRUE", StringComparison.OrdinalIgnoreCase)
-                            || stringValue.Equals("FALSE", StringComparison.OrdinalIgnoreCase)))
-                    {
-                        cellValue = bool.Parse(stringValue);
-                    }
-
-                    rowDict[header] = cellValue ?? string.Empty;
-
-                    if (header.Equals("is_off", StringComparison.OrdinalIgnoreCase) && cellValue is bool isOff && isOff)
-                        isActive = false;
-                }
-
-                if (isActive)
-                    rowsData.Add(rowDict);
-            }
-
-            _logger.LogInformation($"[Config] downloaded sheet = {sheet.Domain} count = {rowsData.Count}");
-
-            return JsonConvert.SerializeObject(rowsData);
+            return rowsJson;
         }
     }
 }

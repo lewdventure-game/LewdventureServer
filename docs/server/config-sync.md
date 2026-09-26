@@ -10,7 +10,7 @@
 | --- | --- |
 | Единица конфигов | снапшот: сырые строки всех листов + версия `sha256:<hex>` |
 | Хранилище | Mongo: `config_snapshots`, `config_state`, `config_activations` |
-| Публикация dev/stage | Apps Script в таблице → `POST /api/config/publish` (`X-Config-Key`) |
+| Публикация dev/stage | Apps Script в таблице читает листы сам → `POST /api/config/upload` (`X-Config-Key`), ключ Google серверу не нужен |
 | Публикация prod | GitHub Actions `config-promote` (stage → prod, с одобрением) |
 | Runtime | `IGameConfigSetProvider.Current` → неизменяемый `ConfigDistributor` на версию |
 | Log tags | `[Config]`, `[Config][Snapshot]` |
@@ -19,7 +19,8 @@
 
 ```text
 Google Sheets
-  → GoogleSheetsConfigImporter (сырые строки листов)
+  → Apps Script читает листы от имени пользователя и шлёт строки на сервер
+    (либо GoogleSheetsConfigImporter, если на сервере есть ключ сервисного аккаунта)
   → GameConfigSnapshot (version = sha256 по domain + rows)
   → ConfigSnapshotValidator (ошибки блокируют, warnings по колонкам)
   → GameConfigSetBuilder (новый ConfigDistributor, те же парсеры и managers)
@@ -36,7 +37,7 @@ Google Sheets
 
 | Source | Где используется | Поведение |
 | --- | --- | --- |
-| `Mongo` | dev, stage, prod, локальный compose | грузит `PinnedVersion` или активную версию; если активной нет и `BootstrapFromGoogleSheetsIfEmpty=true` — импортирует из Sheets и активирует; при недоступности Mongo — файловый кэш `LocalCachePath` |
+| `Mongo` | dev, stage, prod, локальный compose | грузит `PinnedVersion` или активную версию; если активной нет или она не собирается, а задан `BootstrapFilePath` — публикует снимок из файла; если задан `BootstrapFromGoogleSheetsIfEmpty` — импортирует из Sheets; при недоступности Mongo — файловый кэш `LocalCachePath` |
 | `GoogleSheets` | `dotnet run` без Mongo | импорт при старте, как раньше |
 | `File` | тесты, CI, нагрузка | снапшот из `FilePath` (например `tests/Lewdventure.Server.GoldenTests/Golden/Fixtures/config-snapshot.v1.json`) |
 
@@ -48,7 +49,9 @@ Google Sheets
 
 | Endpoint | Порт | Доступ | Назначение |
 | --- | --- | --- | --- |
-| `POST /api/config/publish` | public | `X-Config-Key`, только если `ConfigPublisher:Enabled` (dev/stage/local) | импорт из Sheets → валидация → сохранение → активация; ответ: version, warnings, errors, diff по доменам |
+| `POST /api/config/upload` | public | `X-Config-Key`, только если `ConfigPublisher:Enabled` (dev/stage/local) | приём строк листов от Apps Script → валидация → сохранение → активация; ключ Google не нужен |
+| `GET /api/config/sheets` | public | `X-Config-Key` | список доменов с id таблиц и диапазонами: Apps Script берёт его, чтобы не дублировать настройки |
+| `POST /api/config/publish` | public | `X-Config-Key` | сервер сам читает Sheets через ключ сервисного аккаунта; нужен только если ключ настроен |
 | `POST /api/config/update` | public | как publish, плюс устаревший заголовок `X-Config-Secret` с warning в логе | alias publish для старых вызовов |
 | `GET /api/config/status` | public | `X-Config-Key` | активная и загруженная версии |
 | `GET /admin/config/status` | ops | `X-Admin-Key` | состояние провайдера и Mongo |
