@@ -23,6 +23,7 @@ namespace Server.Entities
         [JsonConverter(typeof(DelimitedFloatArrayConverter), ';')]
         public float[] BreakoutMultipliers { get; init; } = Array.Empty<float>();
 
+        [OptionalColumn("устаревшая колонка, бой использует attack_cooldown")]
         [JsonProperty("attack_speed")]
         public float AttackSpeed { get; init; }
 

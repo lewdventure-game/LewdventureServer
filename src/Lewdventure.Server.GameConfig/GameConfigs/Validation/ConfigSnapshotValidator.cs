@@ -15,6 +15,8 @@ namespace Server.GameConfigs
 {
     internal sealed class ConfigSnapshotValidator
     {
+        private const string ServiceColumn = "is_off";
+
         private readonly ConfigDomainNames _configDomainNames;
         private readonly Dictionary<string, Type> _mapperTypes = new(StringComparer.Ordinal)
         {
@@ -54,7 +56,7 @@ namespace Server.GameConfigs
                     continue;
                 }
 
-                CollectHeaderWarnings(domain, warnings);
+                CollectHeaderIssues(domain, errors, warnings);
             }
         }
 
@@ -76,7 +78,7 @@ namespace Server.GameConfigs
                 warnings.Add("Config snapshot domain Bonuses has no rows.");
         }
 
-        private void CollectHeaderWarnings(ConfigSnapshotDomain domain, List<string> warnings)
+        private void CollectHeaderIssues(ConfigSnapshotDomain domain, List<string> errors, List<string> warnings)
         {
             if (_mapperTypes.TryGetValue(domain.Domain, out var mapperType) == false)
                 return;
@@ -89,7 +91,7 @@ namespace Server.GameConfigs
             }
             catch (JsonReaderException exception)
             {
-                warnings.Add($"Config snapshot domain {domain.Domain} rows are not valid JSON: {exception.Message}");
+                errors.Add($"Лист {domain.Domain}: строки не читаются как JSON: {exception.Message}");
 
                 return;
             }
@@ -106,9 +108,14 @@ namespace Server.GameConfigs
             }
 
             if (headers.Count == 0)
+            {
+                warnings.Add($"Лист {domain.Domain}: нет ни одной строки с данными (диапазон {domain.Range}).");
+
                 return;
+            }
 
             var properties = mapperType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var known = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ServiceColumn };
 
             for (int i = 0; i < properties.Length; i++)
             {
@@ -117,8 +124,23 @@ namespace Server.GameConfigs
                 if (attribute == null || string.IsNullOrEmpty(attribute.PropertyName))
                     continue;
 
-                if (headers.Contains(attribute.PropertyName) == false)
-                    warnings.Add($"Config snapshot domain {domain.Domain} has no column {attribute.PropertyName} (range {domain.Range}).");
+                known.Add(attribute.PropertyName);
+
+                if (headers.Contains(attribute.PropertyName))
+                    continue;
+
+                var optional = properties[i].GetCustomAttribute<OptionalColumnAttribute>();
+
+                if (optional == null)
+                    errors.Add($"Лист {domain.Domain}: нет обязательной колонки {attribute.PropertyName} (прочитан диапазон {domain.Range}).");
+                else
+                    warnings.Add($"Лист {domain.Domain}: нет необязательной колонки {attribute.PropertyName}: {optional.Reason}.");
+            }
+
+            foreach (var header in headers)
+            {
+                if (known.Contains(header) == false)
+                    warnings.Add($"Лист {domain.Domain}: колонка {header} сервером не используется, проверьте опечатку.");
             }
         }
     }
