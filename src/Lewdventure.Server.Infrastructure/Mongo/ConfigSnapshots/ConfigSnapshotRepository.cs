@@ -47,6 +47,7 @@ namespace Server.Infrastructure.Mongo.ConfigSnapshots
                     SpreadsheetId = domain.SpreadsheetId,
                     Range = domain.Range,
                     RowsJson = domain.RowsJson,
+                    SourceRows = new List<int>(domain.SourceRows),
                 });
             }
 
@@ -75,7 +76,7 @@ namespace Server.Infrastructure.Mongo.ConfigSnapshots
             {
                 var domain = document.Domains[i];
 
-                domains.Add(new ConfigSnapshotDomain(domain.Domain, domain.SpreadsheetId, domain.Range, domain.RowsJson));
+                domains.Add(new ConfigSnapshotDomain(domain.Domain, domain.SpreadsheetId, domain.Range, domain.RowsJson, domain.SourceRows));
             }
 
             return new GameConfigSnapshot(document.Id, document.SnapshotCreatedAt, document.SourceKind, domains);

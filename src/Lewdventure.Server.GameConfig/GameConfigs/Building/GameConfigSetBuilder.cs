@@ -44,7 +44,7 @@ namespace Server.GameConfigs
 
             try
             {
-                distributor = CreateDistributor(snapshot);
+                distributor = CreateDistributor(snapshot, errors);
             }
             catch (Exception exception)
             {
@@ -52,6 +52,9 @@ namespace Server.GameConfigs
 
                 return new GameConfigBuildResult(null, errors, warnings);
             }
+
+            if (0 < errors.Count)
+                return new GameConfigBuildResult(null, errors, warnings);
 
             _configSnapshotValidator.ValidateContent(distributor, errors, warnings);
 
@@ -63,24 +66,24 @@ namespace Server.GameConfigs
             return new GameConfigBuildResult(configSet, errors, warnings);
         }
 
-        private ConfigDistributor CreateDistributor(GameConfigSnapshot snapshot)
+        private ConfigDistributor CreateDistributor(GameConfigSnapshot snapshot, List<string> errors)
         {
-            var tempConstants = Parse<ConstantsMapper>(snapshot, ConfigDomainNames.Constants);
-            var tempCharacters = Parse<CharacterMapper>(snapshot, ConfigDomainNames.Characters);
-            var tempBonuses = Parse<BonusMapper>(snapshot, ConfigDomainNames.Bonuses);
-            var tempStatuses = Parse<StatusMapper>(snapshot, ConfigDomainNames.Statuses);
-            var tempSummons = Parse<SummonMapper>(snapshot, ConfigDomainNames.Summons);
-            var tempSummonLevels = Parse<SummonLevelMapper>(snapshot, ConfigDomainNames.SummonLevels);
-            var tempMasteries = Parse<MasteryMapper>(snapshot, ConfigDomainNames.Mastery);
-            var tempEnemies = Parse<EnemyMapper>(snapshot, ConfigDomainNames.Enemies);
-            var tempEquipments = Parse<EquipmentMapper>(snapshot, ConfigDomainNames.Equipments);
-            var tempStoryLevels = Parse<StoryLevelMapper>(snapshot, ConfigDomainNames.StoryLevels);
-            var tempStoryStages = Parse<StoryStageMapper>(snapshot, ConfigDomainNames.StoryStages);
-            var tempStoryEvents = Parse<StoryEventMapper>(snapshot, ConfigDomainNames.StoryEvents);
-            var tempExpPatterns = Parse<ExperienceLevelPatternMapper>(snapshot, ConfigDomainNames.ExpLevelsPatterns);
-            var tempPerks = Parse<PerkMapper>(snapshot, ConfigDomainNames.Perks);
-            var tempPerkGroups = Parse<PerkGroupMapper>(snapshot, ConfigDomainNames.PerkGroups);
-            var tempSkills = Parse<SkillMapper>(snapshot, ConfigDomainNames.Skills);
+            var tempConstants = ParseDomain<ConstantsMapper>(snapshot, ConfigDomainNames.Constants, errors);
+            var tempCharacters = ParseDomain<CharacterMapper>(snapshot, ConfigDomainNames.Characters, errors);
+            var tempBonuses = ParseDomain<BonusMapper>(snapshot, ConfigDomainNames.Bonuses, errors);
+            var tempStatuses = ParseDomain<StatusMapper>(snapshot, ConfigDomainNames.Statuses, errors);
+            var tempSummons = ParseDomain<SummonMapper>(snapshot, ConfigDomainNames.Summons, errors);
+            var tempSummonLevels = ParseDomain<SummonLevelMapper>(snapshot, ConfigDomainNames.SummonLevels, errors);
+            var tempMasteries = ParseDomain<MasteryMapper>(snapshot, ConfigDomainNames.Mastery, errors);
+            var tempEnemies = ParseDomain<EnemyMapper>(snapshot, ConfigDomainNames.Enemies, errors);
+            var tempEquipments = ParseDomain<EquipmentMapper>(snapshot, ConfigDomainNames.Equipments, errors);
+            var tempStoryLevels = ParseDomain<StoryLevelMapper>(snapshot, ConfigDomainNames.StoryLevels, errors);
+            var tempStoryStages = ParseDomain<StoryStageMapper>(snapshot, ConfigDomainNames.StoryStages, errors);
+            var tempStoryEvents = ParseDomain<StoryEventMapper>(snapshot, ConfigDomainNames.StoryEvents, errors);
+            var tempExpPatterns = ParseDomain<ExperienceLevelPatternMapper>(snapshot, ConfigDomainNames.ExpLevelsPatterns, errors);
+            var tempPerks = ParseDomain<PerkMapper>(snapshot, ConfigDomainNames.Perks, errors);
+            var tempPerkGroups = ParseDomain<PerkGroupMapper>(snapshot, ConfigDomainNames.PerkGroups, errors);
+            var tempSkills = ParseDomain<SkillMapper>(snapshot, ConfigDomainNames.Skills, errors);
 
             var distributor = new ConfigDistributor();
 
@@ -109,12 +112,12 @@ namespace Server.GameConfigs
             return distributor;
         }
 
-        private List<T> Parse<T>(GameConfigSnapshot snapshot, string domainName)
+        private List<T> ParseDomain<T>(GameConfigSnapshot snapshot, string domainName, List<string> errors)
             where T : class
         {
             snapshot.TryGetDomain(domainName, out var domain);
 
-            return _configRowsParser.Parse<T>(domain.RowsJson);
+            return _configRowsParser.Parse<T>(domain, errors);
         }
 
         private void AddBonuses(ConfigDistributor distributor, List<BonusMapper> items)

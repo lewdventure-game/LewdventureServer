@@ -106,6 +106,8 @@ namespace Server.ConfigTool
             builder.Services.AddSingleton<ConfigSnapshotSerializer>();
             builder.Services.AddSingleton<ConfigSnapshotValidator>();
             builder.Services.AddSingleton<ConfigSnapshotDiff>();
+            builder.Services.AddSingleton<ConfigRangeReader>()
+                .AddSingleton<ConfigRowLocator>();
             builder.Services.AddSingleton<ConfigRowsParser>();
             builder.Services.AddSingleton<SheetRowsConverter>();
             builder.Services.AddSingleton<UploadedSheetsSnapshotBuilder>();

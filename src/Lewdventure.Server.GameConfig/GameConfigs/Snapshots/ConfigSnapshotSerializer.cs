@@ -39,7 +39,9 @@ namespace Server.GameConfigs
             {
                 var domain = model.Domains[i];
 
-                domains.Add(new ConfigSnapshotDomain(domain.Domain, domain.SpreadsheetId, domain.Range, domain.Rows.ToString(Formatting.None)));
+                var sourceRows = domain.SourceRows == null ? Array.Empty<int>() : (IReadOnlyList<int>)domain.SourceRows;
+
+                domains.Add(new ConfigSnapshotDomain(domain.Domain, domain.SpreadsheetId, domain.Range, domain.Rows.ToString(Formatting.None), sourceRows));
             }
 
             var version = _hasher.ComputeVersion(domains);
@@ -69,6 +71,7 @@ namespace Server.GameConfigs
                     SpreadsheetId = domain.SpreadsheetId,
                     Range = domain.Range,
                     Rows = ParseRows(domain.RowsJson),
+                    SourceRows = domain.SourceRows.Count == 0 ? null : new List<int>(domain.SourceRows),
                 });
             }
 

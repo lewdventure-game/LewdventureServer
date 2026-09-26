@@ -16,5 +16,8 @@ namespace Server.GameConfigs
 
         [JsonProperty("rows")]
         public JArray Rows { get; set; } = new();
+
+        [JsonProperty("sourceRows", NullValueHandling = NullValueHandling.Ignore)]
+        public List<int>? SourceRows { get; set; }
     }
 }

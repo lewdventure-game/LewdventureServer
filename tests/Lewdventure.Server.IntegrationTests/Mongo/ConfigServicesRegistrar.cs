@@ -18,6 +18,8 @@ namespace Tests.Integration.Mongo
             services.AddSingleton<ConfigSnapshotSerializer>();
             services.AddSingleton<ConfigSnapshotValidator>();
             services.AddSingleton<ConfigSnapshotDiff>();
+            services.AddSingleton<ConfigRangeReader>()
+                .AddSingleton<ConfigRowLocator>();
             services.AddSingleton<ConfigRowsParser>();
             services.AddSingleton<SheetRowsConverter>();
             services.AddSingleton<UploadedSheetsSnapshotBuilder>();

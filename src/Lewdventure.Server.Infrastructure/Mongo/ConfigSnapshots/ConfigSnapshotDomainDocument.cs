@@ -9,5 +9,7 @@ namespace Server.Infrastructure.Mongo.ConfigSnapshots
         public string Range { get; set; } = string.Empty;
 
         public string RowsJson { get; set; } = string.Empty;
+
+        public List<int> SourceRows { get; set; } = new();
     }
 }

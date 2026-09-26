@@ -1,0 +1,102 @@
+name: config-fixture
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: config-fixture
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+  FIXTURE_PATH: tests/Lewdventure.Server.GoldenTests/Golden/Fixtures/config-snapshot.v1.json
+  BRANCH_NAME: chore/config-fixture
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: dev
+    env:
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/lewdventure/dev' }}
+      SSH_TARGET: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+      SSH_PORT: ${{ vars.SSH_PORT || '22' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/ssh-setup
+        with:
+          private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known-hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+      - name: export snapshot from dev
+        id: snapshot
+        run: |
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "$(printf '%q' "$DEPLOY_PATH/scripts/config-transfer.sh") dev export active" > snapshot.json
+          format="$(jq -r .format snapshot.json)"
+          version="$(jq -r .version snapshot.json)"
+          [ "$format" = "lewdventure-config-snapshot" ] || { echo "unexpected snapshot format '$format'" >&2; exit 1; }
+          [[ "$version" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "unexpected snapshot version '$version'" >&2; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: compare with fixture
+        id: compare
+        run: |
+          if cmp -s snapshot.json "$FIXTURE_PATH"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Фикстура совпадает с dev, версия $(jq -r .version snapshot.json)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-dotnet@v6
+        if: steps.compare.outputs.changed == 'true'
+        with:
+          global-json-file: global.json
+
+      - name: regenerate goldens
+        if: steps.compare.outputs.changed == 'true'
+        run: |
+          old_version="$(jq -r .version "$FIXTURE_PATH")"
+          cp snapshot.json "$FIXTURE_PATH"
+          dotnet restore LewdventureServer.slnx --locked-mode
+          dotnet build LewdventureServer.slnx -c Release --no-restore
+          LEWD_GOLDEN_UPDATE=1 dotnet test tests/Lewdventure.Server.GoldenTests -c Release --no-build
+          dotnet test tests/Lewdventure.Server.GoldenTests -c Release --no-build
+          dotnet test tests/Lewdventure.Server.UnitTests -c Release --no-build
+          {
+            echo "### Фикстура конфигов обновлена"
+            echo "- было: \`$old_version\`"
+            echo "- стало: \`${{ steps.snapshot.outputs.version }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: open pull request
+        if: steps.compare.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.snapshot.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH_NAME"
+          git add "$FIXTURE_PATH" tests/Lewdventure.Server.GoldenTests/Golden/Cases
+          if git diff --cached --quiet; then
+            echo "Изменений в файлах нет." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git commit -m "Конфиги: фикстура и эталоны с dev"
+          git push --force origin "$BRANCH_NAME"
+          if [ -z "$(gh pr list --head "$BRANCH_NAME" --state open --json number --jq '.[].number')" ]; then
+            gh pr create --head "$BRANCH_NAME" --base master \
+              --title "Конфиги: фикстура и эталоны с dev" \
+              --body "Снимок конфигов с dev: \`$VERSION\`. Эталоны боя перегенерированы автоматически, изменения в ответах нужно просмотреть перед слиянием."
+          fi

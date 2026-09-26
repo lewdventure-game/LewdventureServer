@@ -45,7 +45,9 @@ namespace Server.GameConfigs
                     continue;
                 }
 
-                domains.Add(new ConfigSnapshotDomain(sheet.Domain, sheet.SpreadsheetId, sheet.Range, _sheetRowsConverter.ToRowsJson(sheet.Values)));
+                var rows = _sheetRowsConverter.Convert(sheet.Values, sheet.Range);
+
+                domains.Add(new ConfigSnapshotDomain(sheet.Domain, sheet.SpreadsheetId, sheet.Range, rows.RowsJson, rows.SourceRows));
             }
 
             if (0 < errors.Count)

@@ -6,13 +6,22 @@ namespace Server.GameConfigs
     {
         private const string IsOffHeader = "is_off";
 
-        public string ToRowsJson(IReadOnlyList<IReadOnlyList<object?>>? values)
+        private readonly ConfigRangeReader _configRangeReader;
+
+        public SheetRowsConverter(ConfigRangeReader configRangeReader)
+        {
+            _configRangeReader = configRangeReader;
+        }
+
+        public SheetRowsResult Convert(IReadOnlyList<IReadOnlyList<object?>>? values, string range)
         {
             var rowsData = new List<Dictionary<string, object>>();
+            var sourceRows = new List<int>();
 
             if (values == null || values.Count < 2)
-                return JsonConvert.SerializeObject(rowsData);
+                return new SheetRowsResult(JsonConvert.SerializeObject(rowsData), sourceRows);
 
+            var startRow = _configRangeReader.ResolveStartRow(range);
             var headerRow = values[0];
             var headers = new List<string>(headerRow.Count);
 
@@ -52,11 +61,14 @@ namespace Server.GameConfigs
                         isActive = false;
                 }
 
-                if (isActive)
-                    rowsData.Add(rowData);
+                if (isActive == false)
+                    continue;
+
+                rowsData.Add(rowData);
+                sourceRows.Add(startRow + i);
             }
 
-            return JsonConvert.SerializeObject(rowsData);
+            return new SheetRowsResult(JsonConvert.SerializeObject(rowsData), sourceRows);
         }
     }
 }

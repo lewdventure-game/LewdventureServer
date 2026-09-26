@@ -12,7 +12,7 @@ namespace Tests.Unit.GameConfig
         [SetUp]
         public void SetUp()
         {
-            _builder = new UploadedSheetsSnapshotBuilder(_configDomainNames, new ConfigSnapshotHasher(), new SheetRowsConverter());
+            _builder = new UploadedSheetsSnapshotBuilder(_configDomainNames, new ConfigSnapshotHasher(), new SheetRowsConverter(new ConfigRangeReader()));
         }
 
         [Test]

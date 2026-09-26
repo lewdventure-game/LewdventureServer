@@ -103,13 +103,56 @@ namespace Tests.Unit.GameConfig
             Assert.That(constants.Removed, Is.EquivalentTo(new[] { "2" }));
         }
 
+        [Test]
+        public void Builder_BrokenCell_ReportsSheetRowAndColumn()
+        {
+            var rows = "[{\"id\":\"7\",\"constant_name\":\"speed\",\"constant_value\":\"1\",\"constant_type\":\"weird\"}]";
+            var snapshot = new GameConfigSnapshot("sha256:test", DateTime.UtcNow, "test", CreateDomains(rows, new[] { 17 }));
+
+            var result = CreateBuilder().Build(snapshot, "test");
+
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.Errors, Has.Some.Contains("Лист Constants, строка 17 (id 7), колонка constant_type"));
+            Assert.That(result.Errors, Has.Some.Contains("ожидался тип ValueType. Значение: 'weird'."));
+        }
+
+        [Test]
+        public void Builder_BrokenRows_ReportsSheetOnly()
+        {
+            var snapshot = new GameConfigSnapshot("sha256:test", DateTime.UtcNow, "test", CreateDomains("not json"));
+
+            var result = CreateBuilder().Build(snapshot, "test");
+
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.Errors, Has.Some.Contains("Лист Constants: строки не читаются как JSON"));
+        }
+
+        [Test]
+        public void Serializer_RoundTrip_KeepsSourceRows()
+        {
+            var serializer = new ConfigSnapshotSerializer(_hasher);
+            var domains = CreateDomains("[{\"id\":\"1\"}]", new[] { 5 });
+            var snapshot = new GameConfigSnapshot(_hasher.ComputeVersion(domains), DateTime.UtcNow, "test", domains);
+
+            var reloaded = serializer.Deserialize(serializer.Serialize(snapshot));
+
+            Assert.That(reloaded.Version, Is.EqualTo(snapshot.Version));
+            Assert.That(reloaded.Domains[0].SourceRows, Is.EqualTo(new[] { 5 }));
+            Assert.That(reloaded.Domains[1].SourceRows, Is.Empty);
+        }
+
         private List<ConfigSnapshotDomain> CreateDomains(string constantsRows)
+        {
+            return CreateDomains(constantsRows, Array.Empty<int>());
+        }
+
+        private List<ConfigSnapshotDomain> CreateDomains(string constantsRows, IReadOnlyList<int> constantsSourceRows)
         {
             var domains = new List<ConfigSnapshotDomain>();
             var names = _domainNames.Ordered;
 
             for (int i = 0; i < names.Count; i++)
-                domains.Add(new ConfigSnapshotDomain(names[i], "sheet", "B:Z", i == 0 ? constantsRows : "[]"));
+                domains.Add(new ConfigSnapshotDomain(names[i], "sheet", "B:Z", i == 0 ? constantsRows : "[]", i == 0 ? constantsSourceRows : Array.Empty<int>()));
 
             return domains;
         }
@@ -118,7 +161,7 @@ namespace Tests.Unit.GameConfig
         {
             return new GameConfigSetBuilder(
                 new BonusWorkModeParser(NullLogger<BonusWorkModeParser>.Instance),
-                new ConfigRowsParser(),
+                new ConfigRowsParser(new ConfigRowLocator(new ConfigRangeReader())),
                 new ConfigSnapshotValidator(_domainNames),
                 NullLogger<GameConfigSetBuilder>.Instance);
         }

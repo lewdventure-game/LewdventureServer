@@ -138,6 +138,8 @@ namespace Server.Api.Composition
                 .AddSingleton<ConfigSnapshotSerializer>()
                 .AddSingleton<ConfigSnapshotValidator>()
                 .AddSingleton<ConfigSnapshotDiff>()
+                .AddSingleton<ConfigRangeReader>()
+                .AddSingleton<ConfigRowLocator>()
                 .AddSingleton<ConfigRowsParser>()
                 .AddSingleton<SheetRowsConverter>()
                 .AddSingleton<UploadedSheetsSnapshotBuilder>()

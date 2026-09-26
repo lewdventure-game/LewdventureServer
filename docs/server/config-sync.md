@@ -23,7 +23,8 @@ Google Sheets
     (либо GoogleSheetsConfigImporter, если на сервере есть ключ сервисного аккаунта)
   → GameConfigSnapshot (version = sha256 по domain + rows)
   → ConfigSnapshotValidator (ошибки блокируют, warnings по колонкам)
-  → GameConfigSetBuilder (новый ConfigDistributor, те же парсеры и managers)
+  → GameConfigSetBuilder (новый ConfigDistributor, те же парсеры и managers);
+    строки разбираются по одной, ошибка значения не роняет сборку, а называет лист, строку и колонку
   → Mongo config_snapshots (идемпотентно по version)
   → активация в транзакции: config_state.active + запись в config_activations
   → IGameConfigSetProvider.Swap (атомарная подмена, бой в полёте дорабатывает на старой версии)

@@ -48,9 +48,9 @@ namespace Server.Infrastructure.GoogleSheets
                     await Task.Delay(_options.DelayBetweenSheetsMs, cancellationToken);
 
                 var sheet = GetSheet(domainNames[i]);
-                var rowsJson = await DownloadWithRetryAsync(request, sheet, cancellationToken);
+                var rows = await DownloadWithRetryAsync(request, sheet, cancellationToken);
 
-                domains.Add(new ConfigSnapshotDomain(sheet.Domain, sheet.SpreadsheetId, sheet.Range, rowsJson));
+                domains.Add(new ConfigSnapshotDomain(sheet.Domain, sheet.SpreadsheetId, sheet.Range, rows.RowsJson, rows.SourceRows));
             }
 
             var version = _configSnapshotHasher.ComputeVersion(domains);
@@ -102,7 +102,7 @@ namespace Server.Infrastructure.GoogleSheets
             throw new InvalidOperationException($"GoogleSheets sheet for domain {domain} is not configured.");
         }
 
-        private async Task<string> DownloadWithRetryAsync(
+        private async Task<SheetRowsResult> DownloadWithRetryAsync(
             SpreadsheetsResource.ValuesResource request,
             GoogleSheetDefinition sheet,
             CancellationToken cancellationToken)
@@ -130,7 +130,7 @@ namespace Server.Infrastructure.GoogleSheets
             throw new Exception($"Не удалось скачать таблицу '{sheet.Domain}' после {maxRetries} попыток.");
         }
 
-        private async Task<string> DownloadRowsAsync(
+        private async Task<SheetRowsResult> DownloadRowsAsync(
             SpreadsheetsResource.ValuesResource request,
             GoogleSheetDefinition sheet,
             CancellationToken cancellationToken)
@@ -150,11 +150,11 @@ namespace Server.Infrastructure.GoogleSheets
             if (rows.Count < 2)
                 _logger.LogWarning($"[Config] sheet empty sheet = {sheet.Domain}");
 
-            var rowsJson = _sheetRowsConverter.ToRowsJson(rows);
+            var converted = _sheetRowsConverter.Convert(rows, sheet.Range);
 
             _logger.LogInformation($"[Config] downloaded sheet = {sheet.Domain}");
 
-            return rowsJson;
+            return converted;
         }
     }
 }

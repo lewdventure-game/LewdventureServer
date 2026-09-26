@@ -6,10 +6,10 @@ namespace Tests.Unit.GameConfig
     [TestFixture]
     public sealed class SheetRowsConverterTests
     {
-        private readonly SheetRowsConverter _converter = new();
+        private readonly SheetRowsConverter _converter = new(new ConfigRangeReader());
 
         [Test]
-        public void ToRowsJson_MapsHeadersSkipsDisabledRows()
+        public void Convert_MapsHeadersSkipsDisabledRows()
         {
             var values = new List<IReadOnlyList<object?>>
             {
@@ -19,7 +19,7 @@ namespace Tests.Unit.GameConfig
                 new List<object?> { "false", "3" },
             };
 
-            var rows = JArray.Parse(_converter.ToRowsJson(values));
+            var rows = JArray.Parse(_converter.Convert(values, "A1:D4").RowsJson);
 
             Assert.That(rows, Has.Count.EqualTo(2));
             Assert.That((string?)rows[0]["id"], Is.EqualTo("1"));
@@ -30,11 +30,41 @@ namespace Tests.Unit.GameConfig
         }
 
         [Test]
-        public void ToRowsJson_EmptyOrHeaderOnly_ReturnsEmptyArray()
+        public void Convert_KeepsSheetRowNumbers()
         {
-            Assert.That(_converter.ToRowsJson(null), Is.EqualTo("[]"));
-            Assert.That(_converter.ToRowsJson(new List<IReadOnlyList<object?>>()), Is.EqualTo("[]"));
-            Assert.That(_converter.ToRowsJson(new List<IReadOnlyList<object?>> { new List<object?> { "id" } }), Is.EqualTo("[]"));
+            var values = new List<IReadOnlyList<object?>>
+            {
+                new List<object?> { "is_off", "id" },
+                new List<object?> { "FALSE", "1" },
+                new List<object?> { "TRUE", "2" },
+                new List<object?> { "FALSE", "3" },
+            };
+
+            var result = _converter.Convert(values, "A1:B4");
+
+            Assert.That(result.SourceRows, Is.EqualTo(new[] { 2, 4 }));
+        }
+
+        [Test]
+        public void Convert_RangeWithOffset_ShiftsRowNumbers()
+        {
+            var values = new List<IReadOnlyList<object?>>
+            {
+                new List<object?> { "id" },
+                new List<object?> { "1" },
+            };
+
+            var result = _converter.Convert(values, "Constants!A10:B11");
+
+            Assert.That(result.SourceRows, Is.EqualTo(new[] { 11 }));
+        }
+
+        [Test]
+        public void Convert_EmptyOrHeaderOnly_ReturnsEmptyArray()
+        {
+            Assert.That(_converter.Convert(null, "A1:D1").RowsJson, Is.EqualTo("[]"));
+            Assert.That(_converter.Convert(new List<IReadOnlyList<object?>>(), "A1:D1").RowsJson, Is.EqualTo("[]"));
+            Assert.That(_converter.Convert(new List<IReadOnlyList<object?>> { new List<object?> { "id" } }, "A1:D1").RowsJson, Is.EqualTo("[]"));
         }
     }
 }

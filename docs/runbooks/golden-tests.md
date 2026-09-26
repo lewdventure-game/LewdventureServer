@@ -58,7 +58,9 @@ LEWD_GOLDEN_UPDATE=1 dotnet test tests/Lewdventure.Server.GoldenTests -c Release
 
 ## Обновление фикстуры конфигов
 
-Фикстура заморожена, чтобы правки таблиц не ломали тесты. Обновлять, только когда нужно покрыть новые данные:
+Раз в сутки (03:17 UTC) workflow `config-fixture` снимает активный снимок с dev. Если он отличается от фикстуры, workflow перегенерирует эталоны и откроет PR `chore/config-fixture` с новой версией. PR нужно просмотреть: дифф в `Golden/Cases` показывает, как правки таблиц меняют бой. Ручной запуск — `gh workflow run config-fixture`.
+
+Вручную, без dev:
 
 1. `dotnet test tests/Lewdventure.Server.GoldenTests -c Release --filter "FullyQualifiedName~ConfigFixtureCaptureTests"` с ключом Google (explicit-тест).
 2. Перегенерировать эталоны (`LEWD_GOLDEN_UPDATE=1`), просмотреть дифф.
