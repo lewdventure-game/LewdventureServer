@@ -33,7 +33,7 @@ load_set() {
   ipset create "$name-next" hash:net family "$family" -exist
   ipset flush "$name-next"
 
-  while read -r network; do
+  while read -r network || [ -n "$network" ]; do
     [ -n "$network" ] && ipset add "$name-next" "$network" -exist
   done < "$file"
 
@@ -71,7 +71,7 @@ attach_chain iptables INPUT
 attach_chain ip6tables DOCKER-USER
 attach_chain ip6tables INPUT
 
-NEXT_ENV="CLOUDFLARE_IPS=$(cat "$WORK_DIR/v4" "$WORK_DIR/v6" | tr '\n' ' ' | sed 's/ *$//')"
+NEXT_ENV="CLOUDFLARE_IPS=$(awk 'NF' "$WORK_DIR/v4" "$WORK_DIR/v6" | tr '\n' ' ' | sed 's/ *$//')"
 
 if [ ! -f "$ENV_FILE" ] || [ "$(cat "$ENV_FILE")" != "$NEXT_ENV" ]; then
   printf '%s\n' "$NEXT_ENV" > "$ENV_FILE"

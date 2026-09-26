@@ -314,11 +314,7 @@ namespace Server.Battles
                 }
 
                 if (_skillFactory.IsKnownSkillId(skillId) == false)
-                {
-                    errorMessage = $"Unknown skill id = {skillId} for unit id = {unit.Id}.";
-
-                    return false;
-                }
+                    _logger.LogWarning($"[Story][Battle]: Unknown skill id = {skillId} for unit id = {unit.Id}; skill skipped");
             }
 
             if (isSummon
