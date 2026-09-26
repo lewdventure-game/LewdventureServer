@@ -1,3 +1,5 @@
+const BREAK = String.fromCharCode(10);
+
 const LEWDVENTURE_ENVIRONMENTS = {
   dev: { title: 'dev', urlProperty: 'LEWDVENTURE_DEV_URL', keyProperty: 'LEWDVENTURE_DEV_KEY' },
   stage: { title: 'stage', urlProperty: 'LEWDVENTURE_STAGE_URL', keyProperty: 'LEWDVENTURE_STAGE_KEY' },
@@ -45,9 +47,7 @@ function publishConfigs_(environmentName) {
   const sheetsResponse = request_(environment, 'get', '/api/config/sheets', null);
 
   if (sheetsResponse.code !== 200 || sheetsResponse.body === null) {
-    ui.alert('Публикация на ' + environment.title, 'Не удалось получить список листов
-HTTP ' + sheetsResponse.code + '
-' + sheetsResponse.text, ui.ButtonSet.OK);
+    ui.alert('Публикация на ' + environment.title, 'Не удалось получить список листов' + BREAK + 'HTTP ' + sheetsResponse.code + BREAK + sheetsResponse.text, ui.ButtonSet.OK);
     return;
   }
 
