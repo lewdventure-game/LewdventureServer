@@ -71,13 +71,13 @@ function collectSheets_(sheets, reason) {
     const definition = sheets[i];
     const spreadsheet = SpreadsheetApp.openById(definition.spreadsheetId);
     const sheet = spreadsheet.getSheets()[0];
-    const values = sheet.getRange(definition.range).getDisplayValues();
+    const dataRange = sheet.getDataRange();
 
     collected.push({
       domain: definition.domain,
       spreadsheetId: definition.spreadsheetId,
-      range: definition.range,
-      values: trimTrailingEmptyRows_(values),
+      range: dataRange.getA1Notation(),
+      values: trimTrailingEmptyRows_(dataRange.getDisplayValues()),
     });
   }
 
