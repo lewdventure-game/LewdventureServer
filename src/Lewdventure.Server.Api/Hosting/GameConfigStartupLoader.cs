@@ -38,10 +38,7 @@ namespace Server.Api.Hosting
             if (options.Source == GameConfigSourceType.File)
                 return await LoadFromFileAsync(services, ResolvePath(options.FilePath, environment));
 
-            if (options.Source == GameConfigSourceType.Mongo)
-                return await LoadFromMongoAsync(services, options, environment, logger);
-
-            return await services.GetRequiredService<IGameConfigService>().UpdateAllConfigsAsync(environment.IsDevelopment());
+            return await LoadFromMongoAsync(services, options, environment, logger);
         }
 
         private async Task<(bool Success, string Message)> LoadFromMongoAsync(IServiceProvider services, GameConfigOptions options, IHostEnvironment environment, ILogger logger)
@@ -61,13 +58,6 @@ namespace Server.Api.Hosting
                     var snapshot = await services.GetRequiredService<FileConfigSnapshotSource>().LoadAsync(bootstrapPath, CancellationToken.None);
 
                     result = await publishingService.PublishAsync(snapshot, BootstrapActor, "bootstrap from file", true, CancellationToken.None);
-                }
-
-                if (result.Succeeded == false && options.BootstrapFromGoogleSheetsIfEmpty && string.IsNullOrEmpty(result.Version))
-                {
-                    logger.LogWarning("[Config][Snapshot] no active snapshot; bootstrapping from Google Sheets");
-
-                    result = await publishingService.ImportAndPublishAsync(BootstrapActor, "bootstrap on empty database", CancellationToken.None);
                 }
 
                 if (result.Succeeded == false)

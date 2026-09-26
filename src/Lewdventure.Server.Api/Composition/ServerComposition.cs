@@ -10,7 +10,6 @@ using Server.Api.Options;
 using Server.Api.Security;
 using Server.Bonuses;
 using Server.GameConfigs;
-using Server.Infrastructure.GoogleSheets;
 using Server.Infrastructure.Mongo.ConfigSnapshots;
 using Server.Infrastructure.Mongo;
 using Server.Services;
@@ -52,13 +51,13 @@ namespace Server.Api.Composition
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
-            services.AddOptions<GoogleSheetsOptions>()
-                .Bind(_configuration.GetSection(GoogleSheetsOptions.SectionName))
+            services.AddOptions<ConfigSheetsOptions>()
+                .Bind(_configuration.GetSection(ConfigSheetsOptions.SectionName))
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
             services.AddSingleton<IValidateOptions<ServerOptions>, ServerOptionsValidator>();
-            services.AddSingleton<IValidateOptions<GoogleSheetsOptions>, GoogleSheetsOptionsValidator>();
+            services.AddSingleton<IValidateOptions<ConfigSheetsOptions>, ConfigSheetsOptionsValidator>();
             services.AddSingleton<IValidateOptions<GameConfigOptions>, GameConfigOptionsValidator>();
             services.AddOptions<HostOptions>().Configure<IOptions<ServerOptions>>(ConfigureHostOptions);
         }
@@ -147,9 +146,6 @@ namespace Server.Api.Composition
                 .AddSingleton<GameConfigSetBuilder>()
                 .AddSingleton<IGameConfigSetProvider, GameConfigSetProvider>()
                 .AddSingleton<IBonusWorkModeParser, BonusWorkModeParser>()
-                .AddSingleton<GoogleCredentialProvider>()
-                .AddSingleton<GoogleSheetsConfigImporter>()
-                .AddSingleton<IGameConfigService, GameConfigService>()
                 .AddSingleton<ConfigResponseFactory>()
                 .AddScoped(ResolveConfigDistributor);
         }

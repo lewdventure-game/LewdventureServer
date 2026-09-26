@@ -6,7 +6,6 @@ using Microsoft.Extensions.Options;
 using Server.Bonuses;
 using Server.GameConfigs;
 using Server.Infrastructure.Alerts;
-using Server.Infrastructure.GoogleSheets;
 using Server.Infrastructure.Mongo;
 using Server.Infrastructure.Mongo.ConfigSnapshots;
 
@@ -14,7 +13,7 @@ namespace Server.ConfigTool
 {
     internal sealed class ConfigToolApplication
     {
-        private const string Usage = "Usage: config-tool <import|validate|hash|diff|publish|activate|list|export|status> [--out file] [--credentials file] [--file file] [--from file] [--to file] [--version version] [--reason text] [--actor name] [--activate]";
+        private const string Usage = "Usage: config-tool <validate|hash|diff|publish|activate|list|export|status> [--file file] [--from file] [--to file] [--version version] [--reason text] [--actor name] [--activate]";
         private const string EnvironmentVariable = "DOTNET_ENVIRONMENT";
         private const string LocalEnvironmentName = "Local";
 
@@ -36,9 +35,6 @@ namespace Server.ConfigTool
                 ContentRootPath = AppContext.BaseDirectory,
                 EnvironmentName = string.IsNullOrWhiteSpace(environmentName) ? LocalEnvironmentName : environmentName,
             });
-
-            if (arguments.TryGet("credentials", out var credentialsPath))
-                builder.Configuration["GoogleSheets:CredentialsPath"] = Path.GetFullPath(credentialsPath);
 
             builder.Configuration["Logging:Console:FormatterName"] = "simple";
             builder.Configuration["Logging:LogLevel:Default"] = "Warning";
@@ -99,8 +95,6 @@ namespace Server.ConfigTool
 
         private void RegisterServices(HostApplicationBuilder builder)
         {
-            builder.Services.AddOptions<GoogleSheetsOptions>().Bind(builder.Configuration.GetSection(GoogleSheetsOptions.SectionName));
-            builder.Services.AddSingleton<IValidateOptions<GoogleSheetsOptions>, GoogleSheetsOptionsValidator>();
             builder.Services.AddSingleton<ConfigDomainNames>();
             builder.Services.AddSingleton<ConfigSnapshotHasher>();
             builder.Services.AddSingleton<ConfigSnapshotSerializer>();
@@ -114,8 +108,6 @@ namespace Server.ConfigTool
             builder.Services.AddSingleton<FileConfigSnapshotSource>();
             builder.Services.AddSingleton<GameConfigSetBuilder>();
             builder.Services.AddSingleton<IBonusWorkModeParser, BonusWorkModeParser>();
-            builder.Services.AddSingleton<GoogleCredentialProvider>();
-            builder.Services.AddSingleton<GoogleSheetsConfigImporter>();
             builder.Services.AddSingleton<IGameConfigSetProvider, GameConfigSetProvider>();
             builder.Services.AddSingleton<ConfigToolCommands>();
             builder.Services.AddSingleton<IAlertPublisher, NullAlertPublisher>();
@@ -139,8 +131,6 @@ namespace Server.ConfigTool
 
             switch (arguments.Command)
             {
-                case "import":
-                    return await commands.ImportAsync(arguments.GetRequired("out"), environment);
                 case "validate":
                     return await commands.ValidateAsync(arguments.GetRequired("file"));
                 case "hash":

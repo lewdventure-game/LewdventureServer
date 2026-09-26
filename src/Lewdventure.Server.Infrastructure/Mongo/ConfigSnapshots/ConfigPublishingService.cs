@@ -1,6 +1,5 @@
 using Server.GameConfigs;
 using Server.Infrastructure.Alerts;
-using Server.Infrastructure.GoogleSheets;
 
 namespace Server.Infrastructure.Mongo.ConfigSnapshots
 {
@@ -12,7 +11,6 @@ namespace Server.Infrastructure.Mongo.ConfigSnapshots
         private readonly ConfigSnapshotRepository _configSnapshotRepository;
         private readonly GameConfigSetBuilder _gameConfigSetBuilder;
         private readonly IGameConfigSetProvider _gameConfigSetProvider;
-        private readonly GoogleSheetsConfigImporter _googleSheetsConfigImporter;
         private readonly ILogger<ConfigPublishingService> _logger;
         private readonly SemaphoreSlim _lock = new(1, 1);
 
@@ -23,7 +21,6 @@ namespace Server.Infrastructure.Mongo.ConfigSnapshots
             ConfigSnapshotRepository configSnapshotRepository,
             GameConfigSetBuilder gameConfigSetBuilder,
             IGameConfigSetProvider gameConfigSetProvider,
-            GoogleSheetsConfigImporter googleSheetsConfigImporter,
             ILogger<ConfigPublishingService> logger)
         {
             _alertPublisher = alertPublisher;
@@ -32,15 +29,7 @@ namespace Server.Infrastructure.Mongo.ConfigSnapshots
             _configSnapshotRepository = configSnapshotRepository;
             _gameConfigSetBuilder = gameConfigSetBuilder;
             _gameConfigSetProvider = gameConfigSetProvider;
-            _googleSheetsConfigImporter = googleSheetsConfigImporter;
             _logger = logger;
-        }
-
-        public async Task<ConfigPublishResult> ImportAndPublishAsync(string actor, string reason, CancellationToken cancellationToken)
-        {
-            var snapshot = await _googleSheetsConfigImporter.ImportAsync(cancellationToken);
-
-            return await PublishAsync(snapshot, actor, reason, true, cancellationToken);
         }
 
         public async Task<ConfigPublishResult> PublishAsync(GameConfigSnapshot snapshot, string actor, string reason, bool activate, CancellationToken cancellationToken)

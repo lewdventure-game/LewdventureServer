@@ -1,14 +1,12 @@
 # LewdventureServer
 
-Серверный симулятор боя для Lewdventure на ASP.NET Core (.NET 10). Считает бой детерминированно по snapshot двух команд и возвращает пошаговый battle script, который проигрывает Unity-клиент. Игровые конфиги берутся из Google Sheets как версионные снапшоты в MongoDB.
+Серверный симулятор боя для Lewdventure на ASP.NET Core (.NET 10). Считает бой детерминированно по snapshot двух команд и возвращает пошаговый battle script, который проигрывает Unity-клиент. Игровые конфиги публикуются из Google-таблиц скриптом таблицы и хранятся версионными снапшотами в MongoDB.
 
 ## Быстрый старт
 
 Нужен .NET SDK 10.0.401 (`global.json`) и Docker Desktop.
 
-Windows, для игры из Unity: `local-server.bat` (Docker Desktop, api, MongoDB, ожидание готовности; команды `stop`, `restart`, `logs`, `status`, `reset`).
-
-Полный стек как на VPS (api + Mongo replica set), конфиги при первом старте импортируются из Google Sheets:
+Полный стек как на VPS (api + Mongo replica set), конфиги при первом старте берутся из фикстуры репозитория:
 
 ```bash
 docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.local.yaml up -d --build --wait
@@ -35,7 +33,7 @@ ASPNETCORE_ENVIRONMENT=Local GameConfig__Source=File GameConfig__FilePath=tests/
 | --- | --- |
 | `POST /api/battle/simulate` | симуляция боя, seed в ответе |
 | `POST /api/battle/replay` | повтор боя по seed |
-| `POST /api/config/publish` | импорт конфигов из Sheets и активация (dev/stage, `X-Config-Key`) |
+| `POST /api/config/upload` | публикация строк листов из таблицы и активация (dev/stage, `X-Config-Key`) |
 | `GET /api/config/status` | активная версия конфигов (`X-Config-Key`) |
 | `GET /health/ready` | готовность: конфиги и Mongo |
 | `/admin/config/*` | управление снапшотами (ops-порт, `X-Admin-Key`) |
@@ -61,7 +59,7 @@ src/
   Lewdventure.Server.Contracts        wire DTO боя
   Lewdventure.Server.GameConfig       mappers, managers, ConfigDistributor, снапшоты конфигов
   Lewdventure.Server.Battle           симуляция боя
-  Lewdventure.Server.Infrastructure   Mongo, Google Sheets, алерты Discord
+  Lewdventure.Server.Infrastructure   Mongo, алерты Discord
   Lewdventure.Server.Api              хост, эндпоинты, options, health, безопасность, метрики
 tools/
   Lewdventure.Server.ConfigTool       CLI снапшотов: import, validate, diff, publish, activate, export

@@ -4,7 +4,6 @@ namespace Server.Api.Options
     {
         Unknown = 0,
         File = 1,
-        GoogleSheets = 2,
-        Mongo = 3,
+        Mongo = 2,
     }
 }

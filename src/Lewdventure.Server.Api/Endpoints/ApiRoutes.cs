@@ -6,8 +6,6 @@ namespace Server.Api.Endpoints
         public const string Ping = "/api/ping";
         public const string SimulateBattle = "/api/battle/simulate";
         public const string ReplayBattle = "/api/battle/replay";
-        public const string UpdateConfig = "/api/config/update";
-        public const string PublishConfig = "/api/config/publish";
         public const string ConfigStatus = "/api/config/status";
         public const string ConfigSheets = "/api/config/sheets";
         public const string ConfigUpload = "/api/config/upload";

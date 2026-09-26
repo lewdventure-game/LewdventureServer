@@ -2,7 +2,7 @@
 
 # Config Sync
 
-Как игровые таблицы из Google Sheets попадают в runtime-индексы сервера.
+Как игровые таблицы из Google Sheets попадают в runtime-индексы сервера. Сервер в Google не ходит: листы читает Apps Script от имени человека и присылает строки.
 
 ## Summary
 
@@ -20,7 +20,6 @@
 ```text
 Google Sheets
   → Apps Script читает листы от имени пользователя и шлёт строки на сервер
-    (либо GoogleSheetsConfigImporter, если на сервере есть ключ сервисного аккаунта)
   → GameConfigSnapshot (version = sha256 по domain + rows)
   → ConfigSnapshotValidator (ошибки блокируют, warnings по колонкам)
   → GameConfigSetBuilder (новый ConfigDistributor, те же парсеры и managers);
@@ -38,8 +37,7 @@ Google Sheets
 
 | Source | Где используется | Поведение |
 | --- | --- | --- |
-| `Mongo` | dev, stage, prod, локальный compose | грузит `PinnedVersion` или активную версию; если активной нет или она не собирается, а задан `BootstrapFilePath` — публикует снимок из файла; если задан `BootstrapFromGoogleSheetsIfEmpty` — импортирует из Sheets; при недоступности Mongo — файловый кэш `LocalCachePath` |
-| `GoogleSheets` | `dotnet run` без Mongo | импорт при старте, как раньше |
+| `Mongo` | dev, stage, prod, локальный compose | грузит `PinnedVersion` или активную версию; если активной нет или она не собирается, а задан `BootstrapFilePath` — публикует снимок из файла; при недоступности Mongo — файловый кэш `LocalCachePath` |
 | `File` | тесты, CI, нагрузка | снапшот из `FilePath` (например `tests/Lewdventure.Server.GoldenTests/Golden/Fixtures/config-snapshot.v1.json`) |
 
 `FailStartupIfUnavailable=true` роняет старт, если конфиги получить не удалось; иначе сервер поднимается, `/health/ready` отдаёт critical, а бой отвечает `503`.
@@ -52,8 +50,6 @@ Google Sheets
 | --- | --- | --- | --- |
 | `POST /api/config/upload` | public | `X-Config-Key`, только если `ConfigPublisher:Enabled` (dev/stage/local) | приём строк листов от Apps Script → валидация → сохранение → активация; ключ Google не нужен |
 | `GET /api/config/sheets` | public | `X-Config-Key` | список доменов с id таблиц и диапазонами: Apps Script берёт его, чтобы не дублировать настройки |
-| `POST /api/config/publish` | public | `X-Config-Key` | сервер сам читает Sheets через ключ сервисного аккаунта; нужен только если ключ настроен |
-| `POST /api/config/update` | public | как publish, плюс устаревший заголовок `X-Config-Secret` с warning в логе | alias publish для старых вызовов |
 | `GET /api/config/status` | public | `X-Config-Key` | активная и загруженная версии |
 | `GET /admin/config/status` | ops | `X-Admin-Key` | состояние провайдера и Mongo |
 | `GET /admin/config/snapshots` | ops | `X-Admin-Key` | последние снапшоты |
@@ -70,7 +66,6 @@ Ops-порт (9090) никогда не публикуется наружу: н�
 
 | Команда | Нужен Mongo | Что делает |
 | --- | --- | --- |
-| `import --out file` | нет | снять снапшот из Google Sheets в файл |
 | `validate --file file` | нет | ошибки и warnings по колонкам |
 | `hash --file file` | нет | версия снапшота |
 | `diff --from a --to b` | нет | изменения по доменам и id |
@@ -91,7 +86,7 @@ Ops-порт (9090) никогда не публикуется наружу: н�
 - Enemies: плоских колонок нет, используется только упакованная `other_characteristics`.
 - Equipments: ожидаемых колонок нет.
 
-Диапазоны задаются в `GoogleSheets:Sheets[*].Range` (`appsettings.json`), менять только по решению владельца.
+Диапазон листа определяет сам Apps Script (`getDataRange`), сервер хранит только каталог таблиц `ConfigSheets:Sheets` (`appsettings.json`), менять его только по решению владельца.
 
 ## Источник правды
 

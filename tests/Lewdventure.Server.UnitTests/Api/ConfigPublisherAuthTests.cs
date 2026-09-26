@@ -29,17 +29,17 @@ namespace Tests.Unit.Api
         }
 
         [Test]
-        public async Task Update_WithoutKey_Returns401()
+        public async Task Sheets_WithoutKey_Returns401()
         {
-            using var response = await _client.PostAsync("/api/config/update", null);
+            using var response = await _client.GetAsync("/api/config/sheets");
 
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
         }
 
         [Test]
-        public async Task Update_WithWrongKey_Returns401()
+        public async Task Sheets_WithWrongKey_Returns401()
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/config/update");
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/api/config/sheets");
 
             request.Headers.Add("X-Config-Key", "wrong-key");
 
@@ -50,9 +50,9 @@ namespace Tests.Unit.Api
 
         [TestCase("X-Config-Key")]
         [TestCase("X-Config-Secret")]
-        public async Task Update_WithValidKey_Returns200(string headerName)
+        public async Task Sheets_WithValidKey_Returns200(string headerName)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/config/update");
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/api/config/sheets");
 
             request.Headers.Add(headerName, Key);
 

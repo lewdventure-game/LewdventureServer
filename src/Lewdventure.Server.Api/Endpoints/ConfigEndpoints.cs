@@ -3,7 +3,6 @@ using Microsoft.Extensions.Options;
 using Server.Api.Options;
 using Server.Api.Security;
 using Server.GameConfigs;
-using Server.Infrastructure.GoogleSheets;
 using Server.Infrastructure.Mongo;
 using Server.Infrastructure.Mongo.ConfigSnapshots;
 using Server.Services;
@@ -25,14 +24,6 @@ namespace Server.Api.Endpoints
             if (publisherOptions.Enabled == false)
                 return;
 
-            application.MapPost(ApiRoutes.PublishConfig, PublishAsync)
-                .RequireAuthorization(SecurityNames.ConfigPublisherPolicy)
-                .RequireRateLimiting(SecurityNames.ConfigRateLimitPolicy);
-
-            application.MapPost(ApiRoutes.UpdateConfig, UpdateAsync)
-                .RequireAuthorization(SecurityNames.ConfigPublisherPolicy)
-                .RequireRateLimiting(SecurityNames.ConfigRateLimitPolicy);
-
             application.MapPost(ApiRoutes.ConfigUpload, UploadAsync)
                 .RequireAuthorization(SecurityNames.ConfigPublisherPolicy)
                 .RequireRateLimiting(SecurityNames.ConfigRateLimitPolicy);
@@ -44,54 +35,6 @@ namespace Server.Api.Endpoints
             application.MapGet(ApiRoutes.ConfigStatus, GetStatusAsync)
                 .RequireAuthorization(SecurityNames.ConfigPublisherPolicy)
                 .RequireRateLimiting(SecurityNames.ConfigRateLimitPolicy);
-        }
-
-        private async Task<IResult> PublishAsync(
-            HttpContext httpContext,
-            [FromBody] ConfigActionRequest? request,
-            [FromServices] ConfigResponseFactory responseFactory,
-            [FromServices] IGameConfigService configService,
-            [FromServices] IGameConfigSetProvider provider,
-            IHostEnvironment environment)
-        {
-            if (_isMongoEnabled == false)
-            {
-                var (success, message) = await configService.UpdateAllConfigsAsync(environment.IsDevelopment());
-                var fallbackResult = new ConfigPublishResult { Succeeded = success, Version = provider.Current.Version, Activated = success };
-
-                if (success == false)
-                    fallbackResult.Errors.Add(message);
-
-                return responseFactory.CreatePublishResult(fallbackResult);
-            }
-
-            var publishingService = httpContext.RequestServices.GetRequiredService<ConfigPublishingService>();
-            var reason = request == null ? string.Empty : request.Reason;
-            var result = await publishingService.ImportAndPublishAsync(CreateActor(httpContext), reason, httpContext.RequestAborted);
-
-            return responseFactory.CreatePublishResult(result);
-        }
-
-        private async Task<IResult> UpdateAsync(
-            HttpContext httpContext,
-            [FromServices] IGameConfigService configService,
-            IHostEnvironment environment)
-        {
-            if (_isMongoEnabled == false)
-            {
-                var (success, message) = await configService.UpdateAllConfigsAsync(environment.IsDevelopment());
-
-                return success
-                    ? Results.Ok(new { status = "success", message })
-                    : Results.Problem(detail: message, statusCode: 500);
-            }
-
-            var publishingService = httpContext.RequestServices.GetRequiredService<ConfigPublishingService>();
-            var result = await publishingService.ImportAndPublishAsync(CreateActor(httpContext), "legacy update endpoint", httpContext.RequestAborted);
-
-            return result.Succeeded
-                ? Results.Ok(new { status = "success", message = $"version = {result.Version}" })
-                : Results.Problem(detail: string.Join("; ", result.Errors), statusCode: 500);
         }
 
         private async Task<IResult> UploadAsync(
@@ -134,9 +77,9 @@ namespace Server.Api.Endpoints
             return responseFactory.CreatePublishResult(result);
         }
 
-        private IResult GetSheetsAsync([FromServices] IOptions<GoogleSheetsOptions> googleSheetsOptions, [FromServices] ConfigDomainNames configDomainNames)
+        private IResult GetSheetsAsync([FromServices] IOptions<ConfigSheetsOptions> configSheetsOptions, [FromServices] ConfigDomainNames configDomainNames)
         {
-            var sheets = googleSheetsOptions.Value.Sheets;
+            var sheets = configSheetsOptions.Value.Sheets;
             var ordered = configDomainNames.Ordered;
             var payload = new List<object>(ordered.Count);
 
@@ -147,7 +90,7 @@ namespace Server.Api.Endpoints
                     if (string.Equals(sheets[j].Domain, ordered[i], StringComparison.Ordinal) == false)
                         continue;
 
-                    payload.Add(new { domain = sheets[j].Domain, spreadsheetId = sheets[j].SpreadsheetId, range = sheets[j].Range });
+                    payload.Add(new { domain = sheets[j].Domain, spreadsheetId = sheets[j].SpreadsheetId });
 
                     break;
                 }

@@ -1,6 +1,4 @@
-using Microsoft.Extensions.Hosting;
 using Server.GameConfigs;
-using Server.Infrastructure.GoogleSheets;
 
 namespace Server.ConfigTool
 {
@@ -10,42 +8,17 @@ namespace Server.ConfigTool
         private readonly ConfigSnapshotHasher _configSnapshotHasher;
         private readonly FileConfigSnapshotSource _fileConfigSnapshotSource;
         private readonly GameConfigSetBuilder _gameConfigSetBuilder;
-        private readonly GoogleSheetsConfigImporter _googleSheetsConfigImporter;
 
         public ConfigToolCommands(
             ConfigSnapshotDiff configSnapshotDiff,
             ConfigSnapshotHasher configSnapshotHasher,
             FileConfigSnapshotSource fileConfigSnapshotSource,
-            GameConfigSetBuilder gameConfigSetBuilder,
-            GoogleSheetsConfigImporter googleSheetsConfigImporter)
+            GameConfigSetBuilder gameConfigSetBuilder)
         {
             _configSnapshotDiff = configSnapshotDiff;
             _configSnapshotHasher = configSnapshotHasher;
             _fileConfigSnapshotSource = fileConfigSnapshotSource;
             _gameConfigSetBuilder = gameConfigSetBuilder;
-            _googleSheetsConfigImporter = googleSheetsConfigImporter;
-        }
-
-        public async Task<int> ImportAsync(string outputPath, IHostEnvironment environment)
-        {
-            if (environment.IsProduction())
-            {
-                Console.Error.WriteLine("import from Google Sheets is not allowed in Production");
-
-                return 2;
-            }
-
-            var snapshot = await _googleSheetsConfigImporter.ImportAsync(CancellationToken.None);
-            var exitCode = Report(snapshot);
-
-            if (exitCode != 0)
-                return exitCode;
-
-            await _fileConfigSnapshotSource.SaveAsync(outputPath, snapshot, CancellationToken.None);
-
-            Console.WriteLine($"saved {outputPath}");
-
-            return 0;
         }
 
         public async Task<int> ValidateAsync(string path)

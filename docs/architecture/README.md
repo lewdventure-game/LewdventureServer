@@ -32,7 +32,7 @@ flowchart LR
 | `Contracts` | DTO и enum'ы протокола | зависимости на другие проекты |
 | `GameConfig` | парсинг строк листов, managers, `ConfigDistributor`, снапшоты и их сборка | ASP.NET, Mongo, Google API |
 | `Battle` | симуляция поверх `IConfigDistributor` | ASP.NET, Mongo, Google API, HTTP |
-| `Infrastructure` | Mongo, импорт Google Sheets, отправка алертов | эндпоинты, логика боя |
+| `Infrastructure` | Mongo, отправка алертов | эндпоинты, логика боя |
 | `Api` | композиция DI, Kestrel, middleware, эндпоинты, health, метрики | игровая логика |
 | `LoadTest` | только HTTP к запущенному серверу | ссылки на проекты сервера |
 

@@ -1,16 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Server.Infrastructure.GoogleSheets
+namespace Server.Api.Options
 {
-    internal sealed class GoogleSheetDefinition
+    internal sealed class ConfigSheetDefinition
     {
         [Required]
         public string Domain { get; set; } = string.Empty;
 
         [Required]
         public string SpreadsheetId { get; set; } = string.Empty;
-
-        [Required]
-        public string Range { get; set; } = string.Empty;
     }
 }

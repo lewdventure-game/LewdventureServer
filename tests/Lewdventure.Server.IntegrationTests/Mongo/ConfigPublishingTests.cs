@@ -79,7 +79,6 @@ namespace Tests.Integration.Mongo
                 _environment.Services.GetRequiredService<ConfigSnapshotRepository>(),
                 builder,
                 otherProvider,
-                _environment.Services.GetRequiredService<Server.Infrastructure.GoogleSheets.GoogleSheetsConfigImporter>(),
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<ConfigPublishingService>.Instance);
 
             var result = await otherService.LoadActiveAsync(string.Empty, CancellationToken.None);

@@ -1,9 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Server.Bonuses;
 using Server.GameConfigs;
 using Server.Infrastructure.Alerts;
-using Server.Infrastructure.GoogleSheets;
 using Server.Infrastructure.Mongo.ConfigSnapshots;
 
 namespace Tests.Integration.Mongo
@@ -12,7 +10,6 @@ namespace Tests.Integration.Mongo
     {
         public void Register(IServiceCollection services)
         {
-            services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new GoogleSheetsOptions()));
             services.AddSingleton<ConfigDomainNames>();
             services.AddSingleton<ConfigSnapshotHasher>();
             services.AddSingleton<ConfigSnapshotSerializer>();
@@ -27,8 +24,6 @@ namespace Tests.Integration.Mongo
             services.AddSingleton<GameConfigSetBuilder>();
             services.AddSingleton<IGameConfigSetProvider, GameConfigSetProvider>();
             services.AddSingleton<IBonusWorkModeParser, BonusWorkModeParser>();
-            services.AddSingleton<GoogleCredentialProvider>();
-            services.AddSingleton<GoogleSheetsConfigImporter>();
             services.AddSingleton<IAlertPublisher, NullAlertPublisher>();
 
             new ConfigSnapshotStoreRegistrar().Register(services);

@@ -9,7 +9,7 @@ LewdventureServer — один deployable ASP.NET Core сервис (.NET 10), �
 ## Decision Rationale
 
 - **Project type:** headless battle simulator + управление версиями игровых конфигов.
-- **Tech stack:** .NET 10, ASP.NET Core Minimal API, Newtonsoft.Json, MongoDB, Google Sheets, Docker.
+- **Tech stack:** .NET 10, ASP.NET Core Minimal API, Newtonsoft.Json, MongoDB, Docker.
 - **Key factor:** механики боя и wire-контракт должны оставаться неизменными при любой инфраструктурной работе; это обеспечивают отдельные проекты и golden-тесты.
 
 ## Folder Structure
@@ -25,7 +25,6 @@ src/
   Lewdventure.Server.Battle/           Battles/Services/          BattleSimulatorService, перки, статусы, саммоны, скиллы
                                        Services/                  RNG
   Lewdventure.Server.Infrastructure/   Mongo/                     клиент, индексы, транзакции, ConfigSnapshots/
-                                       GoogleSheets/              импорт листов, credentials
                                        Alerts/                    очередь, троттлинг, Discord
   Lewdventure.Server.Api/              Hosting/ Composition/ Endpoints/ Options/ Security/ Http/ Health/ Metrics/ Json/
 tools/                                 ConfigTool, LoadTest, apps-script
@@ -49,7 +48,7 @@ docs/                                  gdd, server, architecture, runbooks
 ## Layer Communication
 
 - Composition root: `Api/Composition/ServerComposition` + регистраторы (`BattleServicesRegistrar`, `SecurityRegistrar`, `AlertsRegistrar`, `MongoServicesRegistrar`, `ConfigSnapshotStoreRegistrar`). Регистраторы — экземпляры, не static.
-- Config flow: Google Sheets → `GoogleSheetsConfigImporter` → `GameConfigSnapshot` → `ConfigSnapshotValidator` → `GameConfigSetBuilder` → `ConfigPublishingService` (Mongo) → `IGameConfigSetProvider.Swap`.
+- Config flow: Apps Script таблицы → `POST /api/config/upload` → `UploadedSheetsSnapshotBuilder` → `GameConfigSnapshot` → `ConfigSnapshotValidator` → `GameConfigSetBuilder` → `ConfigPublishingService` (Mongo) → `IGameConfigSetProvider.Swap`.
 - Runtime config access: scoped `IConfigDistributor` = `IGameConfigSetProvider.Current.Distributor`, фиксируется на весь запрос.
 - Battle flow: HTTP POST → endpoint filters (метрики, готовность конфигов) → `BattleSimulatorService.Simulate` → `BattleScriptResponse`.
 - Ops: health и admin только на ops-порту (`OpsPortOnlyMetadata` + `OpsPortGuardMiddleware`).
@@ -62,7 +61,7 @@ docs/                                  gdd, server, architecture, runbooks
 3. Mappers data-only; индексы и lookup — в managers.
 4. Детерминированность: seeded RNG + `Seed` в response для replay.
 5. API DTO (`Contracts`) и simulation state — раздельные типы.
-6. Новый конфиг-домен: `GameConfig/<Domain>/{Configs,Managers}` + регистрация в `ConfigDistributor` и `GameConfigSetBuilder` + обязательный лист в `GoogleSheets:Sheets` и `ConfigDomainNames`.
+6. Новый конфиг-домен: `GameConfig/<Domain>/{Configs,Managers}` + регистрация в `ConfigDistributor` и `GameConfigSetBuilder` + обязательный лист в `ConfigSheets:Sheets`, `ConfigDomainNames` и `ConfigSnapshotValidator`.
 7. Настройки — typed options с `ValidateOnStart` и валидаторами; ничего не хардкодить в коде.
 8. Код и конфиги без комментариев; пояснения в `docs/`.
 
@@ -113,7 +112,7 @@ services.AddSingleton<IValidateOptions<AlertsOptions>, AlertsOptionsValidator>()
 | `GET /`, `GET /api/ping` | public | hello, статус и время |
 | `POST /api/battle/simulate` | public | симуляция боя |
 | `POST /api/battle/replay` | public | повтор боя по seed |
-| `POST /api/config/publish`, `POST /api/config/update`, `GET /api/config/status` | public | публикация конфигов из Sheets (dev/stage) |
+| `POST /api/config/upload`, `GET /api/config/sheets`, `GET /api/config/status` | public | публикация конфигов из таблиц скриптом (dev/stage) |
 | `GET /health`, `/health/live`, `/health/ready` | ops | health |
 | `/admin/config/status`, `snapshots`, `activate`, `reload` | ops | управление снапшотами |
 

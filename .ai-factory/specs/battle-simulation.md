@@ -330,7 +330,7 @@ TODO GD: подтвердить (focus-fire / lowest HP / иное) и обно�
 
 Симуляция читает constants, characters, enemies, summons, equipments, perks, statuses, bonuses, masteries, story levels, skills через `IConfigDistributor`.
 Skills: `id` + `type` + `parameters` из Skills sheet (`C:F`). Factory без захардкоженных parameters. `SkillType` enum **не** равен Skills.id (`Energy=2` ≠ skill id 2).
-Перед тестами configs должны быть загружены (`/api/config/update` или test fixture).
+Перед тестами configs должны быть загружены (`/api/config/upload` или test fixture).
 
 Источник правды конфигов — колонки Google Sheets (не клиентский JSON-экспорт). Подробности: [`config-sync.md`](../../Assets/Documents/Server/config-sync.md).
 

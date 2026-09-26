@@ -19,7 +19,7 @@ Headless симуляция боя: клиент шлёт snapshot сторон,
 | Auth | нет (сейчас); авторизация игроков запланирована отдельно |
 | Limits | rate limit по IP (`RateLimit:Battle`), параллелизм (`RateLimit:BattleConcurrencyLimit`), тело до `RequestLimits:BattleMaxRequestBodyBytes` |
 
-Перед боем конфиги должны быть загружены: сервер берёт активный снапшот (Mongo на VPS, Google Sheets или файл локально), см. [config-sync](config-sync.md).
+Перед боем конфиги должны быть загружены: сервер берёт активный снапшот (Mongo на VPS, файл локально), см. [config-sync](config-sync.md).
 
 ## Коды ответов
 

@@ -1,11 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Server;
-using Server.Services;
 
 namespace Tests.Unit.Api
 {
@@ -22,8 +18,6 @@ namespace Tests.Unit.Api
             Environment.SetEnvironmentVariable(ContentRootVariable, new ApiDirectoryLocator().Find());
         }
 
-        public FakeGameConfigService ConfigService { get; } = new();
-
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
@@ -34,18 +28,11 @@ namespace Tests.Unit.Api
             foreach (var pair in _settings)
                 builder.UseSetting(pair.Key, pair.Value);
 
-            builder.ConfigureTestServices(ConfigureTestServices);
         }
 
         private void ConfigureLogging(ILoggingBuilder loggingBuilder)
         {
             loggingBuilder.ClearProviders();
-        }
-
-        private void ConfigureTestServices(IServiceCollection services)
-        {
-            services.RemoveAll<IGameConfigService>();
-            services.AddSingleton<IGameConfigService>(ConfigService);
         }
     }
 }

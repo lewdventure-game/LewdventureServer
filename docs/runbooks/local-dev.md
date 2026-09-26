@@ -6,32 +6,12 @@
 
 - .NET SDK 10.0.401 (`global.json`, rollForward `latestFeature`).
 - Docker Desktop (compose, интеграционные тесты).
-- Ключ service account Google `google-credentials.json` в корне репозитория (в `.gitignore`), если нужен импорт из Sheets. Выдаёт владелец.
-
-## Быстрый путь: local-server.bat (Windows)
-
-Для игры из Unity против локального сервера:
-
-```bat
-local-server.bat
-```
-
-Скрипт при необходимости запускает Docker Desktop, собирает образ из текущего кода, поднимает api и MongoDB (вариант 1 ниже), ждёт загрузки конфигов и печатает адреса. Ключ Google не нужен: конфиги берутся из снимка в репозитории. В Unity выбрать `RunMode / Server / Local` и запускать `CoreScene`.
-
-| Команда | Что делает |
-| --- | --- |
-| `local-server.bat` или `start` | собрать и поднять, дождаться готовности |
-| `restart` | пересобрать api после правок кода |
-| `logs` | логи api в реальном времени |
-| `status` | контейнеры и `/health` |
-| `stop` | остановить, данные Mongo сохраняются |
-| `reset` | остановить и удалить данные Mongo и кэш конфигов (при следующем старте конфиги заново импортируются из таблиц) |
-
-Свежие изменения из таблиц без перезапуска: `curl -X POST -H "X-Config-Key: local-config-key" http://localhost:5000/api/config/publish`.
 
 ## Вариант 1. Весь стек в Docker
 
-Так же, как на VPS: api + Mongo replica set + mongo-init. Конфиги при пустой базе импортируются из Google Sheets.
+Для игры из Unity против локального сервера: поднять стек командой ниже и выбрать в Unity `RunMode / Server / Local`. Ключ Google не нужен, конфиги берутся из снимка в репозитории. Обычно же клиент играет против dev на VPS (`RunMode / Server / Dev`).
+
+Так же, как на VPS: api + Mongo replica set + mongo-init. Конфиги при пустой базе берутся из фикстуры репозитория.
 
 ```bash
 docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.local.yaml up -d --build --wait
@@ -44,7 +24,6 @@ curl -s http://127.0.0.1:9090/health/ready
 | Swagger | `http://localhost:5000/swagger` |
 | Ops | `http://127.0.0.1:9090/health`, admin-ключ `local-admin-key` |
 | Mongo | `mongodb://lewdventure_app:local-app-password@127.0.0.1:27017/?replicaSet=rs0&authSource=lewdventure_local&directConnection=true` |
-| Публикация конфигов | `curl -X POST -H "X-Config-Key: local-config-key" http://localhost:5000/api/config/publish` |
 
 ConfigTool в том же стеке:
 
@@ -65,7 +44,6 @@ export GameConfig__FilePath="$(pwd)/tests/Lewdventure.Server.GoldenTests/Golden/
 dotnet run -c Release --project src/Lewdventure.Server.Api
 ```
 
-С живыми таблицами: `GameConfig__Source=GoogleSheets`; `google-credentials.json` из корня репозитория копируется в output сборки автоматически, другой путь — `GoogleSheets__CredentialsPath` (относительный путь считается от папки output).
 
 PowerShell: `$env:ASPNETCORE_ENVIRONMENT = "Local"` и т.д.
 

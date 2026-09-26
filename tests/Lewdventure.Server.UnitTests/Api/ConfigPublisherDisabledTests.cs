@@ -6,7 +6,7 @@ namespace Tests.Unit.Api
     public sealed class ConfigPublisherDisabledTests
     {
         [Test]
-        public async Task Update_WhenPublisherDisabled_IsNotMapped()
+        public async Task Sheets_WhenPublisherDisabled_IsNotMapped()
         {
             using var factory = new ApiWebApplicationFactory(new Dictionary<string, string>
             {
@@ -14,16 +14,13 @@ namespace Tests.Unit.Api
             });
             using var client = factory.CreateClient();
 
-            var callsBeforeRequest = factory.ConfigService.CallCount;
-
-            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/config/update");
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/api/config/sheets");
 
             request.Headers.Add("X-Config-Secret", "1");
 
             using var response = await client.SendAsync(request);
 
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
-            Assert.That(factory.ConfigService.CallCount, Is.EqualTo(callsBeforeRequest));
         }
     }
 }

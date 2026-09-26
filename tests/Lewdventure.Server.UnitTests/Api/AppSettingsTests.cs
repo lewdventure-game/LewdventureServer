@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Server.Api.Options;
-using Server.Infrastructure.GoogleSheets;
+using Server.GameConfigs;
 
 namespace Tests.Unit.Api
 {
@@ -16,13 +16,13 @@ namespace Tests.Unit.Api
         {
             var configuration = BuildConfiguration(environmentName);
             var serverOptions = new ServerOptions();
-            var googleSheetsOptions = new GoogleSheetsOptions();
+            var configSheetsOptions = new ConfigSheetsOptions();
 
             configuration.GetSection(ServerOptions.SectionName).Bind(serverOptions);
-            configuration.GetSection(GoogleSheetsOptions.SectionName).Bind(googleSheetsOptions);
+            configuration.GetSection(ConfigSheetsOptions.SectionName).Bind(configSheetsOptions);
 
             var serverResult = new ServerOptionsValidator(new TestHostEnvironment(environmentName)).Validate(null, serverOptions);
-            var sheetsResult = new GoogleSheetsOptionsValidator().Validate(null, googleSheetsOptions);
+            var sheetsResult = new ConfigSheetsOptionsValidator(new ConfigDomainNames()).Validate(null, configSheetsOptions);
 
             Assert.That(serverResult.Succeeded, Is.True, serverResult.FailureMessage);
             Assert.That(sheetsResult.Succeeded, Is.True, sheetsResult.FailureMessage);

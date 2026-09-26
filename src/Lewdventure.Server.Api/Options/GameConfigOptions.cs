@@ -6,7 +6,7 @@ namespace Server.Api.Options
     {
         public const string SectionName = "GameConfig";
 
-        public GameConfigSourceType Source { get; set; } = GameConfigSourceType.GoogleSheets;
+        public GameConfigSourceType Source { get; set; } = GameConfigSourceType.File;
 
         public string FilePath { get; set; } = string.Empty;
 
@@ -17,8 +17,6 @@ namespace Server.Api.Options
         public string LocalCachePath { get; set; } = string.Empty;
 
         public string BootstrapFilePath { get; set; } = string.Empty;
-
-        public bool BootstrapFromGoogleSheetsIfEmpty { get; set; }
 
         public GameConfigReloadMode ReloadMode { get; set; } = GameConfigReloadMode.Manual;
 

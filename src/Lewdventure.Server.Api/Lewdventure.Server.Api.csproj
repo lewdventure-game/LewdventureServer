@@ -24,8 +24,5 @@
     <ProjectReference Include="..\Lewdventure.Server.Infrastructure\Lewdventure.Server.Infrastructure.csproj" />
   </ItemGroup>
 
-  <ItemGroup Condition="Exists('..\..\google-credentials.json')">
-    <None Include="..\..\google-credentials.json" Link="google-credentials.json" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
 
 </Project>

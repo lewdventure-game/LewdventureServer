@@ -27,26 +27,22 @@
 
 | Ключ | По умолчанию | Описание |
 | --- | --- | --- |
-| `GameConfig:Source` | `GoogleSheets` | `File`, `GoogleSheets` или `Mongo`; `GoogleSheets` запрещён в Production; `Mongo` требует `Mongo:Enabled` |
-| `GameConfig:FilePath` | пусто | путь к файлу снапшота при `Source=File`, относительный — от content root |
+| `GameConfig:Source` | `File` | `File` или `Mongo`; `Mongo` требует `Mongo:Enabled` |
+| `GameConfig:FilePath` | фикстура репозитория | путь к файлу снапшота при `Source=File`, относительный — от content root |
 | `GameConfig:FailStartupIfUnavailable` | `false` | упасть на старте, если конфиги не загрузились; иначе старт с 503 на бою |
 | `GameConfig:PinnedVersion` | пусто | загружать эту версию вместо активной (`sha256:<hex>`), для аварийного закрепления |
 | `GameConfig:LocalCachePath` | пусто | файл последнего загруженного снапшота; используется, если Mongo недоступен при старте |
-| `GameConfig:BootstrapFilePath` | пусто | снимок в файле; публикуется и активируется, если в Mongo нет активной версии или она не собирается. Локально — фикстура из репозитория, поэтому ключ Google не нужен |
-| `GameConfig:BootstrapFromGoogleSheetsIfEmpty` | `false` | при пустой базе импортировать из Sheets и активировать; запрещён в Production |
+| `GameConfig:BootstrapFilePath` | пусто | снимок в файле; публикуется и активируется, если в Mongo нет активной версии или она не собирается. Локально — фикстура из репозитория |
 | `GameConfig:ReloadMode` | `Manual` | `Manual` (только `/admin/config/reload`) или `Poll` (опрос активной версии в Mongo) |
 | `GameConfig:PollIntervalSeconds` | `30` | период опроса при `Poll`, 5–3600 |
 
-## GoogleSheets
+## ConfigSheets
+
+Каталог таблиц: по нему `GET /api/config/sheets` говорит Apps Script, какие листы собирать. Сервер сам в Google не ходит и ключа не требует.
 
 | Ключ | По умолчанию | Описание |
 | --- | --- | --- |
-| `GoogleSheets:CredentialsPath` | `google-credentials.json` | файл ключа service account; нужен только для `POST /api/config/publish` и ConfigTool `import`. При публикации через Apps Script (`/api/config/upload`) ключ не требуется |
-| `GoogleSheets:CredentialsJson` | пусто | содержимое ключа строкой, имеет приоритет над путём |
-| `GoogleSheets:ApplicationName` | `GameConfigReader` | имя клиента Google API |
-| `GoogleSheets:DelayBetweenSheetsMs` | `150` | пауза между листами против квот |
-| `GoogleSheets:MaxRetries` | `3` | повторы загрузки листа, 1–10 |
-| `GoogleSheets:Sheets` | список в `appsettings.json` | `Domain`, `SpreadsheetId`, `Range` на каждый из 16 обязательных доменов; менять только по решению владельца |
+| `ConfigSheets:Sheets` | список в `appsettings.json` | `Domain` и `SpreadsheetId` на каждый из 16 обязательных доменов; менять только по решению владельца |
 
 ## Mongo
 
@@ -72,7 +68,7 @@
 
 | Ключ | По умолчанию | Описание |
 | --- | --- | --- |
-| `ConfigPublisher:Enabled` | `false` | включить `/api/config/publish`, `/api/config/update`, `/api/config/status`; запрещён в Production |
+| `ConfigPublisher:Enabled` | `false` | включить `/api/config/upload`, `/api/config/sheets`, `/api/config/status`; запрещён в Production |
 | `ConfigPublisher:ApiKey` | пусто | ключ для Apps Script, не короче 24 символов (8 в Local) |
 | `ConfigPublisher:HeaderName` | `X-Config-Key` | заголовок ключа |
 | `ConfigPublisher:LegacyHeaderName` | `X-Config-Secret` | устаревший заголовок, принимается с warning |
@@ -143,8 +139,6 @@
 | `MONGO_APP_USERNAME`, `MONGO_APP_PASSWORD` | пользователь приложения с `readWrite` на свою базу |
 | ключи приложения | `Admin__ApiKey`, `ConfigPublisher__ApiKey`, `Alerts__DiscordWebhookUrl` и любые из таблиц выше |
 
-Для dev и stage рядом нужен `compose/secrets/google-credentials.json`.
-
 ## Переменные Caddy
 
 Файл `/opt/lewdventure/proxy/.env`:
@@ -161,7 +155,6 @@
 
 | Переменная | Описание |
 | --- | --- |
-| `GOOGLE_CREDENTIALS_FILE` | путь к ключу для `compose.local.yaml`, по умолчанию `google-credentials.json` в корне |
 | `LEWD_IT_ENABLED=1` | включить интеграционные тесты Mongo |
 | `LEWD_IT_MONGO` | внешний Mongo для интеграционных тестов вместо Testcontainers (только локальный хост) |
 | `LEWD_GOLDEN_UPDATE=1` | перезаписать эталоны golden-тестов |
