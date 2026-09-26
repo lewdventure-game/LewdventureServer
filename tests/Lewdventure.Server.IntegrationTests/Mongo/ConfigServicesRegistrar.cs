@@ -19,6 +19,8 @@ namespace Tests.Integration.Mongo
             services.AddSingleton<ConfigSnapshotValidator>();
             services.AddSingleton<ConfigSnapshotDiff>();
             services.AddSingleton<ConfigRowsParser>();
+            services.AddSingleton<SheetRowsConverter>();
+            services.AddSingleton<UploadedSheetsSnapshotBuilder>();
             services.AddSingleton<FileConfigSnapshotSource>();
             services.AddSingleton<GameConfigSetBuilder>();
             services.AddSingleton<IGameConfigSetProvider, GameConfigSetProvider>();
