@@ -109,13 +109,26 @@ jobs:
           echo "status=$status" >> "$GITHUB_OUTPUT"
           [ "$status" -eq 0 ] || exit "$status"
 
+      - name: liveness
+        id: liveness
+        run: |
+          ssh -p "$SSH_PORT" "$SSH_TARGET" "port=\$(grep -E '^OPS_HOST_PORT=' $(printf '%q' "$DEPLOY_PATH/compose/.env") | cut -d= -f2) && curl -fsS --retry 20 --retry-delay 3 --retry-all-errors http://127.0.0.1:\$port/health/live"
+
       - name: readiness
         id: readiness
         run: |
-          ssh -p "$SSH_PORT" "$SSH_TARGET" "port=\$(grep -E '^OPS_HOST_PORT=' $(printf '%q' "$DEPLOY_PATH/compose/.env") | cut -d= -f2) && curl -fsS --retry 20 --retry-delay 3 --retry-all-errors http://127.0.0.1:\$port/health/ready"
+          set +e
+          body="$(ssh -p "$SSH_PORT" "$SSH_TARGET" "port=\$(grep -E '^OPS_HOST_PORT=' $(printf '%q' "$DEPLOY_PATH/compose/.env") | cut -d= -f2) && curl -sS http://127.0.0.1:\$port/health/ready")"
+          status="$(printf '%s' "$body" | jq -r '.status // "unknown"')"
+          set -e
+          echo "ready_status=$status" >> "$GITHUB_OUTPUT"
+          echo "$body"
+          if [ "$status" != "ok" ]; then
+            echo "::warning::health/ready = $status, сервер запущен, но не готов обслуживать бой"
+          fi
 
-      - name: roll back after failed readiness
-        if: failure() && steps.readiness.outcome == 'failure' && inputs.image_tag != 'rollback'
+      - name: roll back after failed liveness
+        if: failure() && steps.liveness.outcome == 'failure' && inputs.image_tag != 'rollback'
         run: ssh -p "$SSH_PORT" "$SSH_TARGET" "DEPLOY_ACTOR=$(printf '%q' "github:$GITHUB_ACTOR") $(printf '%q' "$DEPLOY_PATH/scripts/deploy.sh") $DEPLOY_ENVIRONMENT rollback"
 
       - name: result
@@ -129,7 +142,8 @@ jobs:
             echo "- requested: \`$IMAGE_TAG\`"
             echo "- running: \`${tag:-unknown}\`"
             echo "- deploy status: ${{ steps.deploy.outcome }}"
-            echo "- readiness: ${{ steps.readiness.outcome }}"
+            echo "- liveness: ${{ steps.liveness.outcome }}"
+            echo "- readiness: ${{ steps.readiness.outputs.ready_status || 'unknown' }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: ./.github/actions/discord-notify
@@ -137,6 +151,6 @@ jobs:
         with:
           webhook-url: ${{ secrets.DISCORD_DEPLOY_WEBHOOK_URL }}
           title: ${{ inputs.image_tag == 'rollback' && 'Rollback' || 'Deploy' }}
-          description: "requested ${{ inputs.image_tag }}, running ${{ steps.result.outputs.deployed_tag || 'unknown' }}${{ steps.deploy.outputs.status == '1' && ', previous version restored' || '' }}${{ steps.deploy.outputs.status == '3' && ', restore FAILED' || '' }}"
+          description: "requested ${{ inputs.image_tag }}, running ${{ steps.result.outputs.deployed_tag || 'unknown' }}, health ${{ steps.readiness.outputs.ready_status || 'unknown' }}${{ steps.deploy.outputs.status == '1' && ', previous version restored' || '' }}${{ steps.deploy.outputs.status == '3' && ', restore FAILED' || '' }}"
           status: ${{ job.status }}
           environment: ${{ inputs.environment }}
