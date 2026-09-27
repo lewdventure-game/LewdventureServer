@@ -60,6 +60,8 @@ LEWD_GOLDEN_UPDATE=1 dotnet test tests/Lewdventure.Server.GoldenTests -c Release
 
 Раз в сутки (03:17 UTC) workflow `config-fixture` снимает активный снимок с dev. Если он отличается от фикстуры, workflow перегенерирует эталоны и откроет PR `chore/config-fixture` с новой версией. PR нужно просмотреть: дифф в `Golden/Cases` показывает, как правки таблиц меняют бой. Ручной запуск — `gh workflow run config-fixture`.
 
+Ветка пушится всегда, а вот создать PR из workflow GitHub разрешает только при включённой галке **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests**. Пока она выключена, workflow пишет предупреждение и ссылку на ручное создание PR в summary запуска, а ветку `chore/config-fixture` всё равно обновляет.
+
 Вручную, без dev:
 
 1. `dotnet test tests/Lewdventure.Server.GoldenTests -c Release --filter "FullyQualifiedName~ConfigFixtureCaptureTests"` с ключом Google (explicit-тест).

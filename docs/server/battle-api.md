@@ -327,6 +327,7 @@ var script = result.BattleCore.Replay(replayData);
 
 ## See Also
 
+- [Client Handover](client-handover.md) — один документ для клиентской команды: ядро, ручки, порядок миграции
 - [Client API](client-api.md) — все ручки с моделями запросов и ответов для клиента
 - [Config Sync](config-sync.md) — снапшоты конфигов, Google Sheets, managers, источник правды
 - [Golden-тесты](../runbooks/golden-tests.md) — эталоны ответов боя

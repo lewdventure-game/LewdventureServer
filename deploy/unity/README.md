@@ -61,7 +61,7 @@ if (battleCore.Configs.Characters.TryGet(characterId, out var characterMapper))
     portrait.Load(characterMapper.ArtName);
 ```
 
-`BuildCharacteristics` — те же 21 характеристика, что считает бой и что отдаёт `GET /api/player/characteristics`. `Configs` — весь read-model конфигов: арты, редкости, перки, статусы, скиллы, сюжетные уровни, константы.
+`BuildCharacteristics` — те же 20 характеристик, что считает бой и что отдаёт `GET /api/player/characteristics`. `Configs` — весь read-model конфигов: арты, редкости, перки, статусы, скиллы, сюжетные уровни, константы.
 
 ## Обязательные мелочи
 

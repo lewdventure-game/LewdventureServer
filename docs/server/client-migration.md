@@ -5,7 +5,7 @@
 ## Что уже сделано на стороне сервера и в клиенте
 
 - Сервер ведёт профиль игрока, забег, бой, награды, опыт, уровни и выбор перков; ручки описаны в [Client API](client-api.md).
-- В клиенте подключено ядро боя: `Assets/Plugins/BattleCore` (три DLL и `link.xml`), `Core/Common/UnityCoreLog.cs`, создание ядра в `Core/Installers/ConfigInstaller.cs`, мостик `Game/Battles/Services/LocalBattleSimulator.cs`.
+- Клиенту передана поставка ядра: три DLL, `link.xml`, `UnityCoreLog.cs` и `VERSION.txt`. Встройка — на клиентской стороне, порядок описан в [Client Handover](client-handover.md), раздел 1.
 - На каждом бою в редакторе и dev-сборке клиент сверяет свой расчёт с серверным (`[Battle]: parity ok` в консоли).
 - Паритет расчёта подтверждён в Mono и IL2CPP.
 
@@ -63,7 +63,7 @@
 
 1. После авторизации читать `GET /api/player/profile` и заполнять `IPlayerData` из ответа.
 2. Методы-мутаторы (`CompleteStoryLevel`, `IncrementRunCount`, `AddPermanentBonus`, `GrantStartPerkChoiceReward`) больше не пишут состояние: их место занимают серверные ручки и перечитывание профиля.
-3. Прокачку перевести на эндпоинты: `POST /api/player/summon/level`, `/summon/mastery`, `/equipment/level`, `/loadout`. В каждом запросе свой `requestId` (guid), на `409` перечитать профиль и повторить.
+3. Прокачку перевести на эндпоинты: `POST /api/player/summon/level`, `POST /api/player/summon/mastery`, `POST /api/player/equipment/level`, `POST /api/player/loadout`. В каждом запросе свой `requestId` (guid), на `409` перечитать профиль и повторить.
 4. Локальный сейв остаётся, но как кэш для показа до первого ответа сервера. Правило: расходится с сервером — прав сервер.
 
 Готово, когда: прокачка и смена лоадаута видны в профиле на сервере, после переустановки прогресс подтягивается по тому же `deviceId`.
@@ -90,6 +90,7 @@
 | `run.bonuses` | локальные бонусы забега | из ответа, там же `remainingBattles` |
 | `run.status = completed/failed`, `step.runCompleted/runFailed` | `CompleteCurrentStoryLevel` | реакция на ответ |
 | `GET /api/run/current` | — | восстановление незакрытого забега после перезапуска |
+| `POST /api/run/abandon` | локальный выход из забега | игрок бросает забег, сервер закрывает его |
 
 Остаётся локальным: тексты и локализация, движение персонажа между этапами, экраны, префабы, спайны, звук, ECS-презентация — всё, что не влияет на числа.
 
@@ -102,7 +103,7 @@
 Файлы: `Game/Battles/States/BattleInitState.cs`, `Game/Battles/Services/BattleService.cs`.
 
 1. В запросы забега добавить `"battleDelivery": "seed"`.
-2. На шаге с боем брать `step.battleInput` и считать бой ядром: `LocalBattleSimulator.Replay(...)` (мостик уже есть).
+2. На шаге с боем брать `step.battleInput` и считать бой ядром: `battleCore.Replay(step.battleInput)`.
 3. Сверять `IBattleCore.ComputeDigest(script)` с `step.battleDigest`; расхождение — ошибка, бой не показывать.
 4. Убрать вызовы `api/battle/simulate` и `api/battle/replay`: эти ручки остаются инструментом разработки и при включённой авторизации доступны только по админ-ключу.
 
@@ -165,7 +166,7 @@
 
 В `Game/Stories/Services` 30 файлов, меняются три: `StoryFactory` (раскладка уровня уходит), `StoryProgressService` (становится отображением серверных чисел), `EventLifecycleService` (событие приходит из `step`). Остальные — движение персонажа, локации, нарратив, экраны, вьюхи — остаются: они не решают числа.
 
-Инсталлеры: ядро уже биндится в `Core/Installers/ConfigInstaller.cs`, мостик — в `Game/Common/Installers/GameInstaller.cs`. После удаления дублей биндинг мостика уходит вместе с ним, биндинг `IBattleCore` остаётся.
+Инсталлеры: `IBattleCore` биндится там, где доступен источник конфигов, — в `Core/Installers/ConfigInstaller.cs` (`IConfigSource` внутренний для сборки `Core`).
 
 ### Остаётся клиентским
 
@@ -176,11 +177,11 @@
 | `BattleProtocol.Version` | остаётся, но сверяется с `protocolVersion` из скрипта: расхождение — требование обновить клиент |
 | `Game/Perks`, `Game/Statuses`, `Game/Skills`, `Game/Bonuses` (компоненты, системы, UI, парсеры визуала) | презентация механик, расчётов там нет |
 | `Game/Common/Services/RandomService` | случайность для визуала, в бою не участвует |
-| `LocalBattleSimulator` | после удаления дублей схлопывается до одного вызова `IBattleCore.Replay` и удаляется вместе с мостиком |
+| `PreloadManifest` и его построение по скрипту | предзагрузка ассетов, в DLL такого понятия нет |
 
 ### Локальные расчёты, которые можно выключить
 
-`Game/Characteristics/Services/CharacteristicHudService.RefreshFromServer` ходит на сервер за характеристиками. Их можно считать локально: `IBattleCore.BuildCharacteristics(...)` даёт те же 21 значение, что и `GET /api/player/characteristics`, — числа совпадают до бита, потому что считает один и тот же код. Сетевой вызов при этом исчезает.
+`Game/Characteristics/Services/CharacteristicHudService.RefreshFromServer` ходит на сервер за характеристиками. Их можно считать локально: `IBattleCore.BuildCharacteristics(...)` даёт те же 20 значений, что и `GET /api/player/characteristics`, — числа совпадают до бита, потому что считает один и тот же код. Сетевой вызов при этом исчезает.
 
 ## Как разработчику обнулить себя
 

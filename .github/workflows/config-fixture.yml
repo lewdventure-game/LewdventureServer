@@ -95,8 +95,19 @@ jobs:
           fi
           git commit -m "Конфиги: фикстура и эталоны с dev"
           git push --force origin "$BRANCH_NAME"
-          if [ -z "$(gh pr list --head "$BRANCH_NAME" --state open --json number --jq '.[].number')" ]; then
-            gh pr create --head "$BRANCH_NAME" --base master \
-              --title "Конфиги: фикстура и эталоны с dev" \
-              --body "Снимок конфигов с dev: \`$VERSION\`. Эталоны боя перегенерированы автоматически, изменения в ответах нужно просмотреть перед слиянием."
+          compare_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/master...$BRANCH_NAME?expand=1"
+          existing="$(gh pr list --head "$BRANCH_NAME" --state open --json number --jq '.[].number')"
+          if [ -n "$existing" ]; then
+            echo "- pull request: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/pull/$existing" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
+          if gh pr create --head "$BRANCH_NAME" --base master \
+            --title "Конфиги: фикстура и эталоны с dev" \
+            --body "Снимок конфигов с dev: \`$VERSION\`. Эталоны боя перегенерированы автоматически, изменения в ответах нужно просмотреть перед слиянием."; then
+            exit 0
+          fi
+          echo "::warning title=config-fixture::pull request not created, open it manually: $compare_url"
+          {
+            echo "- ветка \`$BRANCH_NAME\` запушена, pull request не создан"
+            echo "- открыть вручную: $compare_url"
+          } >> "$GITHUB_STEP_SUMMARY"
