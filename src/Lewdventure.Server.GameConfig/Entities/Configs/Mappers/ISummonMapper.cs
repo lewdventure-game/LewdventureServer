@@ -3,7 +3,7 @@ using Server.Configs;
 
 namespace Server.Entities
 {
-    internal interface ISummonMapper : IConfigMapper
+    public interface ISummonMapper : IConfigMapper
     {
         public int Id { get; }
 

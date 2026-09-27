@@ -1,3 +1,5 @@
+using Server.Configs;
+using Core.Logging;
 using Server.Battles;
 
 namespace Tests.Unit.Battles
@@ -14,7 +16,7 @@ namespace Tests.Unit.Battles
                 SkillType.Fireball,
                 "damage_ratio:[1];projectile_count:[1];duration:[2,5]");
 
-            var skill = new FireballSkill(mapper);
+            var skill = new FireballSkill(mapper, new ParserUtils(new SilentCoreLog()));
 
             Assert.That(skill.CastDurationSeconds, Is.EqualTo(2.5f).Within(0.0001f));
             Assert.That(skill.DamageRatio, Is.EqualTo(1f).Within(0.0001f));

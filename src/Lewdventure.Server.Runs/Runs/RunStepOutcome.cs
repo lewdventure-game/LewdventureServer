@@ -22,6 +22,16 @@ namespace Server.Runs
 
         public IBattleScriptResponse? BattleScript { get; set; }
 
+        public IBattleReplayData? BattleInput { get; set; }
+
+        public string BattleDigest { get; set; } = string.Empty;
+
+        public int BattleStepCount { get; set; }
+
+        public List<RunAppliedReward> AppliedRewards { get; set; } = new();
+
+        public long ProfileRev { get; set; }
+
         public bool RunCompleted { get; set; }
 
         public bool RunFailed { get; set; }

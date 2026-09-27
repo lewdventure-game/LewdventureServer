@@ -56,6 +56,51 @@ namespace Tests.Unit.GameConfig
             Assert.That(warnings, Has.Some.Contains("max_stacks"));
         }
 
+        [Test]
+        public void CollectSkills_MissingDamageRatio_Warns()
+        {
+            var warnings = CollectSkills("fireball", "projectile_count:[1]; duration:[2,5]");
+
+            Assert.That(warnings, Has.Some.Contains("нет обязательных ключей damage_ratio"));
+        }
+
+        [Test]
+        public void CollectSkills_UnknownType_Warns()
+        {
+            var warnings = CollectSkills("summon_4_skill_1", "damage_ratio:[1]");
+
+            Assert.That(warnings, Has.Some.Contains("сервером не поддерживается"));
+        }
+
+        [Test]
+        public void CollectSkills_UnknownKey_Warns()
+        {
+            var warnings = CollectSkills("summon_3_skill_1", "damage_ratio:[1]; life_stael_ratio:[0.5]");
+
+            Assert.That(warnings, Has.Some.Contains("life_stael_ratio"));
+        }
+
+        [Test]
+        public void CollectSkills_FullParameters_HasNoWarnings()
+        {
+            var warnings = CollectSkills("summon_2_skill_1", "damage_ratio:[0.35]; heal_from_max_ratio:[0.12]; ally_rewards:[bonus:2:1]; duration:[2,5]");
+
+            Assert.That(warnings, Is.Empty);
+        }
+
+        private List<string> CollectSkills(string skillType, string parameters)
+        {
+            var rows = new[]
+            {
+                new Dictionary<string, object> { ["id"] = "1", ["type"] = skillType, ["parameters"] = parameters },
+            };
+            var warnings = new List<string>();
+
+            _validator.CollectSkills(CreateDomain("Skills", rows), warnings);
+
+            return warnings;
+        }
+
         private List<string> CollectPerks(string perkType, string parameters)
         {
             var rows = new[]

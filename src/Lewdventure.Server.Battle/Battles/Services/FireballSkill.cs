@@ -11,18 +11,18 @@ namespace Server.Battles
 
         public int ProjectileCount => _projectileCount;
 
-        internal FireballSkill(ISkillMapper mapper)
-            : base(mapper)
+        internal FireballSkill(ISkillMapper mapper, ParserUtils parserUtils)
+            : base(mapper, parserUtils)
         {
             var dictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            ParserUtils.ParseToDictionary(mapper.Parameters, dictionary);
+            parserUtils.ParseToDictionary(mapper.Parameters, dictionary);
 
-            var projectileCount = ParserUtils.GetInt(dictionary, "projectile_count", 1);
+            var projectileCount = parserUtils.GetInt(dictionary, "projectile_count", 1);
 
             if (projectileCount < 1)
                 projectileCount = 1;
 
-            _damageRatio = ParserUtils.GetFloat(dictionary, "damage_ratio", 1f);
+            _damageRatio = parserUtils.GetFloat(dictionary, "damage_ratio", 1f);
             _projectileCount = projectileCount;
         }
 

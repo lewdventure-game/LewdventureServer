@@ -1,16 +1,15 @@
 using System.Globalization;
-using Microsoft.Extensions.Logging;
 using Server.Configs;
 
 namespace Server.Bonuses
 {
     internal sealed class BonusWorkModeParser : IBonusWorkModeParser
     {
-        private readonly ILogger<BonusWorkModeParser> _logger;
+        private readonly ICoreLog _coreLog;
 
-        public BonusWorkModeParser(ILogger<BonusWorkModeParser> logger)
+        public BonusWorkModeParser(ICoreLog coreLog)
         {
-            _logger = logger;
+            _coreLog = coreLog;
         }
 
         public bool TryParse(string raw, out BonusWorkMode workMode)
@@ -19,7 +18,7 @@ namespace Server.Bonuses
 
             if (string.IsNullOrWhiteSpace(raw))
             {
-                _logger.LogError("[Config]: work_mode empty");
+                _coreLog.Error("[Config]: work_mode empty");
 
                 return false;
             }
@@ -28,7 +27,7 @@ namespace Server.Bonuses
 
             if (segments.Count == 0)
             {
-                _logger.LogError("[Config]: work_mode empty");
+                _coreLog.Error("[Config]: work_mode empty");
 
                 return false;
             }
@@ -129,14 +128,14 @@ namespace Server.Bonuses
                 return true;
             }
 
-            _logger.LogError($"[Config]: work_mode unknown, raw = {trimmed}");
+            _coreLog.Error($"[Config]: work_mode unknown, raw = {trimmed}");
 
             return false;
         }
 
         private void LogParsed(BonusWorkMode workMode)
         {
-            _logger.LogDebug($"[Config]: work_mode parsed, modes = {workMode.Format()}");
+            _coreLog.Debug($"[Config]: work_mode parsed, modes = {workMode.Format()}");
         }
 
         private bool TryParsePrefixedCount(string raw, string prefix, out int count)
@@ -146,14 +145,14 @@ namespace Server.Bonuses
 
             if (int.TryParse(countRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out count) == false)
             {
-                _logger.LogError($"[Config]: work_mode {prefix} count invalid, raw = {raw}");
+                _coreLog.Error($"[Config]: work_mode {prefix} count invalid, raw = {raw}");
 
                 return false;
             }
 
             if (count <= 0)
             {
-                _logger.LogError($"[Config]: work_mode {prefix} count <= 0, raw = {raw}");
+                _coreLog.Error($"[Config]: work_mode {prefix} count <= 0, raw = {raw}");
 
                 return false;
             }
@@ -172,7 +171,7 @@ namespace Server.Bonuses
 
             if (separator <= 0)
             {
-                _logger.LogError($"[Config]: if_equipped format invalid, raw = {raw}");
+                _coreLog.Error($"[Config]: if_equipped format invalid, raw = {raw}");
 
                 return false;
             }
@@ -183,14 +182,14 @@ namespace Server.Bonuses
             if (int.TryParse(idRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out entityId) == false
                 || entityId <= 0)
             {
-                _logger.LogError($"[Config]: if_equipped entity id invalid, raw = {raw}");
+                _coreLog.Error($"[Config]: if_equipped entity id invalid, raw = {raw}");
 
                 return false;
             }
 
             if (IsAllowedEquippedEntityType(entityType) == false)
             {
-                _logger.LogError($"[Config]: if_equipped entity type unsupported, entityType = {entityType}, raw = {raw}");
+                _coreLog.Error($"[Config]: if_equipped entity type unsupported, entityType = {entityType}, raw = {raw}");
 
                 return false;
             }

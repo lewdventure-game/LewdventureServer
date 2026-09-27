@@ -1,9 +1,11 @@
+using Server.Configs;
+
 namespace Server.Battles
 {
     internal sealed class EnergySkill : BaseSkill
     {
-        internal EnergySkill(ISkillMapper mapper)
-            : base(mapper)
+        internal EnergySkill(ISkillMapper mapper, ParserUtils parserUtils)
+            : base(mapper, parserUtils)
         {
         }
 

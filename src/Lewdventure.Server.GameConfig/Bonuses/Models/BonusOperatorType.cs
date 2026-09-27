@@ -1,6 +1,6 @@
 namespace Server.Bonuses
 {
-    internal enum BonusOperatorType
+    public enum BonusOperatorType
     {
         Unknown = 0,
         Add = 1,

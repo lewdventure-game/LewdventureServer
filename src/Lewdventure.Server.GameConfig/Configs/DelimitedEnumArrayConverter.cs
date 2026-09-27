@@ -72,20 +72,19 @@ namespace Server.Configs
             return parsedValues.ToArray();
         }
 
-        private static TEnum ParseEnum(string value)
+        private TEnum ParseEnum(string value)
         {
-            // 1. Сначала ищем по [EnumMember(Value = "...")]
-
             var fields = typeof(TEnum).GetFields();
 
             for (int i = 0; i < fields.Length; i++)
             {
                 var field = fields[i];
-
                 var customAttributes = field.GetCustomAttributes(typeof(EnumMemberAttribute), false);
-                var customAttribute = customAttributes.FirstOrDefault();
 
-                if (customAttribute is not EnumMemberAttribute attribute)
+                if (customAttributes.Length == 0)
+                    continue;
+
+                if (customAttributes[0] is not EnumMemberAttribute attribute)
                     continue;
 
                 if (string.Equals(attribute.Value, value, StringComparison.OrdinalIgnoreCase) == false)
@@ -95,14 +94,30 @@ namespace Server.Configs
                     return parsed;
             }
 
-            // 2. Пытаемся стандартный парсинг (с учётом регистра)
             if (Enum.TryParse<TEnum>(value, true, out var result))
                 return result;
 
-            // 3. Пытаемся с SnakeCase -> PascalCase
-            var pascalCase = string.Concat(value.Split('_').Select(word => char.ToUpperInvariant(word[0]) + word.Substring(1).ToLowerInvariant()));
-
-            return Enum.TryParse(pascalCase, true, out result) ? result : default;
+            return Enum.TryParse(ToPascalCase(value), true, out result) ? result : default;
         }
+
+        private string ToPascalCase(string value)
+        {
+            var parts = value.Split('_');
+            var builder = new System.Text.StringBuilder(value.Length);
+
+            for (int i = 0; i < parts.Length; i++)
+            {
+                var part = parts[i];
+
+                if (part.Length == 0)
+                    continue;
+
+                builder.Append(char.ToUpperInvariant(part[0]));
+                builder.Append(part.Substring(1).ToLowerInvariant());
+            }
+
+            return builder.ToString();
+        }
+
     }
 }

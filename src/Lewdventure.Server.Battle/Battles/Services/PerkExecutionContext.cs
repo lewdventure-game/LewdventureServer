@@ -18,7 +18,7 @@ namespace Server.Battles
         private readonly IBattleScriptBuilder _battleScriptBuilder;
         private readonly IBattleRewardService _battleRewardService;
         private readonly IConfigDistributor _configDistributor;
-        private readonly ILogger _logger;
+        private readonly ICoreLog _coreLog;
 
         public List<BattleStep> Steps => _steps;
 
@@ -44,7 +44,7 @@ namespace Server.Battles
 
         public IConfigDistributor ConfigDistributor => _configDistributor;
 
-        public ILogger Logger => _logger;
+        public ICoreLog CoreLog => _coreLog;
 
         public PerkExecutionContext(
             List<BattleStep> steps,
@@ -61,7 +61,7 @@ namespace Server.Battles
             IBattleScriptBuilder battleScriptBuilder,
             IBattleRewardService battleRewardService,
             IConfigDistributor configDistributor,
-            ILogger logger)
+            ICoreLog coreLog)
         {
             _steps = steps;
             _owner = owner;
@@ -77,7 +77,7 @@ namespace Server.Battles
             _battleScriptBuilder = battleScriptBuilder;
             _battleRewardService = battleRewardService;
             _configDistributor = configDistributor;
-            _logger = logger;
+            _coreLog = coreLog;
         }
 
         public int FindDefenderTargetIndex()
@@ -120,7 +120,7 @@ namespace Server.Battles
             if (_battlePerkSimulator.TryResurrectOnDeath(unit, _steps, _currentTurn, _turnState))
                 return;
 
-            _logger.LogDebug($"[Story][Battle]: Death, unitId = {unit.Id}, turn = {_currentTurn}");
+            _coreLog.Debug($"[Story][Battle]: Death, unitId = {unit.Id}, turn = {_currentTurn}");
 
             _battleScriptBuilder.Add(
                 _steps,

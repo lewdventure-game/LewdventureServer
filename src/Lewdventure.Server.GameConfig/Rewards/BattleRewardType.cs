@@ -1,6 +1,6 @@
 namespace Server.Battles
 {
-    internal enum BattleRewardType
+    public enum BattleRewardType
     {
         None = 0,
         Bonus = 1,

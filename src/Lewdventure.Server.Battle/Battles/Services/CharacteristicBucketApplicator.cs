@@ -1,15 +1,14 @@
-using Microsoft.Extensions.Logging;
 using Server.Bonuses;
 
 namespace Server.Battles
 {
     internal sealed class CharacteristicBucketApplicator : ICharacteristicBucketApplicator
     {
-        private readonly ILogger<CharacteristicBucketApplicator> _logger;
+        private readonly ICoreLog _coreLog;
 
-        public CharacteristicBucketApplicator(ILogger<CharacteristicBucketApplicator> logger)
+        public CharacteristicBucketApplicator(ICoreLog coreLog)
         {
-            _logger = logger;
+            _coreLog = coreLog;
         }
 
         public void Apply(CharacteristicBuckets buckets, BonusType bonusType, float value)
@@ -175,16 +174,16 @@ namespace Server.Battles
                 case BonusType.CurrentHealthLocal:
                 case BonusType.Healing:
                 case BonusType.HealingFromMax:
-                    _logger.LogError($"[Story][Battle]: Bonus type not a characteristic bucket, bonusType = {bonusType}, value = {value}");
+                    _coreLog.Error($"[Story][Battle]: Bonus type not a characteristic bucket, bonusType = {bonusType}, value = {value}");
 
                     throw new InvalidOperationException($"[Story][Battle]: Bonus type not a characteristic bucket, bonusType = {bonusType}");
                 default:
-                    _logger.LogError($"[Story][Battle]: Unknown bonus type for bucket, bonusType = {bonusType}, value = {value}");
+                    _coreLog.Error($"[Story][Battle]: Unknown bonus type for bucket, bonusType = {bonusType}, value = {value}");
 
                     throw new InvalidOperationException($"[Story][Battle]: Unknown bonus type for bucket, bonusType = {bonusType}");
             }
 
-            _logger.LogDebug($"[Story][Battle]: Bucket apply, bonusType = {bonusType}, value = {value}");
+            _coreLog.Debug($"[Story][Battle]: Bucket apply, bonusType = {bonusType}, value = {value}");
         }
     }
 }

@@ -4,16 +4,16 @@ namespace Server.Battles
 {
     internal sealed class BattleSimulationValidator : IBattleSimulationValidator
     {
-        private readonly ILogger<BattleSimulationValidator> _logger;
+        private readonly ICoreLog _coreLog;
         private readonly IConfigDistributor _configDistributor;
         private readonly ISkillFactory _skillFactory;
 
         public BattleSimulationValidator(
-            ILogger<BattleSimulationValidator> logger,
+            ICoreLog coreLog,
             IConfigDistributor configDistributor,
             ISkillFactory skillFactory)
         {
-            _logger = logger;
+            _coreLog = coreLog;
             _configDistributor = configDistributor;
             _skillFactory = skillFactory;
         }
@@ -24,8 +24,8 @@ namespace Server.Battles
             {
                 errorMessage = "Request body is required.";
 
-                _logger.LogWarning($"[Story][Battle]: Validation failed: {errorMessage}");
-                _logger.LogInformation($"[Config]: Snapshot summary unavailable; request body is null");
+                _coreLog.Warning($"[Story][Battle]: Validation failed: {errorMessage}");
+                _coreLog.Information($"[Config]: Snapshot summary unavailable; request body is null");
 
                 return false;
             }
@@ -97,7 +97,7 @@ namespace Server.Battles
         {
             if (team == null)
             {
-                _logger.LogDebug($"[Story][Battle]: Snapshot team = {teamName} missing, storyLevelId = {storyLevelId}, stageId = {stageId}");
+                _coreLog.Debug($"[Story][Battle]: Snapshot team = {teamName} missing, storyLevelId = {storyLevelId}, stageId = {stageId}");
 
                 return;
             }
@@ -128,7 +128,7 @@ namespace Server.Battles
                 var equipmentCount = unit.Equipments == null ? 0 : unit.Equipments.Count;
                 var bonusCount = unit.ActiveBonuses == null ? 0 : unit.ActiveBonuses.Count;
 
-                _logger.LogDebug($"[Story][Battle]: Snapshot team = {teamName}, group = {groupName}, id = {unit.Id}, slot = {unit.SlotIndex}, level = {unit.Level}, mastery = {unit.MasteryLevel}, training = {unit.TrainingLevel}, perkCount = {perkCount}, skillCount = {skillCount}, equipmentCount = {equipmentCount}, bonusCount = {bonusCount}, storyLevelId = {storyLevelId}, stageId = {stageId}");
+                _coreLog.Debug($"[Story][Battle]: Snapshot team = {teamName}, group = {groupName}, id = {unit.Id}, slot = {unit.SlotIndex}, level = {unit.Level}, mastery = {unit.MasteryLevel}, training = {unit.TrainingLevel}, perkCount = {perkCount}, skillCount = {skillCount}, equipmentCount = {equipmentCount}, bonusCount = {bonusCount}, storyLevelId = {storyLevelId}, stageId = {stageId}");
             }
         }
 
@@ -314,7 +314,7 @@ namespace Server.Battles
                 }
 
                 if (_skillFactory.IsKnownSkillId(skillId) == false)
-                    _logger.LogWarning($"[Story][Battle]: Unknown skill id = {skillId} for unit id = {unit.Id}; skill skipped");
+                    _coreLog.Warning($"[Story][Battle]: Unknown skill id = {skillId} for unit id = {unit.Id}; skill skipped");
             }
 
             if (isSummon
@@ -341,7 +341,7 @@ namespace Server.Battles
             if (ValidateActiveBonuses(unit, out errorMessage) == false)
                 return false;
 
-            _logger.LogDebug($"[Story][Battle]: Unit snapshot resolved id = {unit.Id}, masteryLevel = {unit.MasteryLevel}, trainingLevel = {unit.TrainingLevel}, equipmentCount = {unit.Equipments.Count}, artifactCount = {unit.ArtifactIds.Count}, aspectCount = {unit.AspectIds.Count}, bonusCount = {unit.ActiveBonuses.Count}");
+            _coreLog.Debug($"[Story][Battle]: Unit snapshot resolved id = {unit.Id}, masteryLevel = {unit.MasteryLevel}, trainingLevel = {unit.TrainingLevel}, equipmentCount = {unit.Equipments.Count}, artifactCount = {unit.ArtifactIds.Count}, aspectCount = {unit.AspectIds.Count}, bonusCount = {unit.ActiveBonuses.Count}");
 
             errorMessage = string.Empty;
 
@@ -377,7 +377,7 @@ namespace Server.Battles
 
                 if (_configDistributor.Bonuses.TryGet(grant.Id, out _) == false)
                 {
-                    _logger.LogWarning($"[Story][Battle]: Unknown run bonus, id = {grant.Id} for unit id = {unit.Id}");
+                    _coreLog.Warning($"[Story][Battle]: Unknown run bonus, id = {grant.Id} for unit id = {unit.Id}");
 
                     continue;
                 }
@@ -390,7 +390,7 @@ namespace Server.Battles
 
         private void LogValidationFailure(IBattleSimulationData data, string errorMessage)
         {
-            _logger.LogWarning($"[Story][Battle]: Validation failed: {errorMessage}");
+            _coreLog.Warning($"[Story][Battle]: Validation failed: {errorMessage}");
 
             var teamAEquipmentCount = CountTeamEquipment(data.TeamA);
             var teamBEquipmentCount = CountTeamEquipment(data.TeamB);
@@ -399,10 +399,10 @@ namespace Server.Battles
             var teamAAspectCount = CountTeamAspects(data.TeamA);
             var teamBAspectCount = CountTeamAspects(data.TeamB);
 
-            _logger.LogInformation($"[Config]: Snapshot summary stageId = {data.StageId}, storyLevelId = {data.StoryLevelId}, teamAEquipment = {teamAEquipmentCount}, teamBEquipment = {teamBEquipmentCount}, teamAArtifacts = {teamAArtifactCount}, teamBArtifacts = {teamBArtifactCount}, teamAAspects = {teamAAspectCount}, teamBAspects = {teamBAspectCount}");
+            _coreLog.Information($"[Config]: Snapshot summary stageId = {data.StageId}, storyLevelId = {data.StoryLevelId}, teamAEquipment = {teamAEquipmentCount}, teamBEquipment = {teamBEquipmentCount}, teamAArtifacts = {teamAArtifactCount}, teamBArtifacts = {teamBArtifactCount}, teamAAspects = {teamAAspectCount}, teamBAspects = {teamBAspectCount}");
         }
 
-        private static int CountTeamEquipment(ITeamSnapshot team)
+        private int CountTeamEquipment(ITeamSnapshot team)
         {
             if (team == null)
                 return 0;
@@ -413,7 +413,7 @@ namespace Server.Battles
             return mainUnitEquipments + summonEquipments;
         }
 
-        private static int CountUnitsEquipments(List<IUnitSnapshot> units)
+        private int CountUnitsEquipments(List<IUnitSnapshot> units)
         {
             if (units == null)
                 return 0;
@@ -433,7 +433,7 @@ namespace Server.Battles
             return count;
         }
 
-        private static int CountTeamArtifacts(ITeamSnapshot team)
+        private int CountTeamArtifacts(ITeamSnapshot team)
         {
             if (team == null)
                 return 0;
@@ -444,7 +444,7 @@ namespace Server.Battles
             return mainUnitArtifacts + summonArtifacts;
         }
 
-        private static int CountUnitsArtifacts(List<IUnitSnapshot> units)
+        private int CountUnitsArtifacts(List<IUnitSnapshot> units)
         {
             if (units == null)
                 return 0;
@@ -464,7 +464,7 @@ namespace Server.Battles
             return count;
         }
 
-        private static int CountTeamAspects(ITeamSnapshot team)
+        private int CountTeamAspects(ITeamSnapshot team)
         {
             if (team == null)
                 return 0;
@@ -475,7 +475,7 @@ namespace Server.Battles
             return mainUnitAspects + summonAspects;
         }
 
-        private static int CountUnitsAspects(List<IUnitSnapshot> units)
+        private int CountUnitsAspects(List<IUnitSnapshot> units)
         {
             if (units == null)
                 return 0;

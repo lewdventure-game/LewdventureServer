@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Server.Bonuses;
 using Server.Services;
 
@@ -6,7 +5,7 @@ namespace Server.Battles
 {
     internal sealed class BattleBonusService : IBattleBonusService
     {
-        private readonly ILogger<BattleBonusService> _logger;
+        private readonly ICoreLog _coreLog;
         private readonly IBattleCommandFactory _battleCommandFactory;
         private readonly IBonusWorkModeParser _bonusWorkModeParser;
         private readonly ICharacteristicBucketApplicator _characteristicBucketApplicator;
@@ -14,14 +13,14 @@ namespace Server.Battles
         private readonly IConfigDistributor _configDistributor;
 
         public BattleBonusService(
-            ILogger<BattleBonusService> logger,
+            ICoreLog coreLog,
             IBattleCommandFactory battleCommandFactory,
             IBonusWorkModeParser bonusWorkModeParser,
             ICharacteristicBucketApplicator characteristicBucketApplicator,
             ICharacteristicCalculator characteristicCalculator,
             IConfigDistributor configDistributor)
         {
-            _logger = logger;
+            _coreLog = coreLog;
             _battleCommandFactory = battleCommandFactory;
             _bonusWorkModeParser = bonusWorkModeParser;
             _characteristicBucketApplicator = characteristicBucketApplicator;
@@ -42,7 +41,7 @@ namespace Server.Battles
 
             if (_configDistributor.Bonuses.TryGet(bonusId, out var bonusMapper) == false)
             {
-                _logger.LogError($"[Story][Battle]: Bonus missing, id = {bonusId}");
+                _coreLog.Error($"[Story][Battle]: Bonus missing, id = {bonusId}");
 
                 throw new InvalidOperationException($"[Story][Battle]: Bonus missing, id = {bonusId}");
             }
@@ -63,7 +62,7 @@ namespace Server.Battles
 
             if (_bonusWorkModeParser.TryParse(bonusMapper.WorkModeParameters, out var workMode) == false)
             {
-                _logger.LogError($"[Story][Battle]: work_mode parse failed, bonusId = {bonusId}");
+                _coreLog.Error($"[Story][Battle]: work_mode parse failed, bonusId = {bonusId}");
 
                 return;
             }
@@ -82,9 +81,9 @@ namespace Server.Battles
             unit.ActiveBonuses.Add(activeBonus);
 
             if (workMode.Contains(BonusWorkModeKind.NextBattles))
-                _logger.LogDebug($"[Story][Battle]: Bonus next_battles grant, unitId = {unit.Id}, bonusId = {bonusId}, remainingBattles = {activeBonus.RemainingBattles}");
+                _coreLog.Debug($"[Story][Battle]: Bonus next_battles grant, unitId = {unit.Id}, bonusId = {bonusId}, remainingBattles = {activeBonus.RemainingBattles}");
 
-            _logger.LogDebug($"[Story][Battle]: Bonus grant, unitId = {unit.Id}, bonusId = {bonusId}, count = {count}, type = {bonusMapper.BonusType}, operator = {bonusMapper.OperatorType}, workMode = {workMode.Format()}, sourceKey = {sourceKey}");
+            _coreLog.Debug($"[Story][Battle]: Bonus grant, unitId = {unit.Id}, bonusId = {bonusId}, count = {count}, type = {bonusMapper.BonusType}, operator = {bonusMapper.OperatorType}, workMode = {workMode.Format()}, sourceKey = {sourceKey}");
 
             Rebuild(unit, currentTurn, commands, true);
         }
@@ -127,7 +126,7 @@ namespace Server.Battles
 
                 var bonusId = activeBonuses[i].BonusId;
 
-                _logger.LogDebug($"[Story][Battle]: Bonus remove, unitId = {unit.Id}, bonusId = {bonusId}, sourceKey = {activeBonuses[i].SourceKey}");
+                _coreLog.Debug($"[Story][Battle]: Bonus remove, unitId = {unit.Id}, bonusId = {bonusId}, sourceKey = {activeBonuses[i].SourceKey}");
 
                 if (ContainsBonusId(removedBonusIds, bonusId) == false)
                     removedBonusIds.Add(bonusId);
@@ -160,7 +159,7 @@ namespace Server.Battles
 
                 changed = true;
 
-                _logger.LogDebug($"[Story][Battle]: Bonus every_turn stack, unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, everyTurnStacks = {activeBonus.EveryTurnStacks}, turn = {currentTurn}");
+                _coreLog.Debug($"[Story][Battle]: Bonus every_turn stack, unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, everyTurnStacks = {activeBonus.EveryTurnStacks}, turn = {currentTurn}");
             }
 
             if (changed == false && HasTurnScopedBonus(activeBonuses) == false)
@@ -182,7 +181,7 @@ namespace Server.Battles
 
                 if (workMode.Contains(BonusWorkModeKind.EndOfBattle))
                 {
-                    _logger.LogDebug($"[Story][Battle]: Bonus battle-end remove, unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, workMode = {workMode.Format()}");
+                    _coreLog.Debug($"[Story][Battle]: Bonus battle-end remove, unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, workMode = {workMode.Format()}");
 
                     commands.Add(_battleCommandFactory.SetBonus(unit.Id, unit.SlotIndex, activeBonus.BonusId, 0f, unit.Id));
                     activeBonuses.RemoveAt(i);
@@ -197,7 +196,7 @@ namespace Server.Battles
                     activeBonus.RemainingBattles -= 1;
                     nextBattlesChanged = true;
 
-                    _logger.LogDebug($"[Story][Battle]: Bonus next_battles decrement, unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, remainingBattles = {activeBonus.RemainingBattles}");
+                    _coreLog.Debug($"[Story][Battle]: Bonus next_battles decrement, unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, remainingBattles = {activeBonus.RemainingBattles}");
 
                     if (0 < activeBonus.RemainingBattles)
                     {
@@ -277,10 +276,10 @@ namespace Server.Battles
                 return;
 
             commands.Add(_battleCommandFactory.SetHp(unit.Id, unit.SlotIndex, healthAfterRebuild));
-            _logger.LogDebug($"[Story][Battle]: Bonus rebuild health sync, unitId = {unit.Id}, healthBefore = {healthBeforeRebuild}, healthAfter = {healthAfterRebuild}, maxHealth = {unit.CharacteristicState.MaxHealth}");
+            _coreLog.Debug($"[Story][Battle]: Bonus rebuild health sync, unitId = {unit.Id}, healthBefore = {healthBeforeRebuild}, healthAfter = {healthAfterRebuild}, maxHealth = {unit.CharacteristicState.MaxHealth}");
         }
 
-        private static void RemoveBonusesWithExactSourceKey(IUnitState unit, string sourceKey)
+        private void RemoveBonusesWithExactSourceKey(IUnitState unit, string sourceKey)
         {
             if (string.IsNullOrEmpty(sourceKey))
                 return;
@@ -377,7 +376,7 @@ namespace Server.Battles
             commands.Add(_battleCommandFactory.ShowHeal(unit.Id, unit.SlotIndex, unit.Id, unit.SlotIndex, healDelta));
             commands.Add(_battleCommandFactory.SetHp(unit.Id, unit.SlotIndex, characteristics.Health));
 
-            _logger.LogDebug($"[Story][Battle]: Healing effect, unitId = {unit.Id}, bonusId = {bonusMapper.Id}, type = {bonusMapper.BonusType}, healDelta = {healDelta}, health = {characteristics.Health}");
+            _coreLog.Debug($"[Story][Battle]: Healing effect, unitId = {unit.Id}, bonusId = {bonusMapper.Id}, type = {bonusMapper.BonusType}, healDelta = {healDelta}, health = {characteristics.Health}");
         }
 
         private void ApplyCurrentHealthLocal(IUnitState unit, float value, BonusOperatorType operatorType, List<BattleCommand> commands)
@@ -387,12 +386,12 @@ namespace Server.Battles
             if (operatorType == BonusOperatorType.Replace)
             {
                 characteristics.Health = value;
-                _logger.LogDebug($"[Story][Battle]: Current health local replace, unitId = {unit.Id}, value = {value}");
+                _coreLog.Debug($"[Story][Battle]: Current health local replace, unitId = {unit.Id}, value = {value}");
             }
             else
             {
                 characteristics.Health += value;
-                _logger.LogDebug($"[Story][Battle]: Current health local, unitId = {unit.Id}, delta = {value}, health = {characteristics.Health}");
+                _coreLog.Debug($"[Story][Battle]: Current health local, unitId = {unit.Id}, delta = {value}, health = {characteristics.Health}");
             }
 
             if (characteristics.Health < 0f)
@@ -429,7 +428,7 @@ namespace Server.Battles
                 var isEquipped = unit.HasEquippedEntity(part.EquippedEntityType, part.EquippedEntityId);
 
                 if (isEquipped == false)
-                    _logger.LogWarning($"[Story][Battle]: if_equipped skip, unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, entityType = {part.EquippedEntityType}, entityId = {part.EquippedEntityId}");
+                    _coreLog.Warning($"[Story][Battle]: if_equipped skip, unitId = {unit.Id}, bonusId = {activeBonus.BonusId}, entityType = {part.EquippedEntityType}, entityId = {part.EquippedEntityId}");
 
                 return isEquipped;
             }
@@ -443,7 +442,7 @@ namespace Server.Battles
 
                 if (turnLimit <= 0)
                 {
-                    _logger.LogError($"[Story][Battle]: first_turns count <= 0, bonusId = {activeBonus.BonusId}, turnLimit = {turnLimit}");
+                    _coreLog.Error($"[Story][Battle]: first_turns count <= 0, bonusId = {activeBonus.BonusId}, turnLimit = {turnLimit}");
 
                     throw new InvalidOperationException($"[Story][Battle]: first_turns count <= 0, bonusId = {activeBonus.BonusId}");
                 }
@@ -457,7 +456,7 @@ namespace Server.Battles
                 || kind == BonusWorkModeKind.EveryTurn)
                 return true;
 
-            _logger.LogError($"[Story][Battle]: work_mode kind unhandled, bonusId = {activeBonus.BonusId}, kind = {kind}");
+            _coreLog.Error($"[Story][Battle]: work_mode kind unhandled, bonusId = {activeBonus.BonusId}, kind = {kind}");
 
             throw new InvalidOperationException($"[Story][Battle]: work_mode kind unhandled, bonusId = {activeBonus.BonusId}, kind = {kind}");
         }
@@ -490,7 +489,7 @@ namespace Server.Battles
 
                 commands.Add(_battleCommandFactory.SetBonus(unit.Id, unit.SlotIndex, bonusId, 0f, unit.Id));
 
-                _logger.LogDebug($"[Story][Battle]: Bonus cleared presentation, unitId = {unit.Id}, bonusId = {bonusId}");
+                _coreLog.Debug($"[Story][Battle]: Bonus cleared presentation, unitId = {unit.Id}, bonusId = {bonusId}");
             }
         }
 

@@ -1,6 +1,6 @@
 namespace Server.Battles
 {
-    internal enum CommandType
+    public enum CommandType
     {
         Unknown = 0,
         Wait = 1,

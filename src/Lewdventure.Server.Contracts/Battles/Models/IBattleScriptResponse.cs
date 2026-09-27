@@ -1,7 +1,7 @@
 ﻿
 namespace Server.Battles
 {
-    internal interface IBattleScriptResponse
+    public interface IBattleScriptResponse
     {
         public int ProtocolVersion { get; set; }
 

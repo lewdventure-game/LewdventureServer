@@ -2,9 +2,16 @@ using System.Globalization;
 
 namespace Server.Configs
 {
-    internal static class ParserUtils
+    internal sealed class ParserUtils
     {
-        internal static void ParseToDictionary(string input, Dictionary<string, string> output)
+        private readonly ICoreLog _coreLog;
+
+        public ParserUtils(ICoreLog coreLog)
+        {
+            _coreLog = coreLog;
+        }
+
+        public void ParseToDictionary(string input, Dictionary<string, string> output)
         {
             if (string.IsNullOrEmpty(input))
                 return;
@@ -22,7 +29,7 @@ namespace Server.Configs
 
                 if (separator < 0)
                 {
-                    Console.WriteLine($"[Error]: Invalid format '{pair.ToString()}'");
+                    _coreLog.Error($"[Error]: Invalid format '{pair.ToString()}'");
 
                     continue;
                 }
@@ -37,7 +44,7 @@ namespace Server.Configs
             }
         }
 
-        internal static IReadOnlyList<int> ParseIntList(Dictionary<string, string> dictionary, string key)
+        public IReadOnlyList<int> ParseIntList(Dictionary<string, string> dictionary, string key)
         {
             if (dictionary.TryGetValue(key, out var value) == false || string.IsNullOrEmpty(value))
                 return Array.Empty<int>();
@@ -62,13 +69,13 @@ namespace Server.Configs
                 if (int.TryParse(partSpan, out var id))
                     result.Add(id);
                 else
-                    Console.WriteLine($"[Error]: Failed to parse int '{partSpan.ToString()}' in key '{key}'");
+                    _coreLog.Error($"[Error]: Failed to parse int '{partSpan.ToString()}' in key '{key}'");
             }
 
             return result;
         }
 
-        internal static IReadOnlyList<int> ParseIntList(string value)
+        public IReadOnlyList<int> ParseIntList(string value)
         {
             if (string.IsNullOrEmpty(value))
                 return Array.Empty<int>();
@@ -93,25 +100,25 @@ namespace Server.Configs
                 if (int.TryParse(partSpan, out var id))
                     result.Add(id);
                 else
-                    Console.WriteLine($"[Error]: Failed to parse int '{partSpan.ToString()}'");
+                    _coreLog.Error($"[Error]: Failed to parse int '{partSpan.ToString()}'");
             }
 
             return result;
         }
 
-        internal static string GetString(Dictionary<string, string> dictionary, string key, string defaultValue)
+        public string GetString(Dictionary<string, string> dictionary, string key, string defaultValue)
         {
             return dictionary.TryGetValue(key, out var value) && string.IsNullOrEmpty(value) == false
                 ? value
                 : defaultValue;
         }
 
-        internal static string GetString(string value, string defaultValue)
+        public string GetString(string value, string defaultValue)
         {
             return string.IsNullOrEmpty(value) ? defaultValue : value;
         }
 
-        internal static float GetFloat(Dictionary<string, string> dictionary, string key, float defaultValue)
+        public float GetFloat(Dictionary<string, string> dictionary, string key, float defaultValue)
         {
             if (dictionary.TryGetValue(key, out var value) == false)
                 return defaultValue;
@@ -119,7 +126,7 @@ namespace Server.Configs
             return GetFloat(value, defaultValue);
         }
 
-        internal static float GetFloat(string value, float defaultValue)
+        public float GetFloat(string value, float defaultValue)
         {
             if (string.IsNullOrWhiteSpace(value))
                 return defaultValue;
@@ -137,21 +144,21 @@ namespace Server.Configs
             return defaultValue;
         }
 
-        internal static int GetInt(Dictionary<string, string> dictionary, string key, int defaultValue)
+        public int GetInt(Dictionary<string, string> dictionary, string key, int defaultValue)
         {
             return dictionary.TryGetValue(key, out var value) && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result)
                 ? result
                 : defaultValue;
         }
 
-        internal static int GetInt(string value, int defaultValue)
+        public int GetInt(string value, int defaultValue)
         {
             return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result)
                 ? result
                 : defaultValue;
         }
 
-        private static string UnwrapBrackets(string value)
+        private string UnwrapBrackets(string value)
         {
             if (string.IsNullOrWhiteSpace(value))
                 return string.Empty;
@@ -167,7 +174,7 @@ namespace Server.Configs
             return span.ToString();
         }
 
-        private static List<string> SplitTopLevel(string input, char separator)
+        private List<string> SplitTopLevel(string input, char separator)
         {
             var result = new List<string>();
 

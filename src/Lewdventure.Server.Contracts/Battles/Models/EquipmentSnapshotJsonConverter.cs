@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace Server.Battles
 {
-    internal sealed class EquipmentSnapshotJsonConverter : JsonConverter
+    public sealed class EquipmentSnapshotJsonConverter : JsonConverter
     {
         public override bool CanConvert(Type objectType)
         {

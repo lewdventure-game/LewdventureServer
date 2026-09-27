@@ -2,7 +2,7 @@ using System.Runtime.Serialization;
 
 namespace Server.Bonuses
 {
-    internal enum BonusType
+    public enum BonusType
     {
         Unknown = 0,
         [EnumMember(Value = "max_health_local")]

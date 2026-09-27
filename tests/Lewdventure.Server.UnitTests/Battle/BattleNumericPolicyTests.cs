@@ -33,6 +33,11 @@ namespace Tests.Unit.Battle
             "SeededRandomService.cs",
         };
 
+        private readonly string[] _enumerationOrderAllowList =
+        {
+            "UnitBonusGranter.cs",
+        };
+
         private readonly Dictionary<string, string[]> _apiAllowList = new(StringComparer.Ordinal)
         {
             ["SeededRandomService.cs"] = new[] { "Environment.TickCount" },
@@ -93,6 +98,50 @@ namespace Tests.Unit.Battle
             }
 
             Assert.That(violations, Is.Empty, "в боевом коде не должно быть double: " + string.Join("; ", violations));
+        }
+
+        [Test]
+        public void BattleSources_DoNotDependOnDictionaryEnumerationOrder()
+        {
+            var violations = new List<string>();
+            var files = Directory.GetFiles(FindBattleDirectory(), "*.cs", SearchOption.AllDirectories);
+
+            for (int i = 0; i < files.Length; i++)
+            {
+                if (IsGenerated(files[i]))
+                    continue;
+
+                var name = Path.GetFileName(files[i]);
+
+                if (IsEnumerationOrderAllowed(name))
+                    continue;
+
+                var lines = File.ReadAllLines(files[i]);
+
+                for (int j = 0; j < lines.Length; j++)
+                {
+                    var line = lines[j];
+
+                    if (line.Contains("foreach", StringComparison.Ordinal) == false)
+                        continue;
+
+                    if (line.Contains(".Values", StringComparison.Ordinal) || line.Contains(".Keys", StringComparison.Ordinal))
+                        violations.Add($"{name}:{j + 1}");
+                }
+            }
+
+            Assert.That(violations, Is.Empty, "порядок обхода словаря не совпадает между рантаймами: " + string.Join("; ", violations));
+        }
+
+        private bool IsEnumerationOrderAllowed(string fileName)
+        {
+            for (int i = 0; i < _enumerationOrderAllowList.Length; i++)
+            {
+                if (string.Equals(_enumerationOrderAllowList[i], fileName, StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
         }
 
         private bool IsApiAllowed(string fileName, string api)

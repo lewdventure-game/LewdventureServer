@@ -2,7 +2,7 @@ using Server.Configs;
 
 namespace Server.Trainings
 {
-    internal interface ITrainingMapper : IConfigMapper
+    public interface ITrainingMapper : IConfigMapper
     {
         public int Level { get; }
 

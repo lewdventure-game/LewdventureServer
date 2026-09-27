@@ -2,11 +2,11 @@ namespace Server.Battles
 {
     internal sealed class BattleScriptBuilder : IBattleScriptBuilder
     {
-        private readonly ILogger<BattleScriptBuilder> _logger;
+        private readonly ICoreLog _coreLog;
 
-        public BattleScriptBuilder(ILogger<BattleScriptBuilder> logger)
+        public BattleScriptBuilder(ICoreLog coreLog)
         {
-            _logger = logger;
+            _coreLog = coreLog;
         }
 
         public void Add(
@@ -87,7 +87,7 @@ namespace Server.Battles
                 Commands = commands,
             });
 
-            _logger.LogDebug($"[Story][Battle]: Step index = {index}, turn = {turn}, phase = {phase}, actorId = {actorId}, actorSlotIndex = {actorSlotIndex}, targetId = {targetId}, targetSlotIndex = {targetSlotIndex}, commands = {commands.Count}");
+            _coreLog.Debug($"[Story][Battle]: Step index = {index}, turn = {turn}, phase = {phase}, actorId = {actorId}, actorSlotIndex = {actorSlotIndex}, targetId = {targetId}, targetSlotIndex = {targetSlotIndex}, commands = {commands.Count}");
         }
     }
 }

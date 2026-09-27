@@ -36,6 +36,15 @@
 
 Level-up выдаёт выбор перков: группа из `Exp_levels_patterns.perk_preset_ids` по весам, из группы — `random_perks_count` перков по `perk_chances`, игрок выбирает `choice_count`. Пока выбор не сделан, `advance` возвращает ошибку.
 
+## Что приходит в шаге забега
+
+`step` в ответе `advance` / `choose` содержит событие (`eventType`, `eventId`, `locKey*`), опыт и уровни, флаги `runCompleted` / `runFailed`, а также:
+
+- `appliedRewards` — что сервер реально записал в профиль (тип, id, ключ ресурса, количество); источник истины для экрана награды, а не команды `GrantReward` в скрипте боя;
+- `profileRev` — ревизия профиля после записи;
+- `battle` или `battleInput` в зависимости от `battleDelivery`;
+- `battleDigest` и `battleStepCount` — для сверки переигранного боя.
+
 ## Детерминизм и целостность
 
 - Забег хранит `seed` и счётчик бросков `rollIndex`: раскладка этапов, развилки и перки воспроизводятся при разборе жалоб.

@@ -79,7 +79,6 @@
       "lewdventure.server.gameconfig": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "[10.0.12, )",
           "Newtonsoft.Json": "[13.0.4, )"
         }
       },

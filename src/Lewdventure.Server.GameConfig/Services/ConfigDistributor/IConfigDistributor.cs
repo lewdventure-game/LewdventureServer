@@ -13,7 +13,7 @@ using Server.Trainings;
 
 namespace Server.Services
 {
-    internal interface IConfigDistributor
+    public interface IConfigDistributor
     {
         public IConstantsMapperManager Constants { get; }
 

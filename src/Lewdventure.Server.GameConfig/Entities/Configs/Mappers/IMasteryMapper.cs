@@ -2,7 +2,7 @@ using Server.Configs;
 
 namespace Server.Entities
 {
-    internal interface IMasteryMapper : IConfigMapper
+    public interface IMasteryMapper : IConfigMapper
     {
         public int Id { get; }
 

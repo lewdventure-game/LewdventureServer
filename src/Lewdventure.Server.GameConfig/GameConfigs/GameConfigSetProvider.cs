@@ -4,13 +4,13 @@ namespace Server.GameConfigs
 {
     internal sealed class GameConfigSetProvider : IGameConfigSetProvider
     {
-        private readonly ILogger<GameConfigSetProvider> _logger;
+        private readonly ICoreLog _coreLog;
 
         private GameConfigSet _current = new(GameConfigSet.EmptyVersion, DateTime.MinValue, "none", new ConfigDistributor());
 
-        public GameConfigSetProvider(ILogger<GameConfigSetProvider> logger)
+        public GameConfigSetProvider(ICoreLog coreLog)
         {
-            _logger = logger;
+            _coreLog = coreLog;
         }
 
         public GameConfigSet Current => Volatile.Read(ref _current);
@@ -19,7 +19,7 @@ namespace Server.GameConfigs
         {
             var previous = Interlocked.Exchange(ref _current, configSet);
 
-            _logger.LogInformation("[Config][Snapshot] swapped from = {PreviousVersion} to = {Version} source = {Source}", previous.Version, configSet.Version, configSet.Source);
+            _coreLog.Information($"[Config][Snapshot] swapped from = {previous.Version} to = {configSet.Version} source = {configSet.Source}");
         }
     }
 }

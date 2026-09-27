@@ -1,6 +1,6 @@
 namespace Server.Battles
 {
-    internal interface IBonusGrantSnapshot
+    public interface IBonusGrantSnapshot
     {
         public int Id { get; set; }
 

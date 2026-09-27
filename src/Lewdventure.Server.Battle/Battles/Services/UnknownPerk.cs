@@ -1,16 +1,15 @@
-using Microsoft.Extensions.Logging;
 using Server.Perks;
 
 namespace Server.Battles
 {
     internal sealed class UnknownPerk : BasePerk
     {
-        private readonly ILogger _logger;
+        private readonly ICoreLog _coreLog;
 
-        internal UnknownPerk(IPerkMapper mapper, ILogger logger)
+        internal UnknownPerk(IPerkMapper mapper, ICoreLog coreLog)
             : base(mapper)
         {
-            _logger = logger;
+            _coreLog = coreLog;
         }
 
         public override bool CanTrigger(int currentTurn)
@@ -20,7 +19,7 @@ namespace Server.Battles
 
         public override void Trigger(IPerkExecutionContext context)
         {
-            _logger.LogError($"[Story][Battle]: Perk unsupported trigger, id = {Id}, type = {PerkType}");
+            _coreLog.Error($"[Story][Battle]: Perk unsupported trigger, id = {Id}, type = {PerkType}");
         }
     }
 }

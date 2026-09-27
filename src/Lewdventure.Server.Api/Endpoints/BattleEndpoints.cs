@@ -55,7 +55,7 @@ namespace Server.Api.Endpoints
             HttpRequest httpRequest,
             [FromServices] JsonSerializerSettings serializerSettings,
             [FromServices] IBattleSimulationValidator validator,
-            [FromServices] BattleSimulatorService simulator)
+            [FromServices] IBattleSimulatorService simulator)
         {
             var body = await ReadBodyAsync(httpRequest);
             BattleSimulationData? request;
@@ -85,7 +85,7 @@ namespace Server.Api.Endpoints
             HttpRequest httpRequest,
             [FromServices] JsonSerializerSettings serializerSettings,
             [FromServices] IBattleSimulationValidator validator,
-            [FromServices] BattleSimulatorService simulator)
+            [FromServices] IBattleSimulatorService simulator)
         {
             var body = await ReadBodyAsync(httpRequest);
             BattleReplayData? request;

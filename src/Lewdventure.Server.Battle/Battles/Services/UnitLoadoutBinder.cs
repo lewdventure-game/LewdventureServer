@@ -10,7 +10,7 @@ namespace Server.Battles
 {
     internal sealed class UnitLoadoutBinder : IUnitLoadoutBinder
     {
-        private readonly ILogger<UnitLoadoutBinder> _logger;
+        private readonly ICoreLog _coreLog;
         private readonly IBattleBonusService _battleBonusService;
         private readonly IConfigDistributor _configDistributor;
         private readonly IPerkFactory _perkFactory;
@@ -18,14 +18,14 @@ namespace Server.Battles
         private readonly IStatusParametersParser _statusParametersParser;
 
         public UnitLoadoutBinder(
-            ILogger<UnitLoadoutBinder> logger,
+            ICoreLog coreLog,
             IBattleBonusService battleBonusService,
             IConfigDistributor configDistributor,
             IPerkFactory perkFactory,
             ISkillFactory skillFactory,
             IStatusParametersParser statusParametersParser)
         {
-            _logger = logger;
+            _coreLog = coreLog;
             _battleBonusService = battleBonusService;
             _configDistributor = configDistributor;
             _perkFactory = perkFactory;
@@ -65,7 +65,7 @@ namespace Server.Battles
                 unitState.RegisterEquippedEntity("equipments", entry.Id);
             }
 
-            _logger.LogDebug($"[Story][Battle]: Equipped entities registered, unitId = {unitState.Id}, count = {unitState.EquippedEntities.Count}");
+            _coreLog.Debug($"[Story][Battle]: Equipped entities registered, unitId = {unitState.Id}, count = {unitState.EquippedEntities.Count}");
         }
 
         public List<IPerk> BuildPerks(IUnitSnapshot unitSnapshot)
@@ -79,14 +79,14 @@ namespace Server.Battles
 
                 if (_configDistributor.Perks.TryGet(perkId, out var perkMapper) == false)
                 {
-                    _logger.LogWarning($"[Story][Battle]: Perk missing, id = {perkId}");
+                    _coreLog.Warning($"[Story][Battle]: Perk missing, id = {perkId}");
 
                     continue;
                 }
 
                 if (perkMapper.PerkType == PerkType.Unknown)
                 {
-                    _logger.LogError($"[Config]: Perk unknown type, id = {perkId}, raw type unresolved");
+                    _coreLog.Error($"[Config]: Perk unknown type, id = {perkId}, raw type unresolved");
 
                     continue;
                 }
@@ -98,7 +98,7 @@ namespace Server.Battles
                 }
                 catch (Exception exception)
                 {
-                    _logger.LogWarning(exception, $"[Story][Battle]: Perk create failed, id = {perkId}, type = {perkMapper.PerkType}");
+                    _coreLog.Warning(exception, $"[Story][Battle]: Perk create failed, id = {perkId}, type = {perkMapper.PerkType}");
                 }
             }
 
@@ -137,14 +137,14 @@ namespace Server.Battles
 
                 if (skill.SkillType == SkillType.Unknown)
                 {
-                    _logger.LogWarning($"[Story][Battle]: Skill skipped unknown id = {skillId}, unitId = {unitSnapshot.Id}");
+                    _coreLog.Warning($"[Story][Battle]: Skill skipped unknown id = {skillId}, unitId = {unitSnapshot.Id}");
 
                     continue;
                 }
 
                 skills.Add(skill);
 
-                _logger.LogDebug($"[Story][Battle]: Skill bound, unitId = {unitSnapshot.Id}, skillId = {skillId}, type = {skill.SkillType}");
+                _coreLog.Debug($"[Story][Battle]: Skill bound, unitId = {unitSnapshot.Id}, skillId = {skillId}, type = {skill.SkillType}");
             }
 
             return skills;
@@ -165,7 +165,7 @@ namespace Server.Battles
                 AddUniqueSkillId(skillIds, skillId);
 
                 if (beforeCount < skillIds.Count)
-                    _logger.LogDebug($"[Story][Battle]: Character skill injected, unitId = {unitSnapshot.Id}, skillId = {skillId}");
+                    _coreLog.Debug($"[Story][Battle]: Character skill injected, unitId = {unitSnapshot.Id}, skillId = {skillId}");
             }
         }
 
@@ -184,7 +184,7 @@ namespace Server.Battles
                 AddUniqueSkillId(skillIds, skillId);
 
                 if (beforeCount < skillIds.Count)
-                    _logger.LogDebug($"[Story][Battle]: Enemy skill injected, unitId = {unitSnapshot.Id}, skillId = {skillId}");
+                    _coreLog.Debug($"[Story][Battle]: Enemy skill injected, unitId = {unitSnapshot.Id}, skillId = {skillId}");
             }
         }
 
@@ -212,7 +212,7 @@ namespace Server.Battles
 
                 if (probe.SkillType == SkillType.Unknown)
                 {
-                    _logger.LogWarning($"[Story][Battle]: Equipment skill_id unknown skipped, equipmentId = {entry.Id}, skillId = {trimmed}, unitId = {unitSnapshot.Id}");
+                    _coreLog.Warning($"[Story][Battle]: Equipment skill_id unknown skipped, equipmentId = {entry.Id}, skillId = {trimmed}, unitId = {unitSnapshot.Id}");
 
                     continue;
                 }
@@ -222,7 +222,7 @@ namespace Server.Battles
                 AddUniqueSkillId(skillIds, trimmed);
 
                 if (beforeCount < skillIds.Count)
-                    _logger.LogDebug($"[Story][Battle]: Equipment skill injected, unitId = {unitSnapshot.Id}, equipmentId = {entry.Id}, skillId = {trimmed}, type = {probe.SkillType}");
+                    _coreLog.Debug($"[Story][Battle]: Equipment skill injected, unitId = {unitSnapshot.Id}, equipmentId = {entry.Id}, skillId = {trimmed}, type = {probe.SkillType}");
             }
         }
 
@@ -251,7 +251,7 @@ namespace Server.Battles
 
             if (isSummon)
             {
-                _logger.LogError($"[Story][Battle]: Status seed on summon forbidden, unitId = {unitSnapshot.Id}, count = {statusIds.Count}");
+                _coreLog.Error($"[Story][Battle]: Status seed on summon forbidden, unitId = {unitSnapshot.Id}, count = {statusIds.Count}");
 
                 return;
             }
@@ -265,21 +265,21 @@ namespace Server.Battles
 
                 if (_configDistributor.Statuses.TryGet(statusId, out var statusMapper) == false)
                 {
-                    _logger.LogError($"[Story][Battle]: Status missing, id = {statusId}");
+                    _coreLog.Error($"[Story][Battle]: Status missing, id = {statusId}");
 
                     continue;
                 }
 
                 if (statusMapper.StatusType == StatusType.Unknown)
                 {
-                    _logger.LogError($"[Config]: Status unknown type, id = {statusId}");
+                    _coreLog.Error($"[Config]: Status unknown type, id = {statusId}");
 
                     continue;
                 }
 
                 if (statusMapper.StatusType == StatusType.BonusChange)
                 {
-                    _logger.LogError($"[Story][Battle]: bonus_change cannot hang in snapshot, id = {statusId}, unitId = {unitState.Id}");
+                    _coreLog.Error($"[Story][Battle]: bonus_change cannot hang in snapshot, id = {statusId}, unitId = {unitState.Id}");
 
                     continue;
                 }
@@ -291,7 +291,7 @@ namespace Server.Battles
 
                 if (parameters.MaxStacks <= currentStacks)
                 {
-                    _logger.LogWarning($"[Story][Battle]: Status max stacks reached, id = {statusId}, maxStacks = {parameters.MaxStacks}");
+                    _coreLog.Warning($"[Story][Battle]: Status max stacks reached, id = {statusId}, maxStacks = {parameters.MaxStacks}");
 
                     continue;
                 }
@@ -314,7 +314,7 @@ namespace Server.Battles
 
                 activeStatuses.Add(activeStatus);
 
-                _logger.LogDebug($"[Story][Battle]: Seeded status, id = {statusId}, remainingTicks = {parameters.DamageLength}, damageRatio = {parameters.DamageRatio}, stacks = {currentStacks + 1}, bonuses = {parameters.Bonuses.Count}, applyingMainId = -1");
+                _coreLog.Debug($"[Story][Battle]: Seeded status, id = {statusId}, remainingTicks = {parameters.DamageLength}, damageRatio = {parameters.DamageRatio}, stacks = {currentStacks + 1}, bonuses = {parameters.Bonuses.Count}, applyingMainId = -1");
             }
         }
 

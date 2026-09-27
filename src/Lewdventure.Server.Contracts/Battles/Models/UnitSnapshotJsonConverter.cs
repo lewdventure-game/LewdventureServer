@@ -3,7 +3,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Server.Battles
 {
-    internal sealed class UnitSnapshotJsonConverter : JsonConverter
+    public sealed class UnitSnapshotJsonConverter : JsonConverter
     {
         public override bool CanConvert(Type objectType)
         {
@@ -32,7 +32,7 @@ namespace Server.Battles
             serializer.Serialize(writer, value);
         }
 
-        private static void NormalizeEquipment(
+        private void NormalizeEquipment(
             UnitSnapshot unitSnapshot,
             JObject token,
             JsonSerializer serializer)
@@ -81,7 +81,7 @@ namespace Server.Battles
             }
         }
 
-        private static void TryPopulateEquipmentAlias(
+        private void TryPopulateEquipmentAlias(
             UnitSnapshot unitSnapshot,
             JObject token,
             JsonSerializer serializer)
@@ -110,7 +110,7 @@ namespace Server.Battles
             }
         }
 
-        private static void CheckFields(UnitSnapshot unitSnapshot)
+        private void CheckFields(UnitSnapshot unitSnapshot)
         {
             unitSnapshot.Equipments ??= [];
             unitSnapshot.EquipmentIds ??= [];

@@ -1,6 +1,6 @@
 namespace Server.Battles
 {
-    internal sealed class EquipmentSnapshot : IEquipmentSnapshot
+    public sealed class EquipmentSnapshot : IEquipmentSnapshot
     {
         private readonly int _id;
 

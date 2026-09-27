@@ -1,6 +1,6 @@
 namespace Server.Battles
 {
-    internal sealed class BattleScriptResponse : IBattleScriptResponse
+    public sealed class BattleScriptResponse : IBattleScriptResponse
     {
         public int ProtocolVersion { get; set; } = 1;
 

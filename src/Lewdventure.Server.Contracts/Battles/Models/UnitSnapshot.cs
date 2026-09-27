@@ -1,6 +1,6 @@
 namespace Server.Battles
 {
-    internal sealed class UnitSnapshot : IUnitSnapshot
+    public sealed class UnitSnapshot : IUnitSnapshot
     {
         public int Id { get; set; }
 

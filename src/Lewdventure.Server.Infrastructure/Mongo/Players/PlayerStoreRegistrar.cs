@@ -49,7 +49,7 @@ namespace Server.Infrastructure.Mongo.Players
 
         private IBattleRewardParser CreateRewardParser(IServiceProvider serviceProvider)
         {
-            return new BattleRewardParser(serviceProvider.GetRequiredService<ILogger<BattleRewardParser>>());
+            return new BattleRewardParser(serviceProvider.GetRequiredService<ICoreLog>());
         }
 
         private UserRepository ResolveUserRepository(IServiceProvider serviceProvider)

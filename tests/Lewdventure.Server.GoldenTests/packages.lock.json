@@ -498,8 +498,7 @@
         "type": "Project",
         "dependencies": {
           "Lewdventure.Server.Contracts": "[1.0.0, )",
-          "Lewdventure.Server.GameConfig": "[1.0.0, )",
-          "Microsoft.Extensions.Logging.Abstractions": "[10.0.12, )"
+          "Lewdventure.Server.GameConfig": "[1.0.0, )"
         }
       },
       "lewdventure.server.contracts": {
@@ -511,7 +510,6 @@
       "lewdventure.server.gameconfig": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "[10.0.12, )",
           "Newtonsoft.Json": "[13.0.4, )"
         }
       },

@@ -267,6 +267,62 @@ Handoff для ИИ (клиент целиком): [`gdd/10-client-battle-ai.md`
 
 Числовая политика закреплена тестами: в боевом коде запрещены `Pow`, `Sqrt`, тригонометрия, `FusedMultiplyAdd`, `double`, обращения к времени и `Guid` — это условие того, что тот же код даст те же числа в Unity.
 
+Броски случайности именованные: `GetRandomValue` принимает имя броска (`evasion`, `critical`, `combo`, `counter`, `perk_rewards`, `action_reward`), генератор создаётся через `ISeededRandomFactory`. Эталоны `seed-42.rolls.txt` у четырёх кейсов фиксируют трассу бросков: имя и значение каждого броска по порядку. Лишний или пропавший бросок виден сразу и с именем, а не как расхождение урона на десятом шаге.
+
+## Доставка боя клиенту: скрипт или сид
+
+`POST /api/run/advance` и `/api/run/choose` принимают `battleDelivery`. По умолчанию (`script`) в `step.battle` едет весь скрипт. С `battleDelivery = "seed"` вместо скрипта приходит `step.battleInput` — вход боя с сидом, и клиент переигрывает бой сам тем же ядром.
+
+В обоих режимах есть `step.battleDigest` (`sha256` от скрипта, сериализованного `BattleJsonSettingsFactory`) и `step.battleStepCount`. Клиент считает дайджест своего результата и сверяет: совпало — бой идентичен серверному, не совпало — расхождение видно до показа боя, а не по странному урону.
+
+Сколько это экономит на реальных кейсах (вход против скрипта, gzip):
+
+| Кейс | Вход | Скрипт | Вход gzip | Скрипт gzip | Выигрыш |
+| --- | --- | --- | --- | --- | --- |
+| Базовый 1v1 | 458 B | 36.9 KB | 180 B | 1.4 KB | 7.9x |
+| Три саммона | 986 B | 50.2 KB | 210 B | 1.9 KB | 9.0x |
+| Долгий бой до лимита ходов | 691 B | 144.4 KB | 236 B | 3.9 KB | 16.5x |
+| Долгая победа | 654 B | 73.8 KB | 242 B | 2.2 KB | 9.1x |
+
+Проверка на стороне сервера: интеграционный тест забега на каждом бою строит второе ядро из тех же конфигов, переигрывает `battleInput` и требует совпадения дайджеста, числа шагов и исхода.
+
+Переключать клиент на `seed` имеет смысл после ручного прогона паритета в Unity: до него мы знаем только, что .NET-клиент воспроизводит бой один в один.
+
+## Расширение боя
+
+Перк, скилл и статус добавляются одним классом-создателем: `IPerkCreator` объявляет `PerkType`, ключ типа из таблицы и сборку перка, `ISkillCreator` — то же для скиллов. Реестры внутри `PerkFactory` и `SkillFactory` строятся из списка создателей, switch в фабриках больше нет; список собирается в `BattleComposition`.
+
+Параметры читает `PerkParameterReader` (ключи, награды, проки, пороги действий), поэтому создатель занимается только своей механикой.
+
+Тест `EffectRegistryConsistencyTests` сверяет ключи создателей с дескрипторами `EffectParameterRegistry`: добавили перк или скилл без описания параметров — тест красный, и геймдизайнер не получит проверку данных при публикации. `SkillCoverageGoldenTests` требует эталонный кейс на каждый известный тип скилла.
+
+Общие операции вынесены в сервисы: `IBattleConstantsReader` (константы боя), `IBattleTeamQuery` (выбор цели и живые юниты), `IStatusClassifier` (DoT-статусы). Копий этих методов по классам больше нет.
+
+## Переносимость ядра в Unity
+
+Три проекта собираются под два таргета сразу: `Lewdventure.Server.Contracts`, `Lewdventure.Server.GameConfig`, `Lewdventure.Server.Battle` — `net10.0;netstandard2.1`. Из зависимостей у них только `Newtonsoft.Json` и `Microsoft.Extensions.Logging.Abstractions`, ASP.NET, Mongo, Google и контейнер внедрения зависимостей остаются в `Api`, `Infrastructure` и `Runs`.
+
+Собранные под `netstandard2.1` DLL кладутся в Unity как есть: клиент получает тот же симулятор, тот же `SeededRandomService` и те же модели команд, поэтому по одному сиду он переигрывает бой один в один.
+
+Что пришлось заменить ради `netstandard2.1`: `record`-типы требуют полифилла `IsExternalInit` (папка `Compatibility` в `Contracts` и `GameConfig`), вместо `Convert.ToHexStringLower` в `ConfigSnapshotHasher` свой перевод байтов в hex, вместо `BitOperations.RotateLeft` в `SeededRandomService` свой сдвиг, вместо `ArgumentOutOfRangeException.ThrowIfLessThanOrEqual` обычная проверка, `float.TryParse` с явными `NumberStyles`, атрибуты `System.ComponentModel.DataAnnotations` из DTO боя убраны.
+
+Сборка под оба таргета идёт в CI на каждом коммите — если в ядро попадёт API, которого нет в Unity, сборка упадёт сразу.
+
+### Как клиент подключает ядро
+
+Ядро отдаёт публичный фасад, поэтому клиенту не нужно ни знать внутренние типы, ни собирать граф сервисов:
+
+```csharp
+var result = new BattleCoreFactory().CreateFromBundle(bundleJson, new UnityCoreLog());
+var script = result.BattleCore.Replay(replayData);
+```
+
+`BattleCoreFactory` принимает клиентский `ConfigBundle.json` как есть или список `CoreConfigDomain`, строит конфиги теми же парсерами и валидаторами, что сервер, и возвращает `IBattleCore`: `Simulate`, `Replay`, `TryValidate`, `BuildCharacteristics` для экранов персонажа и `Configs` — полный read-model конфигов для визуала (арты, редкости, перки, статусы, сюжет). Логирование идёт через `ICoreLog` (в ядре есть `SilentCoreLog`), сериализация — через `BattleJsonSettingsFactory`, те же настройки, что у сервера. Версия конфигов считается тем же sha256, что версия снапшота, поэтому клиент может сверить свой бандл с `GET /api/config/status`.
+
+Граф сервисов боя собирает `BattleComposition` — один конструктор на 28 объектов, без контейнера внедрения зависимостей. Сервер регистрирует в DI его же, поэтому порядок фаз хода и состав сервисов у клиента и сервера не могут разойтись. Остаётся клиентская часть: адаптер `ICoreLog` на `Debug.Log` и `link.xml` для IL2CPP — подробности и примеры в [Battle Core in Unity](battle-core-in-unity.md).
+
+Порядок обхода `Dictionary` между рантаймами не гарантирован, поэтому выбор в боевом коде не должен от него зависеть: в `UnitBonusGranter` бонус по типу выбирается по наименьшему id, а не «первый встреченный». Новые `foreach` по `.Values` и `.Keys` в боевом коде запрещены тестом политики.
+
 ## See Also
 
 - [Config Sync](config-sync.md) — снапшоты конфигов, Google Sheets, managers, источник правды

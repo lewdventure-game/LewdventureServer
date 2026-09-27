@@ -7,5 +7,7 @@ namespace Server.Api.Endpoints
         public string RequestId { get; set; } = string.Empty;
 
         public List<int> Picks { get; set; } = new();
+
+        public string BattleDelivery { get; set; } = string.Empty;
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace Server.Battles
 {
-    internal interface IBattleSimulationData
+    public interface IBattleSimulationData
     {
         public int StoryLevelId { get; set; }
 

@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Server.Configs;
 
 namespace Server.Battles
@@ -10,16 +9,16 @@ namespace Server.Battles
         private readonly string _hitRewards;
         private readonly string _allyRewards;
 
-        internal SummonSoulSiphonSkill(ISkillMapper mapper)
-            : base(mapper)
+        internal SummonSoulSiphonSkill(ISkillMapper mapper, ParserUtils parserUtils)
+            : base(mapper, parserUtils)
         {
             var dictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            ParserUtils.ParseToDictionary(mapper.Parameters, dictionary);
+            parserUtils.ParseToDictionary(mapper.Parameters, dictionary);
 
-            _damageRatio = ParserUtils.GetFloat(dictionary, "damage_ratio", 0f);
-            _lifeStealRatio = ParserUtils.GetFloat(dictionary, "life_steal_ratio", 0f);
-            _hitRewards = ParserUtils.GetString(dictionary, "hit_rewards", string.Empty);
-            _allyRewards = ParserUtils.GetString(dictionary, "ally_rewards", string.Empty);
+            _damageRatio = parserUtils.GetFloat(dictionary, "damage_ratio", 0f);
+            _lifeStealRatio = parserUtils.GetFloat(dictionary, "life_steal_ratio", 0f);
+            _hitRewards = parserUtils.GetString(dictionary, "hit_rewards", string.Empty);
+            _allyRewards = parserUtils.GetString(dictionary, "ally_rewards", string.Empty);
         }
 
         public override void Execute(ISkillExecutionContext context)
@@ -62,7 +61,7 @@ namespace Server.Battles
                         commands,
                         context.CurrentTurn);
 
-                    context.Logger.LogDebug($"[Story][Battle]: Skill soul siphon ally rewards, skillId = {SkillKey}, actorId = {context.Actor.Id}, allyId = {ally.Id}");
+                    context.CoreLog.Debug($"[Story][Battle]: Skill soul siphon ally rewards, skillId = {SkillKey}, actorId = {context.Actor.Id}, allyId = {ally.Id}");
                 }
             }
 

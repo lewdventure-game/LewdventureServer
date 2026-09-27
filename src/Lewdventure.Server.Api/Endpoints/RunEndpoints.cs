@@ -79,9 +79,10 @@ namespace Server.Api.Endpoints
 
             var runId = request == null ? string.Empty : request.RunId;
             var requestId = request == null ? string.Empty : request.RequestId;
+            var battleDelivery = request == null ? string.Empty : request.BattleDelivery;
             var result = await runService.AdvanceAsync(userId, runId, requestId, httpContext.RequestAborted);
 
-            return CreateResponse(result, runResponseFactory, StatusCodes.Status400BadRequest);
+            return CreateResponse(result, runResponseFactory, StatusCodes.Status400BadRequest, battleDelivery);
         }
 
         private async Task<IResult> ChooseAsync(
@@ -99,7 +100,7 @@ namespace Server.Api.Endpoints
 
             var result = await runService.ChooseAsync(userId, request.RunId, request.Picks, request.RequestId, httpContext.RequestAborted);
 
-            return CreateResponse(result, runResponseFactory, StatusCodes.Status400BadRequest);
+            return CreateResponse(result, runResponseFactory, StatusCodes.Status400BadRequest, request.BattleDelivery);
         }
 
         private async Task<IResult> AbandonAsync(
@@ -142,13 +143,18 @@ namespace Server.Api.Endpoints
 
         private IResult CreateResponse(RunOperationResult result, RunResponseFactory runResponseFactory, int errorStatusCode)
         {
+            return CreateResponse(result, runResponseFactory, errorStatusCode, string.Empty);
+        }
+
+        private IResult CreateResponse(RunOperationResult result, RunResponseFactory runResponseFactory, int errorStatusCode, string battleDelivery)
+        {
             if (result.Conflict)
                 return Results.Json(new { error = "Run was changed by another request." }, statusCode: StatusCodes.Status409Conflict);
 
             if (result.Succeeded == false || result.Run == null)
                 return Results.Json(new { errors = result.Errors }, statusCode: errorStatusCode);
 
-            return Results.Ok(runResponseFactory.Create(result.Run, result.Step));
+            return Results.Ok(runResponseFactory.Create(result.Run, result.Step, battleDelivery));
         }
     }
 }

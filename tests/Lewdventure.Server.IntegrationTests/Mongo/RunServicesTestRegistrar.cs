@@ -1,3 +1,4 @@
+using Core.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Server.Battles;
 using Server.GameConfigs;
@@ -13,40 +14,49 @@ namespace Tests.Integration.Mongo
             new PlayerServicesRegistrar().Register(services);
             new RunServicesRegistrar().Register(services);
 
-            services.AddScoped<IBattleAttackService, BattleAttackService>();
-            services.AddScoped<IBattleBonusService, BattleBonusService>();
-            services.AddScoped<IBattleCommandFactory, BattleCommandFactory>();
-            services.AddScoped<IBattleDamageMath, BattleDamageMath>();
-            services.AddScoped<IBattleParameterParser, BattleParameterParser>();
-            services.AddScoped<IBattlePerkSimulator, BattlePerkSimulator>();
-            services.AddScoped<IBattleRewardParser, BattleRewardParser>();
-            services.AddScoped<IBattleRewardService, BattleRewardService>();
-            services.AddScoped<IBattleScriptBuilder, BattleScriptBuilder>();
-            services.AddScoped<IBattleSimulationValidator, BattleSimulationValidator>();
-            services.AddScoped<IBattleSkillSimulator, BattleSkillSimulator>();
-            services.AddScoped<IBattleStatusSimulator, BattleStatusSimulator>();
-            services.AddScoped<IBattleSummonSimulator, BattleSummonSimulator>();
-            services.AddScoped<ICharacteristicBucketApplicator, CharacteristicBucketApplicator>();
-            services.AddScoped<ICharacteristicCalculator, CharacteristicCalculator>();
-            services.AddScoped<IPerkFactory, PerkFactory>();
-            services.AddScoped<ISkillFactory, SkillFactory>();
-            services.AddScoped<IStatusParametersParser, StatusParametersParser>();
-            services.AddScoped<IUnitBucketsFactory, UnitBucketsFactory>();
-            services.AddScoped<IUnitBonusGranter, UnitBonusGranter>();
-            services.AddScoped<IUnitLoadoutBinder, UnitLoadoutBinder>();
-            services.AddScoped<IUnitStateBuilder, UnitStateBuilder>();
-            services.AddScoped<IBattleTurnPhase, StatusTurnPhase>();
-            services.AddScoped<IBattleTurnPhase, PerkTurnPhase>();
-            services.AddScoped<IBattleTurnPhase, SummonTurnPhase>();
-            services.AddScoped<IBattleTurnPhase, MainUnitTurnPhase>();
-            services.AddScoped<IReadOnlyList<IBattleTurnPhase>>(ResolveTurnPhases);
-            services.AddScoped<BattleSimulatorService>();
+            services.AddScoped(CreateComposition);
+            services.AddScoped(ResolveSimulator);
+            services.AddScoped(ResolveValidator);
+            services.AddScoped(ResolveUnitStateBuilder);
+            services.AddScoped(ResolveRewardParser);
+            services.AddScoped(ResolveParameterParser);
+            services.AddScoped(ResolveScriptDigest);
             services.AddScoped(ResolveConfigDistributor);
         }
 
-        private IReadOnlyList<IBattleTurnPhase> ResolveTurnPhases(IServiceProvider serviceProvider)
+        private BattleComposition CreateComposition(IServiceProvider serviceProvider)
         {
-            return new List<IBattleTurnPhase>(serviceProvider.GetServices<IBattleTurnPhase>());
+            return new BattleComposition(serviceProvider.GetRequiredService<IConfigDistributor>(), new SilentCoreLog());
+        }
+
+        private IBattleSimulatorService ResolveSimulator(IServiceProvider serviceProvider)
+        {
+            return serviceProvider.GetRequiredService<BattleComposition>().BattleSimulatorService;
+        }
+
+        private IBattleSimulationValidator ResolveValidator(IServiceProvider serviceProvider)
+        {
+            return serviceProvider.GetRequiredService<BattleComposition>().BattleSimulationValidator;
+        }
+
+        private IUnitStateBuilder ResolveUnitStateBuilder(IServiceProvider serviceProvider)
+        {
+            return serviceProvider.GetRequiredService<BattleComposition>().UnitStateBuilder;
+        }
+
+        private IBattleScriptDigest ResolveScriptDigest(IServiceProvider serviceProvider)
+        {
+            return serviceProvider.GetRequiredService<BattleComposition>().BattleScriptDigest;
+        }
+
+        private IBattleParameterParser ResolveParameterParser(IServiceProvider serviceProvider)
+        {
+            return serviceProvider.GetRequiredService<BattleComposition>().BattleParameterParser;
+        }
+
+        private IBattleRewardParser ResolveRewardParser(IServiceProvider serviceProvider)
+        {
+            return serviceProvider.GetRequiredService<BattleComposition>().BattleRewardParser;
         }
 
         private IConfigDistributor ResolveConfigDistributor(IServiceProvider serviceProvider)

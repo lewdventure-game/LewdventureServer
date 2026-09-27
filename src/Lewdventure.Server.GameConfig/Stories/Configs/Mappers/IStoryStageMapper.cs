@@ -2,7 +2,7 @@ using Server.Configs;
 
 namespace Server.Stories
 {
-    internal interface IStoryStageMapper : IConfigMapper
+    public interface IStoryStageMapper : IConfigMapper
     {
         public int Id { get; }
 

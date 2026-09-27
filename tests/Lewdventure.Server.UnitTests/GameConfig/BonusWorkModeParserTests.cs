@@ -1,3 +1,4 @@
+using Core.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Server.Bonuses;
 
@@ -77,7 +78,7 @@ namespace Tests.Unit.GameConfig
 
         private BonusWorkModeParser CreateParser()
         {
-            return new BonusWorkModeParser(NullLogger<BonusWorkModeParser>.Instance);
+            return new BonusWorkModeParser(new SilentCoreLog());
         }
     }
 }

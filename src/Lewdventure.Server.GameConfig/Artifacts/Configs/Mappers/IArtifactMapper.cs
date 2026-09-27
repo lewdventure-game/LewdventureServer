@@ -2,7 +2,7 @@ using Server.Configs;
 
 namespace Server.Artifacts
 {
-    internal interface IArtifactMapper : IConfigMapper
+    public interface IArtifactMapper : IConfigMapper
     {
         public int Id { get; }
 

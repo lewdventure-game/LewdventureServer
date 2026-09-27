@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using Microsoft.Extensions.Logging;
 using Server.Configs;
 using Server.Statuses;
 
@@ -13,11 +12,14 @@ namespace Server.Battles
         private const string DamageRatioKey = "damage_ratio";
         private const string MaxStacksKey = "max_stacks";
 
-        private readonly ILogger<StatusParametersParser> _logger;
+        private readonly ICoreLog _coreLog;
+        private readonly IStatusClassifier _statusClassifier;
 
-        public StatusParametersParser(ILogger<StatusParametersParser> logger)
+        public StatusParametersParser(ICoreLog coreLog,
+            IStatusClassifier statusClassifier)
         {
-            _logger = logger;
+            _coreLog = coreLog;
+            _statusClassifier = statusClassifier;
         }
 
         public bool TryParse(string parameters, StatusType statusType, [MaybeNullWhen(false)] out StatusParameters parsed)
@@ -26,7 +28,7 @@ namespace Server.Battles
 
             if (string.IsNullOrWhiteSpace(parameters))
             {
-                _logger.LogError($"[Config]: Status parameters empty, statusType = {statusType}");
+                _coreLog.Error($"[Config]: Status parameters empty, statusType = {statusType}");
 
                 return false;
             }
@@ -52,7 +54,7 @@ namespace Server.Battles
 
                 if (separator < 0)
                 {
-                    _logger.LogError($"[Config]: Status parameters pair without key, statusType = {statusType}, raw = {parameters}");
+                    _coreLog.Error($"[Config]: Status parameters pair without key, statusType = {statusType}, raw = {parameters}");
 
                     return false;
                 }
@@ -64,7 +66,7 @@ namespace Server.Battles
                 {
                     if (TryParseFloat(value, out damageRatio) == false)
                     {
-                        _logger.LogError($"[Config]: Status damage_ratio invalid, statusType = {statusType}, raw = {parameters}");
+                        _coreLog.Error($"[Config]: Status damage_ratio invalid, statusType = {statusType}, raw = {parameters}");
 
                         return false;
                     }
@@ -77,7 +79,7 @@ namespace Server.Battles
                 {
                     if (TryParseInt(value, out damageLength) == false)
                     {
-                        _logger.LogError($"[Config]: Status damage_length invalid, statusType = {statusType}, raw = {parameters}");
+                        _coreLog.Error($"[Config]: Status damage_length invalid, statusType = {statusType}, raw = {parameters}");
 
                         return false;
                     }
@@ -90,7 +92,7 @@ namespace Server.Battles
                 {
                     if (TryParseInt(value, out maxStacks) == false)
                     {
-                        _logger.LogError($"[Config]: Status max_stacks invalid, statusType = {statusType}, raw = {parameters}");
+                        _coreLog.Error($"[Config]: Status max_stacks invalid, statusType = {statusType}, raw = {parameters}");
 
                         return false;
                     }
@@ -105,7 +107,7 @@ namespace Server.Battles
 
                     if (bonusSeparator == 0)
                     {
-                        _logger.LogError($"[Config]: Status bonuses unexpected, statusType = {statusType}, raw = {parameters}");
+                        _coreLog.Error($"[Config]: Status bonuses unexpected, statusType = {statusType}, raw = {parameters}");
 
                         return false;
                     }
@@ -117,33 +119,33 @@ namespace Server.Battles
                     continue;
                 }
 
-                _logger.LogError($"[Config]: Status parameters unknown key = {key}, statusType = {statusType}, raw = {parameters}");
+                _coreLog.Error($"[Config]: Status parameters unknown key = {key}, statusType = {statusType}, raw = {parameters}");
 
                 return false;
             }
 
-            if (IsDamageOverTime(statusType))
+            if (_statusClassifier.IsDamageOverTime(statusType))
             {
                 if (hasDamageRatio == false || hasDamageLength == false || hasMaxStacks == false)
                 {
-                    _logger.LogError($"[Config]: Status damage over time keys missing, statusType = {statusType}, raw = {parameters}");
+                    _coreLog.Error($"[Config]: Status damage over time keys missing, statusType = {statusType}, raw = {parameters}");
 
                     return false;
                 }
 
                 if (damageLength <= 0 || maxStacks <= 0)
                 {
-                    _logger.LogError($"[Config]: Status damage over time values invalid, statusType = {statusType}, damageLength = {damageLength}, maxStacks = {maxStacks}, raw = {parameters}");
+                    _coreLog.Error($"[Config]: Status damage over time values invalid, statusType = {statusType}, damageLength = {damageLength}, maxStacks = {maxStacks}, raw = {parameters}");
 
                     return false;
                 }
             }
 
-            if (IsStrongDamageOverTime(statusType) || statusType == StatusType.BonusChange)
+            if (_statusClassifier.IsStrongDamageOverTime(statusType) || statusType == StatusType.BonusChange)
             {
                 if (hasBonuses == false || bonuses.Count == 0)
                 {
-                    _logger.LogError($"[Config]: Status bonuses missing, statusType = {statusType}, raw = {parameters}");
+                    _coreLog.Error($"[Config]: Status bonuses missing, statusType = {statusType}, raw = {parameters}");
 
                     return false;
                 }
@@ -176,7 +178,7 @@ namespace Server.Battles
 
             if (string.IsNullOrWhiteSpace(value))
             {
-                _logger.LogError($"[Config]: Status bonuses empty, statusType = {statusType}, raw = {rawParameters}");
+                _coreLog.Error($"[Config]: Status bonuses empty, statusType = {statusType}, raw = {rawParameters}");
 
                 return false;
             }
@@ -193,7 +195,7 @@ namespace Server.Battles
 
                 if (TryParseBonusTriple(part, out var bonus) == false)
                 {
-                    _logger.LogError($"[Config]: Status bonus triple invalid, statusType = {statusType}, part = {part}, raw = {rawParameters}");
+                    _coreLog.Error($"[Config]: Status bonus triple invalid, statusType = {statusType}, part = {part}, raw = {rawParameters}");
 
                     return false;
                 }
@@ -203,7 +205,7 @@ namespace Server.Battles
 
             if (result.Count == 0)
             {
-                _logger.LogError($"[Config]: Status bonuses parsed empty, statusType = {statusType}, raw = {rawParameters}");
+                _coreLog.Error($"[Config]: Status bonuses parsed empty, statusType = {statusType}, raw = {rawParameters}");
 
                 return false;
             }
@@ -260,20 +262,6 @@ namespace Server.Battles
         private bool TryParseInt(string value, out int parsed)
         {
             return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed);
-        }
-
-        private bool IsDamageOverTime(StatusType statusType)
-        {
-            return statusType == StatusType.Burning
-                || statusType == StatusType.BurningStrong
-                || statusType == StatusType.Poison
-                || statusType == StatusType.PoisonStrong;
-        }
-
-        private bool IsStrongDamageOverTime(StatusType statusType)
-        {
-            return statusType == StatusType.BurningStrong
-                || statusType == StatusType.PoisonStrong;
         }
 
         private string UnwrapBrackets(ReadOnlySpan<char> value)

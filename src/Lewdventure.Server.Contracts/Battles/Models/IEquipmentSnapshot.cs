@@ -1,6 +1,6 @@
 namespace Server.Battles
 {
-    internal interface IEquipmentSnapshot
+    public interface IEquipmentSnapshot
     {
         public int Id { get; }
 

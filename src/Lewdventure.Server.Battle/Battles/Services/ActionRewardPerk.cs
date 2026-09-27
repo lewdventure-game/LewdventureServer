@@ -1,5 +1,6 @@
-using Microsoft.Extensions.Logging;
 using Server.Perks;
+
+using Server.Services;
 
 namespace Server.Battles
 {
@@ -10,7 +11,7 @@ namespace Server.Battles
         private readonly IReadOnlyList<PerkActionThreshold> _actionThresholds;
         private readonly float _rewardsChance;
         private readonly IBattleRewardService _battleRewardService;
-        private readonly ILogger _logger;
+        private readonly ICoreLog _coreLog;
         private readonly Dictionary<BattlePerkActionType, int> _actionCounters = new();
 
         internal ActionRewardPerk(
@@ -20,7 +21,7 @@ namespace Server.Battles
             IReadOnlyList<PerkActionThreshold> actionThresholds,
             float rewardsChance,
             IBattleRewardService battleRewardService,
-            ILogger logger)
+            ICoreLog coreLog)
             : base(mapper)
         {
             _rewardsOnGrant = rewardsOnGrant;
@@ -28,12 +29,12 @@ namespace Server.Battles
             _actionThresholds = actionThresholds;
             _rewardsChance = rewardsChance;
             _battleRewardService = battleRewardService;
-            _logger = logger;
+            _coreLog = coreLog;
         }
 
         public override void OnEquipped(IUnitState owner, List<BattleCommand> commands)
         {
-            _logger.LogDebug($"[Story][Battle]: Perk action reward grant, perkId = {Id}, ownerId = {owner.Id}, rewards = {_rewardsOnGrant.Count}");
+            _coreLog.Debug($"[Story][Battle]: Perk action reward grant, perkId = {Id}, ownerId = {owner.Id}, rewards = {_rewardsOnGrant.Count}");
 
             _battleRewardService.Apply(_rewardsOnGrant, owner, owner, commands, 0);
         }
@@ -71,16 +72,16 @@ namespace Server.Battles
             current += 1;
             _actionCounters[actionType] = current;
 
-            _logger.LogDebug($"[Story][Battle]: Perk action progress, perkId = {Id}, action = {actionType}, current = {current}, threshold = {threshold}");
+            _coreLog.Debug($"[Story][Battle]: Perk action progress, perkId = {Id}, action = {actionType}, current = {current}, threshold = {threshold}");
 
             if (current < threshold)
                 return;
 
             _actionCounters[actionType] = 0;
 
-            var roll = context.SeededRandomService.GetRandomValue();
+            var roll = context.SeededRandomService.GetRandomValue(RandomRollNames.ActionReward);
 
-            _logger.LogDebug($"[Story][Battle]: Perk action reward roll, perkId = {Id}, action = {actionType}, roll = {roll}, rewardsChance = {_rewardsChance}");
+            _coreLog.Debug($"[Story][Battle]: Perk action reward roll, perkId = {Id}, action = {actionType}, roll = {roll}, rewardsChance = {_rewardsChance}");
 
             if (_rewardsChance <= roll)
                 return;

@@ -2,7 +2,7 @@ using Server.Configs;
 
 namespace Server.Bonuses
 {
-    internal interface IBonusMapper : IConfigMapper
+    public interface IBonusMapper : IConfigMapper
     {
         public int Id { get; }
 

@@ -1,6 +1,7 @@
-using Microsoft.Extensions.Logging;
 using Server.Perks;
 using Server.Statuses;
+
+using Server.Services;
 
 namespace Server.Battles
 {
@@ -65,7 +66,7 @@ namespace Server.Battles
 
             if (targetIndex < 0)
             {
-                context.Logger.LogWarning($"[Story][Battle]: Perk elemental no target, perkId = {Id}, ownerId = {owner.Id}");
+                context.CoreLog.Warning($"[Story][Battle]: Perk elemental no target, perkId = {Id}, ownerId = {owner.Id}");
 
                 return;
             }
@@ -80,7 +81,7 @@ namespace Server.Battles
             commands.Add(context.BattleCommandFactory.TriggerPerk(owner.Id, owner.SlotIndex, target.Id, target.SlotIndex, Id));
             commands.Add(context.BattleCommandFactory.PlayAnimation(owner.Id, owner.SlotIndex, "cast"));
 
-            context.Logger.LogDebug($"[Story][Battle]: Perk elemental trigger, perkId = {Id}, type = {PerkType}, ownerId = {owner.Id}, targetId = {target.Id}, projectiles = {projectileCount}, damageRatio = {_damageRatio}, turn = {context.CurrentTurn}");
+            context.CoreLog.Debug($"[Story][Battle]: Perk elemental trigger, perkId = {Id}, type = {PerkType}, ownerId = {owner.Id}, targetId = {target.Id}, projectiles = {projectileCount}, damageRatio = {_damageRatio}, turn = {context.CurrentTurn}");
 
             var anyDamageHits = 0;
 
@@ -105,7 +106,7 @@ namespace Server.Battles
 
             if (0 < anyDamageHits)
             {
-                context.Logger.LogDebug($"[Story][Battle]: any_damage flush after elemental step, perkId = {Id}, ownerId = {owner.Id}, targetId = {target.Id}, count = {anyDamageHits}, turn = {context.CurrentTurn}");
+                context.CoreLog.Debug($"[Story][Battle]: any_damage flush after elemental step, perkId = {Id}, ownerId = {owner.Id}, targetId = {target.Id}, count = {anyDamageHits}, turn = {context.CurrentTurn}");
 
                 for (int i = 0; i < anyDamageHits; i++)
                     context.NotifyAnyDamage();
@@ -124,10 +125,10 @@ namespace Server.Battles
             var random = context.SeededRandomService;
             var ownerCharacteristics = owner.CharacteristicState;
             var targetCharacteristics = target.CharacteristicState;
-            var evasionRoll = random.GetRandomValue();
+            var evasionRoll = random.GetRandomValue(RandomRollNames.Evasion);
             var isEvaded = evasionRoll < targetCharacteristics.Evasion;
 
-            context.Logger.LogDebug($"[Story][Battle]: Perk projectile, perkId = {Id}, ownerId = {owner.Id}, targetId = {target.Id}, evasionRoll = {evasionRoll}, evasion = {targetCharacteristics.Evasion}, isEvaded = {isEvaded}");
+            context.CoreLog.Debug($"[Story][Battle]: Perk projectile, perkId = {Id}, ownerId = {owner.Id}, targetId = {target.Id}, evasionRoll = {evasionRoll}, evasion = {targetCharacteristics.Evasion}, isEvaded = {isEvaded}");
 
             if (isEvaded)
             {
@@ -137,10 +138,10 @@ namespace Server.Battles
                 return false;
             }
 
-            var criticalRoll = random.GetRandomValue();
+            var criticalRoll = random.GetRandomValue(RandomRollNames.Critical);
             var isCritical = criticalRoll < ownerCharacteristics.CriticalChance;
 
-            context.Logger.LogDebug($"[Story][Battle]: Perk projectile, perkId = {Id}, ownerId = {owner.Id}, criticalRoll = {criticalRoll}, criticalChance = {ownerCharacteristics.CriticalChance}, isCritical = {isCritical}");
+            context.CoreLog.Debug($"[Story][Battle]: Perk projectile, perkId = {Id}, ownerId = {owner.Id}, criticalRoll = {criticalRoll}, criticalChance = {ownerCharacteristics.CriticalChance}, isCritical = {isCritical}");
 
             var defenceFactor = 1f - targetCharacteristics.Defence;
 
@@ -164,14 +165,14 @@ namespace Server.Battles
             commands.Add(context.BattleCommandFactory.ShowDamage(owner.Id, owner.SlotIndex, target.Id, target.SlotIndex, damage, isCritical, false));
             commands.Add(context.BattleCommandFactory.SetHp(target.Id, target.SlotIndex, healthAfter));
 
-            context.Logger.LogInformation($"[Story][Battle]: Perk projectile damage, perkId = {Id}, ownerId = {owner.Id}, targetId = {target.Id}, damage = {damage}, isCritical = {isCritical}, health = {healthAfter}");
+            context.CoreLog.Information($"[Story][Battle]: Perk projectile damage, perkId = {Id}, ownerId = {owner.Id}, targetId = {target.Id}, damage = {damage}, isCritical = {isCritical}, health = {healthAfter}");
 
             if (UsesFlatHitRewards)
                 TryApplyHitRewards(context, owner, target, commands);
 
             OnProjectileHit(context, owner, target, commands);
 
-            context.Logger.LogDebug($"[Story][Battle]: any_damage deferred until elemental step commit, perkId = {Id} ownerId = {owner.Id} targetId = {target.Id}");
+            context.CoreLog.Debug($"[Story][Battle]: any_damage deferred until elemental step commit, perkId = {Id} ownerId = {owner.Id} targetId = {target.Id}");
 
             return true;
         }
@@ -202,7 +203,7 @@ namespace Server.Battles
             for (int i = 0; i < times; i++)
             {
                 context.BattleRewardService.Apply(_hitRewards, owner, target, context.Attacker, context.Defender, commands, context.CurrentTurn);
-                context.Logger.LogDebug($"[Story][Battle]: Perk elemental extra reward apply, perkId = {Id} index = {i + 1} of {times}");
+                context.CoreLog.Debug($"[Story][Battle]: Perk elemental extra reward apply, perkId = {Id} index = {i + 1} of {times}");
             }
         }
 
@@ -247,7 +248,7 @@ namespace Server.Battles
                 cleansed += 1;
             }
 
-            context.Logger.LogDebug($"[Story][Battle]: Perk elemental cleanse, perkId = {Id}, targetId = {target.Id}, burn = {burn}, poison = {poison}, cleansed = {cleansed}");
+            context.CoreLog.Debug($"[Story][Battle]: Perk elemental cleanse, perkId = {Id}, targetId = {target.Id}, burn = {burn}, poison = {poison}, cleansed = {cleansed}");
 
             return cleansed;
         }
@@ -262,21 +263,21 @@ namespace Server.Battles
 
             if (1f < rollChance)
             {
-                context.Logger.LogWarning($"[Story][Battle]: Perk rewards chance clamped, perkId = {Id}, reason = {reason}, rawChance = {chance}");
+                context.CoreLog.Warning($"[Story][Battle]: Perk rewards chance clamped, perkId = {Id}, reason = {reason}, rawChance = {chance}");
                 rollChance = 1f;
             }
 
             if (rollChance <= 0f)
             {
-                context.Logger.LogDebug($"[Story][Battle]: Perk rewards chance skip, perkId = {Id}, reason = {reason}, chance = {rollChance}");
+                context.CoreLog.Debug($"[Story][Battle]: Perk rewards chance skip, perkId = {Id}, reason = {reason}, chance = {rollChance}");
 
                 return false;
             }
 
-            var rewardsRoll = context.SeededRandomService.GetRandomValue();
+            var rewardsRoll = context.SeededRandomService.GetRandomValue(RandomRollNames.PerkRewards);
             var success = rewardsRoll < rollChance;
 
-            context.Logger.LogDebug($"[Story][Battle]: Perk rewards roll, perkId = {Id}, reason = {reason}, rewardsRoll = {rewardsRoll}, chance = {rollChance}, success = {success}, targetId = {target.Id}");
+            context.CoreLog.Debug($"[Story][Battle]: Perk rewards roll, perkId = {Id}, reason = {reason}, rewardsRoll = {rewardsRoll}, chance = {rollChance}, success = {success}, targetId = {target.Id}");
 
             return success;
         }
@@ -310,13 +311,13 @@ namespace Server.Battles
 
             if (TryRollRewardsChance(context, target, effectiveChance, "flat_hit") == false)
             {
-                context.Logger.LogDebug($"[Story][Battle]: Perk hit rewards skipped, perkId = {Id}, targetId = {target.Id}");
+                context.CoreLog.Debug($"[Story][Battle]: Perk hit rewards skipped, perkId = {Id}, targetId = {target.Id}");
 
                 return;
             }
 
             context.BattleRewardService.Apply(_hitRewards, owner, target, context.Attacker, context.Defender, commands, context.CurrentTurn);
-            context.Logger.LogDebug($"[Story][Battle]: Perk hit rewards applied, perkId = {Id}, targetId = {target.Id}");
+            context.CoreLog.Debug($"[Story][Battle]: Perk hit rewards applied, perkId = {Id}, targetId = {target.Id}");
         }
 
         private void AppendIdleIfAlive(IPerkExecutionContext context, List<BattleCommand> commands, IUnitState unit)
@@ -325,7 +326,7 @@ namespace Server.Battles
                 return;
 
             commands.Add(context.BattleCommandFactory.PlayAnimation(unit.Id, unit.SlotIndex, "idle"));
-            context.Logger.LogDebug($"[Story][Battle]: Perk idle after cast, perkId = {Id}, ownerId = {unit.Id}");
+            context.CoreLog.Debug($"[Story][Battle]: Perk idle after cast, perkId = {Id}, ownerId = {unit.Id}");
         }
 
         private void AppendMissWait(IPerkExecutionContext context, List<BattleCommand> commands)
@@ -333,14 +334,14 @@ namespace Server.Battles
             if (context.ConfigDistributor.Constants.TryGet(ConstantKeys.BattleFlytextTimerKey, out var constant) == false)
                 return;
 
-            if (float.TryParse(constant.ConstantValue, System.Globalization.CultureInfo.InvariantCulture, out var timer) == false)
+            if (float.TryParse(constant.ConstantValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var timer) == false)
                 return;
 
             if (timer <= 0f)
                 return;
 
             commands.Add(context.BattleCommandFactory.Wait(timer));
-            context.Logger.LogDebug($"[Story][Battle]: Perk miss wait, perkId = {Id}, seconds = {timer}");
+            context.CoreLog.Debug($"[Story][Battle]: Perk miss wait, perkId = {Id}, seconds = {timer}");
         }
     }
 }

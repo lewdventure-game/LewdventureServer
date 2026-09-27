@@ -1,6 +1,6 @@
 namespace Server.Battles
 {
-    internal enum BattlePhaseType
+    public enum BattlePhaseType
     {
         Unknown = 0,
         StatusTrigger = 1,

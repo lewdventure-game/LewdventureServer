@@ -1,6 +1,6 @@
 namespace Server.Common
 {
-    internal enum RarityType
+    public enum RarityType
     {
         Unknown = 0,
         Common = 1,

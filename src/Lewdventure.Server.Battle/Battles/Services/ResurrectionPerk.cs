@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Server.Perks;
 
 namespace Server.Battles
@@ -7,18 +6,18 @@ namespace Server.Battles
     {
         private readonly float _healthRatio;
         private int _remainingResurrections;
-        private readonly ILogger _logger;
+        private readonly ICoreLog _coreLog;
 
         internal ResurrectionPerk(
             IPerkMapper mapper,
             float healthRatio,
             int resurrectionsCount,
-            ILogger logger)
+            ICoreLog coreLog)
             : base(mapper)
         {
             _healthRatio = healthRatio;
             _remainingResurrections = resurrectionsCount;
-            _logger = logger;
+            _coreLog = coreLog;
         }
 
         public override bool CanTrigger(int currentTurn)
@@ -48,7 +47,7 @@ namespace Server.Battles
 
             if (0 < owner.CharacteristicState.Health)
             {
-                _logger.LogDebug($"[Story][Battle]: Perk resurrection skipped alive, perkId = {Id}, ownerId = {owner.Id}");
+                _coreLog.Debug($"[Story][Battle]: Perk resurrection skipped alive, perkId = {Id}, ownerId = {owner.Id}");
 
                 return false;
             }
@@ -91,7 +90,7 @@ namespace Server.Battles
                 commands,
                 owner);
 
-            _logger.LogInformation($"[Story][Battle]: Perk resurrection, perkId = {Id}, ownerId = {owner.Id}, healDelta = {healDelta}, health = {healthAfter}, remaining = {_remainingResurrections}");
+            _coreLog.Information($"[Story][Battle]: Perk resurrection, perkId = {Id}, ownerId = {owner.Id}, healDelta = {healDelta}, health = {healthAfter}, remaining = {_remainingResurrections}");
 
             if (_remainingResurrections == 0)
                 RemoveSelfFromOwner(owner);
@@ -109,7 +108,7 @@ namespace Server.Battles
                     continue;
 
                 perks.RemoveAt(i);
-                _logger.LogWarning($"[Story][Battle]: Resurrection perk removed exhausted, perkId = {Id}, ownerId = {owner.Id}");
+                _coreLog.Warning($"[Story][Battle]: Resurrection perk removed exhausted, perkId = {Id}, ownerId = {owner.Id}");
 
                 return;
             }

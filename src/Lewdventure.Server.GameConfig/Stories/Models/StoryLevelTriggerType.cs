@@ -1,6 +1,6 @@
 namespace Server.Stories
 {
-    internal enum StoryLevelTriggerType
+    public enum StoryLevelTriggerType
     {
         Unknown = 0,
         AlwaysAvailable = 1,

@@ -32,7 +32,7 @@ namespace Server.Battles
 
         public IBattleScriptBuilder BattleScriptBuilder { get; }
 
-        public ILogger Logger { get; }
+        public ICoreLog CoreLog { get; }
 
         public bool TryDealStrike(List<BattleCommand> commands, float damageMultiplier, out float dealtDamage, out bool isCritical);
 

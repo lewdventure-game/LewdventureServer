@@ -2,7 +2,7 @@ using Server.Configs;
 
 namespace Server.Entities
 {
-    internal interface IEnemyMapper : IConfigMapper
+    public interface IEnemyMapper : IConfigMapper
     {
         public int Id { get; }
 

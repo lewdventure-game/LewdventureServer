@@ -1,8 +1,8 @@
-﻿namespace Server.Services
+namespace Server.Services
 {
     internal interface IRandomGeneratorService
     {
-        public float GetRandomValue();
+        public float GetRandomValue(string rollName);
 
         public int Range(int minInclusive, int maxExclusive);
 

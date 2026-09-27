@@ -1,6 +1,6 @@
 namespace Server.Battles
 {
-    internal enum OutcomeType
+    public enum OutcomeType
     {
         Unknown = 0,
         TeamAWin = 1,

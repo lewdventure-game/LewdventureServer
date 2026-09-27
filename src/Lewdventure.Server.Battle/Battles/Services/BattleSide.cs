@@ -1,6 +1,6 @@
 namespace Server.Battles
 {
-    internal enum BattleSide
+    public enum BattleSide
     {
         Unknown = 0,
         Attacking = 1,

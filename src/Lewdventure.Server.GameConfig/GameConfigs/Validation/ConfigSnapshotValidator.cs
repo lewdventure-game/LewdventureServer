@@ -73,6 +73,9 @@ namespace Server.GameConfigs
 
                 if (string.Equals(domains[i], ConfigDomainNames.Statuses, StringComparison.Ordinal))
                     _effectParametersValidator.CollectStatuses(domain, warnings);
+
+                if (string.Equals(domains[i], ConfigDomainNames.Skills, StringComparison.Ordinal))
+                    _effectParametersValidator.CollectSkills(domain, warnings);
             }
         }
 

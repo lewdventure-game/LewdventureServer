@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Server.Configs;
 
 namespace Server.Battles
@@ -8,14 +7,14 @@ namespace Server.Battles
         private readonly float _damageRatio;
         private readonly string _hitRewards;
 
-        internal SummonVenomStrikeSkill(ISkillMapper mapper)
-            : base(mapper)
+        internal SummonVenomStrikeSkill(ISkillMapper mapper, ParserUtils parserUtils)
+            : base(mapper, parserUtils)
         {
             var dictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            ParserUtils.ParseToDictionary(mapper.Parameters, dictionary);
+            parserUtils.ParseToDictionary(mapper.Parameters, dictionary);
 
-            _damageRatio = ParserUtils.GetFloat(dictionary, "damage_ratio", 0f);
-            _hitRewards = ParserUtils.GetString(dictionary, "hit_rewards", string.Empty);
+            _damageRatio = parserUtils.GetFloat(dictionary, "damage_ratio", 0f);
+            _hitRewards = parserUtils.GetString(dictionary, "hit_rewards", string.Empty);
         }
 
         public override void Execute(ISkillExecutionContext context)
@@ -38,7 +37,7 @@ namespace Server.Battles
                     commands,
                     context.CurrentTurn);
 
-                context.Logger.LogDebug($"[Story][Battle]: Skill venom strike applied hit rewards, skillId = {SkillKey}, actorId = {context.Actor.Id}, targetId = {context.Target.Id}");
+                context.CoreLog.Debug($"[Story][Battle]: Skill venom strike applied hit rewards, skillId = {SkillKey}, actorId = {context.Actor.Id}, targetId = {context.Target.Id}");
             }
 
             EndCast(context, commands, context.Target);

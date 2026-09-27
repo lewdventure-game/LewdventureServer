@@ -6,23 +6,23 @@ namespace Server.Battles
     {
         private readonly IReadOnlyList<BattleReward> _rewards;
         private readonly IBattleRewardService _battleRewardService;
-        private readonly ILogger _logger;
+        private readonly ICoreLog _coreLog;
 
         internal RewardPerk(
             IPerkMapper mapper,
             IReadOnlyList<BattleReward> rewards,
             IBattleRewardService battleRewardService,
-            ILogger logger)
+            ICoreLog coreLog)
             : base(mapper)
         {
             _rewards = rewards;
             _battleRewardService = battleRewardService;
-            _logger = logger;
+            _coreLog = coreLog;
         }
 
         public override void OnEquipped(IUnitState owner, List<BattleCommand> commands)
         {
-            _logger.LogDebug($"[Story][Battle]: Perk reward grant, perkId = {Id}, ownerId = {owner.Id}, rewards = {_rewards.Count}");
+            _coreLog.Debug($"[Story][Battle]: Perk reward grant, perkId = {Id}, ownerId = {owner.Id}, rewards = {_rewards.Count}");
 
             _battleRewardService.Apply(_rewards, owner, owner, commands, 0);
         }

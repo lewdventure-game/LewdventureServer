@@ -130,7 +130,7 @@ namespace Server.Entities
                 _energyMax = value;
         }
 
-        private static float ParseBracketValue(ReadOnlySpan<char> valueSpan)
+        private float ParseBracketValue(ReadOnlySpan<char> valueSpan)
         {
             valueSpan = valueSpan.Trim();
 

@@ -7,33 +7,36 @@ namespace Server.Battles
 {
     internal sealed class BattleStatusSimulator : IBattleStatusSimulator
     {
-        private readonly ILogger<BattleStatusSimulator> _logger;
+        private readonly ICoreLog _coreLog;
         private readonly IBattleBonusService _battleBonusService;
         private readonly IBattleCommandFactory _battleCommandFactory;
         private readonly IBattleDamageMath _battleDamageMath;
         private readonly IBattlePerkSimulator _battlePerkSimulator;
         private readonly IBattleScriptBuilder _battleScriptBuilder;
         private readonly IConfigDistributor _configDistributor;
+        private readonly IStatusClassifier _statusClassifier;
         private readonly List<IUnitState> _mainsInSlotOrder = new();
         private readonly List<int> _processedStatusIds = new();
         private readonly List<StatusTickEntry> _tickQueue = new();
 
         public BattleStatusSimulator(
-            ILogger<BattleStatusSimulator> logger,
+            ICoreLog coreLog,
             IBattleBonusService battleBonusService,
             IBattleCommandFactory battleCommandFactory,
             IBattleDamageMath battleDamageMath,
             IBattlePerkSimulator battlePerkSimulator,
             IBattleScriptBuilder battleScriptBuilder,
-            IConfigDistributor configDistributor)
+            IConfigDistributor configDistributor,
+            IStatusClassifier statusClassifier)
         {
-            _logger = logger;
+            _coreLog = coreLog;
             _battleBonusService = battleBonusService;
             _battleCommandFactory = battleCommandFactory;
             _battleDamageMath = battleDamageMath;
             _battlePerkSimulator = battlePerkSimulator;
             _battleScriptBuilder = battleScriptBuilder;
             _configDistributor = configDistributor;
+            _statusClassifier = statusClassifier;
         }
 
         public void EmitInitialStatuses(IUnitState unitState, List<BattleStep> steps, int currentTurn)
@@ -71,7 +74,7 @@ namespace Server.Battles
                     commands,
                     unitState);
 
-                _logger.LogDebug($"[Story][Battle]: Apply status, unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, stacks = {stacks}, remainingTicks = {activeStatus.RemainingTicks}");
+                _coreLog.Debug($"[Story][Battle]: Apply status, unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, stacks = {stacks}, remainingTicks = {activeStatus.RemainingTicks}");
             }
         }
 
@@ -108,7 +111,7 @@ namespace Server.Battles
                     cooldownLoaded = true;
                 }
 
-                _logger.LogDebug($"[Story][Battle]: Status unit queue, side = {ownerTeam.BattleSide}, turn = {currentTurn}, unitId = {unit.Id}, slotIndex = {unit.SlotIndex}, queueSize = {_tickQueue.Count}");
+                _coreLog.Debug($"[Story][Battle]: Status unit queue, side = {ownerTeam.BattleSide}, turn = {currentTurn}, unitId = {unit.Id}, slotIndex = {unit.SlotIndex}, queueSize = {_tickQueue.Count}");
 
                 for (int i = 0; i < _tickQueue.Count; i++)
                 {
@@ -118,12 +121,12 @@ namespace Server.Battles
 
                     if (entry.Unit.IsAlive() == false || turnState.ShouldSkipRemainingActions(entry.Unit))
                     {
-                        _logger.LogDebug($"[Story][Battle]: Status queue stop remaining, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, turn = {currentTurn}, remaining = {_tickQueue.Count - i}");
+                        _coreLog.Debug($"[Story][Battle]: Status queue stop remaining, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, turn = {currentTurn}, remaining = {_tickQueue.Count - i}");
 
                         break;
                     }
 
-                    _logger.LogDebug($"[Story][Battle]: Status queue entry, index = {i}, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, triggerOrder = {entry.TriggerOrder}");
+                    _coreLog.Debug($"[Story][Battle]: Status queue entry, index = {i}, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, triggerOrder = {entry.TriggerOrder}");
 
                     TickDamageOverTimeGroup(
                         entry.Unit,
@@ -140,7 +143,7 @@ namespace Server.Battles
 
                     if (entry.Unit.IsAlive() == false || turnState.ShouldSkipRemainingActions(entry.Unit))
                     {
-                        _logger.LogDebug($"[Story][Battle]: Status queue killed unit, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, turn = {currentTurn}, remainingSkipped = {_tickQueue.Count - i - 1}");
+                        _coreLog.Debug($"[Story][Battle]: Status queue killed unit, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, turn = {currentTurn}, remainingSkipped = {_tickQueue.Count - i - 1}");
 
                         break;
                     }
@@ -149,12 +152,12 @@ namespace Server.Battles
 
             if (emittedWaits == 0)
             {
-                _logger.LogDebug($"[Story][Battle]: Phase wait skippedEmpty phase = statuses, side = {ownerTeam.BattleSide}, turn = {currentTurn}, queueSize = 0, emittedWaits = 0");
+                _coreLog.Debug($"[Story][Battle]: Phase wait skippedEmpty phase = statuses, side = {ownerTeam.BattleSide}, turn = {currentTurn}, queueSize = 0, emittedWaits = 0");
 
                 return;
             }
 
-            _logger.LogDebug($"[Story][Battle]: Phase wait phase = statuses, side = {ownerTeam.BattleSide}, turn = {currentTurn}, emittedWaits = {emittedWaits}");
+            _coreLog.Debug($"[Story][Battle]: Phase wait phase = statuses, side = {ownerTeam.BattleSide}, turn = {currentTurn}, emittedWaits = {emittedWaits}");
         }
 
         private void FillMainsInSlotOrder(IReadOnlyList<IUnitState> mains)
@@ -194,12 +197,12 @@ namespace Server.Battles
 
                 if (_configDistributor.Statuses.TryGet(statusId, out var mapper) == false)
                 {
-                    _logger.LogError($"[Error][Story][Battle]: Status missing in tick queue, statusId = {statusId}, unitId = {unit.Id}");
+                    _coreLog.Error($"[Error][Story][Battle]: Status missing in tick queue, statusId = {statusId}, unitId = {unit.Id}");
 
                     throw new InvalidOperationException($"[Error][Story][Battle]: Status missing in tick queue, statusId = {statusId}, unitId = {unit.Id}");
                 }
 
-                if (IsDamageOverTime(mapper.StatusType) == false)
+                if (_statusClassifier.IsDamageOverTime(mapper.StatusType) == false)
                     continue;
 
                 _processedStatusIds.Add(statusId);
@@ -325,7 +328,7 @@ namespace Server.Battles
                 commands,
                 unitState);
 
-            _logger.LogDebug($"[Story][Battle]: Status aggregate tick, unitId = {unitState.Id}, statusId = {statusId}, damage = {totalDamage}, isCritical = {anyCritical}, health = {healthAfter}, wait = {cooldown}");
+            _coreLog.Debug($"[Story][Battle]: Status aggregate tick, unitId = {unitState.Id}, statusId = {statusId}, damage = {totalDamage}, isCritical = {anyCritical}, health = {healthAfter}, wait = {cooldown}");
 
             if (0f < totalDamage)
                 NotifyDamageOverTimeSource(unitState, ownerTeam, opponentTeam, steps, currentTurn, seededRandomService, statusId, turnState);
@@ -350,7 +353,7 @@ namespace Server.Battles
 
             if (sourceUnitId < 0)
             {
-                _logger.LogDebug($"[Story][Battle]: Any_damage skip status tick; source missing statusId = {statusId}, targetId = {unitState.Id}");
+                _coreLog.Debug($"[Story][Battle]: Any_damage skip status tick; source missing statusId = {statusId}, targetId = {unitState.Id}");
 
                 return;
             }
@@ -438,13 +441,13 @@ namespace Server.Battles
                 defenceFactor = 0f;
 
             var damage = tickDamageBase * defenceFactor;
-            var criticalRoll = seededRandomService.GetRandomValue();
+            var criticalRoll = seededRandomService.GetRandomValue(RandomRollNames.Critical);
             isCritical = criticalRoll < criticalChance;
 
             if (isCritical)
                 damage *= criticalMultiplier;
 
-            _logger.LogDebug($"[Story][Battle]: Damage over time stack, unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, sourceId = {activeStatus.SourceUnitId}, sourceDamage = {sourceDamage}, damageRatio = {activeStatus.DamageRatio}, tickDamageBase = {tickDamageBase}, criticalRoll = {criticalRoll}, isCritical = {isCritical}, damage = {damage}");
+            _coreLog.Debug($"[Story][Battle]: Damage over time stack, unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, sourceId = {activeStatus.SourceUnitId}, sourceDamage = {sourceDamage}, damageRatio = {activeStatus.DamageRatio}, tickDamageBase = {tickDamageBase}, criticalRoll = {criticalRoll}, isCritical = {isCritical}, damage = {damage}");
 
             return damage;
         }
@@ -464,7 +467,7 @@ namespace Server.Battles
 
             if (activeStatus.SourceUnitId < 0)
             {
-                _logger.LogError($"[Story][Battle]: Damage over time source unset, bearerId = {bearer.Id}, statusId = {activeStatus.StatusId}");
+                _coreLog.Error($"[Story][Battle]: Damage over time source unset, bearerId = {bearer.Id}, statusId = {activeStatus.StatusId}");
 
                 return;
             }
@@ -480,7 +483,7 @@ namespace Server.Battles
                 return;
             }
 
-            _logger.LogError($"[Story][Battle]: Damage over time source main missing, sourceId = {activeStatus.SourceUnitId}, bearerId = {bearer.Id}, statusId = {activeStatus.StatusId}");
+            _coreLog.Error($"[Story][Battle]: Damage over time source main missing, sourceId = {activeStatus.SourceUnitId}, bearerId = {bearer.Id}, statusId = {activeStatus.StatusId}");
         }
 
         private void ExpireStatus(
@@ -525,7 +528,7 @@ namespace Server.Battles
                 commands,
                 unitState);
 
-            _logger.LogDebug($"[Story][Battle]: Expire status, unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, remainingStacks = {remainingStacks}");
+            _coreLog.Debug($"[Story][Battle]: Expire status, unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, remainingStacks = {remainingStacks}");
         }
 
         private void EmitDeath(List<BattleStep> steps, int currentTurn, IUnitState unit, BattleTurnState turnState)
@@ -533,7 +536,7 @@ namespace Server.Battles
             if (_battlePerkSimulator.TryResurrectOnDeath(unit, steps, currentTurn, turnState))
                 return;
 
-            _logger.LogDebug($"[Story][Battle]: Death unitId = {unit.Id}, turn = {currentTurn}");
+            _coreLog.Debug($"[Story][Battle]: Death unitId = {unit.Id}, turn = {currentTurn}");
 
             _battleScriptBuilder.Add(
                 steps,
@@ -551,20 +554,12 @@ namespace Server.Battles
         {
             if (_configDistributor.Constants.TryGet(ConstantKeys.StatusesCooldownKey, out var constant) == false)
             {
-                _logger.LogError($"[Error][Story][Battle]: Constant missing key = {ConstantKeys.StatusesCooldownKey}");
+                _coreLog.Error($"[Error][Story][Battle]: Constant missing key = {ConstantKeys.StatusesCooldownKey}");
 
                 throw new InvalidOperationException($"[Error][Story][Battle]: Constant missing key = {ConstantKeys.StatusesCooldownKey}");
             }
 
             return float.Parse(constant.ConstantValue, System.Globalization.CultureInfo.InvariantCulture);
-        }
-
-        private bool IsDamageOverTime(StatusType statusType)
-        {
-            return statusType == StatusType.Burning
-                || statusType == StatusType.BurningStrong
-                || statusType == StatusType.Poison
-                || statusType == StatusType.PoisonStrong;
         }
 
         private bool HasStatusBefore(List<ActiveStatus> activeStatuses, int statusId, int index)

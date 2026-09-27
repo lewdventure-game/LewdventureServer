@@ -40,6 +40,30 @@ namespace Server.GameConfigs
             ["bonus_change"] = new EffectParameterDescriptor("bonus_change", new[] { "bonuses" }, Array.Empty<string>()),
         };
 
+        private readonly Dictionary<string, EffectParameterDescriptor> _skills = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["fireball"] = new EffectParameterDescriptor("fireball", new[] { "damage_ratio" }, new[] { "projectile_count", "duration" }),
+            ["energy"] = new EffectParameterDescriptor("energy", Array.Empty<string>(), new[] { "duration" }),
+            ["summon_1_skill_1"] = new EffectParameterDescriptor(
+                "summon_1_skill_1",
+                new[] { "damage_ratio" },
+                new[] { "hit_rewards", "duration" }),
+            ["summon_2_skill_1"] = new EffectParameterDescriptor(
+                "summon_2_skill_1",
+                new[] { "damage_ratio" },
+                new[] { "heal_from_max_ratio", "ally_rewards", "duration" }),
+            ["summon_3_skill_1"] = new EffectParameterDescriptor(
+                "summon_3_skill_1",
+                new[] { "damage_ratio" },
+                new[] { "life_steal_ratio", "hit_rewards", "ally_rewards", "duration" }),
+        };
+
+        public IReadOnlyCollection<string> PerkTypeKeys => _perks.Keys;
+
+        public IReadOnlyCollection<string> StatusTypeKeys => _statuses.Keys;
+
+        public IReadOnlyCollection<string> SkillTypeKeys => _skills.Keys;
+
         public bool TryGetPerk(string effectType, out EffectParameterDescriptor descriptor)
         {
             return _perks.TryGetValue(effectType, out descriptor!);
@@ -48,6 +72,11 @@ namespace Server.GameConfigs
         public bool TryGetStatus(string effectType, out EffectParameterDescriptor descriptor)
         {
             return _statuses.TryGetValue(effectType, out descriptor!);
+        }
+
+        public bool TryGetSkill(string effectType, out EffectParameterDescriptor descriptor)
+        {
+            return _skills.TryGetValue(effectType, out descriptor!);
         }
     }
 }

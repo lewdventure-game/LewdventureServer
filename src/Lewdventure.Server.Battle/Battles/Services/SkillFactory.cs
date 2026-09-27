@@ -1,52 +1,68 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using Microsoft.Extensions.Logging;
+using Server.Configs;
 using Server.Services;
 
 namespace Server.Battles
 {
     internal sealed class SkillFactory : ISkillFactory
     {
-        private readonly ILogger<SkillFactory> _logger;
+        private readonly ICoreLog _coreLog;
         private readonly IConfigDistributor _configDistributor;
+        private readonly ParserUtils _parserUtils;
+        private readonly Dictionary<SkillType, ISkillCreator> _creatorsByType = new();
+        private readonly Dictionary<string, ISkillCreator> _creatorsByTypeKey = new(StringComparer.OrdinalIgnoreCase);
 
         public SkillFactory(
-            ILogger<SkillFactory> logger,
-            IConfigDistributor configDistributor)
+            ICoreLog coreLog,
+            IConfigDistributor configDistributor,
+            ParserUtils parserUtils,
+            IReadOnlyList<ISkillCreator> skillCreators)
         {
-            _logger = logger;
+            _coreLog = coreLog;
             _configDistributor = configDistributor;
+            _parserUtils = parserUtils;
+
+            for (int i = 0; i < skillCreators.Count; i++)
+            {
+                var creator = skillCreators[i];
+
+                _creatorsByType[creator.SkillType] = creator;
+                _creatorsByTypeKey[creator.TypeKey] = creator;
+            }
         }
 
         public ISkill Create(string skillId)
         {
             if (string.IsNullOrWhiteSpace(skillId))
             {
-                _logger.LogWarning($"[Story][Battle]: Skill unknown, id = {skillId}");
+                _coreLog.Warning($"[Story][Battle]: Skill unknown, id = {skillId}");
 
-                return new UnknownSkill(new SkillMapper(0, string.Empty, SkillType.Unknown, string.Empty));
+                return new UnknownSkill(new SkillMapper(0, string.Empty, SkillType.Unknown, string.Empty), _parserUtils);
             }
 
             var trimmed = skillId.Trim();
 
             if (TryFindSkillConfig(trimmed, out var skillConfig) == false)
             {
-                _logger.LogWarning($"[Story][Battle]: Skill unknown, id = {trimmed}");
+                _coreLog.Warning($"[Story][Battle]: Skill unknown, id = {trimmed}");
 
-                return new UnknownSkill(new SkillMapper(0, trimmed, SkillType.Unknown, string.Empty));
+                return new UnknownSkill(new SkillMapper(0, trimmed, SkillType.Unknown, string.Empty), _parserUtils);
             }
 
-            if (TryResolveSkillType(skillConfig.Type, out var skillType) == false)
+            if (TryResolveCreator(skillConfig.Type, out var creator) == false)
             {
-                _logger.LogWarning($"[Story][Battle]: Skill unknown type, id = {trimmed}, type = {skillConfig.Type}");
+                _coreLog.Warning($"[Story][Battle]: Skill unknown type, id = {trimmed}, type = {skillConfig.Type}");
 
-                return new UnknownSkill(new SkillMapper(skillConfig.Id, skillConfig.Type, SkillType.Unknown, skillConfig.Parameters));
+                return new UnknownSkill(new SkillMapper(skillConfig.Id, skillConfig.Type, SkillType.Unknown, skillConfig.Parameters), _parserUtils);
             }
 
-            var mapper = new SkillMapper(skillConfig.Id, skillConfig.Type, skillType, skillConfig.Parameters);
+            var mapper = new SkillMapper(skillConfig.Id, skillConfig.Type, creator.SkillType, skillConfig.Parameters);
 
-            return CreateSkill(skillType, mapper);
+            return creator.Create(mapper);
         }
+
+        public IReadOnlyCollection<string> KnownTypeKeys => _creatorsByTypeKey.Keys;
 
         public bool IsKnownSkillId(string skillId)
         {
@@ -58,7 +74,7 @@ namespace Server.Battles
             if (TryFindSkillConfig(trimmed, out var skillConfig) == false)
                 return false;
 
-            return TryResolveSkillType(skillConfig.Type, out _);
+            return TryResolveCreator(skillConfig.Type, out _);
         }
 
         private bool TryFindSkillConfig(string skillId, [MaybeNullWhen(false)] out Server.Skills.ISkillMapper skillConfig)
@@ -70,65 +86,16 @@ namespace Server.Battles
             return _configDistributor.Skills.TryGetByType(skillId, out skillConfig);
         }
 
-        private bool TryResolveSkillType(string skillTypeKey, out SkillType skillType)
+        private bool TryResolveCreator(string skillTypeKey, [MaybeNullWhen(false)] out ISkillCreator creator)
         {
-            if (string.Equals(skillTypeKey, "fireball", StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrWhiteSpace(skillTypeKey))
             {
-                skillType = SkillType.Fireball;
+                creator = null;
 
-                return true;
+                return false;
             }
 
-            if (string.Equals(skillTypeKey, "energy", StringComparison.OrdinalIgnoreCase))
-            {
-                skillType = SkillType.Energy;
-
-                return true;
-            }
-
-            if (string.Equals(skillTypeKey, "summon_1_skill_1", StringComparison.OrdinalIgnoreCase))
-            {
-                skillType = SkillType.VenomStrike;
-
-                return true;
-            }
-
-            if (string.Equals(skillTypeKey, "summon_2_skill_1", StringComparison.OrdinalIgnoreCase))
-            {
-                skillType = SkillType.WarHowl;
-
-                return true;
-            }
-
-            if (string.Equals(skillTypeKey, "summon_3_skill_1", StringComparison.OrdinalIgnoreCase))
-            {
-                skillType = SkillType.SoulSiphon;
-
-                return true;
-            }
-
-            skillType = SkillType.Unknown;
-
-            return false;
-        }
-
-        private ISkill CreateSkill(SkillType skillType, ISkillMapper mapper)
-        {
-            switch (skillType)
-            {
-                case SkillType.Fireball:
-                    return new FireballSkill(mapper);
-                case SkillType.Energy:
-                    return new EnergySkill(mapper);
-                case SkillType.VenomStrike:
-                    return new SummonVenomStrikeSkill(mapper);
-                case SkillType.WarHowl:
-                    return new SummonWarHowlSkill(mapper);
-                case SkillType.SoulSiphon:
-                    return new SummonSoulSiphonSkill(mapper);
-                default:
-                    return new UnknownSkill(mapper);
-            }
+            return _creatorsByTypeKey.TryGetValue(skillTypeKey.Trim(), out creator);
         }
     }
 }

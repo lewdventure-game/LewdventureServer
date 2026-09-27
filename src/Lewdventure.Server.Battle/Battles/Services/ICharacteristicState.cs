@@ -1,6 +1,6 @@
 namespace Server.Battles
 {
-    internal interface ICharacteristicState
+    public interface ICharacteristicState
     {
         public float Health { get; set; }
 

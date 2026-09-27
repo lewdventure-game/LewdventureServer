@@ -1,4 +1,6 @@
+using Core.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Server.Battles;
 using Server.GameConfigs;
 using Server.Infrastructure.Mongo;
 using Server.Infrastructure.Mongo.Players;
@@ -112,7 +114,11 @@ namespace Tests.Integration.Mongo
                 Assert.That(step.Succeeded, Is.True, string.Join("; ", step.Errors));
 
                 if (step.Step?.BattleScript != null)
+                {
                     battles += 1;
+
+                    AssertSeedOnlyDeliveryReproducesScript(step.Step);
+                }
             }
 
             var final = await _environment.Services.GetRequiredService<RunRepository>().GetAsync(run.Id, CancellationToken.None);
@@ -125,6 +131,21 @@ namespace Tests.Integration.Mongo
 
             if (string.Equals(final.Status, RunDocument.CompletedStatus, StringComparison.Ordinal))
                 Assert.That(profile.Story.CompletedLevelIds, Does.Contain(StoryLevelId));
+        }
+
+        private void AssertSeedOnlyDeliveryReproducesScript(RunStepOutcome step)
+        {
+            Assert.That(step.BattleInput, Is.Not.Null, "в шаге боя должен быть вход для переигровки по сиду");
+            Assert.That(step.BattleDigest, Does.StartWith("sha256:"));
+            Assert.That(step.BattleStepCount, Is.EqualTo(step.BattleScript!.Steps.Count));
+
+            var distributor = _environment.Services.GetRequiredService<IGameConfigSetProvider>().Current.Distributor;
+            var clientCore = new BattleComposition(distributor, new SilentCoreLog());
+            var clientScript = clientCore.BattleSimulatorService.Replay(step.BattleInput!);
+
+            Assert.That(clientCore.BattleScriptDigest.Compute(clientScript), Is.EqualTo(step.BattleDigest), "клиент по входу и сиду обязан получить тот же бой");
+            Assert.That(clientScript.Steps.Count, Is.EqualTo(step.BattleScript!.Steps.Count));
+            Assert.That(clientScript.OutcomeType, Is.EqualTo(step.BattleScript!.OutcomeType));
         }
 
         [Test]

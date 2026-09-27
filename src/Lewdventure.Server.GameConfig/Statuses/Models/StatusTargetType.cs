@@ -1,6 +1,6 @@
 namespace Server.Statuses
 {
-    internal enum StatusTargetType
+    public enum StatusTargetType
     {
         Unknown = 0,
         Caster = 1,

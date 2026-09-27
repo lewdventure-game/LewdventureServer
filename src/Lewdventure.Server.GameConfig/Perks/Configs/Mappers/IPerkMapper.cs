@@ -3,7 +3,7 @@ using Server.Configs;
 
 namespace Server.Perks
 {
-    internal interface IPerkMapper : IConfigMapper
+    public interface IPerkMapper : IConfigMapper
     {
         public int Id { get; }
 

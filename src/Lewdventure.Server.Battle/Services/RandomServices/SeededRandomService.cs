@@ -1,5 +1,3 @@
-﻿using System.Numerics;
-
 namespace Server.Services
 {
     internal sealed class SeededRandomService : ISeededRandomService
@@ -36,7 +34,7 @@ namespace Server.Services
 
         public ulong NextULong()
         {
-            var result = BitOperations.RotateLeft(_state1 * 5, 7) * 9;
+            var result = RotateLeft(_state1 * 5, 7) * 9;
 
             var temporary = _state1 << 17;
 
@@ -47,7 +45,7 @@ namespace Server.Services
 
             _state2 ^= temporary;
 
-            _state3 = BitOperations.RotateLeft(_state3, 45);
+            _state3 = RotateLeft(_state3, 45);
 
             return result;
         }
@@ -59,7 +57,7 @@ namespace Server.Services
             return value;
         }
 
-        public float GetRandomValue()
+        public float GetRandomValue(string rollName)
         {
             var value = (NextUInt() >> 8) * (1.0f / 16777216.0f);
 
@@ -68,7 +66,8 @@ namespace Server.Services
 
         public int Range(int minInclusive, int maxExclusive)
         {
-            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(maxExclusive, minInclusive);
+            if (maxExclusive <= minInclusive)
+                throw new ArgumentOutOfRangeException(nameof(maxExclusive));
 
             var range = (uint)(maxExclusive - minInclusive);
             var limit = uint.MaxValue - uint.MaxValue % range;
@@ -86,7 +85,7 @@ namespace Server.Services
 
         public float Range(float minInclusive, float maxInclusive)
         {
-            var value = minInclusive + GetRandomValue() * (maxInclusive - minInclusive);
+            var value = minInclusive + GetRandomValue(RandomRollNames.Range) * (maxInclusive - minInclusive);
 
             return value;
         }
@@ -99,6 +98,11 @@ namespace Server.Services
             var index = Range(0, options.Length);
 
             return options[index];
+        }
+
+        private ulong RotateLeft(ulong value, int offset)
+        {
+            return (value << offset) | (value >> (64 - offset));
         }
 
         private struct SplitMix64

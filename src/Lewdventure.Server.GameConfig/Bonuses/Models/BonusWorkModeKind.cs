@@ -1,6 +1,6 @@
 namespace Server.Bonuses
 {
-    internal enum BonusWorkModeKind
+    public enum BonusWorkModeKind
     {
         Unknown = 0,
         Permanent = 1,

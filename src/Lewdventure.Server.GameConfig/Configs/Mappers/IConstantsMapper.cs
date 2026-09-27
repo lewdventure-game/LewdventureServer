@@ -1,6 +1,6 @@
 namespace Server.Configs
 {
-    internal interface IConstantsMapper : IConfigMapper
+    public interface IConstantsMapper : IConfigMapper
     {
         public string ConstantName { get; }
 

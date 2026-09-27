@@ -1,3 +1,4 @@
+using Core.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Server.Bonuses;
 using Server.GameConfigs;
@@ -160,10 +161,10 @@ namespace Tests.Unit.GameConfig
         private GameConfigSetBuilder CreateBuilder()
         {
             return new GameConfigSetBuilder(
-                new BonusWorkModeParser(NullLogger<BonusWorkModeParser>.Instance),
+                new BonusWorkModeParser(new SilentCoreLog()),
                 new ConfigRowsParser(new ConfigRowLocator(new ConfigRangeReader())),
                 new ConfigSnapshotValidator(_domainNames, new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator()),
-                NullLogger<GameConfigSetBuilder>.Instance);
+                new SilentCoreLog());
         }
     }
 }

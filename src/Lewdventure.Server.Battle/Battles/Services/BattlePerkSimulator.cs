@@ -1,5 +1,4 @@
 using System;
-using Microsoft.Extensions.Logging;
 using Server.Perks;
 using Server.Services;
 
@@ -7,7 +6,7 @@ namespace Server.Battles
 {
     internal sealed class BattlePerkSimulator : IBattlePerkSimulator
     {
-        private readonly ILogger<BattlePerkSimulator> _logger;
+        private readonly ICoreLog _coreLog;
         private readonly IBattleBonusService _battleBonusService;
         private readonly IBattleCommandFactory _battleCommandFactory;
         private readonly IBattleDamageMath _battleDamageMath;
@@ -17,7 +16,7 @@ namespace Server.Battles
         private readonly List<PerkQueueEntry> _queueBuffer = new();
 
         public BattlePerkSimulator(
-            ILogger<BattlePerkSimulator> logger,
+            ICoreLog coreLog,
             IBattleBonusService battleBonusService,
             IBattleCommandFactory battleCommandFactory,
             IBattleDamageMath battleDamageMath,
@@ -25,7 +24,7 @@ namespace Server.Battles
             IBattleScriptBuilder battleScriptBuilder,
             IConfigDistributor configDistributor)
         {
-            _logger = logger;
+            _coreLog = coreLog;
             _battleBonusService = battleBonusService;
             _battleCommandFactory = battleCommandFactory;
             _battleDamageMath = battleDamageMath;
@@ -50,7 +49,7 @@ namespace Server.Battles
 
             if (_queueBuffer.Count == 0)
             {
-                _logger.LogDebug($"[Story][Battle]: Phase wait skippedEmpty phase = perks, side = {attacker.BattleSide}, turn = {currentTurn}, queueSize = 0, emittedWaits = 0");
+                _coreLog.Debug($"[Story][Battle]: Phase wait skippedEmpty phase = perks, side = {attacker.BattleSide}, turn = {currentTurn}, queueSize = 0, emittedWaits = 0");
 
                 return;
             }
@@ -58,7 +57,7 @@ namespace Server.Battles
             var cooldown = GetPerksCooldown();
             var emittedWaits = 0;
 
-            _logger.LogDebug($"[Story][Battle]: Perk phase, side = {attacker.BattleSide}, turn = {currentTurn}, queue = {_queueBuffer.Count}");
+            _coreLog.Debug($"[Story][Battle]: Perk phase, side = {attacker.BattleSide}, turn = {currentTurn}, queue = {_queueBuffer.Count}");
 
             for (int i = 0; i < _queueBuffer.Count; i++)
             {
@@ -70,7 +69,7 @@ namespace Server.Battles
 
                 if (turnState.ShouldSkipRemainingActions(owner))
                 {
-                    _logger.LogDebug($"[Story][Battle]: Perk queue skip aborted unit, perkId = {perk.Id}, ownerId = {owner.Id}, turn = {currentTurn}");
+                    _coreLog.Debug($"[Story][Battle]: Perk queue skip aborted unit, perkId = {perk.Id}, ownerId = {owner.Id}, turn = {currentTurn}");
 
                     continue;
                 }
@@ -81,7 +80,7 @@ namespace Server.Battles
                 if (perk.CanTrigger(currentTurn) == false)
                     continue;
 
-                _logger.LogDebug($"[Story][Battle]: Perk queue, perkId = {perk.Id}, type = {perk.PerkType}, order = {perk.TriggerOrder}, ownerId = {owner.Id}, side = {attacker.BattleSide}");
+                _coreLog.Debug($"[Story][Battle]: Perk queue, perkId = {perk.Id}, type = {perk.PerkType}, order = {perk.TriggerOrder}, ownerId = {owner.Id}, side = {attacker.BattleSide}");
 
                 var stepCountBefore = steps.Count;
                 var context = CreateContext(steps, owner, attacker, defender, currentTurn, seededRandomService, turnState);
@@ -89,7 +88,7 @@ namespace Server.Battles
 
                 if (steps.Count == stepCountBefore)
                 {
-                    _logger.LogDebug($"[Story][Battle]: Perk queue no-op skip cooldown, perkId = {perk.Id}, ownerId = {owner.Id}");
+                    _coreLog.Debug($"[Story][Battle]: Perk queue no-op skip cooldown, perkId = {perk.Id}, ownerId = {owner.Id}");
 
                     continue;
                 }
@@ -108,10 +107,10 @@ namespace Server.Battles
 
                 ++emittedWaits;
 
-                _logger.LogDebug($"[Story][Battle]: Phase wait phase = perks, perkId = {perk.Id}, ownerId = {owner.Id}, wait = {cooldown}");
+                _coreLog.Debug($"[Story][Battle]: Phase wait phase = perks, perkId = {perk.Id}, ownerId = {owner.Id}, wait = {cooldown}");
             }
 
-            _logger.LogDebug($"[Story][Battle]: Phase wait phase = perks, side = {attacker.BattleSide}, turn = {currentTurn}, queueSize = {_queueBuffer.Count}, emittedWaits = {emittedWaits}");
+            _coreLog.Debug($"[Story][Battle]: Phase wait phase = perks, side = {attacker.BattleSide}, turn = {currentTurn}, queueSize = {_queueBuffer.Count}, emittedWaits = {emittedWaits}");
         }
 
         public void NotifyAction(
@@ -142,7 +141,7 @@ namespace Server.Battles
             ISeededRandomService seededRandomService,
             BattleTurnState turnState)
         {
-            _logger.LogDebug($"[Story][Battle]: Any_damage notify, dealerId = {damageDealer.Id}, slot = {damageDealer.SlotIndex}, turn = {currentTurn}");
+            _coreLog.Debug($"[Story][Battle]: Any_damage notify, dealerId = {damageDealer.Id}, slot = {damageDealer.SlotIndex}, turn = {currentTurn}");
 
             NotifyAction(
                 BattlePerkActionType.AnyDamage,
@@ -204,8 +203,8 @@ namespace Server.Battles
                 if (actingUnit != null)
                     turnState.AbortUnit(actingUnit);
 
-                _logger.LogInformation($"[Story][Battle]: Resurrected on death, unitId = {unit.Id}, perkId = {perk.Id}, turn = {currentTurn}");
-                _logger.LogInformation($"[Story][Battle]: Abort remaining unit actions after resurrection, unitId = {unit.Id}, actingUnitId = {turnState.ActingUnitId}, turn = {currentTurn}");
+                _coreLog.Information($"[Story][Battle]: Resurrected on death, unitId = {unit.Id}, perkId = {perk.Id}, turn = {currentTurn}");
+                _coreLog.Information($"[Story][Battle]: Abort remaining unit actions after resurrection, unitId = {unit.Id}, actingUnitId = {turnState.ActingUnitId}, turn = {currentTurn}");
 
                 return true;
             }
@@ -265,14 +264,14 @@ namespace Server.Battles
                 _battleScriptBuilder,
                 _battleRewardService,
                 _configDistributor,
-                _logger);
+                _coreLog);
         }
 
         private float GetPerksCooldown()
         {
             if (_configDistributor.Constants.TryGet(ConstantKeys.PerksCooldownKey, out var constant) == false)
             {
-                _logger.LogError($"[Error][Story][Battle]: Constant missing key = {ConstantKeys.PerksCooldownKey}");
+                _coreLog.Error($"[Error][Story][Battle]: Constant missing key = {ConstantKeys.PerksCooldownKey}");
 
                 throw new InvalidOperationException($"[Error][Story][Battle]: Constant missing key = {ConstantKeys.PerksCooldownKey}");
             }

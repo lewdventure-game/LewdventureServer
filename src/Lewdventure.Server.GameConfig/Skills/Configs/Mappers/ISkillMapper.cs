@@ -2,7 +2,7 @@ using Server.Configs;
 
 namespace Server.Skills
 {
-    internal interface ISkillMapper : IConfigMapper
+    public interface ISkillMapper : IConfigMapper
     {
         public int Id { get; }
 

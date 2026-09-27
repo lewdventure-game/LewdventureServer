@@ -11,20 +11,20 @@ namespace Server.Battles
 {
     internal sealed class UnitBonusGranter : IUnitBonusGranter
     {
-        private readonly ILogger<UnitBonusGranter> _logger;
+        private readonly ICoreLog _coreLog;
         private readonly IBattleBonusService _battleBonusService;
         private readonly IBonusWorkModeParser _bonusWorkModeParser;
         private readonly IConfigDistributor _configDistributor;
         private readonly IUnitBucketsFactory _unitBucketsFactory;
 
         public UnitBonusGranter(
-            ILogger<UnitBonusGranter> logger,
+            ICoreLog coreLog,
             IBattleBonusService battleBonusService,
             IBonusWorkModeParser bonusWorkModeParser,
             IConfigDistributor configDistributor,
             IUnitBucketsFactory unitBucketsFactory)
         {
-            _logger = logger;
+            _coreLog = coreLog;
             _battleBonusService = battleBonusService;
             _bonusWorkModeParser = bonusWorkModeParser;
             _configDistributor = configDistributor;
@@ -35,21 +35,21 @@ namespace Server.Battles
         {
             if (trainingLevel <= 0)
             {
-                _logger.LogDebug($"[Story][Battle]: Training grant skipped, trainingLevel = {trainingLevel}");
+                _coreLog.Debug($"[Story][Battle]: Training grant skipped, trainingLevel = {trainingLevel}");
 
                 return;
             }
 
             if (_configDistributor.Trainings.TryGet(trainingLevel, out var trainingMapper) == false)
             {
-                _logger.LogWarning($"[Story][Battle]: Training missing, trainingLevel = {trainingLevel}, trainingsCount = {_configDistributor.Trainings.Collection.Count}; bonuses skipped");
+                _coreLog.Warning($"[Story][Battle]: Training missing, trainingLevel = {trainingLevel}, trainingsCount = {_configDistributor.Trainings.Collection.Count}; bonuses skipped");
 
                 return;
             }
 
             GrantBonusPairs(unitState, trainingMapper.BonusIds, trainingMapper.BonusValues, $"build:training:{trainingLevel}");
 
-            _logger.LogDebug($"[Story][Battle]: Training bonuses granted, trainingLevel = {trainingLevel}, bonusCount = {trainingMapper.BonusIds.Length}");
+            _coreLog.Debug($"[Story][Battle]: Training bonuses granted, trainingLevel = {trainingLevel}, bonusCount = {trainingMapper.BonusIds.Length}");
         }
 
         public void GrantArtifactBonuses(UnitState unitState, IUnitSnapshot unitSnapshot)
@@ -61,7 +61,7 @@ namespace Server.Battles
 
             if (_configDistributor.Artifacts.Collection.Count == 0)
             {
-                _logger.LogDebug($"[Story][Battle]: Artifact grant skipped; artifacts manager empty, requestedCount = {artifactIds.Count}");
+                _coreLog.Debug($"[Story][Battle]: Artifact grant skipped; artifacts manager empty, requestedCount = {artifactIds.Count}");
 
                 return;
             }
@@ -72,14 +72,14 @@ namespace Server.Battles
 
                 if (_configDistributor.Artifacts.TryGet(artifactId, out var artifactMapper) == false)
                 {
-                    _logger.LogWarning($"[Story][Battle]: Unknown artifact, id = {artifactId}");
+                    _coreLog.Warning($"[Story][Battle]: Unknown artifact, id = {artifactId}");
 
                     continue;
                 }
 
                 GrantBonusPairs(unitState, artifactMapper.BonusIds, artifactMapper.BonusValues, $"build:artifact:{artifactId}");
 
-                _logger.LogDebug($"[Story][Battle]: Artifact bonuses granted, artifactId = {artifactId}, bonusCount = {artifactMapper.BonusIds.Length}");
+                _coreLog.Debug($"[Story][Battle]: Artifact bonuses granted, artifactId = {artifactId}, bonusCount = {artifactMapper.BonusIds.Length}");
             }
         }
 
@@ -92,7 +92,7 @@ namespace Server.Battles
 
             if (_configDistributor.Aspects.Collection.Count == 0)
             {
-                _logger.LogDebug($"[Story][Battle]: Aspect grant skipped; aspects manager empty, requestedCount = {aspectIds.Count}");
+                _coreLog.Debug($"[Story][Battle]: Aspect grant skipped; aspects manager empty, requestedCount = {aspectIds.Count}");
 
                 return;
             }
@@ -103,14 +103,14 @@ namespace Server.Battles
 
                 if (_configDistributor.Aspects.TryGet(aspectId, out var aspectMapper) == false)
                 {
-                    _logger.LogWarning($"[Story][Battle]: Unknown aspect id = {aspectId}");
+                    _coreLog.Warning($"[Story][Battle]: Unknown aspect id = {aspectId}");
 
                     continue;
                 }
 
                 GrantBonusPairs(unitState, aspectMapper.BonusIds, aspectMapper.BonusValues, $"build:aspect:{aspectId}");
 
-                _logger.LogDebug($"[Story][Battle]: Aspect bonuses granted, aspectId = {aspectId}, bonusCount = {aspectMapper.BonusIds.Length}");
+                _coreLog.Debug($"[Story][Battle]: Aspect bonuses granted, aspectId = {aspectId}, bonusCount = {aspectMapper.BonusIds.Length}");
             }
         }
 
@@ -139,7 +139,7 @@ namespace Server.Battles
         {
             if (characterLevel <= 0)
             {
-                _logger.LogError($"[Story][Battle]: Invalid character level = {characterLevel}, characterId = {characterMapper.Id}");
+                _coreLog.Error($"[Story][Battle]: Invalid character level = {characterLevel}, characterId = {characterMapper.Id}");
 
                 throw new InvalidOperationException($"[Story][Battle]: Invalid character level = {characterLevel}, characterId = {characterMapper.Id}");
             }
@@ -155,7 +155,7 @@ namespace Server.Battles
 
             if (upgradeCosts.Length == 0)
             {
-                _logger.LogDebug($"[Story][Battle]: Character upgrades skipped, id = {characterMapper.Id}; upgrade_costs empty");
+                _coreLog.Debug($"[Story][Battle]: Character upgrades skipped, id = {characterMapper.Id}; upgrade_costs empty");
 
                 return;
             }
@@ -169,14 +169,14 @@ namespace Server.Battles
             {
                 if (upgradeBonusTypes.Length <= upgradeIndex)
                 {
-                    _logger.LogWarning($"[Story][Battle]: Character upgrade type missing, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}");
+                    _coreLog.Warning($"[Story][Battle]: Character upgrade type missing, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}");
 
                     break;
                 }
 
                 if (upgradeBonusValues.Length <= upgradeIndex)
                 {
-                    _logger.LogWarning($"[Story][Battle]: Character upgrade value missing, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}");
+                    _coreLog.Warning($"[Story][Battle]: Character upgrade value missing, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}");
 
                     break;
                 }
@@ -187,18 +187,18 @@ namespace Server.Battles
 
                 GrantBuildBonus(unitState, bonusId, value, sourceKey);
 
-                _logger.LogDebug($"[Story][Battle]: Character upgrade grant, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}, cost = {upgradeCosts[upgradeIndex]}, bonusId = {bonusId}, value = {value}");
+                _coreLog.Debug($"[Story][Battle]: Character upgrade grant, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}, cost = {upgradeCosts[upgradeIndex]}, bonusId = {bonusId}, value = {value}");
             }
 
             if (upgradeCosts.Length < purchasedUpgrades)
-                _logger.LogDebug($"[Story][Battle]: Character upgrades capped, characterId = {characterMapper.Id}, level = {characterLevel}, purchased = {purchasedUpgrades}, maxFromCosts = {upgradeCosts.Length}");
+                _coreLog.Debug($"[Story][Battle]: Character upgrades capped, characterId = {characterMapper.Id}, level = {characterLevel}, purchased = {purchasedUpgrades}, maxFromCosts = {upgradeCosts.Length}");
         }
 
         public void GrantSummonAccountBonuses(IUnitState mainUnit, IUnitSnapshot summonSnapshot)
         {
             if (_configDistributor.Summons.TryGet(summonSnapshot.Id, out var summonMapper) == false)
             {
-                _logger.LogError($"[Story][Battle]: Summon account bonuses skipped; missing summon id = {summonSnapshot.Id}");
+                _coreLog.Error($"[Story][Battle]: Summon account bonuses skipped; missing summon id = {summonSnapshot.Id}");
 
                 throw new InvalidOperationException($"[Story][Battle]: Summon missing id = {summonSnapshot.Id}");
             }
@@ -213,7 +213,7 @@ namespace Server.Battles
 
                     GrantBuildBonus(mainUnit, masteryMapper.BonusId, 0f, sourceKey);
 
-                    _logger.LogDebug($"[Story][Battle]: Summon mastery bonus grant, mainId = {mainUnit.Id}, summonId = {summonSnapshot.Id}, masteryLevel = {masteryLevel}, bonusId = {masteryMapper.BonusId}");
+                    _coreLog.Debug($"[Story][Battle]: Summon mastery bonus grant, mainId = {mainUnit.Id}, summonId = {summonSnapshot.Id}, masteryLevel = {masteryLevel}, bonusId = {masteryMapper.BonusId}");
                 }
             }
         }
@@ -234,7 +234,7 @@ namespace Server.Battles
 
                 if (_configDistributor.Equipments.TryGet(equipmentId, out var equipmentMapper) == false)
                 {
-                    _logger.LogError($"[Story][Battle]: Equipment missing id = {equipmentId}");
+                    _coreLog.Error($"[Story][Battle]: Equipment missing id = {equipmentId}");
 
                     throw new InvalidOperationException($"[Story][Battle]: Equipment missing id = {equipmentId}");
                 }
@@ -257,7 +257,7 @@ namespace Server.Battles
 
             var value = ParseEquipmentBonusValue(bonusValueRaw, equipmentLevel);
 
-            _logger.LogDebug($"[Story][Battle] equipment grant slot sourceKey = {sourceKey} level = {equipmentLevel} bonusId = {bonusId} value = {value}");
+            _coreLog.Debug($"[Story][Battle] equipment grant slot sourceKey = {sourceKey} level = {equipmentLevel} bonusId = {bonusId} value = {value}");
 
             GrantBuildBonus(unitState, bonusId, value, sourceKey);
         }
@@ -275,7 +275,7 @@ namespace Server.Battles
             {
                 if (bonusId <= 0)
                 {
-                    _logger.LogWarning($"[Story][Battle]: Equipment bonus id invalid raw = {bonusTypeRaw}");
+                    _coreLog.Warning($"[Story][Battle]: Equipment bonus id invalid raw = {bonusTypeRaw}");
 
                     return false;
                 }
@@ -285,14 +285,14 @@ namespace Server.Battles
 
             if (TryParseBonusTypeName(trimmed, out var bonusType) == false || bonusType == BonusType.Unknown)
             {
-                _logger.LogWarning($"[Story][Battle]: Equipment bonus type parse failed raw = {bonusTypeRaw}");
+                _coreLog.Warning($"[Story][Battle]: Equipment bonus type parse failed raw = {bonusTypeRaw}");
 
                 return false;
             }
 
-            IBonusMapper firstMatch = default!;
+            IBonusMapper lowestIdMatch = default!;
 
-            var hasFirstMatch = false;
+            var hasMatch = false;
             var matchCount = 0;
 
             foreach (var bonusMapper in _configDistributor.Bonuses.Values)
@@ -302,24 +302,24 @@ namespace Server.Battles
 
                 matchCount += 1;
 
-                if (hasFirstMatch == false)
-                {
-                    firstMatch = bonusMapper;
-                    hasFirstMatch = true;
-                }
+                if (hasMatch && lowestIdMatch.Id <= bonusMapper.Id)
+                    continue;
+
+                lowestIdMatch = bonusMapper;
+                hasMatch = true;
             }
 
-            if (hasFirstMatch == false)
+            if (hasMatch == false)
             {
-                _logger.LogWarning($"[Story][Battle]: Equipment bonus type missing, type = {bonusType}, raw = {bonusTypeRaw}");
+                _coreLog.Warning($"[Story][Battle]: Equipment bonus type missing, type = {bonusType}, raw = {bonusTypeRaw}");
 
                 return false;
             }
 
             if (1 < matchCount)
-                _logger.LogWarning($"[Story][Battle]: Equipment bonus type ambiguous, type = {bonusType}, matches = {matchCount}, usingId = {firstMatch.Id}");
+                _coreLog.Warning($"[Story][Battle]: Equipment bonus type ambiguous, type = {bonusType}, matches = {matchCount}, usingId = {lowestIdMatch.Id}");
 
-            bonusId = firstMatch.Id;
+            bonusId = lowestIdMatch.Id;
 
             return true;
         }
@@ -403,7 +403,7 @@ namespace Server.Battles
             if (float.TryParse(segment, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
                 return value;
 
-            _logger.LogWarning($"[Story][Battle]: Equipment bonus value parse failed, raw = {bonusValueRaw}, level = {equipmentLevel}, segment = {segment}");
+            _coreLog.Warning($"[Story][Battle]: Equipment bonus value parse failed, raw = {bonusValueRaw}, level = {equipmentLevel}, segment = {segment}");
 
             return 0f;
         }
@@ -446,7 +446,7 @@ namespace Server.Battles
 
                 if (grant.Id <= 0 || grant.Count == 0)
                 {
-                    _logger.LogError($"[Story][Battle]: Run bonus skip invalid, id = {grant.Id}, count = {grant.Count}");
+                    _coreLog.Error($"[Story][Battle]: Run bonus skip invalid, id = {grant.Id}, count = {grant.Count}");
 
                     continue;
                 }
@@ -475,14 +475,14 @@ namespace Server.Battles
 
                 if (activeBonus.WorkMode.Contains(BonusWorkModeKind.NextBattles) == false)
                 {
-                    _logger.LogDebug($"[Story][Battle]: Run bonus remaining override skipped, unitId = {unitState.Id}, bonusId = {bonusId}, workMode = {activeBonus.WorkMode.Format()}, sourceKey = {sourceKey}");
+                    _coreLog.Debug($"[Story][Battle]: Run bonus remaining override skipped, unitId = {unitState.Id}, bonusId = {bonusId}, workMode = {activeBonus.WorkMode.Format()}, sourceKey = {sourceKey}");
 
                     return;
                 }
 
                 activeBonus.RemainingBattles = remainingBattles;
 
-                _logger.LogDebug($"[Story][Battle]: Run bonus remaining override, unitId = {unitState.Id}, bonusId = {activeBonus.BonusId}, remainingBattles = {remainingBattles}, sourceKey = {sourceKey}");
+                _coreLog.Debug($"[Story][Battle]: Run bonus remaining override, unitId = {unitState.Id}, bonusId = {activeBonus.BonusId}, remainingBattles = {remainingBattles}, sourceKey = {sourceKey}");
 
                 return;
             }
@@ -495,7 +495,7 @@ namespace Server.Battles
 
             if (_configDistributor.Bonuses.TryGet(bonusId, out var bonusMapper) == false)
             {
-                _logger.LogError($"[Story][Battle]: Bonus missing, id = {bonusId}");
+                _coreLog.Error($"[Story][Battle]: Bonus missing, id = {bonusId}");
 
                 throw new InvalidOperationException($"[Story][Battle]: Bonus missing, id = {bonusId}");
             }
@@ -512,7 +512,7 @@ namespace Server.Battles
 
             if (_bonusWorkModeParser.TryParse(bonusMapper.WorkModeParameters, out var workMode) == false)
             {
-                _logger.LogError($"[Story][Battle]: work_mode parse failed, bonusId = {bonusId}");
+                _coreLog.Error($"[Story][Battle]: work_mode parse failed, bonusId = {bonusId}");
 
                 return;
             }
@@ -532,7 +532,7 @@ namespace Server.Battles
                     workMode,
                     sourceKey));
 
-            _logger.LogDebug($"[Story][Battle]: Build bonus queued, id = {bonusId}, type = {bonusMapper.BonusType}, value = {grantValue}, operator = {bonusMapper.OperatorType}, workMode = {workMode.Format()}, sourceKey = {sourceKey}");
+            _coreLog.Debug($"[Story][Battle]: Build bonus queued, id = {bonusId}, type = {bonusMapper.BonusType}, value = {grantValue}, operator = {bonusMapper.OperatorType}, workMode = {workMode.Format()}, sourceKey = {sourceKey}");
         }
     }
 }

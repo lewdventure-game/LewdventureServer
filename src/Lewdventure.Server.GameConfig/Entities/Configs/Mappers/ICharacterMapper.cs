@@ -2,7 +2,7 @@ using Server.Configs;
 
 namespace Server.Entities
 {
-    internal interface ICharacterMapper : IConfigMapper
+    public interface ICharacterMapper : IConfigMapper
     {
         public int Id { get; }
 

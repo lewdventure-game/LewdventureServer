@@ -1,6 +1,6 @@
 namespace Server.Configs
 {
-    internal enum ValueType
+    public enum ValueType
     {
         Unknown = 0,
         Int = 1,

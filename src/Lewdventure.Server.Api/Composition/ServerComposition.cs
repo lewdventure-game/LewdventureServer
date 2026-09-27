@@ -1,18 +1,20 @@
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.Extensions.Options;
+using Core.Logging;
 using Server.Api.Endpoints;
 using Server.Api.Health;
 using Server.Api.Hosting;
 using Server.Api.Http;
-using Server.Api.Json;
 using Server.Api.Metrics;
 using Server.Api.Options;
 using Server.Api.Security;
+using Server.Battles;
 using Server.Bonuses;
 using Server.GameConfigs;
 using Server.Infrastructure.Mongo.ConfigSnapshots;
 using Server.Infrastructure.Mongo.Players;
 using Server.Runs;
+using Server.Infrastructure.Logging;
 using Server.Infrastructure.Mongo;
 using Server.Services;
 
@@ -40,7 +42,7 @@ namespace Server.Api.Composition
 
             services.AddSingleton<PlayerResponseFactory>();
             services.AddSingleton<RunResponseFactory>();
-            services.AddSingleton(new NewtonsoftSettingsFactory().Create());
+            services.AddSingleton(new BattleJsonSettingsFactory().Create());
         }
 
         private void RegisterOptions(IServiceCollection services)
@@ -135,9 +137,19 @@ namespace Server.Api.Composition
             return serviceProvider.GetRequiredService<IGameConfigSetProvider>().Current.Distributor;
         }
 
+        private ICoreLog ResolveGameConfigsCoreLog(IServiceProvider serviceProvider)
+        {
+            var coreLogFactory = serviceProvider.GetRequiredService<CoreLogFactory>();
+
+            return coreLogFactory.Create(serviceProvider.GetRequiredService<CoreLogCategories>().GameConfigs);
+        }
+
         private void RegisterConfigs(IServiceCollection services)
         {
             services
+                .AddSingleton<CoreLogCategories>()
+                .AddSingleton<CoreLogFactory>()
+                .AddSingleton<ICoreLog>(ResolveGameConfigsCoreLog)
                 .AddSingleton<ConfigDomainNames>()
                 .AddSingleton<ConfigSnapshotHasher>()
                 .AddSingleton<ConfigSnapshotSerializer>()

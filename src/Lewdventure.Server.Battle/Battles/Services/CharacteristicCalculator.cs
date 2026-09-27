@@ -1,15 +1,14 @@
-using Microsoft.Extensions.Logging;
 using Server.Bonuses;
 
 namespace Server.Battles
 {
     internal sealed class CharacteristicCalculator : ICharacteristicCalculator
     {
-        private readonly ILogger<CharacteristicCalculator> _logger;
+        private readonly ICoreLog _coreLog;
 
-        public CharacteristicCalculator(ILogger<CharacteristicCalculator> logger)
+        public CharacteristicCalculator(ICoreLog coreLog)
         {
-            _logger = logger;
+            _coreLog = coreLog;
         }
 
         public void ApplyToState(
@@ -183,7 +182,7 @@ namespace Server.Battles
                     state.Health = 0f;
             }
 
-            _logger.LogInformation($"[Story][Battle]: Characteristic rebuild, maxHealth = {state.MaxHealth}, health = {state.Health}, damage = {state.Damage}, armor = {state.Armor}, defence = {state.Defence}, comboMn = {state.ComboMultiplier}, vampyrism = {state.Vampyrism}, healingBoost = {state.HealingBoost}");
+            _coreLog.Information($"[Story][Battle]: Characteristic rebuild, maxHealth = {state.MaxHealth}, health = {state.Health}, damage = {state.Damage}, armor = {state.Armor}, defence = {state.Defence}, comboMn = {state.ComboMultiplier}, vampyrism = {state.Vampyrism}, healingBoost = {state.HealingBoost}");
         }
 
         public float CalculateVampyrismHeal(float dealtDamage, ICharacteristicState state)
@@ -196,7 +195,7 @@ namespace Server.Battles
             if (heal < 0f)
                 heal = 0f;
 
-            _logger.LogDebug($"[Story][Battle]: Vampyrism heal, dealt = {dealtDamage}, vampyrism = {state.Vampyrism}, healingBoost = {state.HealingBoost}, heal = {heal}");
+            _coreLog.Debug($"[Story][Battle]: Vampyrism heal, dealt = {dealtDamage}, vampyrism = {state.Vampyrism}, healingBoost = {state.HealingBoost}, heal = {heal}");
 
             return heal;
         }
@@ -205,7 +204,7 @@ namespace Server.Battles
         {
             var healDelta = maxHealth * healingBonus * healingBoost;
 
-            _logger.LogDebug($"[Story][Battle]: Healing from max, maxHealth = {maxHealth}, healingBonus = {healingBonus}, healingBoost = {healingBoost}, healDelta = {healDelta}");
+            _coreLog.Debug($"[Story][Battle]: Healing from max, maxHealth = {maxHealth}, healingBonus = {healingBonus}, healingBoost = {healingBoost}, healDelta = {healDelta}");
 
             return healDelta;
         }
@@ -214,7 +213,7 @@ namespace Server.Battles
         {
             var healDelta = currentHealth * healingBonus * healingBoost;
 
-            _logger.LogDebug($"[Story][Battle]: Healing from current, currentHealth = {currentHealth}, healingBonus = {healingBonus}, healingBoost = {healingBoost}, healDelta = {healDelta}");
+            _coreLog.Debug($"[Story][Battle]: Healing from current, currentHealth = {currentHealth}, healingBonus = {healingBonus}, healingBoost = {healingBoost}, healDelta = {healDelta}");
 
             return healDelta;
         }
@@ -330,7 +329,7 @@ namespace Server.Battles
                         healingBoost = value;
                         break;
                     default:
-                        _logger.LogError($"[Story][Battle]: Unknown replace bonus type, bonusType = {replaceOverride.BonusType}");
+                        _coreLog.Error($"[Story][Battle]: Unknown replace bonus type, bonusType = {replaceOverride.BonusType}");
 
                         throw new InvalidOperationException($"[Story][Battle]: Unknown replace bonus type, bonusType = {replaceOverride.BonusType}");
                 }
@@ -352,7 +351,7 @@ namespace Server.Battles
             if (rounded < 1f)
                 rounded = 1f;
 
-            _logger.LogDebug($"[Story][Battle]: Formula1, field = {fieldName}, base = {baseValue}, local = {local}, minor = {minor}, major = {major}, perk = {perk}, global = {global}, raw = {value}, result = {rounded}");
+            _coreLog.Debug($"[Story][Battle]: Formula1, field = {fieldName}, base = {baseValue}, local = {local}, minor = {minor}, major = {major}, perk = {perk}, global = {global}, raw = {value}, result = {rounded}");
 
             return rounded;
         }
@@ -361,7 +360,7 @@ namespace Server.Battles
         {
             var value = (baseValue + local) * (1f + perk) * (1f + global);
 
-            _logger.LogDebug($"[Story][Battle]: Formula2, field = {fieldName}, base = {baseValue}, local = {local}, perk = {perk}, global = {global}, result = {value}");
+            _coreLog.Debug($"[Story][Battle]: Formula2, field = {fieldName}, base = {baseValue}, local = {local}, perk = {perk}, global = {global}, result = {value}");
 
             return value;
         }
@@ -373,7 +372,7 @@ namespace Server.Battles
             if (value < 0f)
                 value = 0f;
 
-            _logger.LogDebug($"[Story][Battle]: Formula3, field = {fieldName}, base = {baseValue}, local = {local}, perk = {perk}, global = {global}, result = {value}");
+            _coreLog.Debug($"[Story][Battle]: Formula3, field = {fieldName}, base = {baseValue}, local = {local}, perk = {perk}, global = {global}, result = {value}");
 
             return value;
         }
@@ -386,7 +385,7 @@ namespace Server.Battles
             if (rounded < 0f)
                 rounded = 0f;
 
-            _logger.LogDebug($"[Story][Battle]: Formula7, base = {healingBoostBase}, local = {local}, perk = {perk}, global = {global}, raw = {value}, result = {rounded}");
+            _coreLog.Debug($"[Story][Battle]: Formula7, base = {healingBoostBase}, local = {local}, perk = {perk}, global = {global}, raw = {value}, result = {rounded}");
 
             return rounded;
         }
@@ -396,7 +395,7 @@ namespace Server.Battles
             var rounded = RoundMathematical(value);
 
             if (rounded != value)
-                _logger.LogDebug($"[Story][Battle]: Multiplier round, field = {fieldName}, raw = {value}, rounded = {rounded}");
+                _coreLog.Debug($"[Story][Battle]: Multiplier round, field = {fieldName}, raw = {value}, rounded = {rounded}");
 
             return rounded;
         }
@@ -410,7 +409,7 @@ namespace Server.Battles
         {
             if (coefficient <= 0f)
             {
-                _logger.LogError($"[Story][Battle]: Defence formula missing coefficient, coefficient = {coefficient}, armor = {armor}");
+                _coreLog.Error($"[Story][Battle]: Defence formula missing coefficient, coefficient = {coefficient}, armor = {armor}");
 
                 throw new InvalidOperationException($"[Story][Battle]: defence_coeff missing or <= 0, coefficient = {coefficient}");
             }
@@ -422,7 +421,7 @@ namespace Server.Battles
 
             var defence = coefficient * armor / (1f + coefficient * absoluteArmor);
 
-            _logger.LogDebug($"[Story][Battle]: Formula5, armor = {armor}, absoluteArmor = {absoluteArmor}, coefficient = {coefficient}, defence = {defence}");
+            _coreLog.Debug($"[Story][Battle]: Formula5, armor = {armor}, absoluteArmor = {absoluteArmor}, coefficient = {coefficient}, defence = {defence}");
 
             return defence;
         }

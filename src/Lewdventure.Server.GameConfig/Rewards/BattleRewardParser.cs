@@ -1,16 +1,15 @@
 using System.Globalization;
-using Microsoft.Extensions.Logging;
 using Server.Configs;
 
 namespace Server.Battles
 {
     internal sealed class BattleRewardParser : IBattleRewardParser
     {
-        private readonly ILogger<BattleRewardParser> _logger;
+        private readonly ICoreLog _coreLog;
 
-        public BattleRewardParser(ILogger<BattleRewardParser> logger)
+        public BattleRewardParser(ICoreLog coreLog)
         {
-            _logger = logger;
+            _coreLog = coreLog;
         }
 
         public IReadOnlyList<BattleReward> Parse(string value)
@@ -120,7 +119,7 @@ namespace Server.Battles
 
             if (type == BattleRewardType.None)
             {
-                _logger.LogWarning($"[Story][Battle]: Reward unknown type skipped, raw = {typeSpan.ToString()}, count = {count}");
+                _coreLog.Warning($"[Story][Battle]: Reward unknown type skipped, raw = {typeSpan.ToString()}, count = {count}");
 
                 return false;
             }
@@ -129,7 +128,7 @@ namespace Server.Battles
             {
                 if (id <= 0)
                 {
-                    _logger.LogWarning($"[Story][Battle]: Reward id invalid, type = {type}, raw = {idSpan.ToString()}, count = {count}");
+                    _coreLog.Warning($"[Story][Battle]: Reward id invalid, type = {type}, raw = {idSpan.ToString()}, count = {count}");
 
                     return false;
                 }
@@ -141,7 +140,7 @@ namespace Server.Battles
 
             if (type != BattleRewardType.Resource && type != BattleRewardType.Account)
             {
-                _logger.LogWarning($"[Story][Battle]: Reward parse fail non-int id, type = {type}, raw = {idSpan.ToString()}, count = {count}");
+                _coreLog.Warning($"[Story][Battle]: Reward parse fail non-int id, type = {type}, raw = {idSpan.ToString()}, count = {count}");
 
                 return false;
             }
@@ -150,13 +149,13 @@ namespace Server.Battles
 
             if (string.IsNullOrWhiteSpace(rewardKey))
             {
-                _logger.LogWarning($"[Story][Battle]: Reward resource key empty, count = {count}");
+                _coreLog.Warning($"[Story][Battle]: Reward resource key empty, count = {count}");
 
                 return false;
             }
 
             reward = new BattleReward(type, rewardKey, count);
-            _logger.LogDebug($"[Story][Battle]: Reward resource key parsed, key = {rewardKey} count = {count}");
+            _coreLog.Debug($"[Story][Battle]: Reward resource key parsed, key = {rewardKey} count = {count}");
 
             return true;
         }

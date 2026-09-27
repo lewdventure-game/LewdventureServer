@@ -1,6 +1,6 @@
 namespace Server.Statuses
 {
-    internal enum StatusType
+    public enum StatusType
     {
         Unknown = 0,
         Burning = 1,

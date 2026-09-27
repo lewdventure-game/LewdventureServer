@@ -294,6 +294,26 @@ Combo2 roll выполняется **только** если Combo1 сработ
 }
 ```
 
+## Доставка боя в забеге: скрипт или сид
+
+`POST /api/run/advance` и `POST /api/run/choose` принимают необязательное поле `battleDelivery`:
+
+| Значение | Что в `step` |
+| --- | --- |
+| пусто или `script` (по умолчанию) | `battle` — полный скрипт боя |
+| `seed` | `battleInput` — вход боя (`BattleReplayData`: команды, сид, `storyLevelId`, `stageId`), без `steps` |
+
+В обоих режимах приходят:
+
+- `battleDigest` — `sha256:<hex>` от скрипта боя, сериализованного настройками `BattleJsonSettingsFactory`;
+- `battleStepCount` — число шагов в скрипте.
+
+В режиме `seed` клиент переигрывает бой сам (`IBattleCore.Replay(battleInput)`), считает `IBattleCore.ComputeDigest(script)` и сверяет с `battleDigest`. Совпало — бой тот же, что посчитал сервер; не совпало — расхождение рантаймов, и это видно до показа боя.
+
+Поля добавлены в конец DTO, `protocolVersion` не меняется: старый клиент продолжает получать `battle` как раньше.
+
+Авторитет: сервер не принимает от клиента ни исход боя, ни скрипт. Итоги забега (`currentHealth`, `status`, `appliedRewards`, `profileRev`) приходят из ответа сервера, а не из скрипта.
+
 ## Decisions
 
 Зафиксированные решения контракта. Менять только осознанно и синхронно с Unity-клиентом.

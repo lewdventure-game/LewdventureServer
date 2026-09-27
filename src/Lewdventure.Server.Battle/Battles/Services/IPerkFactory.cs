@@ -5,5 +5,7 @@ namespace Server.Battles
     internal interface IPerkFactory
     {
         public IPerk Create(IPerkMapper mapper);
+
+        public IReadOnlyCollection<string> KnownTypeKeys { get; }
     }
 }

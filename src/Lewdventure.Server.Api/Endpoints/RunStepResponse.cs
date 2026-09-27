@@ -20,10 +20,20 @@ namespace Server.Api.Endpoints
 
         public List<int> LevelUps { get; set; } = new();
 
+        public List<RunRewardResponse> AppliedRewards { get; set; } = new();
+
+        public long ProfileRev { get; set; }
+
         public bool RunCompleted { get; set; }
 
         public bool RunFailed { get; set; }
 
         public IBattleScriptResponse? Battle { get; set; }
+
+        public IBattleReplayData? BattleInput { get; set; }
+
+        public string BattleDigest { get; set; } = string.Empty;
+
+        public int BattleStepCount { get; set; }
     }
 }

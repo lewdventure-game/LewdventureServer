@@ -3,7 +3,7 @@ using Core.Collections;
 
 namespace Server.Skills
 {
-    internal interface ISkillMapperManager : IManager<ISkillMapper>
+    public interface ISkillMapperManager : IManager<ISkillMapper>
     {
         public bool TryGet(int skillId, [MaybeNullWhen(false)] out ISkillMapper mapper);
 

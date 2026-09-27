@@ -1,3 +1,4 @@
+using Core.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Server.GameConfigs;
 using Server.Infrastructure.Mongo;
@@ -71,7 +72,7 @@ namespace Tests.Integration.Mongo
         {
             var service = _environment.Services.GetRequiredService<ConfigPublishingService>();
             var builder = _environment.Services.GetRequiredService<GameConfigSetBuilder>();
-            var otherProvider = new GameConfigSetProvider(Microsoft.Extensions.Logging.Abstractions.NullLogger<GameConfigSetProvider>.Instance);
+            var otherProvider = new GameConfigSetProvider(new SilentCoreLog());
             var otherService = new ConfigPublishingService(
                 new Server.Infrastructure.Alerts.NullAlertPublisher(),
                 _environment.Services.GetRequiredService<ConfigActivationRepository>(),

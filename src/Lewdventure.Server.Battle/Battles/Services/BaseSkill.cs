@@ -20,12 +20,12 @@ namespace Server.Battles
 
         public float CastDurationSeconds => _castDurationSeconds;
 
-        protected BaseSkill(ISkillMapper mapper)
+        protected BaseSkill(ISkillMapper mapper, ParserUtils parserUtils)
         {
             _id = mapper.Id;
             _skillKey = mapper.SkillKey;
             _skillType = mapper.SkillType;
-            _castDurationSeconds = ResolveCastDuration(mapper);
+            _castDurationSeconds = ResolveCastDuration(mapper, parserUtils);
         }
 
         public abstract void Execute(ISkillExecutionContext context);
@@ -36,14 +36,14 @@ namespace Server.Battles
             commands.Add(context.BattleCommandFactory.PlayAnimation(context.Actor.Id, context.Actor.SlotIndex, "cast"));
             commands.Add(context.BattleCommandFactory.Wait(_castDurationSeconds));
 
-            context.Logger.LogDebug($"[Story][Battle]: Skill cast duration, skillKey = {SkillKey}, unitId = {context.Actor.Id}, duration = {_castDurationSeconds}");
+            context.CoreLog.Debug($"[Story][Battle]: Skill cast duration, skillKey = {SkillKey}, unitId = {context.Actor.Id}, duration = {_castDurationSeconds}");
         }
 
         protected void EndCast(ISkillExecutionContext context, List<BattleCommand> commands, IUnitState target)
         {
             if (context.Phase == BattlePhaseType.UnitSkill)
             {
-                context.Logger.LogDebug($"[Story][Battle]: Skill EndCast skip Wait unit phase, skillKey = {SkillKey}, unitId = {context.Actor.Id}");
+                context.CoreLog.Debug($"[Story][Battle]: Skill EndCast skip Wait unit phase, skillKey = {SkillKey}, unitId = {context.Actor.Id}");
                 context.AddStep(commands, target);
 
                 return;
@@ -53,14 +53,14 @@ namespace Server.Battles
             context.AddStep(commands, target);
         }
 
-        private float ResolveCastDuration(ISkillMapper mapper)
+        private float ResolveCastDuration(ISkillMapper mapper, ParserUtils parserUtils)
         {
             if (mapper.SkillType == SkillType.Unknown)
                 return 0f;
 
             var dictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            ParserUtils.ParseToDictionary(mapper.Parameters, dictionary);
+            parserUtils.ParseToDictionary(mapper.Parameters, dictionary);
 
             if (dictionary.TryGetValue(Keys.DurationKey, out var rawDuration) == false || string.IsNullOrWhiteSpace(rawDuration))
                 throw new InvalidOperationException($"[Error][Story][Battle]: Skill duration missing, skillKey = {mapper.SkillKey}");

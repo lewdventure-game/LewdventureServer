@@ -2,7 +2,7 @@ using Server.Configs;
 
 namespace Server.Equipments
 {
-    internal interface IEquipmentMapper : IConfigMapper
+    public interface IEquipmentMapper : IConfigMapper
     {
         public string Id { get; }
 

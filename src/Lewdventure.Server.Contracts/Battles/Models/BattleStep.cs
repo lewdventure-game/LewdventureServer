@@ -1,6 +1,6 @@
 namespace Server.Battles
 {
-    internal sealed class BattleStep
+    public sealed class BattleStep
     {
         public int Index { get; set; }
 

@@ -1,6 +1,6 @@
 namespace Server.Stories
 {
-    internal enum StoryEventType
+    public enum StoryEventType
     {
         Unknown = 0,
         DefaultEvent = 1,

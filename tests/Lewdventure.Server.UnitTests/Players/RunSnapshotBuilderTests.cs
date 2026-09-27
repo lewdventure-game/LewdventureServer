@@ -1,3 +1,4 @@
+using Core.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Server.Bonuses;
 using Server.GameConfigs;
@@ -26,13 +27,34 @@ namespace Tests.Unit.Players
             var source = new FileConfigSnapshotSource(new ConfigSnapshotSerializer(hasher));
             var snapshot = await source.LoadAsync(new ApiDirectoryLocator().FindFixture(), CancellationToken.None);
             var builder = new GameConfigSetBuilder(
-                new BonusWorkModeParser(NullLogger<BonusWorkModeParser>.Instance),
+                new BonusWorkModeParser(new SilentCoreLog()),
                 new ConfigRowsParser(new ConfigRowLocator(new ConfigRangeReader())),
                 new ConfigSnapshotValidator(new ConfigDomainNames(), new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator()),
-                NullLogger<GameConfigSetBuilder>.Instance);
+                new SilentCoreLog());
 
             _configDistributor = builder.Build(snapshot, "test").ConfigSet!.Distributor;
             _builder = new RunSnapshotBuilder();
+        }
+
+        [Test]
+        public void TryBuild_LeavesActiveSkillIdsEmpty()
+        {
+            var profile = CreateProfile();
+            var run = CreateRun();
+
+            var built = _builder.TryBuild(profile, run, run.Stages[0], new[] { EnemyId }, _configDistributor, out var data, out var error);
+
+            Assert.That(built, Is.True, error);
+
+            var mainUnits = data.TeamA.MainUnits;
+
+            for (int i = 0; i < mainUnits.Count; i++)
+                Assert.That(mainUnits[i].ActiveSkillIds, Is.Empty, "скиллы приходят только из конфигов, клиент их не выбирает");
+
+            var summons = data.TeamA.Summons;
+
+            for (int i = 0; i < summons.Count; i++)
+                Assert.That(summons[i].ActiveSkillIds, Is.Empty, "скиллы саммона приходят только из конфигов");
         }
 
         [Test]

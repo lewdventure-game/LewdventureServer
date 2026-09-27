@@ -16,8 +16,9 @@ namespace Server.Runs
 
         private readonly IBattleParameterParser _battleParameterParser;
         private readonly IBattleRewardParser _battleRewardParser;
+        private readonly IBattleScriptDigest _battleScriptDigest;
         private readonly IBattleSimulationValidator _battleSimulationValidator;
-        private readonly BattleSimulatorService _battleSimulatorService;
+        private readonly IBattleSimulatorService _battleSimulatorService;
         private readonly IConfigDistributor _configDistributor;
         private readonly IGameConfigSetProvider _gameConfigSetProvider;
         private readonly ILogger<RunService> _logger;
@@ -34,8 +35,9 @@ namespace Server.Runs
         public RunService(
             IBattleParameterParser battleParameterParser,
             IBattleRewardParser battleRewardParser,
+            IBattleScriptDigest battleScriptDigest,
             IBattleSimulationValidator battleSimulationValidator,
-            BattleSimulatorService battleSimulatorService,
+            IBattleSimulatorService battleSimulatorService,
             IConfigDistributor configDistributor,
             IGameConfigSetProvider gameConfigSetProvider,
             ILogger<RunService> logger,
@@ -51,6 +53,7 @@ namespace Server.Runs
         {
             _battleParameterParser = battleParameterParser;
             _battleRewardParser = battleRewardParser;
+            _battleScriptDigest = battleScriptDigest;
             _battleSimulationValidator = battleSimulationValidator;
             _battleSimulatorService = battleSimulatorService;
             _configDistributor = configDistributor;
@@ -216,7 +219,7 @@ namespace Server.Runs
             };
             var experience = storyEvent.RewardExperienceValue;
 
-            experience += await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, requestId, cancellationToken);
+            experience += await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, requestId, outcome, cancellationToken);
 
             ApplyExperience(run, level, experience, outcome);
             ResolveStage(run, stage);
@@ -285,7 +288,7 @@ namespace Server.Runs
 
             run.RollIndex += 1;
 
-            var success = random.GetRandomValue() < NormalizeChance(chance);
+            var success = random.GetRandomValue(RandomRollNames.RunEvent) < NormalizeChance(chance);
             var branch = button == 1 ? (success ? 1 : 2) : (success ? 3 : 4);
             var rewards = ReadString(parameters, _runEventKeys.ForkRewardsKey(branch));
             var rewardLength = (int)ReadFloat(parameters, _runEventKeys.ForkRewardLengthKey(branch));
@@ -298,7 +301,7 @@ namespace Server.Runs
             };
             var experience = storyEvent.RewardExperienceValue;
 
-            experience += await ApplyRewardsAsync(userId, run, rewards, rewardLength, requestId, cancellationToken);
+            experience += await ApplyRewardsAsync(userId, run, rewards, rewardLength, requestId, outcome, cancellationToken);
 
             run.PendingChoice = null;
 
@@ -378,6 +381,9 @@ namespace Server.Runs
                 LocKeyStart = ReadString(parameters, RunEventKeys.LocKeyStart),
                 LocKeyEnd = ReadString(parameters, RunEventKeys.LocKeyEnd),
                 BattleScript = script,
+                BattleInput = replayData,
+                BattleDigest = _battleScriptDigest.Compute(script),
+                BattleStepCount = script.Steps.Count,
             };
 
             if (script.OutcomeType != OutcomeType.TeamAWin)
@@ -396,7 +402,7 @@ namespace Server.Runs
 
             var experience = storyEvent.RewardExperienceValue;
 
-            experience += await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, requestId, cancellationToken);
+            experience += await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, requestId, outcome, cancellationToken);
 
             run.CurrentHealth = ReadFinalHealth(script, profile.Loadout.CharacterId, run.CurrentHealth);
 
@@ -456,7 +462,14 @@ namespace Server.Runs
             return Conflict();
         }
 
-        private async Task<int> ApplyRewardsAsync(string userId, RunDocument run, string rewards, int rewardLength, string requestId, CancellationToken cancellationToken)
+        private async Task<int> ApplyRewardsAsync(
+            string userId,
+            RunDocument run,
+            string rewards,
+            int rewardLength,
+            string requestId,
+            RunStepOutcome outcome,
+            CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(rewards))
                 return 0;
@@ -502,9 +515,29 @@ namespace Server.Runs
 
                 if (result.Succeeded == false)
                     _logger.LogWarning("[Run] rewards not applied userId = {UserId} runId = {RunId} errors = {Errors}", userId, run.Id, string.Join("; ", result.Errors));
+                else
+                    CollectAppliedRewards(profileRewards, result.Profile!, outcome);
             }
 
             return experience;
+        }
+
+        private void CollectAppliedRewards(List<BattleReward> profileRewards, PlayerProfileDocument profile, RunStepOutcome outcome)
+        {
+            for (int i = 0; i < profileRewards.Count; i++)
+            {
+                var reward = profileRewards[i];
+
+                outcome.AppliedRewards.Add(new RunAppliedReward
+                {
+                    Type = reward.Type.ToString(),
+                    Id = reward.Id,
+                    RewardKey = reward.HasStringRewardKey ? reward.RewardKey : string.Empty,
+                    Count = reward.Count,
+                });
+            }
+
+            outcome.ProfileRev = profile.Rev;
         }
 
         private void AddRunBonus(RunDocument run, int bonusId, int count, int rewardLength)

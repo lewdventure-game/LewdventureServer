@@ -1,10 +1,9 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using Server.Battles;
 
-namespace Server.Api.Json
+namespace Server.Battles
 {
-    internal sealed class NewtonsoftSettingsFactory
+    public sealed class BattleJsonSettingsFactory
     {
         public JsonSerializerSettings Create()
         {

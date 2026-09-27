@@ -28,7 +28,7 @@ namespace Server.Battles
 
         public IConfigDistributor ConfigDistributor { get; }
 
-        public ILogger Logger { get; }
+        public ICoreLog CoreLog { get; }
 
         public int FindDefenderTargetIndex();
 

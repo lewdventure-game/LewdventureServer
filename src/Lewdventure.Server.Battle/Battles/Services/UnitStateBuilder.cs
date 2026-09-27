@@ -9,7 +9,7 @@ namespace Server.Battles
 {
     internal sealed class UnitStateBuilder : IUnitStateBuilder
     {
-        private readonly ILogger<UnitStateBuilder> _logger;
+        private readonly ICoreLog _coreLog;
         private readonly IBattleBonusService _battleBonusService;
         private readonly ICharacteristicCalculator _characteristicCalculator;
         private readonly IConfigDistributor _configDistributor;
@@ -18,7 +18,7 @@ namespace Server.Battles
         private readonly IUnitLoadoutBinder _unitLoadoutBinder;
 
         public UnitStateBuilder(
-            ILogger<UnitStateBuilder> logger,
+            ICoreLog coreLog,
             IBattleBonusService battleBonusService,
             ICharacteristicCalculator characteristicCalculator,
             IConfigDistributor configDistributor,
@@ -26,7 +26,7 @@ namespace Server.Battles
             IUnitBucketsFactory unitBucketsFactory,
             IUnitLoadoutBinder unitLoadoutBinder)
         {
-            _logger = logger;
+            _coreLog = coreLog;
             _battleBonusService = battleBonusService;
             _characteristicCalculator = characteristicCalculator;
             _configDistributor = configDistributor;
@@ -54,11 +54,11 @@ namespace Server.Battles
                     baseBuckets = _unitBucketsFactory.BuildEnemyBuckets(enemyMapper, storyLevelId, stageId);
                     flags = enemyMapper.IsMelee ? UnitFlags.Melee : UnitFlags.Range;
 
-                    _logger.LogDebug($"[Story][Battle]: Enemy melee flags, id = {unitSnapshot.Id}, isMelee = {enemyMapper.IsMelee}, flags = {flags}");
+                    _coreLog.Debug($"[Story][Battle]: Enemy melee flags, id = {unitSnapshot.Id}, isMelee = {enemyMapper.IsMelee}, flags = {flags}");
                 }
                 else
                 {
-                    _logger.LogError($"[Story][Battle]: Enemy config missing, id = {unitSnapshot.Id}");
+                    _coreLog.Error($"[Story][Battle]: Enemy config missing, id = {unitSnapshot.Id}");
 
                     throw new InvalidOperationException($"[Story][Battle]: Enemy config missing, id = {unitSnapshot.Id}");
                 }
@@ -68,11 +68,11 @@ namespace Server.Battles
                 baseBuckets = _unitBucketsFactory.BuildConstantsBuckets();
                 flags = characterMapper.IsMelee ? UnitFlags.Melee : UnitFlags.Range;
 
-                _logger.LogDebug($"[Story][Battle]: Character melee flags, id = {unitSnapshot.Id}, isMelee = {characterMapper.IsMelee}, flags = {flags}");
+                _coreLog.Debug($"[Story][Battle]: Character melee flags, id = {unitSnapshot.Id}, isMelee = {characterMapper.IsMelee}, flags = {flags}");
             }
             else
             {
-                _logger.LogError($"[Story][Battle]: Character config missing, id = {unitSnapshot.Id}, side = {battleSide}");
+                _coreLog.Error($"[Story][Battle]: Character config missing, id = {unitSnapshot.Id}, side = {battleSide}");
 
                 throw new InvalidOperationException($"[Story][Battle]: Character config missing, id = {unitSnapshot.Id}, side = {battleSide}");
             }
@@ -115,7 +115,7 @@ namespace Server.Battles
             _unitLoadoutBinder.ApplyEquippedPerks(unitState);
             ApplySnapshotHealth(unitState, unitSnapshot);
 
-            _logger.LogDebug($"[Story][Battle]: Built, id = {unitState.Id}, level = {unitState.Level}, slot = {unitState.SlotIndex}, hp = {characteristics.Health}/{characteristics.MaxHealth}, damage = {characteristics.Damage}, vampyrism = {characteristics.Vampyrism}, healingBoost = {characteristics.HealingBoost}, statuses = {unitState.ActiveStatuses.Count}, perks = {perks.Count}, skills = {skills.Count}, activeBonuses = {unitState.ActiveBonuses.Count}");
+            _coreLog.Debug($"[Story][Battle]: Built, id = {unitState.Id}, level = {unitState.Level}, slot = {unitState.SlotIndex}, hp = {characteristics.Health}/{characteristics.MaxHealth}, damage = {characteristics.Damage}, vampyrism = {characteristics.Vampyrism}, healingBoost = {characteristics.HealingBoost}, statuses = {unitState.ActiveStatuses.Count}, perks = {perks.Count}, skills = {skills.Count}, activeBonuses = {unitState.ActiveBonuses.Count}");
 
             return unitState;
         }
@@ -132,7 +132,7 @@ namespace Server.Battles
 
             if (currentHealth < 0f)
             {
-                _logger.LogError($"[Story][Battle]: Invalid currentHealth = {currentHealth}, unitId = {unitSnapshot.Id}, slot = {unitSnapshot.SlotIndex}");
+                _coreLog.Error($"[Story][Battle]: Invalid currentHealth = {currentHealth}, unitId = {unitSnapshot.Id}, slot = {unitSnapshot.SlotIndex}");
 
                 throw new InvalidOperationException($"[Story][Battle]: Invalid currentHealth = {currentHealth}, unitId = {unitSnapshot.Id}, slot = {unitSnapshot.SlotIndex}");
             }
@@ -145,7 +145,7 @@ namespace Server.Battles
 
             characteristics.Health = currentHealth;
 
-            _logger.LogDebug($"[Story][Battle]: Snapshot health applied, unitId = {unitState.Id}, health = {characteristics.Health}/{characteristics.MaxHealth}");
+            _coreLog.Debug($"[Story][Battle]: Snapshot health applied, unitId = {unitState.Id}, health = {characteristics.Health}/{characteristics.MaxHealth}");
         }
     }
 }

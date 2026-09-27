@@ -2,7 +2,7 @@ using Server.Configs;
 
 namespace Server.Aspects
 {
-    internal interface IAspectMapper : IConfigMapper
+    public interface IAspectMapper : IConfigMapper
     {
         public int Id { get; }
 

@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Server.Services;
 using Server.Statuses;
 
@@ -6,7 +5,7 @@ namespace Server.Battles
 {
     internal sealed class BattleRewardService : IBattleRewardService
     {
-        private readonly ILogger<BattleRewardService> _logger;
+        private readonly ICoreLog _coreLog;
         private readonly IBattleBonusService _battleBonusService;
         private readonly IBattleCommandFactory _battleCommandFactory;
         private readonly IBattleRewardParser _battleRewardParser;
@@ -14,14 +13,14 @@ namespace Server.Battles
         private readonly IStatusParametersParser _statusParametersParser;
 
         public BattleRewardService(
-            ILogger<BattleRewardService> logger,
+            ICoreLog coreLog,
             IBattleBonusService battleBonusService,
             IBattleCommandFactory battleCommandFactory,
             IBattleRewardParser battleRewardParser,
             IConfigDistributor configDistributor,
             IStatusParametersParser statusParametersParser)
         {
-            _logger = logger;
+            _coreLog = coreLog;
             _battleBonusService = battleBonusService;
             _battleCommandFactory = battleCommandFactory;
             _battleRewardParser = battleRewardParser;
@@ -60,7 +59,7 @@ namespace Server.Battles
             {
                 var reward = rewards[i];
 
-                _logger.LogDebug($"[Story][Battle]: Reward entry, type = {reward.Type}, id = {reward.Id}, rewardKey = {reward.RewardKey}, count = {reward.Count}, sourceId = {source.Id}, targetId = {target.Id}, turn = {currentTurn}");
+                _coreLog.Debug($"[Story][Battle]: Reward entry, type = {reward.Type}, id = {reward.Id}, rewardKey = {reward.RewardKey}, count = {reward.Count}, sourceId = {source.Id}, targetId = {target.Id}, turn = {currentTurn}");
 
                 switch (reward.Type)
                 {
@@ -77,7 +76,7 @@ namespace Server.Battles
                         EmitMetaGrantReward(reward, target, commands);
                         break;
                     default:
-                        _logger.LogWarning($"[Story][Battle]: Reward unknown type skipped, id = {reward.Id}, count = {reward.Count}, type = {reward.Type}");
+                        _coreLog.Warning($"[Story][Battle]: Reward unknown type skipped, id = {reward.Id}, count = {reward.Count}, type = {reward.Type}");
                         break;
                 }
             }
@@ -89,7 +88,7 @@ namespace Server.Battles
 
             if (string.IsNullOrEmpty(rewardType))
             {
-                _logger.LogWarning($"[Story][Battle]: Grant meta reward unknown, type = {reward.Type}, id = {reward.Id}");
+                _coreLog.Warning($"[Story][Battle]: Grant meta reward unknown, type = {reward.Type}, id = {reward.Id}");
 
                 return;
             }
@@ -97,14 +96,14 @@ namespace Server.Battles
             if (reward.HasStringRewardKey)
             {
                 commands.Add(_battleCommandFactory.GrantReward(rewardType, reward.RewardKey, reward.Count, target.Id));
-                _logger.LogDebug($"[Story][Battle]: Grant resource, key = {reward.RewardKey}, count = {reward.Count}, targetId = {target.Id}");
-                _logger.LogInformation($"[Story][Battle]: Grant meta reward, type = {rewardType}, rewardId = {reward.RewardKey}, count = {reward.Count}, targetId = {target.Id}");
+                _coreLog.Debug($"[Story][Battle]: Grant resource, key = {reward.RewardKey}, count = {reward.Count}, targetId = {target.Id}");
+                _coreLog.Information($"[Story][Battle]: Grant meta reward, type = {rewardType}, rewardId = {reward.RewardKey}, count = {reward.Count}, targetId = {target.Id}");
 
                 return;
             }
 
             commands.Add(_battleCommandFactory.GrantReward(rewardType, reward.Id, reward.Count, target.Id));
-            _logger.LogInformation($"[Story][Battle]: Grant meta reward, type = {rewardType}, rewardId = {reward.Id}, count = {reward.Count}, targetId = {target.Id}");
+            _coreLog.Information($"[Story][Battle]: Grant meta reward, type = {rewardType}, rewardId = {reward.Id}, count = {reward.Count}, targetId = {target.Id}");
         }
 
         private string ResolveMetaRewardTypeName(BattleRewardType rewardType)
@@ -128,7 +127,7 @@ namespace Server.Battles
         {
             if (_configDistributor.Bonuses.TryGet(reward.Id, out _) == false)
             {
-                _logger.LogWarning($"[Story][Battle]: Reward bonus missing, id = {reward.Id}");
+                _coreLog.Warning($"[Story][Battle]: Reward bonus missing, id = {reward.Id}");
 
                 return;
             }
@@ -153,14 +152,14 @@ namespace Server.Battles
         {
             if (_configDistributor.Statuses.TryGet(reward.Id, out var statusMapper) == false)
             {
-                _logger.LogError($"[Story][Battle]: Reward status missing, id = {reward.Id}");
+                _coreLog.Error($"[Story][Battle]: Reward status missing, id = {reward.Id}");
 
                 return;
             }
 
             if (statusMapper.StatusType == StatusType.Unknown)
             {
-                _logger.LogError($"[Config]: Status unknown type, id = {reward.Id}");
+                _coreLog.Error($"[Config]: Status unknown type, id = {reward.Id}");
 
                 return;
             }
@@ -171,7 +170,7 @@ namespace Server.Battles
             if (TryResolveApplyingMain(source, attacker, defender, out var applyingMain) == false)
                 return;
 
-            _logger.LogDebug($"[Story][Battle]: status_target = {statusMapper.StatusTarget}, bearerId = {bearer.Id}, sourceId = {source.Id}, applyingMainId = {applyingMain.Id}, targetId = {target.Id}");
+            _coreLog.Debug($"[Story][Battle]: status_target = {statusMapper.StatusTarget}, bearerId = {bearer.Id}, sourceId = {source.Id}, applyingMainId = {applyingMain.Id}, targetId = {target.Id}");
 
             if (_statusParametersParser.TryParse(statusMapper.Parameters, statusMapper.StatusType, out var parameters) == false)
                 return;
@@ -210,7 +209,7 @@ namespace Server.Battles
                 commands,
                 currentTurn);
 
-            _logger.LogDebug($"[Story][Battle]: bonus_change granted, statusId = {reward.Id}, count = {reward.Count}, mainId = {bearer.Id}, bonuses = {parameters.Bonuses.Count}");
+            _coreLog.Debug($"[Story][Battle]: bonus_change granted, statusId = {reward.Id}, count = {reward.Count}, mainId = {bearer.Id}, bonuses = {parameters.Bonuses.Count}");
         }
 
         private void ApplyDamageOverTimeStatus(
@@ -230,7 +229,7 @@ namespace Server.Battles
 
                 if (parameters.MaxStacks <= currentStacks)
                 {
-                    _logger.LogWarning($"[Story][Battle]: Reward status max stacks reached, id = {reward.Id}, maxStacks = {parameters.MaxStacks}");
+                    _coreLog.Warning($"[Story][Battle]: Reward status max stacks reached, id = {reward.Id}, maxStacks = {parameters.MaxStacks}");
 
                     break;
                 }
@@ -269,7 +268,7 @@ namespace Server.Battles
                         stacks,
                         parameters.DamageLength));
 
-                _logger.LogDebug($"[Story][Battle]: Reward status applied, id = {reward.Id}, stacks = {stacks}, remainingTicks = {parameters.DamageLength}, damageRatio = {parameters.DamageRatio}, applyingMainId = {applyingMain.Id}, bearerId = {bearer.Id}");
+                _coreLog.Debug($"[Story][Battle]: Reward status applied, id = {reward.Id}, stacks = {stacks}, remainingTicks = {parameters.DamageLength}, damageRatio = {parameters.DamageRatio}, applyingMainId = {applyingMain.Id}, bearerId = {bearer.Id}");
             }
         }
 
@@ -285,7 +284,7 @@ namespace Server.Battles
 
             if (statusTarget == StatusTargetType.Unknown)
             {
-                _logger.LogError($"[Story][Battle]: status_target unknown, sourceId = {source.Id}, targetId = {target.Id}");
+                _coreLog.Error($"[Story][Battle]: status_target unknown, sourceId = {source.Id}, targetId = {target.Id}");
 
                 return false;
             }
@@ -300,14 +299,14 @@ namespace Server.Battles
 
                 if (IsSummon(target) || source.Side == target.Side)
                 {
-                    _logger.LogError($"[Story][Battle]: status_target enemy main missing, sourceId = {source.Id}, targetId = {target.Id}");
+                    _coreLog.Error($"[Story][Battle]: status_target enemy main missing, sourceId = {source.Id}, targetId = {target.Id}");
 
                     return false;
                 }
 
                 if (target.IsAlive() == false)
                 {
-                    _logger.LogError($"[Story][Battle]: status_target enemy main dead, targetId = {target.Id}");
+                    _coreLog.Error($"[Story][Battle]: status_target enemy main dead, targetId = {target.Id}");
 
                     return false;
                 }
@@ -317,7 +316,7 @@ namespace Server.Battles
                 return true;
             }
 
-            _logger.LogError($"[Story][Battle]: status_target unsupported = {statusTarget}, sourceId = {source.Id}");
+            _coreLog.Error($"[Story][Battle]: status_target unsupported = {statusTarget}, sourceId = {source.Id}");
 
             return false;
         }
@@ -342,7 +341,7 @@ namespace Server.Battles
             {
                 if (TryGetTeam(unit, attacker, defender, out var team) == false)
                 {
-                    _logger.LogError($"[Story][Battle]: Status {role} team missing, unitId = {unit.Id}, side = {unit.Side}");
+                    _coreLog.Error($"[Story][Battle]: Status {role} team missing, unitId = {unit.Id}, side = {unit.Side}");
 
                     main = unit;
 
@@ -351,7 +350,7 @@ namespace Server.Battles
 
                 if (TryGetAliveMain(team, out main) == false)
                 {
-                    _logger.LogError($"[Story][Battle]: Status {role} main missing, unitId = {unit.Id}, side = {unit.Side}");
+                    _coreLog.Error($"[Story][Battle]: Status {role} main missing, unitId = {unit.Id}, side = {unit.Side}");
 
                     main = unit;
 
@@ -363,7 +362,7 @@ namespace Server.Battles
 
             if (IsSummon(unit) || unit.IsAlive() == false)
             {
-                _logger.LogError($"[Story][Battle]: Status {role} main missing without teams, unitId = {unit.Id}, summon = {IsSummon(unit)}");
+                _coreLog.Error($"[Story][Battle]: Status {role} main missing without teams, unitId = {unit.Id}, summon = {IsSummon(unit)}");
 
                 main = unit;
 
@@ -385,7 +384,7 @@ namespace Server.Battles
 
             if (TryGetTeam(source, attacker, defender, out var sourceTeam) == false)
             {
-                _logger.LogError($"[Story][Battle]: status_target enemy source team missing, sourceId = {source.Id}");
+                _coreLog.Error($"[Story][Battle]: status_target enemy source team missing, sourceId = {source.Id}");
 
                 return false;
             }
@@ -394,7 +393,7 @@ namespace Server.Battles
 
             if (TryGetAliveMain(opponentTeam, out main) == false)
             {
-                _logger.LogError($"[Story][Battle]: status_target enemy main missing, sourceId = {source.Id}, opponentSide = {opponentTeam.BattleSide}");
+                _coreLog.Error($"[Story][Battle]: status_target enemy main missing, sourceId = {source.Id}, opponentSide = {opponentTeam.BattleSide}");
 
                 main = source;
 

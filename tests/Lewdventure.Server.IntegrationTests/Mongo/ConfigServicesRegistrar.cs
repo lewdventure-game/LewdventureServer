@@ -1,3 +1,4 @@
+using Core.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Server.Bonuses;
 using Server.GameConfigs;
@@ -24,6 +25,7 @@ namespace Tests.Integration.Mongo
             services.AddSingleton<SheetRowsConverter>();
             services.AddSingleton<UploadedSheetsSnapshotBuilder>();
             services.AddSingleton<FileConfigSnapshotSource>();
+            services.AddSingleton<ICoreLog>(new SilentCoreLog());
             services.AddSingleton<GameConfigSetBuilder>();
             services.AddSingleton<IGameConfigSetProvider, GameConfigSetProvider>();
             services.AddSingleton<IBonusWorkModeParser, BonusWorkModeParser>();

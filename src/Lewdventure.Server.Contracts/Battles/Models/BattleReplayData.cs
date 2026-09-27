@@ -1,12 +1,10 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace Server.Battles
 {
-    internal sealed class BattleReplayData : IBattleReplayData
+    public sealed class BattleReplayData : IBattleReplayData
     {
-        [Required] public ITeamSnapshot TeamA { get; set; } = null!;
+        public ITeamSnapshot TeamA { get; set; } = null!;
 
-        [Required] public ITeamSnapshot TeamB { get; set; } = null!;
+        public ITeamSnapshot TeamB { get; set; } = null!;
 
         public int StoryLevelId { get; set; }
 

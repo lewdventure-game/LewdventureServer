@@ -1,3 +1,4 @@
+using Core.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Server.Battles;
 using Server.Bonuses;
@@ -12,7 +13,7 @@ namespace Tests.Unit.Players
     [TestFixture]
     public sealed class RewardApplierTests
     {
-        private readonly BattleRewardParser _parser = new(NullLogger<BattleRewardParser>.Instance);
+        private readonly BattleRewardParser _parser = new(new SilentCoreLog());
 
         private IConfigDistributor _configDistributor = null!;
         private RewardApplier _applier = null!;
@@ -25,10 +26,10 @@ namespace Tests.Unit.Players
             var source = new FileConfigSnapshotSource(new ConfigSnapshotSerializer(hasher));
             var snapshot = await source.LoadAsync(new ApiDirectoryLocator().FindFixture(), CancellationToken.None);
             var builder = new GameConfigSetBuilder(
-                new BonusWorkModeParser(NullLogger<BonusWorkModeParser>.Instance),
+                new BonusWorkModeParser(new SilentCoreLog()),
                 new ConfigRowsParser(new ConfigRowLocator(new ConfigRangeReader())),
                 new ConfigSnapshotValidator(domainNames, new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator()),
-                NullLogger<GameConfigSetBuilder>.Instance);
+                new SilentCoreLog());
             var result = builder.Build(snapshot, "test");
 
             _configDistributor = result.ConfigSet!.Distributor;

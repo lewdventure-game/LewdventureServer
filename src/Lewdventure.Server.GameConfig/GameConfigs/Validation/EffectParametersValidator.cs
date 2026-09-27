@@ -9,6 +9,8 @@ namespace Server.GameConfigs
         private const string PerkParametersProperty = "perk_parameters";
         private const string StatusTypeProperty = "status_type";
         private const string StatusParametersProperty = "parameters";
+        private const string SkillTypeProperty = "type";
+        private const string SkillParametersProperty = "parameters";
 
         private readonly EffectParameterRegistry _effectParameterRegistry;
 
@@ -19,15 +21,20 @@ namespace Server.GameConfigs
 
         public void CollectPerks(ConfigSnapshotDomain domain, List<string> warnings)
         {
-            Collect(domain, PerkTypeProperty, PerkParametersProperty, true, warnings);
+            Collect(domain, PerkTypeProperty, PerkParametersProperty, EffectParameterKind.Perk, warnings);
         }
 
         public void CollectStatuses(ConfigSnapshotDomain domain, List<string> warnings)
         {
-            Collect(domain, StatusTypeProperty, StatusParametersProperty, false, warnings);
+            Collect(domain, StatusTypeProperty, StatusParametersProperty, EffectParameterKind.Status, warnings);
         }
 
-        private void Collect(ConfigSnapshotDomain domain, string typeProperty, string parametersProperty, bool isPerk, List<string> warnings)
+        public void CollectSkills(ConfigSnapshotDomain domain, List<string> warnings)
+        {
+            Collect(domain, SkillTypeProperty, SkillParametersProperty, EffectParameterKind.Skill, warnings);
+        }
+
+        private void Collect(ConfigSnapshotDomain domain, string typeProperty, string parametersProperty, EffectParameterKind kind, List<string> warnings)
         {
             JArray rows;
 
@@ -51,9 +58,7 @@ namespace Server.GameConfigs
                 if (string.IsNullOrWhiteSpace(effectType))
                     continue;
 
-                var found = isPerk
-                    ? _effectParameterRegistry.TryGetPerk(effectType, out var descriptor)
-                    : _effectParameterRegistry.TryGetStatus(effectType, out descriptor);
+                var found = TryGetDescriptor(kind, effectType, out var descriptor);
 
                 if (found == false)
                 {
@@ -67,6 +72,17 @@ namespace Server.GameConfigs
                 CollectMissing(domain.Domain, id, effectType, descriptor, keys, warnings);
                 CollectUnknown(domain.Domain, id, effectType, descriptor, keys, warnings);
             }
+        }
+
+        private bool TryGetDescriptor(EffectParameterKind kind, string effectType, out EffectParameterDescriptor descriptor)
+        {
+            if (kind == EffectParameterKind.Perk)
+                return _effectParameterRegistry.TryGetPerk(effectType, out descriptor);
+
+            if (kind == EffectParameterKind.Status)
+                return _effectParameterRegistry.TryGetStatus(effectType, out descriptor);
+
+            return _effectParameterRegistry.TryGetSkill(effectType, out descriptor);
         }
 
         private void CollectMissing(

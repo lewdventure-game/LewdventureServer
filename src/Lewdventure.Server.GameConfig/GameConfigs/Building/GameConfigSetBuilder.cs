@@ -16,18 +16,18 @@ namespace Server.GameConfigs
         private readonly IBonusWorkModeParser _bonusWorkModeParser;
         private readonly ConfigRowsParser _configRowsParser;
         private readonly ConfigSnapshotValidator _configSnapshotValidator;
-        private readonly ILogger<GameConfigSetBuilder> _logger;
+        private readonly ICoreLog _coreLog;
 
         public GameConfigSetBuilder(
             IBonusWorkModeParser bonusWorkModeParser,
             ConfigRowsParser configRowsParser,
             ConfigSnapshotValidator configSnapshotValidator,
-            ILogger<GameConfigSetBuilder> logger)
+            ICoreLog coreLog)
         {
             _bonusWorkModeParser = bonusWorkModeParser;
             _configRowsParser = configRowsParser;
             _configSnapshotValidator = configSnapshotValidator;
-            _logger = logger;
+            _coreLog = coreLog;
         }
 
         public GameConfigBuildResult Build(GameConfigSnapshot snapshot, string source)
@@ -104,10 +104,10 @@ namespace Server.GameConfigs
             AddList(distributor.PerkGroups, tempPerkGroups, ConfigDomainNames.PerkGroups);
             AddList(distributor.Skills, tempSkills, ConfigDomainNames.Skills);
 
-            _logger.LogInformation($"[Config] Trainings stub empty; sheet id not wired count = {distributor.Trainings.Collection.Count}");
-            _logger.LogInformation($"[Config] Artifacts stub empty; sheet id not wired count = {distributor.Artifacts.Collection.Count}");
-            _logger.LogInformation($"[Config] Aspects stub empty; sheet id not wired count = {distributor.Aspects.Collection.Count}");
-            _logger.LogInformation($"[Config] inventory summary bonuses = {distributor.Bonuses.Count}, statuses = {distributor.Statuses.Collection.Count}, perks = {distributor.Perks.Collection.Count}, perkGroups = {distributor.PerkGroups.Collection.Count}, skills = {distributor.Skills.Collection.Count}, trainings = {distributor.Trainings.Collection.Count}, artifacts = {distributor.Artifacts.Collection.Count}, aspects = {distributor.Aspects.Collection.Count}");
+            _coreLog.Information($"[Config] Trainings stub empty; sheet id not wired count = {distributor.Trainings.Collection.Count}");
+            _coreLog.Information($"[Config] Artifacts stub empty; sheet id not wired count = {distributor.Artifacts.Collection.Count}");
+            _coreLog.Information($"[Config] Aspects stub empty; sheet id not wired count = {distributor.Aspects.Collection.Count}");
+            _coreLog.Information($"[Config] inventory summary bonuses = {distributor.Bonuses.Count}, statuses = {distributor.Statuses.Collection.Count}, perks = {distributor.Perks.Collection.Count}, perkGroups = {distributor.PerkGroups.Collection.Count}, skills = {distributor.Skills.Collection.Count}, trainings = {distributor.Trainings.Collection.Count}, artifacts = {distributor.Artifacts.Collection.Count}, aspects = {distributor.Aspects.Collection.Count}");
 
             return distributor;
         }
@@ -127,19 +127,19 @@ namespace Server.GameConfigs
                 var item = items[i];
 
                 if (_bonusWorkModeParser.TryParse(item.WorkModeParameters, out var workMode) == false)
-                    _logger.LogError($"[Config] bonus work_mode parse failed id = {item.Id}");
+                    _coreLog.Error($"[Config] bonus work_mode parse failed id = {item.Id}");
 
                 if (distributor.Bonuses.Add(item.Id, item) == false)
                 {
-                    _logger.LogWarning($"[Config] duplicate bonus id = {item.Id}; skipped");
+                    _coreLog.Warning($"[Config] duplicate bonus id = {item.Id}; skipped");
 
                     continue;
                 }
 
-                _logger.LogDebug($"[Config] bonus loaded id = {item.Id} type = {item.BonusType} workMode = {workMode.Format()}");
+                _coreLog.Debug($"[Config] bonus loaded id = {item.Id} type = {item.BonusType} workMode = {workMode.Format()}");
             }
 
-            _logger.LogInformation($"[Config] Bonuses count = {distributor.Bonuses.Count}");
+            _coreLog.Information($"[Config] Bonuses count = {distributor.Bonuses.Count}");
         }
 
         private void AddList<TMapper, TInterface>(
@@ -152,7 +152,7 @@ namespace Server.GameConfigs
             for (int i = 0; i < items.Count; i++)
                 manager.Add(items[i]);
 
-            _logger.LogInformation($"[Config] {sheetName} count = {manager.Collection.Count}");
+            _coreLog.Information($"[Config] {sheetName} count = {manager.Collection.Count}");
         }
     }
 }

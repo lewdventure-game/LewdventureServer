@@ -1,6 +1,6 @@
 namespace Server.Battles
 {
-    internal sealed class TeamSnapshot : ITeamSnapshot
+    public sealed class TeamSnapshot : ITeamSnapshot
     {
         public List<IUnitSnapshot> MainUnits { get; set; } = new();
 

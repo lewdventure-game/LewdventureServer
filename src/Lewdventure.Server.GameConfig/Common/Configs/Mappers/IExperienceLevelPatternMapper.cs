@@ -1,6 +1,6 @@
 namespace Server.Configs
 {
-    internal interface IExperienceLevelPatternMapper : IConfigMapper
+    public interface IExperienceLevelPatternMapper : IConfigMapper
     {
         public int Id { get; }
 

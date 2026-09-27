@@ -12,12 +12,15 @@ namespace Server.Battles
     {
         private const float DefaultMasteryMultiplier = 1f;
 
-        private readonly ILogger<UnitBucketsFactory> _logger;
+        private readonly IBattleConstantsReader _battleConstantsReader;
+        private readonly ICoreLog _coreLog;
         private readonly IConfigDistributor _configDistributor;
 
-        public UnitBucketsFactory(ILogger<UnitBucketsFactory> logger, IConfigDistributor configDistributor)
+        public UnitBucketsFactory(            IBattleConstantsReader battleConstantsReader,
+ICoreLog coreLog, IConfigDistributor configDistributor)
         {
-            _logger = logger;
+            _battleConstantsReader = battleConstantsReader;
+            _coreLog = coreLog;
             _configDistributor = configDistributor;
         }
 
@@ -29,7 +32,7 @@ namespace Server.Battles
             {
                 if (_configDistributor.StoryStages.TryGet(stageId, out var storyStage) == false)
                 {
-                    _logger.LogError($"[Story][Battle]: Story stage missing id = {stageId}");
+                    _coreLog.Error($"[Story][Battle]: Story stage missing id = {stageId}");
 
                     throw new InvalidOperationException($"[Story][Battle]: Story stage missing id = {stageId}");
                 }
@@ -38,13 +41,13 @@ namespace Server.Battles
 
                 if (stageMultiplier <= 0f)
                 {
-                    _logger.LogError($"[Story][Battle]: Invalid enemy_stats_multiplier = {stageMultiplier}, stageId = {stageId}");
+                    _coreLog.Error($"[Story][Battle]: Invalid enemy_stats_multiplier = {stageMultiplier}, stageId = {stageId}");
 
                     throw new InvalidOperationException($"[Story][Battle]: Invalid enemy_stats_multiplier = {stageMultiplier}, stageId = {stageId}");
                 }
             }
 
-            _logger.LogDebug($"[Story][Battle]: Enemy multipliers, storyLevelId = {storyLevelId}, stageId = {stageId}, stage = {stageMultiplier}");
+            _coreLog.Debug($"[Story][Battle]: Enemy multipliers, storyLevelId = {storyLevelId}, stageId = {stageId}, stage = {stageMultiplier}");
 
             var buckets = new CharacteristicBuckets
             {
@@ -52,7 +55,7 @@ namespace Server.Battles
                 DamageBase = enemyMapper.Damage * stageMultiplier,
                 AttackMultiplierBase = ToFormula3Start(1f),
                 ArmorBase = enemyMapper.Defence,
-                DefenceCoefficient = GetConstant(ConstantKeys.DefenceCoefficientKey),
+                DefenceCoefficient = _battleConstantsReader.Get(ConstantKeys.DefenceCoefficientKey),
                 EvasionBase = ToFormula3Start(enemyMapper.Evasion),
                 CriticalChanceBase = ToFormula3Start(enemyMapper.CriticalChance),
                 CriticalMultiplierBase = ToFormula3Start(enemyMapper.CriticalMultiplier),
@@ -68,7 +71,7 @@ namespace Server.Battles
                 HealingBoostBase = enemyMapper.HealingBoost,
             };
 
-            _logger.LogDebug($"[Story][Battle]: Enemy buckets seeded, id = {enemyMapper.Id}, armor = {buckets.ArmorBase}, comboMnStart = {buckets.ComboMultiplierBase}");
+            _coreLog.Debug($"[Story][Battle]: Enemy buckets seeded, id = {enemyMapper.Id}, armor = {buckets.ArmorBase}, comboMnStart = {buckets.ComboMultiplierBase}");
 
             return buckets;
         }
@@ -79,7 +82,7 @@ namespace Server.Battles
 
             if (_configDistributor.Summons.TryGet(unitSnapshot.Id, out var summonMapper) == false)
             {
-                _logger.LogError($"[Story][Battle]: Summon config missing id = {unitSnapshot.Id}");
+                _coreLog.Error($"[Story][Battle]: Summon config missing id = {unitSnapshot.Id}");
 
                 return buckets;
             }
@@ -100,20 +103,20 @@ namespace Server.Battles
             else if (0 < damageOnLevels.Length)
                 baseDamage = damageOnLevels[damageOnLevels.Length - 1];
             else
-                _logger.LogError($"[Story][Battle]: Summon id = {unitSnapshot.Id} has empty dmg_on_lvls");
+                _coreLog.Error($"[Story][Battle]: Summon id = {unitSnapshot.Id} has empty dmg_on_lvls");
 
             var masteryLevel = unitSnapshot.MasteryLevel;
 
             if (masteryLevel <= 0)
             {
-                _logger.LogDebug($"[Story][Battle]: Summon mastery unused, summonId = {unitSnapshot.Id}, masteryLevel = {masteryLevel}, baseDamage = {baseDamage}");
+                _coreLog.Debug($"[Story][Battle]: Summon mastery unused, summonId = {unitSnapshot.Id}, masteryLevel = {masteryLevel}, baseDamage = {baseDamage}");
 
                 return baseDamage;
             }
 
             var multiplier = ResolveMasteryMultiplier(summonMapper.MasteryId, masteryLevel, unitSnapshot.Id);
 
-            _logger.LogDebug($"[Story][Battle]: Summon mastery damage, summonId = {unitSnapshot.Id}, masteryId = {summonMapper.MasteryId}, masteryLevel = {masteryLevel}, multiplier = {multiplier}, baseDamage = {baseDamage}");
+            _coreLog.Debug($"[Story][Battle]: Summon mastery damage, summonId = {unitSnapshot.Id}, masteryId = {summonMapper.MasteryId}, masteryLevel = {masteryLevel}, multiplier = {multiplier}, baseDamage = {baseDamage}");
 
             return baseDamage * multiplier;
         }
@@ -131,7 +134,7 @@ namespace Server.Battles
             if (_configDistributor.Masteries.TryGet(masteryId, masteryLevel, out masteryMapper))
                 return true;
 
-            _logger.LogWarning($"[Story][Battle]: Mastery missing, masteryId = {masteryId}, masteryLevel = {masteryLevel}, summonId = {summonId}; using multiplier {DefaultMasteryMultiplier}");
+            _coreLog.Warning($"[Story][Battle]: Mastery missing, masteryId = {masteryId}, masteryLevel = {masteryLevel}, summonId = {summonId}; using multiplier {DefaultMasteryMultiplier}");
 
             return false;
         }
@@ -141,26 +144,26 @@ namespace Server.Battles
             if (summonMapper.BreakoutMultipliers == null || summonMapper.BreakoutMultipliers.Length == 0)
                 return;
 
-            _logger.LogError($"[Story][Battle]: breakout_multis loaded but formula unknown, summonId = {unitSnapshot.Id}, level = {unitSnapshot.Level}, valuesCount = {summonMapper.BreakoutMultipliers.Length}; hook no-op");
+            _coreLog.Error($"[Story][Battle]: breakout_multis loaded but formula unknown, summonId = {unitSnapshot.Id}, level = {unitSnapshot.Level}, valuesCount = {summonMapper.BreakoutMultipliers.Length}; hook no-op");
         }
 
         public UnitFlags ResolveSummonMeleeFlags(IUnitSnapshot unitSnapshot)
         {
             if (_configDistributor.Summons.TryGet(unitSnapshot.Id, out var summonMapper) == false)
             {
-                _logger.LogError($"[Story][Battle]: Summon melee flags missing config, id = {unitSnapshot.Id}, flags = Range");
+                _coreLog.Error($"[Story][Battle]: Summon melee flags missing config, id = {unitSnapshot.Id}, flags = Range");
 
                 return UnitFlags.Range;
             }
 
             if (summonMapper.IsMelee)
             {
-                _logger.LogDebug($"[Story][Battle]: Summon melee flags, id = {unitSnapshot.Id}, isMelee = {summonMapper.IsMelee}, flags = Melee");
+                _coreLog.Debug($"[Story][Battle]: Summon melee flags, id = {unitSnapshot.Id}, isMelee = {summonMapper.IsMelee}, flags = Melee");
 
                 return UnitFlags.Melee;
             }
 
-            _logger.LogDebug($"[Story][Battle]: Summon melee flags, id = {unitSnapshot.Id}, isMelee = {summonMapper.IsMelee}, flags = Range");
+            _coreLog.Debug($"[Story][Battle]: Summon melee flags, id = {unitSnapshot.Id}, isMelee = {summonMapper.IsMelee}, flags = Range");
 
             return UnitFlags.Range;
         }
@@ -169,7 +172,7 @@ namespace Server.Battles
         {
             if (_configDistributor.Summons.TryGet(unitSnapshot.Id, out var summonMapper) == false)
             {
-                _logger.LogError($"[Story][Battle]: Summon attack cooldown missing config, id = {unitSnapshot.Id}");
+                _coreLog.Error($"[Story][Battle]: Summon attack cooldown missing config, id = {unitSnapshot.Id}");
 
                 return 0;
             }
@@ -178,12 +181,12 @@ namespace Server.Battles
 
             if (attackCooldownTurns < 0)
             {
-                _logger.LogError($"[Story][Battle]: Summon attack_cooldown negative, id = {unitSnapshot.Id}, attackCooldown = {attackCooldownTurns}");
+                _coreLog.Error($"[Story][Battle]: Summon attack_cooldown negative, id = {unitSnapshot.Id}, attackCooldown = {attackCooldownTurns}");
 
                 throw new InvalidOperationException($"[Story][Battle]: Summon attack_cooldown negative, id = {unitSnapshot.Id}, attackCooldown = {attackCooldownTurns}");
             }
 
-            _logger.LogDebug($"[Story][Battle]: Summon attack cooldown, id = {unitSnapshot.Id}, attackCooldown = {attackCooldownTurns}");
+            _coreLog.Debug($"[Story][Battle]: Summon attack cooldown, id = {unitSnapshot.Id}, attackCooldown = {attackCooldownTurns}");
 
             return attackCooldownTurns;
         }
@@ -198,26 +201,26 @@ namespace Server.Battles
 
         private void SeedBucketsFromConstants(CharacteristicBuckets buckets)
         {
-            buckets.HealthBase = GetConstant(ConstantKeys.HealthBaseKey);
-            buckets.DamageBase = GetConstant(ConstantKeys.DamageBaseKey);
-            buckets.AttackMultiplierBase = ToFormula3Start(GetConstant(ConstantKeys.AttackMultiplierBaseKey));
-            buckets.ArmorBase = GetConstant(ConstantKeys.DefenceBaseKey);
-            buckets.EvasionBase = ToFormula3Start(GetConstant(ConstantKeys.EvasionBaseKey));
-            buckets.CriticalChanceBase = ToFormula3Start(GetConstant(ConstantKeys.CriticalChanceBaseKey));
-            buckets.CriticalMultiplierBase = ToFormula3Start(GetConstant(ConstantKeys.CriticalMultiplierBaseKey));
-            buckets.Combo1ChanceBase = ToFormula3Start(GetConstant(ConstantKeys.ComboOneChanceBaseKey));
-            buckets.Combo2ChanceBase = ToFormula3Start(GetConstant(ConstantKeys.ComboTwoChanceBaseKey));
-            buckets.ComboMultiplierBase = ToFormula3Start(GetConstant(ConstantKeys.ComboMultiplierBaseKey));
-            buckets.CounterChanceBase = ToFormula3Start(GetConstant(ConstantKeys.CounterChanceBaseKey));
-            buckets.CounterMultiplierBase = ToFormula3Start(GetConstant(ConstantKeys.CounterMultiplierBaseKey));
-            buckets.SkillMultiplierBase = ToFormula3Start(GetConstant(ConstantKeys.SkillMultiplierBaseKey));
-            buckets.EnergyBase = GetConstant(ConstantKeys.EnergyBaseKey);
-            buckets.EnergyMaxBase = GetConstant(ConstantKeys.EnergyMaxBaseKey);
-            buckets.DefenceCoefficient = GetConstant(ConstantKeys.DefenceCoefficientKey);
-            buckets.HealingBoostBase = GetConstant(ConstantKeys.HealingBoostBaseKey);
-            buckets.VampyrismBase = GetConstant(ConstantKeys.VampyrismBaseKey);
+            buckets.HealthBase = _battleConstantsReader.Get(ConstantKeys.HealthBaseKey);
+            buckets.DamageBase = _battleConstantsReader.Get(ConstantKeys.DamageBaseKey);
+            buckets.AttackMultiplierBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.AttackMultiplierBaseKey));
+            buckets.ArmorBase = _battleConstantsReader.Get(ConstantKeys.DefenceBaseKey);
+            buckets.EvasionBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.EvasionBaseKey));
+            buckets.CriticalChanceBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.CriticalChanceBaseKey));
+            buckets.CriticalMultiplierBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.CriticalMultiplierBaseKey));
+            buckets.Combo1ChanceBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.ComboOneChanceBaseKey));
+            buckets.Combo2ChanceBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.ComboTwoChanceBaseKey));
+            buckets.ComboMultiplierBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.ComboMultiplierBaseKey));
+            buckets.CounterChanceBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.CounterChanceBaseKey));
+            buckets.CounterMultiplierBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.CounterMultiplierBaseKey));
+            buckets.SkillMultiplierBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.SkillMultiplierBaseKey));
+            buckets.EnergyBase = _battleConstantsReader.Get(ConstantKeys.EnergyBaseKey);
+            buckets.EnergyMaxBase = _battleConstantsReader.Get(ConstantKeys.EnergyMaxBaseKey);
+            buckets.DefenceCoefficient = _battleConstantsReader.Get(ConstantKeys.DefenceCoefficientKey);
+            buckets.HealingBoostBase = _battleConstantsReader.Get(ConstantKeys.HealingBoostBaseKey);
+            buckets.VampyrismBase = _battleConstantsReader.Get(ConstantKeys.VampyrismBaseKey);
 
-            _logger.LogDebug($"[Story][Battle]: Constants buckets seeded, maxHealthBase = {buckets.HealthBase}, damageBase = {buckets.DamageBase}, armorBase = {buckets.ArmorBase}, vampyrismBase = {buckets.VampyrismBase}, comboMnBase = {buckets.ComboMultiplierBase}");
+            _coreLog.Debug($"[Story][Battle]: Constants buckets seeded, maxHealthBase = {buckets.HealthBase}, damageBase = {buckets.DamageBase}, armorBase = {buckets.ArmorBase}, vampyrismBase = {buckets.VampyrismBase}, comboMnBase = {buckets.ComboMultiplierBase}");
         }
 
         private float ResolveEnemyComboMultiplier(IEnemyMapper enemyMapper)
@@ -227,7 +230,7 @@ namespace Server.Battles
 
             if (combo1 != combo2)
             {
-                _logger.LogError($"[Story][Battle]: Enemy combo multipliers differ, enemyId = {enemyMapper.Id}, combo1 = {combo1}, combo2 = {combo2}");
+                _coreLog.Error($"[Story][Battle]: Enemy combo multipliers differ, enemyId = {enemyMapper.Id}, combo1 = {combo1}, combo2 = {combo2}");
 
                 throw new InvalidOperationException($"[Story][Battle]: Enemy combo multipliers differ, enemyId = {enemyMapper.Id}");
             }
@@ -240,37 +243,5 @@ namespace Server.Battles
             return finalValue - 1f;
         }
 
-        private bool TryGetConstant(string constantKey, out float value)
-        {
-            value = 0f;
-
-            if (_configDistributor.Constants.TryGet(constantKey, out var constant) == false)
-                return false;
-
-            if (float.TryParse(
-                    constant.ConstantValue,
-                    NumberStyles.Float,
-                    CultureInfo.InvariantCulture,
-                    out value) == false)
-            {
-                _logger.LogError($"[Story][Battle]: Constant parse failed, key = {constantKey} value = {constant.ConstantValue}");
-
-                throw new InvalidOperationException($"[Story][Battle]: Constant parse failed, key = {constantKey}");
-            }
-
-            return true;
-        }
-
-        private float GetConstant(string constantKey)
-        {
-            if (TryGetConstant(constantKey, out var value) == false)
-            {
-                _logger.LogError($"[Story][Battle]: Constant missing key = {constantKey}");
-
-                throw new InvalidOperationException($"[Story][Battle]: Constant missing key = {constantKey}");
-            }
-
-            return value;
-        }
     }
 }

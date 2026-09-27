@@ -2,7 +2,7 @@ using Server.Configs;
 
 namespace Server.Stories
 {
-    internal interface IStoryEventMapper : IConfigMapper
+    public interface IStoryEventMapper : IConfigMapper
     {
         public int Id { get; }
 

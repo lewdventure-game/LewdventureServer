@@ -1,6 +1,6 @@
 namespace Server.Battles
 {
-    internal interface IUnitSnapshot
+    public interface IUnitSnapshot
     {
         public int Id { get; set; }
 

@@ -1,6 +1,6 @@
 namespace Server.Perks
 {
-    internal enum PerkChoiceType
+    public enum PerkChoiceType
     {
         Unknown = 0,
         Manual = 1,

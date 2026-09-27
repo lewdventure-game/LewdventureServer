@@ -26,6 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Using Include="Core.Logging" />
     <Using Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 

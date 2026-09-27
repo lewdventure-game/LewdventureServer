@@ -28,7 +28,7 @@ namespace Server.GameConfigs
                 Append(hash, "\n");
             }
 
-            return VersionPrefix + Convert.ToHexStringLower(hash.GetHashAndReset());
+            return VersionPrefix + ToLowerHex(hash.GetHashAndReset());
         }
 
         public string ToShortVersion(string version)
@@ -37,6 +37,16 @@ namespace Server.GameConfigs
                 return "cfg-" + version.Substring(VersionPrefix.Length, 12);
 
             return version;
+        }
+
+        private string ToLowerHex(byte[] bytes)
+        {
+            var builder = new System.Text.StringBuilder(bytes.Length * 2);
+
+            for (int i = 0; i < bytes.Length; i++)
+                builder.Append(bytes[i].ToString("x2", System.Globalization.CultureInfo.InvariantCulture));
+
+            return builder.ToString();
         }
 
         private void Append(IncrementalHash hash, string value)

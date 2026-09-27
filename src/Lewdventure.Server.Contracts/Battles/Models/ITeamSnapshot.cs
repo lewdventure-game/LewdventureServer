@@ -1,6 +1,6 @@
 ﻿namespace Server.Battles
 {
-    internal interface ITeamSnapshot
+    public interface ITeamSnapshot
     {
         public List<IUnitSnapshot> MainUnits { get; set; }
 

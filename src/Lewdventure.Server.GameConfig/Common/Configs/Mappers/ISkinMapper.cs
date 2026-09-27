@@ -1,6 +1,6 @@
 namespace Server.Configs
 {
-    internal interface ISkinMapper : IConfigMapper
+    public interface ISkinMapper : IConfigMapper
     {
         public int Id { get; }
 
