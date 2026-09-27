@@ -1,4 +1,4 @@
-using Core.Logging;
+using Server.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Server.Battles;

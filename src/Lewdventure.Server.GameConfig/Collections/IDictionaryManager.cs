@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace Core.Collections
+namespace Server.Collections
 {
     public interface IDictionaryManager<TKey, TValue>
         where TKey : notnull

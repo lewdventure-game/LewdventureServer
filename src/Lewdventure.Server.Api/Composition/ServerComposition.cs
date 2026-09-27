@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.Extensions.Options;
-using Core.Logging;
+using Server.Logging;
 using Server.Api.Endpoints;
 using Server.Api.Health;
 using Server.Api.Hosting;

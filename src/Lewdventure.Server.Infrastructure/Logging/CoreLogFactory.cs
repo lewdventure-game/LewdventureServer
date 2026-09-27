@@ -1,4 +1,4 @@
-using Core.Logging;
+using Server.Logging;
 
 namespace Server.Infrastructure.Logging
 {

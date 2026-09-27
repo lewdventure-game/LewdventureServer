@@ -1,4 +1,4 @@
-namespace Core.Collections
+namespace Server.Collections
 {
     public abstract class BaseManager<T> : IManager<T>
     {

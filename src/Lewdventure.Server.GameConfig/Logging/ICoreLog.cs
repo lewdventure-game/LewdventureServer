@@ -1,4 +1,4 @@
-namespace Core.Logging
+namespace Server.Logging
 {
     public interface ICoreLog
     {

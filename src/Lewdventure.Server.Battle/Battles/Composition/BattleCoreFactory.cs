@@ -12,6 +12,11 @@ namespace Server.Battles
 
         public BattleCoreResult CreateFromDomains(IReadOnlyList<CoreConfigDomain> domains, ICoreLog coreLog)
         {
+            return CreateFromDomains(domains, coreLog, null);
+        }
+
+        public BattleCoreResult CreateFromDomains(IReadOnlyList<CoreConfigDomain> domains, ICoreLog coreLog, IBattleRollRecorder? battleRollRecorder)
+        {
             var snapshotDomains = new List<ConfigSnapshotDomain>(domains.Count);
 
             for (int i = 0; i < domains.Count; i++)
@@ -25,10 +30,15 @@ namespace Server.Battles
             if (buildResult.Succeeded == false)
                 return new BattleCoreResult(null, version, buildResult.Errors, buildResult.Warnings);
 
-            return new BattleCoreResult(new BattleCore(buildResult.ConfigSet!, coreLog), version, buildResult.Errors, buildResult.Warnings);
+            return new BattleCoreResult(new BattleCore(buildResult.ConfigSet!, coreLog, battleRollRecorder), version, buildResult.Errors, buildResult.Warnings);
         }
 
         public BattleCoreResult CreateFromBundle(string bundleJson, ICoreLog coreLog)
+        {
+            return CreateFromBundle(bundleJson, coreLog, null);
+        }
+
+        public BattleCoreResult CreateFromBundle(string bundleJson, ICoreLog coreLog, IBattleRollRecorder? battleRollRecorder)
         {
             var domains = new List<CoreConfigDomain>();
             var errors = new List<string>();
@@ -38,7 +48,7 @@ namespace Server.Battles
             if (0 < errors.Count)
                 return new BattleCoreResult(null, string.Empty, errors, new List<string>());
 
-            return CreateFromDomains(domains, coreLog);
+            return CreateFromDomains(domains, coreLog, battleRollRecorder);
         }
 
         private void ReadBundle(string bundleJson, List<CoreConfigDomain> domains, List<string> errors)

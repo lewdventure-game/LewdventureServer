@@ -1,5 +1,5 @@
 using Server.Configs;
-using Core.Logging;
+using Server.Logging;
 using Server.Battles;
 
 namespace Tests.Unit.Battles

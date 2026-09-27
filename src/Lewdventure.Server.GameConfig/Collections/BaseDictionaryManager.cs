@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace Core.Collections
+namespace Server.Collections
 {
     public abstract class BaseDictionaryManager<TKey, TValue> : IDictionaryManager<TKey, TValue>
         where TKey : notnull

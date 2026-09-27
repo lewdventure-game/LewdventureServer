@@ -9,11 +9,13 @@ namespace Server.Battles
         private readonly IConfigDistributor _configDistributor;
         private readonly string _configVersion;
 
-        public BattleCore(GameConfigSet gameConfigSet, ICoreLog coreLog)
+        public BattleCore(GameConfigSet gameConfigSet, ICoreLog coreLog, IBattleRollRecorder? battleRollRecorder)
         {
             _configDistributor = gameConfigSet.Distributor;
             _configVersion = gameConfigSet.Version;
-            _battleComposition = new BattleComposition(_configDistributor, coreLog);
+            _battleComposition = battleRollRecorder == null
+                ? new BattleComposition(_configDistributor, coreLog)
+                : new BattleComposition(_configDistributor, coreLog, new RecordingSeededRandomFactory(battleRollRecorder));
         }
 
         public string ConfigVersion => _configVersion;

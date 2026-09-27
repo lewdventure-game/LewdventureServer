@@ -1,17 +1,18 @@
-using System.Globalization;
-using Server.Services;
+using Server.Battles;
 
-namespace Tests.Golden.Infrastructure
+namespace Server.Services
 {
-    internal sealed class RecordingRandomService : ISeededRandomService
+    internal sealed class RecordingSeededRandomService : ISeededRandomService
     {
-        private readonly List<string> _rolls;
+        private readonly IBattleRollRecorder _battleRollRecorder;
         private readonly ISeededRandomService _seededRandomService;
 
-        public RecordingRandomService(ISeededRandomService seededRandomService, List<string> rolls)
+        private int _rollIndex;
+
+        public RecordingSeededRandomService(IBattleRollRecorder battleRollRecorder, ISeededRandomService seededRandomService)
         {
+            _battleRollRecorder = battleRollRecorder;
             _seededRandomService = seededRandomService;
-            _rolls = rolls;
         }
 
         public ulong Seed => _seededRandomService.Seed;
@@ -35,7 +36,8 @@ namespace Tests.Golden.Infrastructure
         {
             var value = _seededRandomService.GetRandomValue(rollName);
 
-            _rolls.Add($"{_rolls.Count} {rollName} {value.ToString("R", CultureInfo.InvariantCulture)}");
+            _battleRollRecorder.Record(_rollIndex, rollName, value);
+            _rollIndex += 1;
 
             return value;
         }

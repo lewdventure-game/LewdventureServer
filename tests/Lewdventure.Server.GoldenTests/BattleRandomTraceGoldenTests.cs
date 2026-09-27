@@ -1,9 +1,10 @@
 using System.Text;
-using Core.Logging;
+using Server.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Server.Battles;
 using Server.GameConfigs;
+using Server.Services;
 using Tests.Golden.Infrastructure;
 
 namespace Tests.Golden
@@ -15,7 +16,7 @@ namespace Tests.Golden
         private const string TraceFileName = "seed-42.rolls.txt";
         private const ulong Seed = 42;
 
-        private readonly RecordingRandomFactory _recordingRandomFactory = new();
+        private readonly BattleRollTrace _battleRollTrace = new();
         private readonly UTF8Encoding _encoding = new(false);
 
         private GoldenTestHost _host = null!;
@@ -30,7 +31,7 @@ namespace Tests.Golden
 
             var distributor = _host.Services.GetRequiredService<IGameConfigSetProvider>().Current.Distributor;
 
-            _battleComposition = new BattleComposition(distributor, new SilentCoreLog(), _recordingRandomFactory);
+            _battleComposition = new BattleComposition(distributor, new SilentCoreLog(), new RecordingSeededRandomFactory(_battleRollTrace));
         }
 
         [OneTimeTearDown]
@@ -49,10 +50,10 @@ namespace Tests.Golden
             var body = _host.RequestBuilder.BuildReplayBody(goldenCase.RequestText, Seed);
             var request = JsonConvert.DeserializeObject<BattleReplayData>(body, _serializerSettings)!;
 
-            _recordingRandomFactory.Reset();
+            _battleRollTrace.Clear();
             _battleComposition.BattleSimulatorService.Replay(request);
 
-            var trace = string.Join("\n", _recordingRandomFactory.Rolls) + "\n";
+            var trace = _battleRollTrace.ToText();
             var tracePath = Path.Combine(goldenCase.Directory, TraceFileName);
 
             if (_host.Settings.IsUpdateMode)
@@ -66,6 +67,33 @@ namespace Tests.Golden
                 Assert.Fail($"[Golden] missing roll trace case = {caseName}; run with LEWD_GOLDEN_UPDATE=1 in a dedicated change");
 
             Assert.That(trace, Is.EqualTo(File.ReadAllText(tracePath, _encoding)), $"[Golden] roll trace mismatch case = {caseName}");
+        }
+
+        [Test]
+        public async Task PublicFacade_ProducesSameTrace()
+        {
+            var caseName = "001-baseline-1v1-vs-tank";
+            var fileSource = _host.Services.GetRequiredService<FileConfigSnapshotSource>();
+            var snapshot = await fileSource.LoadAsync(_host.Paths.FixturePath, CancellationToken.None);
+            var domains = new List<CoreConfigDomain>(snapshot.Domains.Count);
+
+            for (int i = 0; i < snapshot.Domains.Count; i++)
+                domains.Add(new CoreConfigDomain(snapshot.Domains[i].Domain, snapshot.Domains[i].RowsJson));
+
+            var clientTrace = new BattleRollTrace();
+            var result = new BattleCoreFactory().CreateFromDomains(domains, new SilentCoreLog(), clientTrace);
+
+            Assert.That(result.Succeeded, Is.True, string.Join("; ", result.Errors));
+
+            var goldenCase = _host.Catalog.Load(caseName);
+            var body = _host.RequestBuilder.BuildReplayBody(goldenCase.RequestText, Seed);
+            var request = JsonConvert.DeserializeObject<BattleReplayData>(body, _serializerSettings)!;
+
+            result.BattleCore!.Replay(request);
+
+            var expected = File.ReadAllText(Path.Combine(goldenCase.Directory, TraceFileName), _encoding);
+
+            Assert.That(clientTrace.ToText(), Is.EqualTo(expected), "трасса через публичный фасад должна совпадать с эталонной");
         }
     }
 }

@@ -1,4 +1,4 @@
-using Core.Collections;
+using Server.Collections;
 
 namespace Server.Bonuses
 {

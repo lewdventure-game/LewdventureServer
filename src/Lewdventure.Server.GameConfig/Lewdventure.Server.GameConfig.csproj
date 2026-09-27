@@ -19,11 +19,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="Newtonsoft.Json" VersionOverride="13.0.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="Core.Logging" />
+    <Using Include="Server.Logging" />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using Core.Collections;
+using Server.Collections;
 using System.Globalization;
 
 namespace Server.Equipments

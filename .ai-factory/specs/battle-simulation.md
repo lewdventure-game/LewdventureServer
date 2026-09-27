@@ -305,7 +305,7 @@ Combo2 roll выполняется **только** если Combo1 сработ
 
 В обоих режимах приходят:
 
-- `battleDigest` — `sha256:<hex>` от скрипта боя, сериализованного настройками `BattleJsonSettingsFactory`;
+- `battleDigest` — `sha256:<hex>` по структуре скрипта: поля шагов и команд по порядку, float — битами (`SingleToInt32Bits`), не текстом. По тексту JSON считать нельзя: Mono и .NET Core печатают float разным числом значащих цифр;
 - `battleStepCount` — число шагов в скрипте.
 
 В режиме `seed` клиент переигрывает бой сам (`IBattleCore.Replay(battleInput)`), считает `IBattleCore.ComputeDigest(script)` и сверяет с `battleDigest`. Совпало — бой тот же, что посчитал сервер; не совпало — расхождение рантаймов, и это видно до показа боя.

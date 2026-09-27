@@ -67,7 +67,7 @@ namespace Server.GameConfigs
                 var occurrence = occurrences.TryGetValue(baseKey, out var seen) ? seen + 1 : 1;
 
                 occurrences[baseKey] = occurrence;
-                rows[occurrence == 1 && string.IsNullOrEmpty(id) == false ? id : $"{baseKey}#{occurrence}"] = row.ToString(Formatting.None);
+                rows[occurrence == 1 && string.IsNullOrEmpty(id) == false ? id : $"{baseKey}#{occurrence}"] = row.ToString(Formatting.None, Array.Empty<JsonConverter>());
             }
 
             return rows;

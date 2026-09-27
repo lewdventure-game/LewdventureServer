@@ -41,7 +41,7 @@ namespace Server.GameConfigs
 
                 var sourceRows = domain.SourceRows == null ? Array.Empty<int>() : (IReadOnlyList<int>)domain.SourceRows;
 
-                domains.Add(new ConfigSnapshotDomain(domain.Domain, domain.SpreadsheetId, domain.Range, domain.Rows.ToString(Formatting.None), sourceRows));
+                domains.Add(new ConfigSnapshotDomain(domain.Domain, domain.SpreadsheetId, domain.Range, domain.Rows.ToString(Formatting.None, Array.Empty<JsonConverter>()), sourceRows));
             }
 
             var version = _hasher.ComputeVersion(domains);

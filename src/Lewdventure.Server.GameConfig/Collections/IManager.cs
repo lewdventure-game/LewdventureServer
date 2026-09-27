@@ -1,4 +1,4 @@
-﻿namespace Core.Collections
+namespace Server.Collections
 {
     public interface IManager<T>
     {

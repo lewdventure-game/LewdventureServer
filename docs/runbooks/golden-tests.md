@@ -96,6 +96,6 @@ LEWD_GOLDEN_UPDATE=1 dotnet test tests/Lewdventure.Server.GoldenTests -c Release
 
 ## Трассы бросков
 
-У кейсов `001-baseline-1v1-vs-tank`, `019-full-perk-kit`, `029-three-summons-slot-order` и `062-long-battle-turn-limit` рядом с ответами лежит `seed-42.rolls.txt` — порядок бросков случайности с именами (`evasion`, `critical`, `combo`, `counter`, `perk_rewards`, `action_reward`) и значениями. Файл обновляется тем же `LEWD_GOLDEN_UPDATE=1` и в том же отдельном коммите, что и ответы.
+У кейсов `001-baseline-1v1-vs-tank`, `019-full-perk-kit`, `029-three-summons-slot-order` и `062-long-battle-turn-limit` рядом с ответами лежит `seed-42.rolls.txt` — порядок бросков случайности: номер, имя (`evasion`, `critical`, `combo`, `counter`, `perk_rewards`, `action_reward`) и биты float в hex. Биты, а не десятичная запись, потому что Mono и .NET Core печатают один и тот же float разным числом цифр. Файл обновляется тем же `LEWD_GOLDEN_UPDATE=1` и в том же отдельном коммите, что и ответы.
 
 Расхождение трассы означает, что в боевой код добавился, исчез или переехал бросок: сравнивать нужно номер строки, а не урон в конце боя.
