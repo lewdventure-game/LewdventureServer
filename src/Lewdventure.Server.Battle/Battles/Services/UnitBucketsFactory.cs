@@ -16,8 +16,10 @@ namespace Server.Battles
         private readonly ICoreLog _coreLog;
         private readonly IConfigDistributor _configDistributor;
 
-        public UnitBucketsFactory(            IBattleConstantsReader battleConstantsReader,
-ICoreLog coreLog, IConfigDistributor configDistributor)
+        public UnitBucketsFactory(
+            IBattleConstantsReader battleConstantsReader,
+            ICoreLog coreLog,
+            IConfigDistributor configDistributor)
         {
             _battleConstantsReader = battleConstantsReader;
             _coreLog = coreLog;
