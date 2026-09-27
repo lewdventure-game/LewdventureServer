@@ -5,6 +5,7 @@ COPY src/Lewdventure.Server.Contracts/Lewdventure.Server.Contracts.csproj src/Le
 COPY src/Lewdventure.Server.GameConfig/Lewdventure.Server.GameConfig.csproj src/Lewdventure.Server.GameConfig/packages.lock.json src/Lewdventure.Server.GameConfig/
 COPY src/Lewdventure.Server.Battle/Lewdventure.Server.Battle.csproj src/Lewdventure.Server.Battle/packages.lock.json src/Lewdventure.Server.Battle/
 COPY src/Lewdventure.Server.Infrastructure/Lewdventure.Server.Infrastructure.csproj src/Lewdventure.Server.Infrastructure/packages.lock.json src/Lewdventure.Server.Infrastructure/
+COPY src/Lewdventure.Server.Runs/Lewdventure.Server.Runs.csproj src/Lewdventure.Server.Runs/packages.lock.json src/Lewdventure.Server.Runs/
 COPY src/Lewdventure.Server.Api/Lewdventure.Server.Api.csproj src/Lewdventure.Server.Api/packages.lock.json src/Lewdventure.Server.Api/
 COPY tools/Lewdventure.Server.ConfigTool/Lewdventure.Server.ConfigTool.csproj tools/Lewdventure.Server.ConfigTool/packages.lock.json tools/Lewdventure.Server.ConfigTool/
 RUN dotnet restore src/Lewdventure.Server.Api/Lewdventure.Server.Api.csproj --locked-mode \
