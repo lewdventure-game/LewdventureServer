@@ -20,7 +20,7 @@
 bash deploy/scripts/build-unity-core.sh
 ```
 
-Результат ложится в `out/unity-core`, оттуда — в `Assets/Plugins/BattleCore` клиента.
+Результат ложится в `out/unity-core`: три DLL, `link.xml`, `UnityCoreLog.cs`, `README.md` и `VERSION.txt` (коммит, дата сборки, `protocolVersion`, версия Newtonsoft). DLL и `link.xml` — в `Assets/Plugins/BattleCore`, `UnityCoreLog.cs` — в `Assets/Scripts/Core/Common` (там же, где создаётся ядро: источник конфигов `IConfigSource` внутренний для сборки `Core`; файлы из `Plugins` попадают в отдельную сборку, которую asmdef'ы клиента не видят).
 
 ## Первый запуск: три строки
 
@@ -79,7 +79,7 @@ internal sealed class UnityCoreLog : ICoreLog
 }
 ```
 
-В релизной сборке можно передать `new SilentCoreLog()` из ядра: бой пишет много отладочных строк на каждый удар.
+Этот адаптер идёт в поставке (`UnityCoreLog.cs`), писать его не нужно. В релизной сборке можно передать `new SilentCoreLog()` из ядра: бой пишет много отладочных строк на каждый удар.
 
 ## Бой по сиду
 

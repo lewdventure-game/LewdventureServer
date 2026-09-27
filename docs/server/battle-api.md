@@ -327,6 +327,7 @@ var script = result.BattleCore.Replay(replayData);
 
 ## See Also
 
+- [Client API](client-api.md) — все ручки с моделями запросов и ответов для клиента
 - [Config Sync](config-sync.md) — снапшоты конфигов, Google Sheets, managers, источник правды
 - [Golden-тесты](../runbooks/golden-tests.md) — эталоны ответов боя
 - [Battle Simulation Spec](../../.ai-factory/specs/battle-simulation.md) — канон protocol + Decisions

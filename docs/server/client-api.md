@@ -1,0 +1,280 @@
+# API для клиента: ручки, запросы, ответы
+
+Снимок на 27 сентября 2026. Все поля JSON — `camelCase`. Числа с плавающей точкой приходят в той форме, в которой их печатает рантайм сервера; клиент разбирает их обычным парсером, сравнивать строками нельзя.
+
+## Общее
+
+- База: `http://<host>:5000` (dev), локально `http://localhost:5000`.
+- Авторизация игрока: заголовок `Authorization: Bearer <accessToken>`, схема JWT.
+- Ручки игрока и забега существуют только при включённой авторизации (`Auth:Enabled`). Если она выключена, они отвечают `404` — на dev сейчас именно так.
+- Ошибки: `{"error": "текст"}` или `{"errors": ["текст", ...]}`.
+- Коды: `400` — некорректный запрос или отказ правил, `401` — нет или истёк токен, `404` — нет активного забега, `409` — конфликт версии профиля или забега (повторить запрос), `503` — конфиги не загружены.
+- Идемпотентность: в мутирующих запросах есть `requestId`. Повтор с тем же `requestId` не применит операцию дважды. Генерировать на клиенте (guid), хранить до получения ответа.
+- Версионность состояния: профиль отдаёт `rev`. При конфликте (`409`) нужно перечитать профиль и повторить.
+
+## Авторизация
+
+### `POST /api/auth/device`
+
+Анонимный вход по устройству. Создаёт аккаунт при первом обращении.
+
+```json
+{ "deviceId": "3f9c…", "clientVersion": "0.4.1" }
+```
+
+Ответ:
+
+```json
+{
+  "userId": "usr_…",
+  "accessToken": "eyJ…",
+  "accessExpiresAt": "2026-09-27T12:00:00Z",
+  "refreshToken": "rt_…",
+  "refreshExpiresAt": "2026-10-27T12:00:00Z"
+}
+```
+
+### `POST /api/auth/refresh`
+
+```json
+{ "userId": "usr_…", "refreshToken": "rt_…" }
+```
+
+Ответ — такой же, как у `device`. Refresh-токен одноразовый: старый становится недействительным.
+
+## Профиль и прокачка
+
+### `GET /api/player/profile`
+
+```json
+{
+  "userId": "usr_…",
+  "rev": 12,
+  "resources": { "soft_money": 1500, "summon_exp": 40 },
+  "characters": [ { "id": 1, "copies": 3, "upgradesApplied": 2 } ],
+  "summons": [ { "id": 1, "copies": 4, "level": 3, "masteryLevel": 1 } ],
+  "equipment": [ { "instanceId": "eq_…", "configId": 5, "level": 2, "mergeNumber": 0 } ],
+  "loadout": { "characterId": 1, "equipment": { "weapon": "eq_…" }, "summons": [1, 2] },
+  "story": { "completedLevelIds": [1], "currentRunId": "run_…" },
+  "flags": { "tutorial_done": 1 }
+}
+```
+
+`loadout.equipment` — словарь «слот → `instanceId`»; имена слотов задаёт клиент и конфиг экипировки, сервер проверяет только существование инстанса.
+
+### `POST /api/player/loadout`
+
+```json
+{ "requestId": "…", "characterId": 1, "equipment": { "weapon": "eq_…" }, "summons": [1, 2] }
+```
+
+Ответ — профиль целиком.
+
+### `GET /api/player/characteristics`
+
+Итоговые характеристики выбранного персонажа с учётом прокачек, экипировки, саммонов, перков и статусов активного забега. Считаются тем же кодом, что бой.
+
+```json
+{
+  "health": 2350, "maxHealth": 8400, "damage": 6, "attackMultiplier": 1,
+  "armor": 7, "defence": 0.0205, "evasion": 0.05,
+  "criticalChance": 0.15, "criticalMultiplier": 1.5,
+  "combo1Chance": 0.1, "combo2Chance": 0.05, "comboMultiplier": 0.5,
+  "counterChance": 0.1, "counterMultiplier": 0.7,
+  "energy": 0, "energyGain": 30, "maxEnergy": 100,
+  "skillMultiplier": 1, "vampyrism": 0, "healingBoost": 1
+}
+```
+
+То же самое клиент может посчитать локально через ядро: `IBattleCore.BuildCharacteristics(...)`.
+
+### `POST /api/player/equipment/level`
+
+```json
+{ "instanceId": "eq_…", "requestId": "…" }
+```
+
+### `POST /api/player/summon/level`
+
+```json
+{ "summonId": 1, "requestId": "…" }
+```
+
+### `POST /api/player/summon/mastery`
+
+```json
+{ "summonId": 1, "requestId": "…" }
+```
+
+Все три отвечают профилем. Стоимость и лимиты берутся из конфигов (`Summon_levels`, `Mastery`, уровни экипировки); при недостатке ресурсов — `400` с текстом.
+
+## Забег: сервер ведёт путь
+
+### `GET /api/run/current`
+
+Текущий забег или `404`, если активного нет.
+
+### `POST /api/run/start`
+
+```json
+{ "storyLevelId": 1, "requestId": "…", "battleDelivery": "seed" }
+```
+
+### `POST /api/run/advance`
+
+```json
+{ "runId": "run_…", "requestId": "…", "battleDelivery": "seed" }
+```
+
+Продвигает забег на один этап: сервер решает событие, считает бой, начисляет опыт и награды.
+
+### `POST /api/run/choose`
+
+```json
+{ "runId": "run_…", "requestId": "…", "picks": [3], "battleDelivery": "seed" }
+```
+
+Выбор из `pendingChoice` (например перк на уровне).
+
+### `POST /api/run/abandon`
+
+```json
+{ "runId": "run_…", "requestId": "…" }
+```
+
+### Ответ забега
+
+```json
+{
+  "runId": "run_…",
+  "status": "active",
+  "storyLevelId": 1,
+  "configVersion": "sha256:d5349d…",
+  "stageIndex": 2,
+  "stagesTotal": 5,
+  "experience": 120,
+  "experienceLevel": 3,
+  "currentHealth": 6200,
+  "perks": [1, 4],
+  "stages": [ { "stageId": 10, "eventId": 3, "isBoss": false, "resolved": true } ],
+  "bonuses": [ { "bonusId": 5, "count": 1, "remainingBattles": 4 } ],
+  "pendingChoice": { "kind": "perk", "options": [1, 4, 7], "choiceCount": 1 },
+  "step": {
+    "eventType": "fight",
+    "eventId": 3,
+    "stageId": 10,
+    "locKey": "",
+    "locKeyStart": "loc.fight.start",
+    "locKeyEnd": "loc.fight.end",
+    "experienceGained": 40,
+    "levelUps": [3],
+    "appliedRewards": [ { "type": "Resource", "id": 0, "rewardKey": "soft_money", "count": 100 } ],
+    "profileRev": 13,
+    "battleDigest": "sha256:bdbbd3…",
+    "battleStepCount": 87,
+    "battleInput": { "teamA": {}, "teamB": {}, "storyLevelId": 1, "stageId": 10, "seed": 42 },
+    "battle": null,
+    "runCompleted": false,
+    "runFailed": false
+  }
+}
+```
+
+Значения строковых полей:
+
+- `status` — `active`, `completed`, `failed`.
+- `step.eventType` — `default_event`, `fork_event`, `fight`, `completed`.
+- `pendingChoice.kind` — `perk` (выбрать перк из `options`) или `fork` (выбрать ветку: `picks: [1]` или `picks: [3]`).
+- `appliedRewards[].type` — `Resource`, `Character`, `Summon`, `Equipment` (для `Resource` смысл несёт `rewardKey`, для остальных — `id`). Награды типов `Bonus` и `Status` в профиль не пишутся: они уходят в забег и видны в `run.bonuses`.
+
+Важное:
+- `stages` до текущего этапа раскрыты, дальше `eventId = 0` (сервер не показывает будущее).
+- `appliedRewards` — что реально записано в профиль, `profileRev` — версия профиля после записи. Это источник истины для экрана награды, а не команды `GrantReward` в скрипте боя.
+- `battleDelivery` управляет тем, что придёт в шаге: пусто или `"script"` — полный скрипт в `battle`; `"seed"` — только `battleInput`, и бой клиент переигрывает ядром сам, сверяя `battleDigest` через `IBattleCore.ComputeDigest`.
+- `currentHealth` после боя — серверное, клиент его не считает.
+
+## Скрипт боя
+
+Приходит в `step.battle` (или считается локально из `step.battleInput`).
+
+```json
+{ "protocolVersion": 1, "seed": 42, "outcomeType": 1, "steps": [ … ] }
+```
+
+`BattleStep`: `index`, `turn`, `phase`, `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `commands`.
+`BattleCommand`: `commandType` и `parameters` (объект, состав зависит от типа).
+
+`outcomeType`: `0 Unknown`, `1 TeamAWin`, `2 TeamBWin`, `3 Timeout`, `4 Draw`.
+
+`phase`: `1 StatusTrigger`, `2 PerkTrigger`, `3 SummonSkill`, `4 SummonAttack`, `5 UnitSkill`, `6 NormalAttack`, `7 CounterAttack`, `8 Combo1Attack`, `9 Combo2Attack`, `10 EnergySkill`, `11 Death`, `12 ReturnToPosition`, `13 Approach`, `14 UnitCooldown`, `15 SummonCooldown`, `16 CounterCooldown`, `17 ComboCooldown`.
+
+`commandType` и ключи `parameters`:
+
+| Код | Команда | Параметры |
+| --- | --- | --- |
+| 1 | `Wait` | `seconds` |
+| 2 | `Approach` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `isMelee` |
+| 3 | `ReturnToPosition` | `actorId`, `actorSlotIndex` |
+| 4 | `PlayAnimation` | `actorId`, `actorSlotIndex`, `animationKey` |
+| 5 | `ShowDamage` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `damage`, `isCritical`, `isEvaded` |
+| 6 | `ShowHeal` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `heal` |
+| 7 | `ShowMiss` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex` |
+| 8 | `ApplyStatus` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `statusId`, `stacks`, `durationTurns` (`-1` = бесконечно) |
+| 9 | `RemoveStatus` | `targetId`, `targetSlotIndex`, `statusId` |
+| 10 | `TickStatus` | `targetId`, `targetSlotIndex`, `statusId`, `value` |
+| 11 | `CastSkill` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `skillId` |
+| 12 | `TriggerPerk` | `actorId`, `actorSlotIndex`, `targetId`, `targetSlotIndex`, `perkId` |
+| 13 | `SetHp` | `unitId`, `slotIndex`, `hp` |
+| 14 | `SetEnergy` | `unitId`, `slotIndex`, `energy` |
+| 15 | `SetBonus` | `unitId`, `slotIndex`, `bonusId`, `value`, `sourceId` |
+| 16 | `SpawnUnit` | `unitId`, `slotIndex` |
+| 17 | `DespawnUnit` | `unitId`, `slotIndex` |
+| 18 | `KillUnit` | `unitId`, `slotIndex` |
+| 19 | `SetBattleResult` | `outcome` |
+| 20 | `GrantReward` | `rewardType`, `rewardId`, `count`, `targetId` — только для показа, профиль этим не меняется |
+
+Клиент не решает крит, уклонение, урон, смерть, статусы и исход — только играет команды по порядку.
+
+## Вход боя (`battleInput`, он же `BattleReplayData`)
+
+```json
+{ "teamA": { "mainUnits": [ … ], "summons": [ … ] }, "teamB": { … }, "storyLevelId": 1, "stageId": 10, "seed": 42 }
+```
+
+`UnitSnapshot`: `id`, `level`, `masteryLevel`, `equipments` (`id`, `level`), `equipmentIds`, `trainingLevel`, `artifactIds`, `aspectIds`, `activePerkIds`, `activeSkillIds`, `activeStatusIds`, `activeBonuses` (`id`, `count`, `remainingBattles`), `slotIndex`, `currentHealth`.
+
+Клиент этот объект не собирает: его строит сервер. Единственное применение на клиенте — передать в `IBattleCore.Replay(...)`.
+
+## Бой напрямую
+
+`POST /api/battle/simulate` и `POST /api/battle/replay` принимают `BattleSimulationData` / `BattleReplayData` и возвращают скрипт. Это инструмент разработки: при включённой авторизации они доступны только на ops-порту по админ-ключу, играть через них нельзя.
+
+## Конфиги
+
+`GET /api/config/status` отдаёт версию активного снапшота, но закрыт ключом публикатора. Клиенту версию проще брать из `configVersion` в ответе забега и сверять с `IBattleCore.ConfigVersion` — если не совпало, у клиента другой бандл конфигов.
+
+## Где искать данные по механикам
+
+| Механика | Откуда клиент берёт |
+| --- | --- |
+| Характеристики | `GET /api/player/characteristics` или локально `IBattleCore.BuildCharacteristics` |
+| Скиллы | конфиги (персонаж, моб, саммон, оружие) через `IBattleCore.Configs.Skills`; выбора скиллов игроком нет, сервер `activeSkillIds` от клиента не принимает |
+| Перки | конфиги `Configs.Perks` / `Configs.PerkGroups`; активные в забеге — `run.perks`, выбор — `pendingChoice` |
+| Бонусы | активные в забеге — `run.bonuses`; вне забега отдельной сущности нет, они уже учтены в характеристиках; описания — `Configs.Bonuses` |
+| Статусы | конфиги `Configs.Statuses`; в бою приходят командами `ApplyStatus` / `TickStatus` / `RemoveStatus` |
+| Экипировка | профиль (`equipment`, `loadout`), прокачка уровня — `POST /api/player/equipment/level`; трансформации нет |
+| Саммоны | профиль (`summons`), прокачка — `/summon/level` и `/summon/mastery`; описания — `Configs.Summons`, `Configs.SummonLevels`, `Configs.Masteries` |
+| Сюжет | `Configs.StoryLevels` / `StoryStages` / `StoryEvents` для текстов и визуала, прохождение — `/api/run/*` |
+| Награды | `step.appliedRewards` и `profileRev`, ресурсы — в профиле |
+| Опыт и уровни | `run.experience`, `run.experienceLevel`, `step.experienceGained`, `step.levelUps` |
+
+## Чего сервер от клиента не принимает
+
+Исход боя, скрипт боя, состав боя, список скиллов, количество наград, прогресс забега. Всё это сервер считает сам из своего сида и запиненной версии конфигов. Клиент присылает только намерение: стартовать забег, сделать шаг, выбрать перк, прокачать, сменить лоадаут.
+
+## See Also
+
+- [Battle API](battle-api.md) — устройство симуляции и доставка боя
+- [Battle Core in Unity](battle-core-in-unity.md) — подключение DLL ядра
+- [Runs](runs.md) — серверное состояние забега
+- [Player State](player-state.md) — модель профиля и идемпотентность

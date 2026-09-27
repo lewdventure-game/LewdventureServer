@@ -1,0 +1,6 @@
+<linker>
+  <assembly fullname="Lewdventure.Server.Contracts" preserve="all" />
+  <assembly fullname="Lewdventure.Server.GameConfig" preserve="all" />
+  <assembly fullname="Lewdventure.Server.Battle" preserve="all" />
+  <assembly fullname="Newtonsoft.Json" preserve="all" />
+</linker>
