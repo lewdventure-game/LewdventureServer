@@ -226,8 +226,18 @@ namespace Server.Infrastructure.Players
 
             var now = _timeProvider.GetUtcNow().UtcDateTime;
             var expectedRev = profile.Rev;
+            var entries = _rewardApplier.Apply(profile, constant.ConstantValue, configDistributor, now);
 
-            _rewardApplier.Apply(profile, constant.ConstantValue, configDistributor, now);
+            if (entries.Count == 0)
+            {
+                _logger.LogWarning(
+                    "[Player] start content granted nothing key = {Key} value = {Value} userId = {UserId}",
+                    StartContentConstant,
+                    constant.ConstantValue,
+                    profile.Id);
+
+                return profile;
+            }
 
             if (profile.Loadout.CharacterId <= 0 && 0 < profile.Characters.Count)
                 profile.Loadout.CharacterId = profile.Characters[0].ConfigId;
