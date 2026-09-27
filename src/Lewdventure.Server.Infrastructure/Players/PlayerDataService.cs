@@ -43,6 +43,25 @@ namespace Server.Infrastructure.Players
             return new PlayerExport(userId, status, createdAt, devices, profile, runs, ledger);
         }
 
+        public async Task<PlayerDeletion> ResetProgressAsync(string userId, string actor, CancellationToken cancellationToken)
+        {
+            var runs = await _runRepository.DeleteByUserAsync(userId, cancellationToken);
+            var ledger = await _playerLedgerRepository.DeleteByUserAsync(userId, cancellationToken);
+            var idempotency = await _idempotencyRepository.DeleteByUserAsync(userId, cancellationToken);
+            var profiles = await _playerProfileRepository.DeleteAsync(userId, cancellationToken);
+
+            _logger.LogWarning(
+                "[Player] progress reset userId = {UserId} actor = {Actor} profile = {Profiles} runs = {Runs} ledger = {Ledger} idempotency = {Idempotency}",
+                userId,
+                actor,
+                profiles,
+                runs,
+                ledger,
+                idempotency);
+
+            return new PlayerDeletion(profiles, runs, ledger, idempotency, 0);
+        }
+
         public async Task<PlayerDeletion> DeleteAsync(string userId, string actor, CancellationToken cancellationToken)
         {
             var runs = await _runRepository.DeleteByUserAsync(userId, cancellationToken);

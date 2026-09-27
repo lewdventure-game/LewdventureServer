@@ -1,3 +1,4 @@
+using Server.Battles;
 using Server.Infrastructure.Mongo.Players;
 using Server.Services;
 
@@ -8,21 +9,33 @@ namespace Server.Infrastructure.Players
         private const int MaxSummons = 3;
         private const string LoadoutAction = "loadout";
 
+        private const string StartContentConstant = "start_content";
+
         private readonly IdempotencyRepository _idempotencyRepository;
         private readonly ILogger<PlayerProfileService> _logger;
         private readonly PlayerProfileRepository _playerProfileRepository;
+        private readonly RewardApplier _rewardApplier;
         private readonly TimeProvider _timeProvider;
 
         public PlayerProfileService(
             IdempotencyRepository idempotencyRepository,
             ILogger<PlayerProfileService> logger,
             PlayerProfileRepository playerProfileRepository,
+            RewardApplier rewardApplier,
             TimeProvider timeProvider)
         {
             _idempotencyRepository = idempotencyRepository;
             _logger = logger;
             _playerProfileRepository = playerProfileRepository;
+            _rewardApplier = rewardApplier;
             _timeProvider = timeProvider;
+        }
+
+        public async Task<PlayerProfileDocument> GetOrCreateAsync(string userId, IConfigDistributor configDistributor, CancellationToken cancellationToken)
+        {
+            var profile = await GetOrCreateAsync(userId, cancellationToken);
+
+            return await EnsureStartContentAsync(profile, configDistributor, cancellationToken);
         }
 
         public async Task<PlayerProfileDocument> GetOrCreateAsync(string userId, CancellationToken cancellationToken)
@@ -194,6 +207,37 @@ namespace Server.Infrastructure.Players
             }
 
             return null;
+        }
+
+        private async Task<PlayerProfileDocument> EnsureStartContentAsync(
+            PlayerProfileDocument profile,
+            IConfigDistributor configDistributor,
+            CancellationToken cancellationToken)
+        {
+            if (0 < profile.Characters.Count || 0 < profile.Summons.Count || 0 < profile.Equipment.Count)
+                return profile;
+
+            if (configDistributor.Constants.TryGet(StartContentConstant, out var constant) == false || string.IsNullOrWhiteSpace(constant.ConstantValue))
+            {
+                _logger.LogWarning("[Player] start content constant is missing key = {Key} userId = {UserId}", StartContentConstant, profile.Id);
+
+                return profile;
+            }
+
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+            var expectedRev = profile.Rev;
+
+            _rewardApplier.Apply(profile, constant.ConstantValue, configDistributor, now);
+
+            profile.Rev = expectedRev + 1;
+            profile.UpdatedAt = now;
+
+            if (await _playerProfileRepository.ReplaceAsync(profile, expectedRev, cancellationToken) == false)
+                return await GetOrCreateAsync(profile.Id, cancellationToken);
+
+            _logger.LogInformation("[Player] start content granted userId = {UserId} rewards = {Rewards}", profile.Id, constant.ConstantValue);
+
+            return profile;
         }
 
         private async Task<bool> TryGetCompletedAsync(string userId, string requestId, CancellationToken cancellationToken)

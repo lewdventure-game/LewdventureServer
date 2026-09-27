@@ -30,7 +30,7 @@ namespace Server.Runs
 
         public async Task<PlayerCharacteristicsResult> GetAsync(string userId, CancellationToken cancellationToken)
         {
-            var profile = await _playerProfileService.GetOrCreateAsync(userId, cancellationToken);
+            var profile = await _playerProfileService.GetOrCreateAsync(userId, _configDistributor, cancellationToken);
             var characterId = profile.Loadout.CharacterId;
 
             if (characterId <= 0)

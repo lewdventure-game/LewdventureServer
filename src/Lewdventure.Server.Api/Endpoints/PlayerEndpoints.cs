@@ -61,6 +61,18 @@ namespace Server.Api.Endpoints
                 .Produces<PlayerProfileResponse>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status400BadRequest);
 
+            application.MapPost(ApiRoutes.PlayerReset, ResetProgressAsync)
+                .RequireAuthorization(SecurityNames.PlayerPolicy)
+                .RequireRateLimiting(SecurityNames.PlayerRateLimitPolicy)
+                .Produces<PlayerProfileResponse>(StatusCodes.Status200OK)
+                .Produces(StatusCodes.Status401Unauthorized);
+
+            application.MapDelete(ApiRoutes.PlayerAccount, DeleteAccountAsync)
+                .RequireAuthorization(SecurityNames.PlayerPolicy)
+                .RequireRateLimiting(SecurityNames.PlayerRateLimitPolicy)
+                .Produces<PlayerDeletionResponse>(StatusCodes.Status200OK)
+                .Produces(StatusCodes.Status401Unauthorized);
+
             application.MapPost(ApiRoutes.PlayerLoadout, UpdateLoadoutAsync)
                 .RequireAuthorization(SecurityNames.PlayerPolicy)
                 .RequireRateLimiting(SecurityNames.PlayerRateLimitPolicy)
@@ -73,6 +85,7 @@ namespace Server.Api.Endpoints
 
         private async Task<IResult> GetProfileAsync(
             HttpContext httpContext,
+            [FromServices] IConfigDistributor configDistributor,
             [FromServices] PlayerIdentityReader playerIdentityReader,
             [FromServices] PlayerResponseFactory playerResponseFactory)
         {
@@ -85,9 +98,58 @@ namespace Server.Api.Endpoints
                 return Results.Unauthorized();
 
             var profileService = httpContext.RequestServices.GetRequiredService<PlayerProfileService>();
-            var profile = await profileService.GetOrCreateAsync(userId, httpContext.RequestAborted);
+            var profile = await profileService.GetOrCreateAsync(userId, configDistributor, httpContext.RequestAborted);
 
             return Results.Ok(playerResponseFactory.Create(profile));
+        }
+
+        private async Task<IResult> ResetProgressAsync(
+            HttpContext httpContext,
+            [FromServices] IConfigDistributor configDistributor,
+            [FromServices] PlayerDataService playerDataService,
+            [FromServices] PlayerIdentityReader playerIdentityReader,
+            [FromServices] PlayerResponseFactory playerResponseFactory)
+        {
+            if (_isMongoEnabled == false)
+                return Results.Problem(detail: StorageRequiredMessage, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+            var userId = playerIdentityReader.Read(httpContext.User);
+
+            if (string.IsNullOrEmpty(userId))
+                return Results.Unauthorized();
+
+            await playerDataService.ResetProgressAsync(userId, "player", httpContext.RequestAborted);
+
+            var profileService = httpContext.RequestServices.GetRequiredService<PlayerProfileService>();
+            var profile = await profileService.GetOrCreateAsync(userId, configDistributor, httpContext.RequestAborted);
+
+            return Results.Ok(playerResponseFactory.Create(profile));
+        }
+
+        private async Task<IResult> DeleteAccountAsync(
+            HttpContext httpContext,
+            [FromServices] PlayerDataService playerDataService,
+            [FromServices] PlayerIdentityReader playerIdentityReader)
+        {
+            if (_isMongoEnabled == false)
+                return Results.Problem(detail: StorageRequiredMessage, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+            var userId = playerIdentityReader.Read(httpContext.User);
+
+            if (string.IsNullOrEmpty(userId))
+                return Results.Unauthorized();
+
+            var deletion = await playerDataService.DeleteAsync(userId, "player", httpContext.RequestAborted);
+
+            return Results.Ok(new PlayerDeletionResponse
+            {
+                UserId = userId,
+                Profiles = deletion.Profiles,
+                Runs = deletion.Runs,
+                Ledger = deletion.Ledger,
+                Idempotency = deletion.Idempotency,
+                Users = deletion.Users,
+            });
         }
 
         private async Task<IResult> UpdateLoadoutAsync(

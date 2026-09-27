@@ -87,6 +87,54 @@ namespace Tests.Integration.Mongo
         }
 
         [Test]
+        [Order(3)]
+        public async Task ResetProgress_ClearsProfileAndKeepsAccount()
+        {
+            var authService = _environment.Services.GetRequiredService<PlayerAuthService>();
+            var profileService = _environment.Services.GetRequiredService<PlayerProfileService>();
+            var dataService = _environment.Services.GetRequiredService<PlayerDataService>();
+            var userRepository = _environment.Services.GetRequiredService<UserRepository>();
+            var session = await authService.AuthenticateDeviceAsync("device-reset", "test", CancellationToken.None);
+            var userId = session.UserId;
+
+            var profile = await profileService.GetOrCreateAsync(userId, CancellationToken.None);
+
+            profile.Resources["soft_money"] = 500;
+
+            await _environment.Services.GetRequiredService<PlayerProfileRepository>().ReplaceAsync(profile, profile.Rev, CancellationToken.None);
+
+            var reset = await dataService.ResetProgressAsync(userId, "test", CancellationToken.None);
+            var fresh = await profileService.GetOrCreateAsync(userId, CancellationToken.None);
+            var user = await userRepository.GetAsync(userId, CancellationToken.None);
+
+            Assert.That(reset.Profiles, Is.EqualTo(1));
+            Assert.That(reset.Users, Is.EqualTo(0));
+            Assert.That(fresh.Resources, Is.Empty);
+            Assert.That(user, Is.Not.Null, "аккаунт должен остаться после сброса прогресса");
+        }
+
+        [Test]
+        [Order(3)]
+        public async Task DeleteAccount_RemovesAccountToo()
+        {
+            var authService = _environment.Services.GetRequiredService<PlayerAuthService>();
+            var profileService = _environment.Services.GetRequiredService<PlayerProfileService>();
+            var dataService = _environment.Services.GetRequiredService<PlayerDataService>();
+            var userRepository = _environment.Services.GetRequiredService<UserRepository>();
+            var session = await authService.AuthenticateDeviceAsync("device-delete", "test", CancellationToken.None);
+            var userId = session.UserId;
+
+            await profileService.GetOrCreateAsync(userId, CancellationToken.None);
+
+            var deletion = await dataService.DeleteAsync(userId, "test", CancellationToken.None);
+            var user = await userRepository.GetAsync(userId, CancellationToken.None);
+
+            Assert.That(deletion.Profiles, Is.EqualTo(1));
+            Assert.That(deletion.Users, Is.EqualTo(1));
+            Assert.That(user, Is.Null);
+        }
+
+        [Test]
         [Order(4)]
         public async Task Loadout_WithoutOwnedContent_IsRejected()
         {

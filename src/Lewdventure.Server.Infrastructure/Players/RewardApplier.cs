@@ -26,6 +26,18 @@ namespace Server.Infrastructure.Players
 
         public List<PlayerLedgerEntryDocument> Apply(
             PlayerProfileDocument profile,
+            string rawRewards,
+            IConfigDistributor configDistributor,
+            DateTime now)
+        {
+            if (string.IsNullOrWhiteSpace(rawRewards))
+                return new List<PlayerLedgerEntryDocument>();
+
+            return Apply(profile, _battleRewardParser.Parse(rawRewards), configDistributor, now);
+        }
+
+        public List<PlayerLedgerEntryDocument> Apply(
+            PlayerProfileDocument profile,
             IReadOnlyList<BattleReward> rewards,
             IConfigDistributor configDistributor,
             DateTime now)

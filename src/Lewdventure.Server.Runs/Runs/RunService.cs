@@ -90,7 +90,7 @@ namespace Server.Runs
             if (_configDistributor.StoryLevels.TryGet(storyLevelId, out var level) == false)
                 return Failed($"Story level {storyLevelId} is missing in configs.");
 
-            var profile = await _playerProfileService.GetOrCreateAsync(userId, cancellationToken);
+            var profile = await _playerProfileService.GetOrCreateAsync(userId, _configDistributor, cancellationToken);
 
             if (IsUnlocked(level, profile) == false)
                 return Failed($"Story level {storyLevelId} is locked.");
@@ -355,7 +355,7 @@ namespace Server.Runs
             string requestId,
             CancellationToken cancellationToken)
         {
-            var profile = await _playerProfileService.GetOrCreateAsync(userId, cancellationToken);
+            var profile = await _playerProfileService.GetOrCreateAsync(userId, _configDistributor, cancellationToken);
             var enemyIds = ReadIntList(parameters, RunEventKeys.Enemies);
 
             if (_runSnapshotBuilder.TryBuild(profile, run, stage, enemyIds, _configDistributor, out var simulationData, out var buildError) == false)
@@ -437,7 +437,7 @@ namespace Server.Runs
 
             for (int attempt = 1; attempt <= MaxAttempts; attempt++)
             {
-                var profile = await _playerProfileService.GetOrCreateAsync(run.UserId, cancellationToken);
+                var profile = await _playerProfileService.GetOrCreateAsync(run.UserId, _configDistributor, cancellationToken);
                 var expectedRev = profile.Rev;
 
                 if (profile.Story.CompletedLevelIds.Contains(run.StoryLevelId) == false)
@@ -747,7 +747,7 @@ namespace Server.Runs
         {
             for (int attempt = 1; attempt <= MaxAttempts; attempt++)
             {
-                var profile = await _playerProfileService.GetOrCreateAsync(userId, cancellationToken);
+                var profile = await _playerProfileService.GetOrCreateAsync(userId, _configDistributor, cancellationToken);
 
                 if (string.Equals(profile.Story.CurrentRunId, runId, StringComparison.Ordinal) == false)
                     return;
