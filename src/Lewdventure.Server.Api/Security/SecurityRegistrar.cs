@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Server.Infrastructure.Mongo.Players;
 using Server.Api.Options;
 using Server.Infrastructure.Players;
 
@@ -96,6 +97,41 @@ namespace Server.Api.Security
                 IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(CreateSigningMaterial(authOptions.SigningKey))),
                 ClockSkew = TimeSpan.FromSeconds(30),
             };
+            options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+            {
+                OnTokenValidated = ValidateAccountAsync,
+            };
+        }
+
+        private async Task ValidateAccountAsync(Microsoft.AspNetCore.Authentication.JwtBearer.TokenValidatedContext context)
+        {
+            var mongoOptions = context.HttpContext.RequestServices.GetRequiredService<IOptions<Server.Infrastructure.Mongo.MongoOptions>>().Value;
+
+            if (mongoOptions.Enabled == false)
+                return;
+
+            var playerIdentityReader = context.HttpContext.RequestServices.GetRequiredService<PlayerIdentityReader>();
+            var userId = playerIdentityReader.Read(context.Principal!);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                context.Fail("Token has no subject.");
+
+                return;
+            }
+
+            var userRepository = context.HttpContext.RequestServices.GetRequiredService<UserRepository>();
+            var user = await userRepository.GetAsync(userId, context.HttpContext.RequestAborted);
+
+            if (user == null)
+            {
+                context.Fail("Account does not exist.");
+
+                return;
+            }
+
+            if (string.Equals(user.Status, UserDocument.ActiveStatus, StringComparison.Ordinal) == false)
+                context.Fail($"Account status is {user.Status}.");
         }
 
         private string CreateSigningMaterial(string signingKey)
