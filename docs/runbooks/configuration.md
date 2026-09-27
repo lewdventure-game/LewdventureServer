@@ -44,6 +44,19 @@
 | --- | --- | --- |
 | `ConfigSheets:Sheets` | список в `appsettings.json` | `Domain` и `SpreadsheetId` на каждый из 16 обязательных доменов; менять только по решению владельца |
 
+## Auth
+
+Аккаунты игроков и профиль, подробности в [player-state.md](../server/player-state.md).
+
+| Ключ | По умолчанию | Описание |
+| --- | --- | --- |
+| `Auth:Enabled` | `false` | включает `/api/auth/*` и `/api/player/*`; требует `Mongo:Enabled` |
+| `Auth:SigningKey` | пусто | ключ подписи JWT, минимум 32 символа, только через env или `secrets/` |
+| `Auth:Issuer` | `lewdventure-server` | issuer токена |
+| `Auth:Audience` | `lewdventure-client` | audience токена |
+| `Auth:AccessTokenMinutes` | `60` | срок access-токена, 5–1440 |
+| `Auth:RefreshTokenDays` | `90` | срок refresh-токена, 1–365 |
+
 ## Mongo
 
 | Ключ | По умолчанию | Описание |

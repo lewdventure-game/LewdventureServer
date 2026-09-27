@@ -113,6 +113,10 @@ services.AddSingleton<IValidateOptions<AlertsOptions>, AlertsOptionsValidator>()
 | `POST /api/battle/simulate` | public | симуляция боя |
 | `POST /api/battle/replay` | public | повтор боя по seed |
 | `POST /api/config/upload`, `GET /api/config/sheets`, `GET /api/config/status` | public | публикация конфигов из таблиц скриптом (dev/stage) |
+| `POST /api/auth/device`, `POST /api/auth/refresh` | public | анонимный аккаунт устройства и ротация refresh-токена |
+| `GET /api/player/profile`, `POST /api/player/loadout` | public, Bearer | профиль игрока и лоадаут |
+| `/api/run/*` | public, Bearer | сюжетный забег: старт, шаг, выбор, выход |
+| `/admin/player/*` | ops | профиль, журнал выдач, ручное начисление наград |
 | `GET /health`, `/health/live`, `/health/ready` | ops | health |
 | `/admin/config/status`, `snapshots`, `activate`, `reload` | ops | управление снапшотами |
 

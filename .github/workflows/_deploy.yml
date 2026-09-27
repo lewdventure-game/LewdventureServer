@@ -83,7 +83,7 @@ jobs:
           mkdir -p "$bundle/compose" "$bundle/mongo" "$bundle/scripts"
           cp deploy/compose/compose.yaml deploy/compose/compose.vps.yaml "deploy/compose/compose.$DEPLOY_ENVIRONMENT.yaml" "$bundle/compose/"
           cp deploy/mongo/* "$bundle/mongo/"
-          cp deploy/scripts/deploy.sh deploy/scripts/collect-logs.sh deploy/scripts/config-transfer.sh "$bundle/scripts/"
+          cp deploy/scripts/deploy.sh deploy/scripts/collect-logs.sh deploy/scripts/config-transfer.sh deploy/scripts/backup-mongo.sh "$bundle/scripts/"
           chmod 755 "$bundle"/scripts/*.sh "$bundle/mongo/mongod-entrypoint.sh"
           tar -czf bundle.tgz -C "$bundle" .
           ssh -p "$SSH_PORT" "$SSH_TARGET" "mkdir -p $(printf '%q' "$DEPLOY_PATH") && tar -xzf - -C $(printf '%q' "$DEPLOY_PATH")" < bundle.tgz

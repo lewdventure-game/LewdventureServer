@@ -19,6 +19,8 @@ services:
       Admin__ApiKey: local-admin-key
       ConfigPublisher__Enabled: "true"
       ConfigPublisher__ApiKey: local-config-key
+      Auth__Enabled: "true"
+      Auth__SigningKey: local-auth-signing-key-0123456789ab
       RateLimit__Enabled: "false"
       Logging__Console__FormatterName: simple
     volumes:

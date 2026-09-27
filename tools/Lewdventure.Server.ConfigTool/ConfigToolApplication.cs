@@ -98,7 +98,10 @@ namespace Server.ConfigTool
             builder.Services.AddSingleton<ConfigDomainNames>();
             builder.Services.AddSingleton<ConfigSnapshotHasher>();
             builder.Services.AddSingleton<ConfigSnapshotSerializer>();
-            builder.Services.AddSingleton<ConfigSnapshotValidator>();
+            builder.Services.AddSingleton<EffectParameterRegistry>()
+                .AddSingleton<EffectParametersValidator>()
+                .AddSingleton<EnemyDataValidator>()
+                .AddSingleton<ConfigSnapshotValidator>();
             builder.Services.AddSingleton<ConfigSnapshotDiff>();
             builder.Services.AddSingleton<ConfigRangeReader>()
                 .AddSingleton<ConfigRowLocator>();

@@ -10,7 +10,8 @@ namespace Server.Battles
             ITeamSimulationState attacker,
             ITeamSimulationState defender,
             int currentTurn,
-            ISeededRandomService seededRandomService);
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState);
 
         public void SimulateSummonSkills(
             List<BattleStep> steps,
@@ -18,7 +19,8 @@ namespace Server.Battles
             ITeamSimulationState attacker,
             ITeamSimulationState defender,
             int currentTurn,
-            ISeededRandomService seededRandomService);
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState);
 
         public void ApplyEnergyGain(
             List<BattleStep> steps,
@@ -31,6 +33,7 @@ namespace Server.Battles
             ITeamSimulationState attacker,
             ITeamSimulationState defender,
             int currentTurn,
-            ISeededRandomService seededRandomService);
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState);
     }
 }

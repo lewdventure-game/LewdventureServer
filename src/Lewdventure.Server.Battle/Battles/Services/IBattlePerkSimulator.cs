@@ -4,20 +4,13 @@ namespace Server.Battles
 {
     internal interface IBattlePerkSimulator
     {
-        public bool ShouldSkipRemainingActions(IUnitState unit);
-
-        public void BeginBattleTurn();
-
-        public void BeginSideTurn(BattleSide actingSide);
-
-        public void SetActingUnit(IUnitState unit);
-
         public void Simulate(
             List<BattleStep> steps,
             ITeamSimulationState attacker,
             ITeamSimulationState defender,
             int currentTurn,
-            ISeededRandomService seededRandomService);
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState);
 
         public void NotifyAction(
             BattlePerkActionType actionType,
@@ -26,7 +19,8 @@ namespace Server.Battles
             ITeamSimulationState opponentTeam,
             List<BattleStep> steps,
             int currentTurn,
-            ISeededRandomService seededRandomService);
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState);
 
         public void NotifyAnyDamage(
             IUnitState damageDealer,
@@ -34,8 +28,9 @@ namespace Server.Battles
             ITeamSimulationState opponentTeam,
             List<BattleStep> steps,
             int currentTurn,
-            ISeededRandomService seededRandomService);
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState);
 
-        public bool TryResurrectOnDeath(IUnitState unit, List<BattleStep> steps, int currentTurn);
+        public bool TryResurrectOnDeath(IUnitState unit, List<BattleStep> steps, int currentTurn, BattleTurnState turnState);
     }
 }

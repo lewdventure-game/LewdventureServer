@@ -20,6 +20,8 @@ namespace Server.Battles
 
         public IBattleCommandFactory BattleCommandFactory { get; }
 
+        public IBattleDamageMath BattleDamageMath { get; }
+
         public IBattleScriptBuilder BattleScriptBuilder { get; }
 
         public IBattleRewardService BattleRewardService { get; }

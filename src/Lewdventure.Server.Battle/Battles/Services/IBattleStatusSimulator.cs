@@ -11,6 +11,7 @@ namespace Server.Battles
             ITeamSimulationState opponentTeam,
             List<BattleStep> steps,
             int currentTurn,
-            ISeededRandomService seededRandomService);
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState);
     }
 }

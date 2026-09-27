@@ -11,6 +11,8 @@ using Server.Api.Security;
 using Server.Bonuses;
 using Server.GameConfigs;
 using Server.Infrastructure.Mongo.ConfigSnapshots;
+using Server.Infrastructure.Mongo.Players;
+using Server.Runs;
 using Server.Infrastructure.Mongo;
 using Server.Services;
 
@@ -36,6 +38,8 @@ namespace Server.Api.Composition
             new AlertsRegistrar(_configuration).Register(services);
             new BattleServicesRegistrar().Register(services);
 
+            services.AddSingleton<PlayerResponseFactory>();
+            services.AddSingleton<RunResponseFactory>();
             services.AddSingleton(new NewtonsoftSettingsFactory().Create());
         }
 
@@ -113,6 +117,8 @@ namespace Server.Api.Composition
 
             new MongoServicesRegistrar().Register(services);
             new ConfigSnapshotStoreRegistrar().Register(services);
+            new PlayerStoreRegistrar().Register(services);
+            new RunServicesRegistrar().Register(services);
 
             services.AddHealthChecks().AddCheck<MongoHealthCheck>("mongo", tags: new[] { HealthTags.Ready });
 
@@ -135,6 +141,9 @@ namespace Server.Api.Composition
                 .AddSingleton<ConfigDomainNames>()
                 .AddSingleton<ConfigSnapshotHasher>()
                 .AddSingleton<ConfigSnapshotSerializer>()
+                .AddSingleton<EffectParameterRegistry>()
+                .AddSingleton<EffectParametersValidator>()
+                .AddSingleton<EnemyDataValidator>()
                 .AddSingleton<ConfigSnapshotValidator>()
                 .AddSingleton<ConfigSnapshotDiff>()
                 .AddSingleton<ConfigRangeReader>()

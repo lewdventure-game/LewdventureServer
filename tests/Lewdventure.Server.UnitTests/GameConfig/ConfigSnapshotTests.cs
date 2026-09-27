@@ -162,7 +162,7 @@ namespace Tests.Unit.GameConfig
             return new GameConfigSetBuilder(
                 new BonusWorkModeParser(NullLogger<BonusWorkModeParser>.Instance),
                 new ConfigRowsParser(new ConfigRowLocator(new ConfigRangeReader())),
-                new ConfigSnapshotValidator(_domainNames),
+                new ConfigSnapshotValidator(_domainNames, new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator()),
                 NullLogger<GameConfigSetBuilder>.Instance);
         }
     }

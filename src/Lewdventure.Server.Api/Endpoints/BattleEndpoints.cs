@@ -7,6 +7,7 @@ using Server.Api.Metrics;
 using Server.Api.Options;
 using Server.Api.Security;
 using Server.Battles;
+using Server.Infrastructure.Players;
 
 namespace Server.Api.Endpoints
 {
@@ -21,8 +22,9 @@ namespace Server.Api.Endpoints
             var metricsFilter = application.Services.GetRequiredService<BattleMetricsFilter>();
             var sizeLimit = new RequestSizeLimitAttribute(requestLimits.BattleMaxRequestBodyBytes);
             var gameConfigRequired = new GameConfigRequiredMetadata();
+            var authoritative = application.Services.GetRequiredService<IOptions<AuthOptions>>().Value.Enabled;
 
-            application.MapPost(ApiRoutes.SimulateBattle, SimulateAsync)
+            var simulate = application.MapPost(ApiRoutes.SimulateBattle, SimulateAsync)
                 .WithMetadata(sizeLimit)
                 .WithMetadata(gameConfigRequired)
                 .RequireRateLimiting(SecurityNames.BattleRateLimitPolicy)
@@ -32,7 +34,7 @@ namespace Server.Api.Endpoints
                 .Produces<BattleScriptResponse>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status400BadRequest);
 
-            application.MapPost(ApiRoutes.ReplayBattle, ReplayAsync)
+            var replay = application.MapPost(ApiRoutes.ReplayBattle, ReplayAsync)
                 .WithMetadata(sizeLimit)
                 .WithMetadata(gameConfigRequired)
                 .RequireRateLimiting(SecurityNames.BattleRateLimitPolicy)
@@ -41,6 +43,12 @@ namespace Server.Api.Endpoints
                 .Accepts<BattleReplayData>("application/json")
                 .Produces<BattleScriptResponse>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status400BadRequest);
+
+            if (authoritative == false)
+                return;
+
+            simulate.WithMetadata(new OpsPortOnlyMetadata()).RequireAuthorization(SecurityNames.AdminPolicy);
+            replay.WithMetadata(new OpsPortOnlyMetadata()).RequireAuthorization(SecurityNames.AdminPolicy);
         }
 
         private async Task<IResult> SimulateAsync(

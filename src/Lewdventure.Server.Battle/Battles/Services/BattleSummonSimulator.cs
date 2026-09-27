@@ -6,6 +6,7 @@ namespace Server.Battles
     {
         private readonly ILogger<BattleSummonSimulator> _logger;
         private readonly IBattleCommandFactory _battleCommandFactory;
+        private readonly IBattleDamageMath _battleDamageMath;
         private readonly IBattlePerkSimulator _battlePerkSimulator;
         private readonly IBattleScriptBuilder _battleScriptBuilder;
         private readonly IBattleSkillSimulator _battleSkillSimulator;
@@ -16,6 +17,7 @@ namespace Server.Battles
         public BattleSummonSimulator(
             ILogger<BattleSummonSimulator> logger,
             IBattleCommandFactory battleCommandFactory,
+            IBattleDamageMath battleDamageMath,
             IBattlePerkSimulator battlePerkSimulator,
             IBattleScriptBuilder battleScriptBuilder,
             IBattleSkillSimulator battleSkillSimulator,
@@ -23,6 +25,7 @@ namespace Server.Battles
         {
             _logger = logger;
             _battleCommandFactory = battleCommandFactory;
+            _battleDamageMath = battleDamageMath;
             _battlePerkSimulator = battlePerkSimulator;
             _battleScriptBuilder = battleScriptBuilder;
             _battleSkillSimulator = battleSkillSimulator;
@@ -57,7 +60,8 @@ namespace Server.Battles
             ITeamSimulationState attacker,
             ITeamSimulationState defender,
             int currentTurn,
-            ISeededRandomService seededRandomService)
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
         {
             BuildOrderedLivingSummons(attacker.Summons);
 
@@ -90,9 +94,9 @@ namespace Server.Battles
 
                 var summon = _summonOrderBuffer[i];
 
-                _battlePerkSimulator.SetActingUnit(summon);
+                turnState.SetActingUnit(summon);
 
-                if (_battlePerkSimulator.ShouldSkipRemainingActions(summon))
+                if (turnState.ShouldSkipRemainingActions(summon))
                 {
                     _logger.LogDebug($"[Story][Battle]: Summon skip aborted unit, unitId = {summon.Id}, turn = {currentTurn}");
 
@@ -112,12 +116,13 @@ namespace Server.Battles
                         attacker,
                         defender,
                         currentTurn,
-                        seededRandomService);
+                        seededRandomService,
+                        turnState);
 
                     actedCount += 1;
                 }
 
-                if (_battlePerkSimulator.ShouldSkipRemainingActions(summon))
+                if (turnState.ShouldSkipRemainingActions(summon))
                     continue;
 
                 if (summon.IsAlive() == false)
@@ -148,14 +153,15 @@ namespace Server.Battles
                     target,
                     critSource,
                     currentTurn,
-                    seededRandomService);
+                    seededRandomService,
+                    turnState);
 
                 summon.RegisterNormalAttack(currentTurn);
 
                 _logger.LogDebug($"[Story][Battle]: Summon attack cooldown start, unitId = {summon.Id}, turn = {currentTurn}");
 
                 if (target.IsAlive() == false)
-                    EmitDeath(steps, currentTurn, target);
+                    EmitDeath(steps, currentTurn, target, turnState);
 
                 EmitSummonCooldown(steps, summon, currentTurn, cooldown);
                 actedCount += 1;
@@ -181,7 +187,8 @@ namespace Server.Battles
             IUnitState target,
             IUnitState critSource,
             int currentTurn,
-            ISeededRandomService seededRandomService)
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
         {
             var isRanged = (summon.Flags & UnitFlags.Range) != 0;
             var commands = new List<BattleCommand>();
@@ -231,7 +238,7 @@ namespace Server.Battles
                 if (isCritical)
                     damage *= critSourceCharacteristics.CriticalMultiplier;
 
-                damage *= defenceFactor;
+                damage = _battleDamageMath.RoundDamage(damage * defenceFactor);
 
                 var healthAfter = targetCharacteristics.Health - damage;
 
@@ -267,7 +274,7 @@ namespace Server.Battles
             {
                 _logger.LogDebug($"[Story][Battle]: Any_damage flush after summon step, unitId = {summon.Id}, targetId = {target.Id}, turn = {currentTurn}");
 
-                _battlePerkSimulator.NotifyAnyDamage(summon, attacker, defender, steps, currentTurn, seededRandomService);
+                _battlePerkSimulator.NotifyAnyDamage(summon, attacker, defender, steps, currentTurn, seededRandomService, turnState);
             }
         }
 
@@ -294,9 +301,9 @@ namespace Server.Battles
                 });
         }
 
-        private void EmitDeath(List<BattleStep> steps, int currentTurn, IUnitState unit)
+        private void EmitDeath(List<BattleStep> steps, int currentTurn, IUnitState unit, BattleTurnState turnState)
         {
-            if (_battlePerkSimulator.TryResurrectOnDeath(unit, steps, currentTurn))
+            if (_battlePerkSimulator.TryResurrectOnDeath(unit, steps, currentTurn, turnState))
                 return;
 
             _logger.LogDebug($"[Story][Battle]: Death, unitId = {unit.Id}, turn = {currentTurn}");

@@ -12,6 +12,7 @@ namespace Server.Battles
         private readonly IBattlePerkSimulator _battlePerkSimulator;
         private readonly IBattleScriptBuilder _battleScriptBuilder;
         private readonly IBattleStatusSimulator _battleStatusSimulator;
+        private readonly IReadOnlyList<IBattleTurnPhase> _turnPhases;
         private readonly IBattleSummonSimulator _battleSummonSimulator;
         private readonly IConfigDistributor _configDistributor;
         private readonly IUnitStateBuilder _unitStateBuilder;
@@ -24,6 +25,7 @@ namespace Server.Battles
             IBattlePerkSimulator battlePerkSimulator,
             IBattleScriptBuilder battleScriptBuilder,
             IBattleStatusSimulator battleStatusSimulator,
+            IReadOnlyList<IBattleTurnPhase> turnPhases,
             IBattleSummonSimulator battleSummonSimulator,
             IConfigDistributor configDistributor,
             IUnitStateBuilder unitStateBuilder)
@@ -35,6 +37,7 @@ namespace Server.Battles
             _battlePerkSimulator = battlePerkSimulator;
             _battleScriptBuilder = battleScriptBuilder;
             _battleStatusSimulator = battleStatusSimulator;
+            _turnPhases = turnPhases;
             _battleSummonSimulator = battleSummonSimulator;
             _configDistributor = configDistributor;
             _unitStateBuilder = unitStateBuilder;
@@ -79,20 +82,21 @@ namespace Server.Battles
             EmitInitialStatuses(steps, stateB, 0);
 
             var currentTurn = 0;
+            var turnState = new BattleTurnState();
 
             while (currentTurn < maxTurns && HasAliveMainUnits(stateA) && HasAliveMainUnits(stateB))
             {
-                _battlePerkSimulator.BeginBattleTurn();
+                turnState.BeginSideTurn();
 
                 ApplyTurnStartBonuses(steps, stateA, currentTurn);
                 ApplyTurnStartBonuses(steps, stateB, currentTurn);
 
-                SimulateSideTurn(steps, stateA, stateB, currentTurn, seededRandomService);
+                SimulateSideTurn(steps, stateA, stateB, currentTurn, seededRandomService, turnState);
 
                 if (HasAliveMainUnits(stateB) == false)
                     break;
 
-                SimulateSideTurn(steps, stateB, stateA, currentTurn, seededRandomService);
+                SimulateSideTurn(steps, stateB, stateA, currentTurn, seededRandomService, turnState);
 
                 if (HasAliveMainUnits(stateA) == false)
                     break;
@@ -280,26 +284,26 @@ namespace Server.Battles
             ITeamSimulationState attacker,
             ITeamSimulationState defender,
             int currentTurn,
-            ISeededRandomService seededRandomService)
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
         {
             _logger.LogDebug($"[Story][Battle]: Side turn side = {attacker.BattleSide}, turn = {currentTurn}");
 
-            _battlePerkSimulator.BeginSideTurn(attacker.BattleSide);
+            turnState.BeginSideTurn();
 
-            SimulateStatuses(steps, attacker, defender, currentTurn, seededRandomService);
-
-            if (HasAliveMainUnits(attacker) == false)
+            for (int i = 0; i < _turnPhases.Count; i++)
             {
-                _logger.LogDebug($"[Story][Battle]: Side turn stop after statuses, no living mains, side = {attacker.BattleSide}, turn = {currentTurn}");
+                var phase = _turnPhases[i];
+
+                phase.Execute(steps, attacker, defender, currentTurn, seededRandomService, turnState);
+
+                if (phase.StopsSideTurnWhenAttackerDead == false || HasAliveMainUnits(attacker))
+                    continue;
+
+                _logger.LogDebug($"[Story][Battle]: Side turn stop after {phase.Name}, no living mains, side = {attacker.BattleSide}, turn = {currentTurn}");
 
                 return;
             }
-
-            _battlePerkSimulator.Simulate(steps, attacker, defender, currentTurn, seededRandomService);
-
-            _battleSummonSimulator.Simulate(steps, attacker, defender, currentTurn, seededRandomService);
-
-            _battleAttackService.SimulateMainUnits(steps, attacker, defender, currentTurn, seededRandomService);
         }
 
         private void EmitInitialStatuses(List<BattleStep> steps, ITeamSimulationState team, int currentTurn)
@@ -313,16 +317,6 @@ namespace Server.Battles
 
             for (int i = 0; i < summons.Count; i++)
                 _battleStatusSimulator.EmitInitialStatuses(summons[i], steps, currentTurn);
-        }
-
-        private void SimulateStatuses(
-            List<BattleStep> steps,
-            ITeamSimulationState ownerTeam,
-            ITeamSimulationState opponentTeam,
-            int currentTurn,
-            ISeededRandomService seededRandomService)
-        {
-            _battleStatusSimulator.SimulateSide(ownerTeam, opponentTeam, steps, currentTurn, seededRandomService);
         }
 
         private void ApplyTurnStartBonuses(List<BattleStep> steps, ITeamSimulationState team, int currentTurn)

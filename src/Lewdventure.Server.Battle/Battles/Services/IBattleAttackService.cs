@@ -9,6 +9,7 @@ namespace Server.Battles
             ITeamSimulationState attacker,
             ITeamSimulationState defender,
             int currentTurn,
-            ISeededRandomService seededRandomService);
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState);
     }
 }

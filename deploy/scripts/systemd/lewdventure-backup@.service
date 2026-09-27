@@ -1,0 +1,12 @@
+[Unit]
+Description=Lewdventure MongoDB backup for %i
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/opt/lewdventure/backup.env
+ExecStart=/opt/lewdventure/%i/scripts/backup-mongo.sh %i
+
+[Install]
+WantedBy=multi-user.target

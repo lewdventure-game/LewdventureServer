@@ -39,6 +39,11 @@
 | `config_snapshots` | `sha256:<hex>` | формат, источник, автор, время снапшота, домены со строками | по `createdAt` убыв. |
 | `config_state` | `active` | активная версия и id активации | — |
 | `config_activations` | uuid | версия, предыдущая версия, кто, причина, время | по `createdAt` убыв. |
+| `users` | `usr_<hex>` | устройства с хэшами refresh-токенов, привязки платформ, статус | уникальные по `devices.deviceIdHash` и `identities` |
+| `player_profiles` | `userId` | ресурсы, персонажи, саммоны, снаряжение, лоадаут, сюжет, флаги, `rev` | по `_id` |
+| `player_runs` | `run_<hex>` | этапы забега, опыт, перки, бонусы, здоровье, seed, версия конфигов, `rev` | `userId` + `status`, `userId` + `createdAt` убыв. |
+| `player_ledger` | uuid | журнал выдач и трат | `userId` + `createdAt` убыв. |
+| `idempotency` | `userId:requestId` | результат применённого запроса | TTL 48 часов по `createdAt` |
 
 Снапшоты неизменяемы: повторная публикация той же версии ничего не пишет. Активация — одна транзакция: запись в `config_activations` + обновление `config_state`.
 

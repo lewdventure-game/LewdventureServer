@@ -17,7 +17,9 @@ namespace Server.Battles
         private readonly bool _allowCritical;
         private readonly float _cooldown;
         private readonly ISeededRandomService _seededRandomService;
+        private readonly BattleTurnState _turnState;
         private readonly IBattleCommandFactory _battleCommandFactory;
+        private readonly IBattleDamageMath _battleDamageMath;
         private readonly IBattleBonusService _battleBonusService;
         private readonly IBattlePerkSimulator _battlePerkSimulator;
         private readonly IBattleRewardService _battleRewardService;
@@ -66,7 +68,9 @@ namespace Server.Battles
             bool allowCritical,
             float cooldown,
             ISeededRandomService seededRandomService,
+            BattleTurnState turnState,
             IBattleCommandFactory battleCommandFactory,
+            IBattleDamageMath battleDamageMath,
             IBattleBonusService battleBonusService,
             IBattlePerkSimulator battlePerkSimulator,
             IBattleRewardService battleRewardService,
@@ -84,7 +88,9 @@ namespace Server.Battles
             _allowCritical = allowCritical;
             _cooldown = cooldown;
             _seededRandomService = seededRandomService;
+            _turnState = turnState;
             _battleCommandFactory = battleCommandFactory;
+            _battleDamageMath = battleDamageMath;
             _battleBonusService = battleBonusService;
             _battlePerkSimulator = battlePerkSimulator;
             _battleRewardService = battleRewardService;
@@ -136,7 +142,7 @@ namespace Server.Battles
             if (isCritical)
                 damage *= actorCharacteristics.CriticalMultiplier;
 
-            damage *= defenceFactor;
+            damage = _battleDamageMath.RoundDamage(damage * defenceFactor);
 
             var healthAfter = targetCharacteristics.Health - damage;
 
@@ -204,7 +210,7 @@ namespace Server.Battles
 
         public void EmitDeath(IUnitState unit)
         {
-            if (_battlePerkSimulator.TryResurrectOnDeath(unit, _steps, _currentTurn))
+            if (_battlePerkSimulator.TryResurrectOnDeath(unit, _steps, _currentTurn, _turnState))
                 return;
 
             _logger.LogDebug($"[Story][Battle]: Death, unitId = {unit.Id}, turn = {_currentTurn}");
@@ -257,7 +263,7 @@ namespace Server.Battles
             _logger.LogDebug($"[Story][Battle]: any_damage flush after skill step, actorId = {_actor.Id}, count = {notifyCount}, turn = {_currentTurn}");
 
             for (int i = 0; i < notifyCount; i++)
-                _battlePerkSimulator.NotifyAnyDamage(_actor, _attacker, _defender, _steps, _currentTurn, _seededRandomService);
+                _battlePerkSimulator.NotifyAnyDamage(_actor, _attacker, _defender, _steps, _currentTurn, _seededRandomService, _turnState);
         }
     }
 }

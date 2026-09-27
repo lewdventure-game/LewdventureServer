@@ -152,7 +152,7 @@ namespace Server.Battles
             if (isCritical)
                 damage *= ownerCharacteristics.CriticalMultiplier;
 
-            damage *= defenceFactor;
+            damage = context.BattleDamageMath.RoundDamage(damage * defenceFactor);
 
             var healthAfter = targetCharacteristics.Health - damage;
 

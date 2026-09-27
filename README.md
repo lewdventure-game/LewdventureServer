@@ -31,12 +31,20 @@ ASPNETCORE_ENVIRONMENT=Local GameConfig__Source=File GameConfig__FilePath=tests/
 
 | Endpoint | Описание |
 | --- | --- |
-| `POST /api/battle/simulate` | симуляция боя, seed в ответе |
+| `POST /api/auth/device` | анонимный аккаунт устройства, access и refresh токены |
+| `POST /api/auth/refresh` | обмен refresh на новый access |
+| `GET /api/player/profile` | профиль игрока (Bearer) |
+| `POST /api/player/loadout` | смена персонажа, снаряжения и саммонов (Bearer) |
+| `POST /api/player/summon/level`, `/summon/mastery`, `/equipment/level` | прокачка саммонов и снаряжения (Bearer) |
+| `GET /api/player/characteristics` | итоговые характеристики от сервера (Bearer) |
+| `GET /api/run/current`, `POST /api/run/start`, `/advance`, `/choose`, `/abandon` | сюжетный забег на сервере (Bearer) |
+| `POST /api/battle/simulate` | симуляция боя, seed в ответе; при `Auth:Enabled` только ops-порт и админский ключ |
 | `POST /api/battle/replay` | повтор боя по seed |
 | `POST /api/config/upload` | публикация строк листов из таблицы и активация (dev/stage, `X-Config-Key`) |
 | `GET /api/config/status` | активная версия конфигов (`X-Config-Key`) |
 | `GET /health/ready` | готовность: конфиги и Mongo |
 | `/admin/config/*` | управление снапшотами (ops-порт, `X-Admin-Key`) |
+| `/admin/player/*` | профиль, журнал выдач и ручное начисление наград (ops-порт, `X-Admin-Key`) |
 
 ## Окружения
 

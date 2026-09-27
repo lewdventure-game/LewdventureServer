@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Server.Api.Options;
+using Server.Infrastructure.Players;
 
 namespace Server.Api.Security
 {
@@ -24,17 +26,21 @@ namespace Server.Api.Security
 
             services.AddSingleton<ApiKeyComparer>();
             services.AddSingleton<BattleConcurrencyLimiter>();
+            services.AddSingleton<AccessTokenIssuer>();
+            services.AddSingleton<PlayerIdentityReader>();
 
             services.AddAuthentication()
                 .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(SecurityNames.AdminScheme, null)
-                .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(SecurityNames.ConfigPublisherScheme, null);
+                .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(SecurityNames.ConfigPublisherScheme, null)
+                .AddJwtBearer(SecurityNames.PlayerScheme, ConfigurePlayerScheme);
 
             services.AddOptions<ApiKeyAuthenticationOptions>(SecurityNames.AdminScheme).Configure<IOptions<AdminOptions>>(ConfigureAdminScheme);
             services.AddOptions<ApiKeyAuthenticationOptions>(SecurityNames.ConfigPublisherScheme).Configure<IOptions<ConfigPublisherOptions>>(ConfigurePublisherScheme);
 
             services.AddAuthorizationBuilder()
                 .AddPolicy(SecurityNames.AdminPolicy, BuildAdminPolicy)
-                .AddPolicy(SecurityNames.ConfigPublisherPolicy, BuildPublisherPolicy);
+                .AddPolicy(SecurityNames.ConfigPublisherPolicy, BuildPublisherPolicy)
+                .AddPolicy(SecurityNames.PlayerPolicy, BuildPlayerPolicy);
 
             services.AddRateLimiter(ConfigureRateLimiter);
             services.AddOptions<RateLimiterOptions>().Configure<IOptions<RateLimitOptions>>(ConfigureRateLimiterPolicies);
@@ -49,10 +55,12 @@ namespace Server.Api.Security
             services.AddOptions<RateLimitOptions>().Bind(_configuration.GetSection(RateLimitOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
             services.AddOptions<RequestLimitsOptions>().Bind(_configuration.GetSection(RequestLimitsOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
             services.AddOptions<ReverseProxyOptions>().Bind(_configuration.GetSection(ReverseProxyOptions.SectionName)).ValidateOnStart();
+            services.AddOptions<AuthOptions>().Bind(_configuration.GetSection(AuthOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
 
             services.AddSingleton<IValidateOptions<AdminOptions>, AccessKeyOptionsValidator>();
             services.AddSingleton<IValidateOptions<ConfigPublisherOptions>, AccessKeyOptionsValidator>();
             services.AddSingleton<IValidateOptions<ReverseProxyOptions>, ReverseProxyOptionsValidator>();
+            services.AddSingleton<IValidateOptions<AuthOptions>, AuthOptionsValidator>();
         }
 
         private void ConfigureAdminScheme(ApiKeyAuthenticationOptions options, IOptions<AdminOptions> adminOptions)
@@ -68,6 +76,36 @@ namespace Server.Api.Security
             options.ApiKey = publisherOptions.Value.ApiKey;
             options.HeaderName = publisherOptions.Value.HeaderName;
             options.LegacyHeaderName = publisherOptions.Value.LegacyHeaderName;
+        }
+
+        private void ConfigurePlayerScheme(Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerOptions options)
+        {
+            var authOptions = new AuthOptions();
+
+            _configuration.GetSection(AuthOptions.SectionName).Bind(authOptions);
+
+            options.MapInboundClaims = false;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = authOptions.Issuer,
+                ValidAudience = authOptions.Audience,
+                IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(CreateSigningMaterial(authOptions.SigningKey))),
+                ClockSkew = TimeSpan.FromSeconds(30),
+            };
+        }
+
+        private string CreateSigningMaterial(string signingKey)
+        {
+            return string.IsNullOrEmpty(signingKey) ? new string('0', 32) : signingKey;
+        }
+
+        private void BuildPlayerPolicy(AuthorizationPolicyBuilder policy)
+        {
+            policy.AddAuthenticationSchemes(SecurityNames.PlayerScheme).RequireAuthenticatedUser();
         }
 
         private void BuildAdminPolicy(AuthorizationPolicyBuilder policy)

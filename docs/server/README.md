@@ -10,5 +10,7 @@ GDD: [../gdd/README.md](../gdd/README.md).
 | --- | --- |
 | [battle-api.md](battle-api.md) | `POST /api/battle/simulate`, `POST /api/battle/replay`, коды ответов, flow, примеры |
 | [config-sync.md](config-sync.md) | снапшоты конфигов, публикация, ConfigTool, Google Sheets, managers, источник правды |
+| [player-state.md](player-state.md) | аккаунт устройства, токены, профиль игрока, хранение и идемпотентность |
+| [runs.md](runs.md) | серверное состояние забега, события, детерминизм, режим авторитета |
 
 Канон protocol: [`.ai-factory/specs/battle-simulation.md`](../../.ai-factory/specs/battle-simulation.md).

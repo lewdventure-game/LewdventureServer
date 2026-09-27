@@ -13,7 +13,10 @@ namespace Tests.Integration.Mongo
             services.AddSingleton<ConfigDomainNames>();
             services.AddSingleton<ConfigSnapshotHasher>();
             services.AddSingleton<ConfigSnapshotSerializer>();
-            services.AddSingleton<ConfigSnapshotValidator>();
+            services.AddSingleton<EffectParameterRegistry>()
+                .AddSingleton<EffectParametersValidator>()
+                .AddSingleton<EnemyDataValidator>()
+                .AddSingleton<ConfigSnapshotValidator>();
             services.AddSingleton<ConfigSnapshotDiff>();
             services.AddSingleton<ConfigRangeReader>()
                 .AddSingleton<ConfigRowLocator>();

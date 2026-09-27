@@ -146,10 +146,6 @@ namespace Server.Battles
 
             var defence = ApplyDefenceFormula(armor, buckets.DefenceCoefficient);
 
-            criticalMultiplier = RoundMultiplier(criticalMultiplier, "criticalMultiplier");
-            comboMultiplier = RoundMultiplier(comboMultiplier, "comboMultiplier");
-            counterMultiplier = RoundMultiplier(counterMultiplier, "counterMultiplier");
-            skillMultiplier = RoundMultiplier(skillMultiplier, "spellMultiplier");
 
             state.MaxHealth = maxHealth;
             state.Damage = damage;

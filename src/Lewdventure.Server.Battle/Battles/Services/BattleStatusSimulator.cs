@@ -10,6 +10,7 @@ namespace Server.Battles
         private readonly ILogger<BattleStatusSimulator> _logger;
         private readonly IBattleBonusService _battleBonusService;
         private readonly IBattleCommandFactory _battleCommandFactory;
+        private readonly IBattleDamageMath _battleDamageMath;
         private readonly IBattlePerkSimulator _battlePerkSimulator;
         private readonly IBattleScriptBuilder _battleScriptBuilder;
         private readonly IConfigDistributor _configDistributor;
@@ -21,6 +22,7 @@ namespace Server.Battles
             ILogger<BattleStatusSimulator> logger,
             IBattleBonusService battleBonusService,
             IBattleCommandFactory battleCommandFactory,
+            IBattleDamageMath battleDamageMath,
             IBattlePerkSimulator battlePerkSimulator,
             IBattleScriptBuilder battleScriptBuilder,
             IConfigDistributor configDistributor)
@@ -28,6 +30,7 @@ namespace Server.Battles
             _logger = logger;
             _battleBonusService = battleBonusService;
             _battleCommandFactory = battleCommandFactory;
+            _battleDamageMath = battleDamageMath;
             _battlePerkSimulator = battlePerkSimulator;
             _battleScriptBuilder = battleScriptBuilder;
             _configDistributor = configDistributor;
@@ -77,7 +80,8 @@ namespace Server.Battles
             ITeamSimulationState opponentTeam,
             List<BattleStep> steps,
             int currentTurn,
-            ISeededRandomService seededRandomService)
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
         {
             FillMainsInSlotOrder(ownerTeam.MainUnits);
 
@@ -110,9 +114,9 @@ namespace Server.Battles
                 {
                     var entry = _tickQueue[i];
 
-                    _battlePerkSimulator.SetActingUnit(entry.Unit);
+                    turnState.SetActingUnit(entry.Unit);
 
-                    if (entry.Unit.IsAlive() == false || _battlePerkSimulator.ShouldSkipRemainingActions(entry.Unit))
+                    if (entry.Unit.IsAlive() == false || turnState.ShouldSkipRemainingActions(entry.Unit))
                     {
                         _logger.LogDebug($"[Story][Battle]: Status queue stop remaining, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, turn = {currentTurn}, remaining = {_tickQueue.Count - i}");
 
@@ -129,11 +133,12 @@ namespace Server.Battles
                         currentTurn,
                         seededRandomService,
                         cooldown,
-                        entry.StatusId);
+                        entry.StatusId,
+                        turnState);
                     ++emittedWaits;
                     DecrementAndExpireStatusId(entry.Unit, steps, currentTurn, entry.StatusId);
 
-                    if (entry.Unit.IsAlive() == false || _battlePerkSimulator.ShouldSkipRemainingActions(entry.Unit))
+                    if (entry.Unit.IsAlive() == false || turnState.ShouldSkipRemainingActions(entry.Unit))
                     {
                         _logger.LogDebug($"[Story][Battle]: Status queue killed unit, unitId = {entry.Unit.Id}, statusId = {entry.StatusId}, turn = {currentTurn}, remainingSkipped = {_tickQueue.Count - i - 1}");
 
@@ -257,7 +262,8 @@ namespace Server.Battles
             int currentTurn,
             ISeededRandomService seededRandomService,
             float cooldown,
-            int statusId)
+            int statusId,
+            BattleTurnState turnState)
         {
             var characteristics = unitState.CharacteristicState;
             var healthBefore = characteristics.Health;
@@ -288,6 +294,8 @@ namespace Server.Battles
                 if (isCritical)
                     anyCritical = true;
             }
+
+            totalDamage = _battleDamageMath.RoundDamage(totalDamage);
 
             var healthAfter = healthBefore - totalDamage;
 
@@ -320,12 +328,12 @@ namespace Server.Battles
             _logger.LogDebug($"[Story][Battle]: Status aggregate tick, unitId = {unitState.Id}, statusId = {statusId}, damage = {totalDamage}, isCritical = {anyCritical}, health = {healthAfter}, wait = {cooldown}");
 
             if (0f < totalDamage)
-                NotifyDamageOverTimeSource(unitState, ownerTeam, opponentTeam, steps, currentTurn, seededRandomService, statusId);
+                NotifyDamageOverTimeSource(unitState, ownerTeam, opponentTeam, steps, currentTurn, seededRandomService, statusId, turnState);
 
             if (wasAlive == false || 0f < healthAfter)
                 return;
 
-            EmitDeath(steps, currentTurn, unitState);
+            EmitDeath(steps, currentTurn, unitState, turnState);
         }
 
         private void NotifyDamageOverTimeSource(
@@ -335,7 +343,8 @@ namespace Server.Battles
             List<BattleStep> steps,
             int currentTurn,
             ISeededRandomService seededRandomService,
-            int statusId)
+            int statusId,
+            BattleTurnState turnState)
         {
             var sourceUnitId = FindDamageOverTimeSourceUnitId(unitState, statusId);
 
@@ -348,13 +357,13 @@ namespace Server.Battles
 
             if (TryFindMain(opponentTeam, sourceUnitId, out var sourceUnit))
             {
-                _battlePerkSimulator.NotifyAnyDamage(sourceUnit, opponentTeam, ownerTeam, steps, currentTurn, seededRandomService);
+                _battlePerkSimulator.NotifyAnyDamage(sourceUnit, opponentTeam, ownerTeam, steps, currentTurn, seededRandomService, turnState);
 
                 return;
             }
 
             if (TryFindMain(ownerTeam, sourceUnitId, out sourceUnit))
-                _battlePerkSimulator.NotifyAnyDamage(sourceUnit, ownerTeam, opponentTeam, steps, currentTurn, seededRandomService);
+                _battlePerkSimulator.NotifyAnyDamage(sourceUnit, ownerTeam, opponentTeam, steps, currentTurn, seededRandomService, turnState);
         }
 
         private int FindDamageOverTimeSourceUnitId(IUnitState unitState, int statusId)
@@ -519,9 +528,9 @@ namespace Server.Battles
             _logger.LogDebug($"[Story][Battle]: Expire status, unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, remainingStacks = {remainingStacks}");
         }
 
-        private void EmitDeath(List<BattleStep> steps, int currentTurn, IUnitState unit)
+        private void EmitDeath(List<BattleStep> steps, int currentTurn, IUnitState unit, BattleTurnState turnState)
         {
-            if (_battlePerkSimulator.TryResurrectOnDeath(unit, steps, currentTurn))
+            if (_battlePerkSimulator.TryResurrectOnDeath(unit, steps, currentTurn, turnState))
                 return;
 
             _logger.LogDebug($"[Story][Battle]: Death unitId = {unit.Id}, turn = {currentTurn}");

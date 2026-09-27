@@ -139,7 +139,7 @@ namespace Server.Battles
                 return true;
             }
 
-            if (type != BattleRewardType.Resource)
+            if (type != BattleRewardType.Resource && type != BattleRewardType.Account)
             {
                 _logger.LogWarning($"[Story][Battle]: Reward parse fail non-int id, type = {type}, raw = {idSpan.ToString()}, count = {count}");
 
@@ -180,6 +180,9 @@ namespace Server.Battles
 
             if (typeSpan.Equals("equipment", StringComparison.OrdinalIgnoreCase))
                 return BattleRewardType.Equipment;
+
+            if (typeSpan.Equals("account", StringComparison.OrdinalIgnoreCase))
+                return BattleRewardType.Account;
 
             return BattleRewardType.None;
         }

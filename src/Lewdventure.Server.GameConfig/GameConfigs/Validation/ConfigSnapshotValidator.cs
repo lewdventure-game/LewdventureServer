@@ -18,6 +18,8 @@ namespace Server.GameConfigs
         private const string ServiceColumn = "is_off";
 
         private readonly ConfigDomainNames _configDomainNames;
+        private readonly EffectParametersValidator _effectParametersValidator;
+        private readonly EnemyDataValidator _enemyDataValidator;
         private readonly Dictionary<string, Type> _mapperTypes = new(StringComparer.Ordinal)
         {
             [ConfigDomainNames.Constants] = typeof(ConstantsMapper),
@@ -38,9 +40,14 @@ namespace Server.GameConfigs
             [ConfigDomainNames.Skills] = typeof(SkillMapper),
         };
 
-        public ConfigSnapshotValidator(ConfigDomainNames configDomainNames)
+        public ConfigSnapshotValidator(
+            ConfigDomainNames configDomainNames,
+            EffectParametersValidator effectParametersValidator,
+            EnemyDataValidator enemyDataValidator)
         {
             _configDomainNames = configDomainNames;
+            _effectParametersValidator = effectParametersValidator;
+            _enemyDataValidator = enemyDataValidator;
         }
 
         public void ValidateStructure(GameConfigSnapshot snapshot, List<string> errors, List<string> warnings)
@@ -57,6 +64,15 @@ namespace Server.GameConfigs
                 }
 
                 CollectHeaderIssues(domain, errors, warnings);
+
+                if (string.Equals(domains[i], ConfigDomainNames.Enemies, StringComparison.Ordinal))
+                    _enemyDataValidator.Collect(domain, warnings);
+
+                if (string.Equals(domains[i], ConfigDomainNames.Perks, StringComparison.Ordinal))
+                    _effectParametersValidator.CollectPerks(domain, warnings);
+
+                if (string.Equals(domains[i], ConfigDomainNames.Statuses, StringComparison.Ordinal))
+                    _effectParametersValidator.CollectStatuses(domain, warnings);
             }
         }
 

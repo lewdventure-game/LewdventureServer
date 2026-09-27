@@ -9,5 +9,6 @@ namespace Server.Battles
         Character = 4,
         Summon = 5,
         Equipment = 6,
+        Account = 7,
     }
 }

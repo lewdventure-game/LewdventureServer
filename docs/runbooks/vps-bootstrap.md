@@ -169,7 +169,22 @@ Settings → Branches: защита `master` — merge через PR, обяза
 
 ## 8. Бэкапы Mongo
 
-Обязательно до пользовательских данных, см. [mongo-conventions.md](../architecture/mongo-conventions.md#бэкапы). На одном VPS копии нужно выносить наружу (любое S3-совместимое хранилище, Cloudflare R2 Free — 10 GB).
+Скрипт и таймер лежат в репозитории: `deploy/scripts/backup-mongo.sh` едет на VPS вместе с деплоем, юниты — в `deploy/scripts/systemd/`.
+
+```bash
+sudo cp /opt/lewdventure/dev/scripts/systemd/lewdventure-backup@.service /etc/systemd/system/
+sudo cp /opt/lewdventure/dev/scripts/systemd/lewdventure-backup@.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now lewdventure-backup@dev.timer lewdventure-backup@stage.timer
+```
+
+Скрипт кладёт `mongodump --archive --gzip` в `/opt/lewdventure/<env>/backups/<env>/`, проверяет, что архив не пустой, и удаляет копии старше 7 дней (второй аргумент меняет срок). Разовый прогон: `/opt/lewdventure/dev/scripts/backup-mongo.sh dev`.
+
+Копии на том же VPS не спасают от потери машины, поэтому их надо выносить наружу: положи команду выгрузки в `/opt/lewdventure/backup.env` как `LEWD_BACKUP_UPLOAD_COMMAND`, она получит путь к архиву первым аргументом (подойдёт любое S3-совместимое хранилище, Cloudflare R2 Free — 10 GB).
+
+Восстановление: `docker compose -p lewdventure-<env> exec -T mongo mongorestore --archive --gzip --drop --username root --password "$MONGO_ROOT_PASSWORD" --authenticationDatabase admin < backup.archive.gz`.
+
+Данные конкретного игрока выгружаются и удаляются через ops-ручки `/admin/player/{userId}/export` и `DELETE /admin/player/{userId}?confirm=<userId>`.
 
 ## 9. Перенос окружения на отдельный VPS
 

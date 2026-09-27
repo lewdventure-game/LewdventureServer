@@ -14,6 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Swashbuckle.AspNetCore" />
   </ItemGroup>
 
@@ -22,6 +23,7 @@
     <ProjectReference Include="..\Lewdventure.Server.Contracts\Lewdventure.Server.Contracts.csproj" />
     <ProjectReference Include="..\Lewdventure.Server.GameConfig\Lewdventure.Server.GameConfig.csproj" />
     <ProjectReference Include="..\Lewdventure.Server.Infrastructure\Lewdventure.Server.Infrastructure.csproj" />
+    <ProjectReference Include="..\Lewdventure.Server.Runs\Lewdventure.Server.Runs.csproj" />
   </ItemGroup>
 
 

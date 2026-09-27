@@ -24,6 +24,8 @@ namespace Server.Api.Security
             options.AddPolicy(SecurityNames.BattleRateLimitPolicy, CreateBattleLimiter);
             options.AddPolicy(SecurityNames.ConfigRateLimitPolicy, CreateConfigLimiter);
             options.AddPolicy(SecurityNames.AdminRateLimitPolicy, CreateAdminLimiter);
+            options.AddPolicy(SecurityNames.AuthRateLimitPolicy, CreateAuthLimiter);
+            options.AddPolicy(SecurityNames.PlayerRateLimitPolicy, CreatePlayerLimiter);
         }
 
         private RateLimitPartition<string> CreateBattleLimiter(HttpContext context)
@@ -41,13 +43,36 @@ namespace Server.Api.Security
             return CreatePartition(context, "admin", _rateLimitOptions.Admin);
         }
 
+        private RateLimitPartition<string> CreateAuthLimiter(HttpContext context)
+        {
+            return CreatePartition(context, "auth", _rateLimitOptions.Auth);
+        }
+
+        private RateLimitPartition<string> CreatePlayerLimiter(HttpContext context)
+        {
+            return CreatePartition(context, "player", _rateLimitOptions.Player, ReadPlayerPartition(context));
+        }
+
+        private string ReadPlayerPartition(HttpContext context)
+        {
+            var claim = context.User.FindFirst("sub");
+
+            return claim == null ? string.Empty : claim.Value;
+        }
+
         private RateLimitPartition<string> CreatePartition(HttpContext context, string prefix, FixedWindowLimitOptions limit)
+        {
+            return CreatePartition(context, prefix, limit, string.Empty);
+        }
+
+        private RateLimitPartition<string> CreatePartition(HttpContext context, string prefix, FixedWindowLimitOptions limit, string identity)
         {
             if (_rateLimitOptions.Enabled == false)
                 return RateLimitPartition.GetNoLimiter(prefix);
 
             var remoteAddress = context.Connection.RemoteIpAddress;
-            var partitionKey = prefix + ":" + (remoteAddress == null ? UnknownPartition : remoteAddress.ToString());
+            var fallback = remoteAddress == null ? UnknownPartition : remoteAddress.ToString();
+            var partitionKey = prefix + ":" + (string.IsNullOrEmpty(identity) ? fallback : identity);
 
             return RateLimitPartition.GetFixedWindowLimiter(partitionKey, key => new FixedWindowRateLimiterOptions
             {

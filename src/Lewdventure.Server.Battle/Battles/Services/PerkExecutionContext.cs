@@ -11,7 +11,9 @@ namespace Server.Battles
         private readonly int _currentTurn;
         private readonly ISeededRandomService _seededRandomService;
         private readonly IBattleBonusService _battleBonusService;
+        private readonly BattleTurnState _turnState;
         private readonly IBattleCommandFactory _battleCommandFactory;
+        private readonly IBattleDamageMath _battleDamageMath;
         private readonly IBattlePerkSimulator _battlePerkSimulator;
         private readonly IBattleScriptBuilder _battleScriptBuilder;
         private readonly IBattleRewardService _battleRewardService;
@@ -34,6 +36,8 @@ namespace Server.Battles
 
         public IBattleCommandFactory BattleCommandFactory => _battleCommandFactory;
 
+        public IBattleDamageMath BattleDamageMath => _battleDamageMath;
+
         public IBattleScriptBuilder BattleScriptBuilder => _battleScriptBuilder;
 
         public IBattleRewardService BattleRewardService => _battleRewardService;
@@ -50,7 +54,9 @@ namespace Server.Battles
             int currentTurn,
             ISeededRandomService seededRandomService,
             IBattleBonusService battleBonusService,
+            BattleTurnState turnState,
             IBattleCommandFactory battleCommandFactory,
+            IBattleDamageMath battleDamageMath,
             IBattlePerkSimulator battlePerkSimulator,
             IBattleScriptBuilder battleScriptBuilder,
             IBattleRewardService battleRewardService,
@@ -64,7 +70,9 @@ namespace Server.Battles
             _currentTurn = currentTurn;
             _seededRandomService = seededRandomService;
             _battleBonusService = battleBonusService;
+            _turnState = turnState;
             _battleCommandFactory = battleCommandFactory;
+            _battleDamageMath = battleDamageMath;
             _battlePerkSimulator = battlePerkSimulator;
             _battleScriptBuilder = battleScriptBuilder;
             _battleRewardService = battleRewardService;
@@ -103,12 +111,13 @@ namespace Server.Battles
                 _defender,
                 _steps,
                 _currentTurn,
-                _seededRandomService);
+                _seededRandomService,
+                _turnState);
         }
 
         public void EmitDeath(IUnitState unit)
         {
-            if (_battlePerkSimulator.TryResurrectOnDeath(unit, _steps, _currentTurn))
+            if (_battlePerkSimulator.TryResurrectOnDeath(unit, _steps, _currentTurn, _turnState))
                 return;
 
             _logger.LogDebug($"[Story][Battle]: Death, unitId = {unit.Id}, turn = {_currentTurn}");

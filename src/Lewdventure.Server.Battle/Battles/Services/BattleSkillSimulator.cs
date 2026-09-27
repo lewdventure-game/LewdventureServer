@@ -9,6 +9,7 @@ namespace Server.Battles
         private readonly ILogger<BattleSkillSimulator> _logger;
         private readonly IBattleBonusService _battleBonusService;
         private readonly IBattleCommandFactory _battleCommandFactory;
+        private readonly IBattleDamageMath _battleDamageMath;
         private readonly IBattlePerkSimulator _battlePerkSimulator;
         private readonly IBattleRewardService _battleRewardService;
         private readonly IBattleScriptBuilder _battleScriptBuilder;
@@ -19,6 +20,7 @@ namespace Server.Battles
             ILogger<BattleSkillSimulator> logger,
             IBattleBonusService battleBonusService,
             IBattleCommandFactory battleCommandFactory,
+            IBattleDamageMath battleDamageMath,
             IBattlePerkSimulator battlePerkSimulator,
             IBattleRewardService battleRewardService,
             IBattleScriptBuilder battleScriptBuilder,
@@ -27,6 +29,7 @@ namespace Server.Battles
             _logger = logger;
             _battleBonusService = battleBonusService;
             _battleCommandFactory = battleCommandFactory;
+            _battleDamageMath = battleDamageMath;
             _battlePerkSimulator = battlePerkSimulator;
             _battleRewardService = battleRewardService;
             _battleScriptBuilder = battleScriptBuilder;
@@ -40,7 +43,8 @@ namespace Server.Battles
             ITeamSimulationState attacker,
             ITeamSimulationState defender,
             int currentTurn,
-            ISeededRandomService seededRandomService)
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
         {
             CastAllSkills(
                 steps,
@@ -50,7 +54,8 @@ namespace Server.Battles
                 currentTurn,
                 seededRandomService,
                 BattlePhaseType.UnitSkill,
-                true);
+                true,
+                turnState);
         }
 
         public void SimulateSummonSkills(
@@ -59,7 +64,8 @@ namespace Server.Battles
             ITeamSimulationState attacker,
             ITeamSimulationState defender,
             int currentTurn,
-            ISeededRandomService seededRandomService)
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
         {
             CastAllSkills(
                 steps,
@@ -69,7 +75,8 @@ namespace Server.Battles
                 currentTurn,
                 seededRandomService,
                 BattlePhaseType.SummonSkill,
-                true);
+                true,
+                turnState);
         }
 
         public void ApplyEnergyGain(
@@ -106,7 +113,8 @@ namespace Server.Battles
             ITeamSimulationState attacker,
             ITeamSimulationState defender,
             int currentTurn,
-            ISeededRandomService seededRandomService)
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
         {
             if (actor.IsAlive() == false)
                 return;
@@ -155,7 +163,8 @@ namespace Server.Battles
                 BattlePhaseType.EnergySkill,
                 false,
                 cooldown,
-                seededRandomService);
+                seededRandomService,
+                turnState);
 
             _logger.LogInformation($"[Story][Battle]: Energy skill cast, unitId = {actor.Id}, targetId = {target.Id}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}, duration = {castDuration}");
 
@@ -225,7 +234,8 @@ namespace Server.Battles
             int currentTurn,
             ISeededRandomService seededRandomService,
             BattlePhaseType phase,
-            bool allowCritical)
+            bool allowCritical,
+            BattleTurnState turnState)
         {
             var skills = actor.Skills;
 
@@ -281,7 +291,8 @@ namespace Server.Battles
                     phase,
                     allowCritical,
                     cooldown,
-                    seededRandomService);
+                    seededRandomService,
+                    turnState);
 
                 skill.Execute(context);
                 executedCount += 1;
@@ -289,7 +300,7 @@ namespace Server.Battles
                 if (target.IsAlive() == false)
                     context.EmitDeath(target);
 
-                if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
+                if (turnState.ShouldSkipRemainingActions(actor))
                     break;
             }
 
@@ -341,7 +352,8 @@ namespace Server.Battles
             BattlePhaseType phase,
             bool allowCritical,
             float cooldown,
-            ISeededRandomService seededRandomService)
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
         {
             return new SkillExecutionContext(
                 steps,
@@ -354,7 +366,9 @@ namespace Server.Battles
                 allowCritical,
                 cooldown,
                 seededRandomService,
+                turnState,
                 _battleCommandFactory,
+                _battleDamageMath,
                 _battleBonusService,
                 _battlePerkSimulator,
                 _battleRewardService,

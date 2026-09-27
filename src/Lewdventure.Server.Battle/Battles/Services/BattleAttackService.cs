@@ -8,6 +8,7 @@ namespace Server.Battles
     {
         private readonly ILogger<BattleAttackService> _logger;
         private readonly IBattleCommandFactory _battleCommandFactory;
+        private readonly IBattleDamageMath _battleDamageMath;
         private readonly IBattlePerkSimulator _battlePerkSimulator;
         private readonly IBattleScriptBuilder _battleScriptBuilder;
         private readonly IBattleSkillSimulator _battleSkillSimulator;
@@ -19,6 +20,7 @@ namespace Server.Battles
         public BattleAttackService(
             ILogger<BattleAttackService> logger,
             IBattleCommandFactory battleCommandFactory,
+            IBattleDamageMath battleDamageMath,
             IBattlePerkSimulator battlePerkSimulator,
             IBattleScriptBuilder battleScriptBuilder,
             IBattleSkillSimulator battleSkillSimulator,
@@ -26,6 +28,7 @@ namespace Server.Battles
         {
             _logger = logger;
             _battleCommandFactory = battleCommandFactory;
+            _battleDamageMath = battleDamageMath;
             _battlePerkSimulator = battlePerkSimulator;
             _battleScriptBuilder = battleScriptBuilder;
             _battleSkillSimulator = battleSkillSimulator;
@@ -40,7 +43,8 @@ namespace Server.Battles
             ITeamSimulationState attacker,
             ITeamSimulationState defender,
             int currentTurn,
-            ISeededRandomService seededRandomService)
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
         {
             var attackers = attacker.MainUnits;
 
@@ -48,9 +52,9 @@ namespace Server.Battles
             {
                 var actor = attackers[i];
 
-                _battlePerkSimulator.SetActingUnit(actor);
+                turnState.SetActingUnit(actor);
 
-                if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
+                if (turnState.ShouldSkipRemainingActions(actor))
                 {
                     _logger.LogDebug($"[Story][Battle]: Main attack skip aborted unit, unitId = {actor.Id}, turn = {currentTurn}");
 
@@ -71,7 +75,8 @@ namespace Server.Battles
                     attacker,
                     defender,
                     currentTurn,
-                    seededRandomService);
+                    seededRandomService,
+                    turnState);
 
                 if (actor.IsAlive() == false)
                     continue;
@@ -79,13 +84,13 @@ namespace Server.Battles
                 if (HasAliveMainUnits(defender) == false)
                     return;
 
-                var skipRemaining = _battlePerkSimulator.ShouldSkipRemainingActions(actor);
+                var skipRemaining = turnState.ShouldSkipRemainingActions(actor);
 
                 if (skipRemaining || actor.CanUseNormalAttack(currentTurn) == false)
                 {
                     _logger.LogDebug($"[Story][Battle]: Main skip attack, unitId = {actor.Id}, turn = {currentTurn}, aborted = {skipRemaining}");
 
-                    _battleSkillSimulator.TryCastEnergySkill(steps, actor, attacker, defender, currentTurn, seededRandomService);
+                    _battleSkillSimulator.TryCastEnergySkill(steps, actor, attacker, defender, currentTurn, seededRandomService, turnState);
 
                     continue;
                 }
@@ -102,7 +107,8 @@ namespace Server.Battles
                     actor,
                     defender.MainUnits[targetIndex],
                     currentTurn,
-                    seededRandomService);
+                    seededRandomService,
+                    turnState);
 
                 if (HasAliveMainUnits(defender) == false)
                     return;
@@ -116,7 +122,8 @@ namespace Server.Battles
             IUnitState actor,
             IUnitState target,
             int currentTurn,
-            ISeededRandomService seededRandomService)
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
         {
             var isMelee = IsMeleeUnit(actor);
             var commands = new List<BattleCommand>();
@@ -137,7 +144,8 @@ namespace Server.Battles
                 target,
                 seededRandomService,
                 BattlePhaseType.NormalAttack,
-                actor.CharacteristicState.AttackMultiplier);
+                actor.CharacteristicState.AttackMultiplier,
+                turnState);
 
             _battleScriptBuilder.Add(
                 steps,
@@ -158,19 +166,20 @@ namespace Server.Battles
                     defender,
                     steps,
                     currentTurn,
-                    seededRandomService);
+                    seededRandomService,
+                    turnState);
 
                 var targetDied = target.IsAlive() == false;
 
                 if (targetDied)
-                    EmitDeath(steps, currentTurn, target);
+                    EmitDeath(steps, currentTurn, target, turnState);
 
                 _battleSkillSimulator.ApplyEnergyGain(steps, actor, currentTurn);
 
-                if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
+                if (turnState.ShouldSkipRemainingActions(actor))
                 {
                     EmitReturnToPosition(steps, actor, currentTurn, isMelee);
-                    _battleSkillSimulator.TryCastEnergySkill(steps, actor, attacker, defender, currentTurn, seededRandomService);
+                    _battleSkillSimulator.TryCastEnergySkill(steps, actor, attacker, defender, currentTurn, seededRandomService, turnState);
 
                     return;
                 }
@@ -178,7 +187,7 @@ namespace Server.Battles
                 if (targetDied)
                 {
                     EmitReturnToPosition(steps, actor, currentTurn, isMelee);
-                    _battleSkillSimulator.TryCastEnergySkill(steps, actor, attacker, defender, currentTurn, seededRandomService);
+                    _battleSkillSimulator.TryCastEnergySkill(steps, actor, attacker, defender, currentTurn, seededRandomService, turnState);
 
                     return;
                 }
@@ -187,7 +196,7 @@ namespace Server.Battles
                 {
                     _logger.LogDebug($"[Story][Battle]: Post-attack chain start, actorId = {actor.Id}, targetId = {target.Id}, turn = {currentTurn}");
 
-                    ExecutePostAttackChain(steps, attacker, defender, actor, target, currentTurn, seededRandomService);
+                    ExecutePostAttackChain(steps, attacker, defender, actor, target, currentTurn, seededRandomService, turnState);
                 }
             }
             else
@@ -197,7 +206,7 @@ namespace Server.Battles
 
             EmitReturnToPosition(steps, actor, currentTurn, isMelee);
 
-            _battleSkillSimulator.TryCastEnergySkill(steps, actor, attacker, defender, currentTurn, seededRandomService);
+            _battleSkillSimulator.TryCastEnergySkill(steps, actor, attacker, defender, currentTurn, seededRandomService, turnState);
         }
 
         private void ExecutePostAttackChain(
@@ -207,21 +216,22 @@ namespace Server.Battles
             IUnitState actor,
             IUnitState target,
             int currentTurn,
-            ISeededRandomService seededRandomService)
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
         {
-            TryCounterAttack(steps, attacker, defender, target, actor, currentTurn, seededRandomService);
+            TryCounterAttack(steps, attacker, defender, target, actor, currentTurn, seededRandomService, turnState);
 
-            if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
+            if (turnState.ShouldSkipRemainingActions(actor))
                 return;
 
             if (actor.IsAlive() == false || target.IsAlive() == false)
                 return;
 
-            var combo1Hit = TryComboAttack(steps, attacker, defender, actor, target, currentTurn, seededRandomService, 1);
+            var combo1Hit = TryComboAttack(steps, attacker, defender, actor, target, currentTurn, seededRandomService, 1, turnState);
 
             _logger.LogDebug($"[Story][Battle]: Combo1 gate, actorId = {actor.Id}, targetId = {target.Id}, combo1Hit = {combo1Hit}");
 
-            if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
+            if (turnState.ShouldSkipRemainingActions(actor))
                 return;
 
             if (combo1Hit == false)
@@ -231,22 +241,22 @@ namespace Server.Battles
                 return;
             }
 
-            TryCounterAttack(steps, attacker, defender, target, actor, currentTurn, seededRandomService);
+            TryCounterAttack(steps, attacker, defender, target, actor, currentTurn, seededRandomService, turnState);
 
-            if (_battlePerkSimulator.ShouldSkipRemainingActions(actor))
+            if (turnState.ShouldSkipRemainingActions(actor))
                 return;
 
             if (actor.IsAlive() == false || target.IsAlive() == false)
                 return;
 
-            if (TryComboAttack(steps, attacker, defender, actor, target, currentTurn, seededRandomService, 2) == false)
+            if (TryComboAttack(steps, attacker, defender, actor, target, currentTurn, seededRandomService, 2, turnState) == false)
             {
                 _logger.LogDebug($"[Story][Battle]: Combo2 skip, actorId = {actor.Id}, targetId = {target.Id}, reason = combo2MissOrNoRoll");
 
                 return;
             }
 
-            TryCounterAttack(steps, attacker, defender, target, actor, currentTurn, seededRandomService);
+            TryCounterAttack(steps, attacker, defender, target, actor, currentTurn, seededRandomService, turnState);
         }
 
         private void TryCounterAttack(
@@ -256,7 +266,8 @@ namespace Server.Battles
             IUnitState counterActor,
             IUnitState counterTarget,
             int currentTurn,
-            ISeededRandomService seededRandomService)
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
         {
             if (counterActor.IsAlive() == false || counterTarget.IsAlive() == false)
                 return;
@@ -292,7 +303,8 @@ namespace Server.Battles
                 counterTarget,
                 seededRandomService,
                 BattlePhaseType.CounterAttack,
-                counterActor.CharacteristicState.CounterMultiplier);
+                counterActor.CharacteristicState.CounterMultiplier,
+                turnState);
 
             if (isMelee)
                 commands.Add(_battleCommandFactory.ReturnToPosition(counterActor.Id, counterActor.SlotIndex));
@@ -316,11 +328,12 @@ namespace Server.Battles
                     attacker,
                     steps,
                     currentTurn,
-                    seededRandomService);
+                    seededRandomService,
+                    turnState);
             }
 
             if (hit && counterTarget.IsAlive() == false)
-                EmitDeath(steps, currentTurn, counterTarget);
+                EmitDeath(steps, currentTurn, counterTarget, turnState);
         }
 
         private bool TryComboAttack(
@@ -331,7 +344,8 @@ namespace Server.Battles
             IUnitState target,
             int currentTurn,
             ISeededRandomService seededRandomService,
-            int comboNumber)
+            int comboNumber,
+            BattleTurnState turnState)
         {
             if (actor.IsAlive() == false || target.IsAlive() == false)
                 return false;
@@ -363,7 +377,8 @@ namespace Server.Battles
                 target,
                 seededRandomService,
                 phase,
-                comboMultiplier);
+                comboMultiplier,
+                turnState);
 
             _battleScriptBuilder.Add(
                 steps,
@@ -382,7 +397,8 @@ namespace Server.Battles
                     defender,
                     steps,
                     currentTurn,
-                    seededRandomService);
+                    seededRandomService,
+                    turnState);
             }
             else
             {
@@ -390,7 +406,7 @@ namespace Server.Battles
             }
 
             if (hit && target.IsAlive() == false)
-                EmitDeath(steps, currentTurn, target);
+                EmitDeath(steps, currentTurn, target, turnState);
 
             return hit;
         }
@@ -402,7 +418,8 @@ namespace Server.Battles
             ITeamSimulationState opponentTeam,
             List<BattleStep> steps,
             int currentTurn,
-            ISeededRandomService seededRandomService)
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
         {
             _battlePerkSimulator.NotifyAction(
                 actionType,
@@ -411,7 +428,8 @@ namespace Server.Battles
                 opponentTeam,
                 steps,
                 currentTurn,
-                seededRandomService);
+                seededRandomService,
+                turnState);
         }
 
         private bool TryResolveStrike(
@@ -420,7 +438,8 @@ namespace Server.Battles
             IUnitState target,
             ISeededRandomService seededRandomService,
             BattlePhaseType phase,
-            float damageMultiplier)
+            float damageMultiplier,
+            BattleTurnState turnState)
         {
             var actorCharacteristics = actor.CharacteristicState;
             var targetCharacteristics = target.CharacteristicState;
@@ -501,7 +520,7 @@ namespace Server.Battles
             if (isCritical)
                 damage *= actor.CriticalMultiplier;
 
-            return damage * defenceFactor;
+            return _battleDamageMath.RoundDamage(damage * defenceFactor);
         }
 
         private void AppendMissWait(List<BattleCommand> commands)
@@ -565,9 +584,9 @@ namespace Server.Battles
             return (unit.Flags & UnitFlags.Melee) != 0;
         }
 
-        private void EmitDeath(List<BattleStep> steps, int currentTurn, IUnitState unit)
+        private void EmitDeath(List<BattleStep> steps, int currentTurn, IUnitState unit, BattleTurnState turnState)
         {
-            if (_battlePerkSimulator.TryResurrectOnDeath(unit, steps, currentTurn))
+            if (_battlePerkSimulator.TryResurrectOnDeath(unit, steps, currentTurn, turnState))
                 return;
 
             _logger.LogDebug($"[Story][Battle]: Death, unitId = {unit.Id}, turn = {currentTurn}");
