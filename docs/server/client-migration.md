@@ -108,12 +108,79 @@
 
 Готово, когда: бой играется без запроса скрипта, дайджест совпадает. Выигрыш: на длинном бое 236 байт вместо 3.9 КБ после gzip.
 
-## Этап 5. Убрать дубли и локальные расчёты
+## Этап 5. Убрать дубли: что удаляется и чем заменяется
 
-1. Удалить свои копии протокола в `Game/Battles/Models` (`CommandType`, `BattleCommand`, `BattleStep`, `UnitSnapshot`, `TeamSnapshot`, `EquipmentSnapshot`, `BonusGrantSnapshot`, `OutcomeType`, `BattlePhaseType`, `BattleSide`) и перейти на типы из `Server.Battles`. После этого мостик `LocalBattleSimulator` упрощается до одного вызова, а числа enum'ов перестают расходиться вручную.
-2. `PreloadManifest` оставить клиентским: он строится по скрипту и к протоколу не относится.
-3. Характеристики: `Game/Characteristics/Services/CharacteristicHudService.RefreshFromServer` можно заменить на локальный `IBattleCore.BuildCharacteristics(...)` — результат совпадает с `GET /api/player/characteristics` до бита. Сетевой вызов при этом исчезает.
-4. Enum'ы механик (`PerkType`, `StatusType`, `BonusType`, `RarityType`) брать из `Server.GameConfig`, свои удалить.
+После подключения DLL часть клиентских типов дублирует наши. Пока живут обе копии, числа enum'ов и поля DTO можно рассинхронизировать руками — поэтому дубли удаляются, а код переводится на типы из DLL.
+
+### Модели протокола — удаляются
+
+Файлы в `Assets/Scripts/Game/Battles/Models/`:
+
+| Удалить | Заменяется на |
+| --- | --- |
+| `CommandType.cs` | `Server.Battles.CommandType` |
+| `OutcomeType.cs` | `Server.Battles.OutcomeType` |
+| `BattlePhaseType.cs` | `Server.Battles.BattlePhaseType` |
+| `BattleSide.cs` | `Server.Battles.BattleSide` |
+| `BattleCommand.cs`, `IBattleCommand.cs` | `Server.Battles.BattleCommand` (в DLL это класс, интерфейса нет) |
+| `BattleStep.cs`, `IBattleStep.cs` | `Server.Battles.BattleStep` (тоже класс) |
+| `BattleScriptResponse.cs`, `IBattleScriptResponse.cs` | `Server.Battles.BattleScriptResponse` / `IBattleScriptResponse` |
+| `BattleReplayData.cs`, `IBattleReplayData.cs` | `Server.Battles.BattleReplayData` / `IBattleReplayData` |
+| `BattleSimulationData.cs`, `IBattleSimulationData.cs` | `Server.Battles.BattleSimulationData` / `IBattleSimulationData` |
+| `UnitSnapshot.cs`, `IUnitSnapshot.cs` | `Server.Battles.UnitSnapshot` / `IUnitSnapshot` |
+| `TeamSnapshot.cs`, `ITeamSnapshot.cs` | `Server.Battles.TeamSnapshot` / `ITeamSnapshot` |
+| `EquipmentSnapshot.cs`, `IEquipmentSnapshot.cs` | `Server.Battles.EquipmentSnapshot` / `IEquipmentSnapshot` |
+| `BonusGrantSnapshot.cs`, `IBonusGrantSnapshot.cs` | `Server.Battles.BonusGrantSnapshot` / `IBonusGrantSnapshot` |
+
+Важная деталь: шаг и команду в DLL представляют **классы**, а не интерфейсы. Код проигрывателя, типизированный на `IBattleStep` и `IBattleCommand`, переводится на `BattleStep` и `BattleCommand`.
+
+Настройки сериализации тоже берутся из DLL — `Server.Battles.BattleJsonSettingsFactory`; свои `JsonSerializerSettings` для протокола не нужны.
+
+### Enum'ы механик — удаляются
+
+| Удалить | Заменяется на |
+| --- | --- |
+| `Game/Perks/Models/PerkType.cs` | `Server.Perks.PerkType` |
+| `Game/Statuses/Models/StatusType.cs` | `Server.Statuses.StatusType` |
+| `Game/Bonuses/Models/BonusType.cs` | `Server.Bonuses.BonusType` |
+| `Game/Bonuses/Models/BonusOperatorType.cs` | `Server.Bonuses.BonusOperatorType` |
+| `Common/RarityType.cs` | `Server.Common.RarityType` |
+
+Это то место, где расхождение чисел опаснее всего: enum'ы протокола и механик должны совпадать с сервером бит в бит.
+
+### Чтение конфигов — можно удалить свой слой
+
+`IConfigDistributor` из DLL отдаёт все мапперы: персонажи, мобы, саммоны и их уровни, мастерство, экипировка, перки и группы перков, статусы, скиллы, сюжетные уровни, этапы и события, константы, бонусы, паттерны опыта. Клиентские мапперы и менеджеры конфигов (`Game/*/Configs`, `Game/*/Managers`) после этого дублируют DLL и удаляются — это самый большой по объёму, но и самый механический шаг. Делать его стоит последним и по одному домену за раз.
+
+### Сервисы боя и истории: что трогаем, что нет
+
+В `Game/Battles/Services` 24 файла, меняются два:
+
+| Файл | Что с ним |
+| --- | --- |
+| `BattleService` | путь получения скрипта: вместо запроса к серверу — `IBattleCore.Replay(step.battleInput)` |
+| `BattleSimulationDataBuilder` | **удаляется**: состав боя больше не собирает клиент, его строит сервер и присылает в `step.battleInput` |
+
+Остальные 22 остаются как есть — это презентация: `BattleUnitViewService`, `BattleUnitRegistry`, `BattleProjectileService`, `BattleStatusVfxService`, `BattleFlytextService`, иконки бонусов, перков и статусов, `BattlePreloadKeysBuilder`.
+
+В `Game/Stories/Services` 30 файлов, меняются три: `StoryFactory` (раскладка уровня уходит), `StoryProgressService` (становится отображением серверных чисел), `EventLifecycleService` (событие приходит из `step`). Остальные — движение персонажа, локации, нарратив, экраны, вьюхи — остаются: они не решают числа.
+
+Инсталлеры: ядро уже биндится в `Core/Installers/ConfigInstaller.cs`, мостик — в `Game/Common/Installers/GameInstaller.cs`. После удаления дублей биндинг мостика уходит вместе с ним, биндинг `IBattleCore` остаётся.
+
+### Остаётся клиентским
+
+| Файл или модуль | Почему остаётся |
+| --- | --- |
+| `BattlePreloadKeys`, `BattlePreloadManifest`, `IBattlePreloadKeys`, `IBattlePreloadManifest` | предзагрузка ассетов, к протоколу не относится |
+| `BattleFlags`, `BattleLeaveType`, `TurnSide`, `FlytextStyle`, `FlytextType` | клиентская презентация, в DLL таких понятий нет |
+| `BattleProtocol.Version` | остаётся, но сверяется с `protocolVersion` из скрипта: расхождение — требование обновить клиент |
+| `Game/Perks`, `Game/Statuses`, `Game/Skills`, `Game/Bonuses` (компоненты, системы, UI, парсеры визуала) | презентация механик, расчётов там нет |
+| `Game/Common/Services/RandomService` | случайность для визуала, в бою не участвует |
+| `LocalBattleSimulator` | после удаления дублей схлопывается до одного вызова `IBattleCore.Replay` и удаляется вместе с мостиком |
+
+### Локальные расчёты, которые можно выключить
+
+`Game/Characteristics/Services/CharacteristicHudService.RefreshFromServer` ходит на сервер за характеристиками. Их можно считать локально: `IBattleCore.BuildCharacteristics(...)` даёт те же 21 значение, что и `GET /api/player/characteristics`, — числа совпадают до бита, потому что считает один и тот же код. Сетевой вызов при этом исчезает.
 
 ## Как разработчику обнулить себя
 
