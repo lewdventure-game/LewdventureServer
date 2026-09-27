@@ -16,8 +16,10 @@ namespace Tests.Integration.Mongo
     public sealed class RunFlowTests
     {
         private const string UserId = "usr_runner";
+        private const string UserWithoutLoadoutId = "usr_without_loadout";
         private const int StoryLevelId = 1;
         private const int CharacterId = 1;
+        private const int SummonId = 1;
 
         private readonly FixturePaths _paths = new();
 
@@ -190,10 +192,25 @@ namespace Tests.Integration.Mongo
         {
             var service = _environment.Services.GetRequiredService<PlayerCharacteristicsService>();
 
-            var result = await service.GetAsync("usr_without_loadout", CancellationToken.None);
+            await PrepareProfileWithoutLoadoutAsync();
+
+            var result = await service.GetAsync(UserWithoutLoadoutId, CancellationToken.None);
 
             Assert.That(result.Succeeded, Is.False);
             Assert.That(result.Error, Does.Contain("no character"));
+        }
+
+        private async Task PrepareProfileWithoutLoadoutAsync()
+        {
+            var profileService = _environment.Services.GetRequiredService<PlayerProfileService>();
+            var repository = _environment.Services.GetRequiredService<PlayerProfileRepository>();
+            var profile = await profileService.GetOrCreateAsync(UserWithoutLoadoutId, CancellationToken.None);
+            var expectedRev = profile.Rev;
+
+            profile.Summons.Add(new PlayerSummonDocument { ConfigId = SummonId, Copies = 0 });
+            profile.Rev = expectedRev + 1;
+
+            Assert.That(await repository.ReplaceAsync(profile, expectedRev, CancellationToken.None), Is.True);
         }
 
         private async Task PrepareProfileAsync()
