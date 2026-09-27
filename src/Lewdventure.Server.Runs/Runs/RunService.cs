@@ -19,6 +19,7 @@ namespace Server.Runs
         private readonly IBattleScriptDigest _battleScriptDigest;
         private readonly IBattleSimulationValidator _battleSimulationValidator;
         private readonly IBattleSimulatorService _battleSimulatorService;
+        private readonly IUnitStateBuilder _unitStateBuilder;
         private readonly IConfigDistributor _configDistributor;
         private readonly IGameConfigSetProvider _gameConfigSetProvider;
         private readonly ILogger<RunService> _logger;
@@ -38,6 +39,7 @@ namespace Server.Runs
             IBattleScriptDigest battleScriptDigest,
             IBattleSimulationValidator battleSimulationValidator,
             IBattleSimulatorService battleSimulatorService,
+            IUnitStateBuilder unitStateBuilder,
             IConfigDistributor configDistributor,
             IGameConfigSetProvider gameConfigSetProvider,
             ILogger<RunService> logger,
@@ -56,6 +58,7 @@ namespace Server.Runs
             _battleScriptDigest = battleScriptDigest;
             _battleSimulationValidator = battleSimulationValidator;
             _battleSimulatorService = battleSimulatorService;
+            _unitStateBuilder = unitStateBuilder;
             _configDistributor = configDistributor;
             _gameConfigSetProvider = gameConfigSetProvider;
             _logger = logger;
@@ -118,6 +121,8 @@ namespace Server.Runs
                 UpdatedAt = now,
                 Rev = 1,
             };
+
+            run.CurrentHealth = ReadStartHealth(profile, run);
 
             await _runRepository.InsertAsync(run, cancellationToken);
 
@@ -671,6 +676,20 @@ namespace Server.Runs
             }
 
             return true;
+        }
+
+        private float ReadStartHealth(PlayerProfileDocument profile, RunDocument run)
+        {
+            var character = _runSnapshotBuilder.FindCharacter(profile, profile.Loadout.CharacterId);
+
+            if (character == null)
+                return 0f;
+
+            var unit = _runSnapshotBuilder.BuildMainUnit(profile, run, character);
+            var stageId = run.Stages.Count == 0 ? 0 : run.Stages[0].StageId;
+            var unitState = _unitStateBuilder.Build(unit, BattleSide.Attacking, false, run.StoryLevelId, stageId);
+
+            return unitState.CharacteristicState.MaxHealth;
         }
 
         private float ReadFinalHealth(IBattleScriptResponse script, int characterId, float fallback)
