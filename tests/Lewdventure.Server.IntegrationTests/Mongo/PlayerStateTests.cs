@@ -87,6 +87,23 @@ namespace Tests.Integration.Mongo
         }
 
         [Test]
+        [Order(2)]
+        public async Task StartContent_IsGrantedOnceAndFillsLoadout()
+        {
+            var profileService = _environment.Services.GetRequiredService<PlayerProfileService>();
+
+            var profile = await profileService.GetOrCreateAsync("usr_starter", _configDistributor, CancellationToken.None);
+            var again = await profileService.GetOrCreateAsync("usr_starter", _configDistributor, CancellationToken.None);
+
+            if (_configDistributor.Constants.TryGet("start_content", out _) == false)
+                Assert.Ignore("в фикстуре конфигов нет константы start_content");
+
+            Assert.That(profile.Characters, Is.Not.Empty, "новый профиль должен получить стартового персонажа");
+            Assert.That(profile.Loadout.CharacterId, Is.EqualTo(profile.Characters[0].ConfigId));
+            Assert.That(again.Characters.Count, Is.EqualTo(profile.Characters.Count), "стартовый набор выдаётся один раз");
+        }
+
+        [Test]
         [Order(3)]
         public async Task ResetProgress_ClearsProfileAndKeepsAccount()
         {

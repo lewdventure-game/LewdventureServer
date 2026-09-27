@@ -229,6 +229,9 @@ namespace Server.Infrastructure.Players
 
             _rewardApplier.Apply(profile, constant.ConstantValue, configDistributor, now);
 
+            if (profile.Loadout.CharacterId <= 0 && 0 < profile.Characters.Count)
+                profile.Loadout.CharacterId = profile.Characters[0].ConfigId;
+
             profile.Rev = expectedRev + 1;
             profile.UpdatedAt = now;
 

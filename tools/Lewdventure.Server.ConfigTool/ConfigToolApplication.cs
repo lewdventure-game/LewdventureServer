@@ -6,6 +6,8 @@ using Microsoft.Extensions.Options;
 using Server.Bonuses;
 using Server.GameConfigs;
 using Server.Infrastructure.Alerts;
+using Server.Infrastructure.Logging;
+using Server.Logging;
 using Server.Infrastructure.Mongo;
 using Server.Infrastructure.Mongo.ConfigSnapshots;
 
@@ -93,8 +95,18 @@ namespace Server.ConfigTool
             options.SingleLine = true;
         }
 
+        private ICoreLog ResolveCoreLog(IServiceProvider serviceProvider)
+        {
+            var coreLogFactory = serviceProvider.GetRequiredService<CoreLogFactory>();
+
+            return coreLogFactory.Create(serviceProvider.GetRequiredService<CoreLogCategories>().GameConfigs);
+        }
+
         private void RegisterServices(HostApplicationBuilder builder)
         {
+            builder.Services.AddSingleton<CoreLogCategories>();
+            builder.Services.AddSingleton<CoreLogFactory>();
+            builder.Services.AddSingleton<ICoreLog>(ResolveCoreLog);
             builder.Services.AddSingleton<ConfigDomainNames>();
             builder.Services.AddSingleton<ConfigSnapshotHasher>();
             builder.Services.AddSingleton<ConfigSnapshotSerializer>();
