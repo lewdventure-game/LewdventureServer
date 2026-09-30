@@ -27,6 +27,7 @@ namespace Server.Api.Endpoints
             application.MapGet(ApiRoutes.PlayerProfile, GetProfileAsync)
                 .RequireAuthorization(SecurityNames.PlayerPolicy)
                 .RequireRateLimiting(SecurityNames.PlayerRateLimitPolicy)
+                .WithMetadata(new GameConfigRequiredMetadata())
                 .Produces<PlayerProfileResponse>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status401Unauthorized);
 
@@ -64,6 +65,7 @@ namespace Server.Api.Endpoints
             application.MapPost(ApiRoutes.PlayerReset, ResetProgressAsync)
                 .RequireAuthorization(SecurityNames.PlayerPolicy)
                 .RequireRateLimiting(SecurityNames.PlayerRateLimitPolicy)
+                .WithMetadata(new GameConfigRequiredMetadata())
                 .Produces<PlayerProfileResponse>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status401Unauthorized);
 

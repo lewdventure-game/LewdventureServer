@@ -23,5 +23,6 @@ namespace Tests.Unit.Api
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.ServiceUnavailable));
             Assert.That(body, Does.Contain("Game configs are not loaded."));
         }
+
     }
 }
