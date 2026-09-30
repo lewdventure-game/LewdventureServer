@@ -10,6 +10,7 @@ namespace Server.Battles
         private const string BonusesKey = "bonuses";
         private const string DamageLengthKey = "damage_length";
         private const string DamageRatioKey = "damage_ratio";
+        private const string FlatValueKey = "flat_value";
         private const string MaxStacksKey = "max_stacks";
 
         private readonly ICoreLog _coreLog;
@@ -39,6 +40,7 @@ namespace Server.Battles
             var hasMaxStacks = false;
             var hasBonuses = false;
             var damageRatio = 0f;
+            var flatValue = 0f;
             var damageLength = 0;
             var maxStacks = 0;
             IReadOnlyList<RewardBonus> bonuses = Array.Empty<RewardBonus>();
@@ -72,6 +74,18 @@ namespace Server.Battles
                     }
 
                     hasDamageRatio = true;
+                    continue;
+                }
+
+                if (key == FlatValueKey)
+                {
+                    if (TryParseFloat(value, out flatValue) == false)
+                    {
+                        _coreLog.Error($"[Config]: Status flat_value invalid, statusType = {statusType}, raw = {parameters}");
+
+                        return false;
+                    }
+
                     continue;
                 }
 
@@ -151,7 +165,7 @@ namespace Server.Battles
                 }
             }
 
-            parsed = new StatusParameters(damageRatio, damageLength, maxStacks, bonuses);
+            parsed = new StatusParameters(damageRatio, flatValue, damageLength, maxStacks, bonuses);
 
             return true;
         }

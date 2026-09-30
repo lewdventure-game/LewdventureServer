@@ -7,7 +7,5 @@ namespace Server.Trainings
         public int Level { get; }
 
         public int[] BonusIds { get; }
-
-        public float[] BonusValues { get; }
     }
 }

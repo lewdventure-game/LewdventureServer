@@ -168,6 +168,7 @@ namespace Server.Battles
                 BattlePhaseType.EnergySkill,
                 false,
                 cooldown,
+                IsEquipmentSkill(actor, FindEnergySkillKey(actor)),
                 seededRandomService,
                 turnState);
 
@@ -182,7 +183,7 @@ namespace Server.Battles
             commands.Add(_battleCommandFactory.PlayAnimation(actor.Id, actor.SlotIndex, "cast"));
             commands.Add(_battleCommandFactory.Wait(castDuration));
 
-            context.TryDealStrike(commands, characteristics.SkillMultiplier, out _, out _);
+            context.TryDealStrike(commands, context.SpellMultiplier, out _, out _);
 
             characteristics.Energy = 0f;
             commands.Add(_battleCommandFactory.SetEnergy(actor.Id, actor.SlotIndex, 0f));
@@ -296,6 +297,7 @@ namespace Server.Battles
                     phase,
                     allowCritical,
                     cooldown,
+                    IsEquipmentSkill(actor, skill.SkillKey),
                     seededRandomService,
                     turnState);
 
@@ -347,6 +349,35 @@ namespace Server.Battles
             _coreLog.Debug($"[Story][Battle]: Unit skill phase wait, unitId = {actor.Id}, wait = {cooldown}, executed = {executedCount}");
         }
 
+        private bool IsEquipmentSkill(IUnitState actor, string skillKey)
+        {
+            if (string.IsNullOrEmpty(skillKey))
+                return false;
+
+            var equipmentSkillKeys = actor.EquipmentSkillKeys;
+
+            for (int i = 0; i < equipmentSkillKeys.Count; i++)
+            {
+                if (string.Equals(equipmentSkillKeys[i], skillKey, StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private string FindEnergySkillKey(IUnitState actor)
+        {
+            var skills = actor.Skills;
+
+            for (int i = 0; i < skills.Count; i++)
+            {
+                if (skills[i].SkillType == SkillType.Energy)
+                    return skills[i].SkillKey;
+            }
+
+            return string.Empty;
+        }
+
         private SkillExecutionContext CreateContext(
             List<BattleStep> steps,
             IUnitState actor,
@@ -357,6 +388,7 @@ namespace Server.Battles
             BattlePhaseType phase,
             bool allowCritical,
             float cooldown,
+            bool isEquipmentSkill,
             ISeededRandomService seededRandomService,
             BattleTurnState turnState)
         {
@@ -370,6 +402,7 @@ namespace Server.Battles
                 phase,
                 allowCritical,
                 cooldown,
+                isEquipmentSkill,
                 seededRandomService,
                 turnState,
                 _battleCommandFactory,

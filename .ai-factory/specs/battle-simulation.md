@@ -55,9 +55,10 @@ Seed RNG для `/api/battle/simulate` генерирует только сер�
 | `artifactIds` | `int[]` | Активные артефакты |
 | `aspectIds` | `int[]` | Активные аспекты |
 | `activePerkIds` | `int[]` | Активные перки на момент боя |
+| `perkUsages` | `{ perkId, usedCount }[]` | Израсходованные использования перков с лимитом (сейчас только `resurrection`). Пусто — перк приходит «полным» |
 | `activeSkillIds` | `string[]` | Активные скиллы (ключи из конфига) |
 | `activeStatusIds` | `int[]` | Стартовые статусы (id из Statuses) |
-| `activeBonuses` | `{ id, count, remainingBattles }[]` | Run-bonuses персонажа A из story ledger. Саммоны/враги — `[]`. `remainingBattles`: `0` = не сжигать по боям (`permanent` / `end_of_game` / `first_turns` / `every_turn`); `> 0` = осталось боёв (`end_of_battle` / `next_battles` / fork `RewardLenght`) |
+| `activeBonuses` | `{ id, count, remainingBattles }[]` | Бонусы персонажа A: сперва постоянные бонусы аккаунта из профиля (`remainingBattles = 0`), затем run-bonuses забега. Саммоны/враги — `[]`. `remainingBattles`: `0` = не сжигать по боям (`permanent` / `end_of_game` / `first_turns` / `every_turn`); `> 0` = осталось боёв (`end_of_battle` / `next_battles` / fork `RewardLenght`) |
 | `slotIndex` | `int` | Позиция в команде (2 моба / слоты саммонов) |
 
 ### `EquipmentSnapshot`
@@ -83,6 +84,7 @@ Snapshot — вход для серверной сборки `UnitState`. Ито
 | `seed` | `ulong` | Seed RNG, сгенерированный сервером |
 | `outcomeType` | `OutcomeType` as int | Результат боя (`Unknown=0`, `TeamAWin=1`, `TeamBWin=2`, `Timeout=3`, `Draw=4`) |
 | `steps` | `List<BattleStep>` | Пошаговый script |
+| `perkUsages` | `{ perkId, usedCount, remainingUses }[]` | Итог по перкам с лимитом использований у стороны A после боя. `remainingUses = 0` → перк исчерпан, забег удаляет его из своего списка и он снова может выпасть |
 
 Число отыгранных ходов клиент берёт из `steps` (`max(turn)`, либо `0` если script пуст). Отдельного поля `turnsPlayed` нет.
 
@@ -93,7 +95,7 @@ Snapshot — вход для серверной сборки `UnitState`. Ито
 | `Unknown = 0` | Не задан |
 | `TeamAWin = 1` | Победа стороны A |
 | `TeamBWin = 2` | Победа стороны B |
-| `Timeout = 3` | Лимит ходов исчерпан, враги живы |
+| `Timeout = 3` | Лимит ходов исчерпан, враги живы. Перед `SetBattleResult` сервер добивает живых main стороны A (`SetHp 0` + `KillUnit`, фаза `Death`) — по GDD персонаж считается мёртвым |
 | `Draw = 4` | Ничья (недокументировано в GDD; зарезервировано последним значением) |
 
 ## `BattleStep`
@@ -180,7 +182,7 @@ Combo2 roll выполняется **только** если Combo1 сработ
 
 0. **Turn-start bonuses** уже начислены в начале полного хода (оба стороны), не внутри side-turn.
 1. **Statuses** — статусы **main** атакующей стороны по слотам, внутри юнита по `proc_order`; тики одного id суммируются за ход; саммоны в очередь не входят. `Wait(statuses_cooldown)` после каждого сработавшего, включая последнее. Пустая очередь — без wait. Тик, убивший юнита, обрывает его оставшиеся статусы; очередь переходит к следующему живому main или (если живых main нет) остаток хода стороны не выполняется. `SetHp` если статус изменил HP; статус без изменения HP `SetHp` не шлёт.
-2. **Perks** — перки атакующей стороны по `proc_order` (доступные на ходе; `proc_rounds` 1-based). `Wait(perks_cooldown)` после каждого сработавшего; пустая очередь — без wait.
+2. **Perks** — перки атакующей стороны: владельцы по порядку (main-юниты по слотам, затем саммоны), внутри владельца по `proc_order` (доступные на ходе; `proc_rounds` 1-based). `Wait(perks_cooldown)` после каждого сработавшего; пустая очередь — без wait.
 3. **Summons** — слоты по возрастанию `slotIndex`: скиллы (`Wait(summons_cooldown)` после каждого, включая последний) → обычная атака только если не на `attack_cooldown` (крит от живого main с мин. `slotIndex`; `is_melee` из Summons → Approach/Return, иначе ranged без возврата) → `Wait(summons_cooldown)` после атаки. Пропуск атаки wait за неё не даёт. Нет действий в фазе — без wait.
 4. **Main unit(s)** (все живые main стороны; два моба — оба ходят):
    1. Unit skills (не energy). Wait между ними — не этот пункт.
@@ -356,5 +358,9 @@ Skills: `id` + `type` + `parameters` из Skills sheet (`C:F`). Factory без �
 
 Story level: `enemies_attack_multiplier` / `enemies_health_multiplier` применяются к health/damage врагов при build по `storyLevelId`.
 Stage: при `stageId > 0` дополнительно умножается `StoryStage.EnemyStatsMultiplier` на health/damage врагов.
-Bonus `work_mode` — строка на mapper, parse через `BonusWorkModeParser`; battle apply (`operator` + `end_of_battle` / `first_turns` / `every_turn`) — `IBattleBonusService` + layered `CharacteristicBuckets` rebuild (формулы GDD 1/2/5/6/7; формула 5 со `|raw|` в знаменателе; шансы/АТК_МН = формула 2, не «(1+base+local)» из сырого GDD). Status apply uses `status_target`; damage-over-time stacks aggregate into one presentation tick per `statusId` per turn, queue = attacking mains only.
+Статусы без источника (`sourceUnitId = -1`): тик считается от `flat_value` из `parameters`, `damage_ratio` не применяется, крит не роллится. Нет `flat_value` → Warning и урон 0.
+
+Характеристика СНАР_СПЕЛЛ_МН: бонусы `equip_spell_multiplier_local/perk/global` (BonusType 56/57/58), формула 2, база — константа `equip_spell_multiplier_base` (нет константы → `1`). Множитель применяется только к скиллам, которые пришли из снаряжения (`Equipments.skill_id`), остальные скиллы считаются по СПЕЛЛ_МН.
+
+Bonus `work_mode` — строка на mapper, parse через `BonusWorkModeParser`; battle apply (`operator` + `end_of_battle` / `first_turns` / `every_turn`) — `IBattleBonusService` + layered `CharacteristicBuckets` rebuild (формулы GDD 1/2/3/5/6/7; формула 5 со `|raw|` в знаменателе; шансы и множители по формуле 3, база из константы приводится как `constant - 1`, чтобы без бонусов итог равнялся константе). Status apply uses `status_target`; damage-over-time stacks aggregate into one presentation tick per `statusId` per turn, queue = attacking mains only.
 Training / Artifact / Aspect sheets — data-only mappers + managers; grant в `UnitStateBuilder` из snapshot ids/levels. Пустые sheets = runtime no-op.

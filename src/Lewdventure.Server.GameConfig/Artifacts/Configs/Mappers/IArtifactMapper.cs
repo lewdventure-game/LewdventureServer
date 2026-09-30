@@ -7,7 +7,5 @@ namespace Server.Artifacts
         public int Id { get; }
 
         public int[] BonusIds { get; }
-
-        public float[] BonusValues { get; }
     }
 }

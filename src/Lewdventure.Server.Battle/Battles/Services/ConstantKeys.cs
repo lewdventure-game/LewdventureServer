@@ -22,6 +22,7 @@ namespace Server.Battles
         internal const string CounterChanceBaseKey = "counter_chance_base";
         internal const string CounterMultiplierBaseKey = "counter_multiplier_base";
         internal const string SkillMultiplierBaseKey = "spell_multiplier_base";
+        internal const string EquipmentSpellMultiplierBaseKey = "equip_spell_multiplier_base";
         internal const string DefenceBaseKey = "defence_base";
         internal const string DefenceCoefficientKey = "defence_coeff";
         internal const string EnergyBaseKey = "energy_base";

@@ -33,10 +33,10 @@ namespace Server.GameConfigs
 
         private readonly Dictionary<string, EffectParameterDescriptor> _statuses = new(StringComparer.OrdinalIgnoreCase)
         {
-            ["burning"] = new EffectParameterDescriptor("burning", new[] { "damage_ratio", "damage_length", "max_stacks" }, Array.Empty<string>()),
-            ["burning_strong"] = new EffectParameterDescriptor("burning_strong", new[] { "damage_ratio", "damage_length", "max_stacks" }, new[] { "bonuses" }),
-            ["poison"] = new EffectParameterDescriptor("poison", new[] { "damage_ratio", "damage_length", "max_stacks" }, Array.Empty<string>()),
-            ["poison_strong"] = new EffectParameterDescriptor("poison_strong", new[] { "damage_ratio", "damage_length", "max_stacks" }, new[] { "bonuses" }),
+            ["burning"] = new EffectParameterDescriptor("burning", new[] { "damage_ratio", "damage_length", "max_stacks" }, new[] { "flat_value" }),
+            ["burning_strong"] = new EffectParameterDescriptor("burning_strong", new[] { "damage_ratio", "damage_length", "max_stacks" }, new[] { "bonuses", "flat_value" }),
+            ["poison"] = new EffectParameterDescriptor("poison", new[] { "damage_ratio", "damage_length", "max_stacks" }, new[] { "flat_value" }),
+            ["poison_strong"] = new EffectParameterDescriptor("poison_strong", new[] { "damage_ratio", "damage_length", "max_stacks" }, new[] { "bonuses", "flat_value" }),
             ["bonus_change"] = new EffectParameterDescriptor("bonus_change", new[] { "bonuses" }, Array.Empty<string>()),
         };
 

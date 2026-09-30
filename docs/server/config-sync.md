@@ -121,7 +121,7 @@ DI: runtime доступ к конфигам **только** через `IConfi
 | Sheet | Manager property | Notes |
 | --- | --- | --- |
 | Constants | `Constants` | keyed by `constant_name` |
-| Characters | `Characters` | `start_bonus_type` = **bonus id**; `upgrade_costs` / `upgrade_bonus_types` / `upgrade_bonus_values` — списки `;` (или скаляр → один элемент); апгрейд `i` = `costs[i]` + `types[i]` + `values[i]` |
+| Characters | `Characters` | `start_bonus` = **bonus id**; `upgrade_costs` / `upgrade_bonuses` — списки `;` (или скаляр → один элемент); апгрейд `i` = `costs[i]` + `upgrade_bonuses[i]`; значение бонуса — из Bonuses по id. Устаревшие `start_bonus_type` / `upgrade_bonus_types` ещё читаются, `*_value(s)` игнорируются |
 | Bonuses | `Bonuses` | dictionary by id; `work_mode` — сырая строка на mapper, parse через `BonusWorkModeParser` |
 | Statuses | `Statuses` | |
 | Summons | `Summons` | `breakout_multis`, `bonus_mastery_levels`, `bonus_types`, `is_melee` |

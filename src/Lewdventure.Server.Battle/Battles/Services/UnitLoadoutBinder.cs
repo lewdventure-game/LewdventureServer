@@ -63,6 +63,9 @@ namespace Server.Battles
                     continue;
 
                 unitState.RegisterEquippedEntity("equipments", entry.Id);
+
+                if (_configDistributor.Equipments.TryGet(entry.Id, out var equipmentMapper) && string.IsNullOrWhiteSpace(equipmentMapper.SkillId) == false)
+                    unitState.RegisterEquipmentSkill(equipmentMapper.SkillId);
             }
 
             _coreLog.Debug($"[Story][Battle]: Equipped entities registered, unitId = {unitState.Id}, count = {unitState.EquippedEntities.Count}");
@@ -94,6 +97,7 @@ namespace Server.Battles
                 try
                 {
                     var perk = _perkFactory.Create(perkMapper);
+                    perk.RestoreUsage(ReadPerkUsage(unitSnapshot, perkId));
                     perks.Add(perk);
                 }
                 catch (Exception exception)
@@ -103,6 +107,23 @@ namespace Server.Battles
             }
 
             return perks;
+        }
+
+        private int ReadPerkUsage(IUnitSnapshot unitSnapshot, int perkId)
+        {
+            var usages = unitSnapshot.PerkUsages;
+
+            for (int i = 0; i < usages.Count; i++)
+            {
+                var usage = usages[i];
+
+                if (usage == null || usage.PerkId != perkId)
+                    continue;
+
+                return usage.UsedCount;
+            }
+
+            return 0;
         }
 
         public IReadOnlyList<ISkill> BuildSkills(IUnitSnapshot unitSnapshot, bool isSummon)
@@ -304,6 +325,7 @@ namespace Server.Battles
                     parameters.DamageLength,
                     -1,
                     parameters.DamageRatio,
+                    parameters.FlatValue,
                     true,
                     appliesBonuses,
                     parameters.Bonuses,
@@ -314,7 +336,7 @@ namespace Server.Battles
 
                 activeStatuses.Add(activeStatus);
 
-                _coreLog.Debug($"[Story][Battle]: Seeded status, id = {statusId}, remainingTicks = {parameters.DamageLength}, damageRatio = {parameters.DamageRatio}, stacks = {currentStacks + 1}, bonuses = {parameters.Bonuses.Count}, applyingMainId = -1");
+                _coreLog.Debug($"[Story][Battle]: Seeded status, id = {statusId}, remainingTicks = {parameters.DamageLength}, damageRatio = {parameters.DamageRatio}, flatValue = {parameters.FlatValue}, stacks = {currentStacks + 1}, bonuses = {parameters.Bonuses.Count}, applyingMainId = -1");
             }
         }
 

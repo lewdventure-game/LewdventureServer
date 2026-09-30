@@ -12,11 +12,7 @@ namespace Server.Entities
 
         public int StartBonusId { get; }
 
-        public int StartBonusValue { get; }
-
-        public int[] UpgradeBonusTypes { get; }
-
-        public float[] UpgradeBonusValues { get; }
+        public int[] UpgradeBonusIds { get; }
 
         public string ArtName { get; }
 

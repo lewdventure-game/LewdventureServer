@@ -20,6 +20,9 @@ namespace Tests.Integration.Mongo
         private const int StoryLevelId = 1;
         private const int CharacterId = 1;
         private const int SummonId = 1;
+        private const int SeededStatusId = 1;
+        private const int ResurrectionPerkId = 7;
+        private const int AccountBonusId = 1;
 
         private readonly FixturePaths _paths = new();
 
@@ -103,6 +106,8 @@ namespace Tests.Integration.Mongo
 
                 if (refreshed.PendingChoice != null)
                 {
+                    AssertOfferedPerksRespectMultiplePicks(refreshed);
+
                     var picks = refreshed.PendingChoice.Options.GetRange(0, refreshed.PendingChoice.ChoiceCount);
                     var choice = await runService.ChooseAsync(UserId, run.Id, picks, string.Empty, CancellationToken.None);
 
@@ -133,6 +138,23 @@ namespace Tests.Integration.Mongo
 
             if (string.Equals(final.Status, RunDocument.CompletedStatus, StringComparison.Ordinal))
                 Assert.That(profile.Story.CompletedLevelIds, Does.Contain(StoryLevelId));
+        }
+
+        private void AssertOfferedPerksRespectMultiplePicks(RunDocument run)
+        {
+            var distributor = _environment.Services.GetRequiredService<IGameConfigSetProvider>().Current.Distributor;
+            var options = run.PendingChoice!.Options;
+
+            for (int i = 0; i < options.Count; i++)
+            {
+                var perkId = options[i];
+
+                if (run.Perks.Contains(perkId) == false)
+                    continue;
+
+                Assert.That(distributor.Perks.TryGet(perkId, out var perkMapper), Is.True);
+                Assert.That(perkMapper.IsMultiplePicks, Is.True, $"перк {perkId} уже активен и не помечен multiple_picks");
+            }
         }
 
         private void AssertSeedOnlyDeliveryReproducesScript(RunStepOutcome step)
@@ -198,6 +220,103 @@ namespace Tests.Integration.Mongo
 
             Assert.That(result.Succeeded, Is.False);
             Assert.That(result.Error, Does.Contain("no character"));
+        }
+
+        [Test]
+        [Order(8)]
+        public async Task Statuses_AreDeliveredToBattleAndConsumed()
+        {
+            var runService = _environment.Services.GetRequiredService<RunService>();
+            var repository = _environment.Services.GetRequiredService<RunRepository>();
+            var started = await runService.StartAsync(UserId, StoryLevelId, CancellationToken.None);
+
+            Assert.That(started.Succeeded, Is.True, string.Join("; ", started.Errors));
+
+            var run = started.Run!;
+
+            run.Statuses.Add(SeededStatusId);
+            run.Perks.Add(ResurrectionPerkId);
+            run.Rev += 1;
+
+            await GrantAccountBonusAsync();
+
+            Assert.That(await repository.ReplaceAsync(run, run.Rev - 1, CancellationToken.None), Is.True);
+
+            var guard = 0;
+            RunStepOutcome? fight = null;
+
+            while (guard < 50)
+            {
+                guard += 1;
+
+                var refreshed = await repository.GetAsync(run.Id, CancellationToken.None);
+
+                Assert.That(refreshed, Is.Not.Null);
+
+                if (string.Equals(refreshed!.Status, RunDocument.ActiveStatus, StringComparison.Ordinal) == false)
+                    break;
+
+                if (refreshed.PendingChoice != null)
+                {
+                    var picks = refreshed.PendingChoice.Options.GetRange(0, refreshed.PendingChoice.ChoiceCount);
+
+                    await runService.ChooseAsync(UserId, run.Id, picks, string.Empty, CancellationToken.None);
+
+                    continue;
+                }
+
+                var step = await runService.AdvanceAsync(UserId, run.Id, $"status-request-{guard}", CancellationToken.None);
+
+                Assert.That(step.Succeeded, Is.True, string.Join("; ", step.Errors));
+
+                if (step.Step?.BattleScript == null)
+                    continue;
+
+                fight = step.Step;
+
+                break;
+            }
+
+            Assert.That(fight, Is.Not.Null, "в забеге не дошли до боя");
+            Assert.That(fight!.BattleInput!.TeamA.MainUnits[0].ActiveStatusIds, Does.Contain(SeededStatusId));
+            AssertAccountBonusIsDelivered(fight.BattleInput!);
+
+            var afterFight = await repository.GetAsync(run.Id, CancellationToken.None);
+
+            Assert.That(afterFight!.Statuses, Is.Empty, "статусы забега обязаны расходоваться в бою");
+
+            await runService.AbandonAsync(UserId, run.Id, CancellationToken.None);
+        }
+
+        private async Task GrantAccountBonusAsync()
+        {
+            var profileService = _environment.Services.GetRequiredService<PlayerProfileService>();
+            var repository = _environment.Services.GetRequiredService<PlayerProfileRepository>();
+            var profile = await profileService.GetOrCreateAsync(UserId, CancellationToken.None);
+            var expectedRev = profile.Rev;
+
+            profile.Bonuses.Add(new PlayerBonusDocument { BonusId = AccountBonusId, Count = 1, GrantedAt = DateTime.UtcNow });
+            profile.Rev = expectedRev + 1;
+
+            Assert.That(await repository.ReplaceAsync(profile, expectedRev, CancellationToken.None), Is.True);
+        }
+
+        private void AssertAccountBonusIsDelivered(IBattleReplayData battleInput)
+        {
+            var bonuses = battleInput.TeamA.MainUnits[0].ActiveBonuses;
+            var found = false;
+
+            for (int i = 0; i < bonuses.Count; i++)
+            {
+                if (bonuses[i].Id != AccountBonusId)
+                    continue;
+
+                found = true;
+
+                Assert.That(bonuses[i].RemainingBattles, Is.EqualTo(0), "бонус аккаунта не сжигается по боям");
+            }
+
+            Assert.That(found, Is.True, "бонус аккаунта обязан приезжать в снапшот боя");
         }
 
         private async Task PrepareProfileWithoutLoadoutAsync()

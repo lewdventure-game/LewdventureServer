@@ -22,6 +22,8 @@ namespace Server.Battles
 
         public float Cooldown { get; }
 
+        public float SpellMultiplier { get; }
+
         public ISeededRandomService SeededRandomService { get; }
 
         public IBattleCommandFactory BattleCommandFactory { get; }

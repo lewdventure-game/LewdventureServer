@@ -1,4 +1,5 @@
 using Server.Battles;
+using Server.Bonuses;
 using Server.Configs;
 using Server.Infrastructure.Mongo.Players;
 using Server.Services;
@@ -14,13 +15,19 @@ namespace Server.Infrastructure.Players
         private const string SummonEntry = "summon";
         private const string EquipmentEntry = "equipment";
         private const string FlagEntry = "flag";
+        private const string BonusEntry = "bonus";
 
         private readonly IBattleRewardParser _battleRewardParser;
+        private readonly IBonusWorkModeParser _bonusWorkModeParser;
         private readonly ILogger<RewardApplier> _logger;
 
-        public RewardApplier(IBattleRewardParser battleRewardParser, ILogger<RewardApplier> logger)
+        public RewardApplier(
+            IBattleRewardParser battleRewardParser,
+            IBonusWorkModeParser bonusWorkModeParser,
+            ILogger<RewardApplier> logger)
         {
             _battleRewardParser = battleRewardParser;
+            _bonusWorkModeParser = bonusWorkModeParser;
             _logger = logger;
         }
 
@@ -108,7 +115,91 @@ namespace Server.Infrastructure.Players
                 return;
             }
 
+            if (reward.Type == BattleRewardType.Bonus)
+            {
+                AddBonus(profile, reward.Id, reward.Count, configDistributor, now, entries);
+
+                return;
+            }
+
             _logger.LogDebug("[Player] reward type {Type} is run scoped and does not change the profile", reward.Type);
+        }
+
+        private void AddBonus(
+            PlayerProfileDocument profile,
+            int bonusId,
+            int count,
+            IConfigDistributor configDistributor,
+            DateTime now,
+            List<PlayerLedgerEntryDocument> entries)
+        {
+            if (count <= 0)
+            {
+                _logger.LogWarning("[Player] bonus {BonusId} count {Count} is not positive", bonusId, count);
+
+                return;
+            }
+
+            if (configDistributor.Bonuses.TryGet(bonusId, out var bonusMapper) == false)
+            {
+                _logger.LogWarning("[Player] bonus {BonusId} is missing in configs", bonusId);
+
+                return;
+            }
+
+            if (_bonusWorkModeParser.TryParse(bonusMapper.WorkModeParameters, out var workMode) == false)
+            {
+                _logger.LogWarning("[Player] bonus {BonusId} has unreadable work_modes {WorkModes}", bonusId, bonusMapper.WorkModeParameters);
+
+                return;
+            }
+
+            if (IsAccountScoped(workMode) == false)
+            {
+                _logger.LogWarning(
+                    "[Player] bonus {BonusId} with work_modes {WorkModes} lives inside a run and is not granted to the account",
+                    bonusId,
+                    bonusMapper.WorkModeParameters);
+
+                return;
+            }
+
+            for (int i = 0; i < profile.Bonuses.Count; i++)
+            {
+                if (profile.Bonuses[i].BonusId != bonusId)
+                    continue;
+
+                profile.Bonuses[i].Count += count;
+                entries.Add(CreateEntry(BonusEntry, bonusId.ToString(), count));
+
+                return;
+            }
+
+            profile.Bonuses.Add(new PlayerBonusDocument
+            {
+                BonusId = bonusId,
+                Count = count,
+                GrantedAt = now,
+            });
+
+            entries.Add(CreateEntry(BonusEntry, bonusId.ToString(), count));
+        }
+
+        private bool IsAccountScoped(BonusWorkMode workMode)
+        {
+            var parts = workMode.Parts;
+
+            for (int i = 0; i < parts.Count; i++)
+            {
+                var kind = parts[i].Kind;
+
+                if (kind == BonusWorkModeKind.Permanent || kind == BonusWorkModeKind.IfEquipped)
+                    continue;
+
+                return false;
+            }
+
+            return 0 < parts.Count;
         }
 
         private void AddResource(PlayerProfileDocument profile, string key, long amount, List<PlayerLedgerEntryDocument> entries)

@@ -6,6 +6,7 @@ namespace Server.Battles
         private int _remainingTicks;
         private int _sourceUnitId;
         private float _damageRatio;
+        private float _flatValue;
         private bool _appliesDamageOverTime;
         private bool _appliesBonuses;
         private IReadOnlyList<RewardBonus> _bonuses;
@@ -18,6 +19,8 @@ namespace Server.Battles
         public int SourceUnitId => _sourceUnitId;
 
         public float DamageRatio => _damageRatio;
+
+        public float FlatValue => _flatValue;
 
         public bool AppliesDamageOverTime => _appliesDamageOverTime;
 
@@ -32,6 +35,7 @@ namespace Server.Battles
             int remainingTicks,
             int sourceUnitId,
             float damageRatio,
+            float flatValue,
             bool appliesDamageOverTime,
             bool appliesBonuses,
             IReadOnlyList<RewardBonus> bonuses,
@@ -41,6 +45,7 @@ namespace Server.Battles
             _remainingTicks = remainingTicks;
             _sourceUnitId = sourceUnitId;
             _damageRatio = damageRatio;
+            _flatValue = flatValue;
             _appliesDamageOverTime = appliesDamageOverTime;
             _appliesBonuses = appliesBonuses;
             _bonuses = bonuses;

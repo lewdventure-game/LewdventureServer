@@ -3,6 +3,7 @@ using Server.Battles;
 using Server.Infrastructure.Mongo.Players;
 using Server.Infrastructure.Mongo.Runs;
 using Server.Infrastructure.Players;
+using Server.Perks;
 using Server.Services;
 using Server.GameConfigs;
 using Server.Stories;
@@ -378,6 +379,10 @@ namespace Server.Runs
                 Seed = _runRandomFactory.CreateBattleSeed(run.Seed, run.StageIndex),
             };
             var script = _battleSimulatorService.Replay(replayData);
+
+            run.Statuses.Clear();
+            ApplyPerkUsages(run, script);
+
             var outcome = new RunStepOutcome
             {
                 EventType = "fight",
@@ -607,6 +612,94 @@ namespace Server.Runs
             run.PendingChoice = RollPerkChoice(run, level);
         }
 
+        private void CollectOfferablePerks(RunDocument run, IPerkGroupMapper group, out int[] offerableIds, out int[] offerableChances)
+        {
+            var ids = new List<int>(group.PerkIds.Length);
+            var chances = new List<int>(group.PerkIds.Length);
+
+            for (int i = 0; i < group.PerkIds.Length; i++)
+            {
+                var perkId = group.PerkIds[i];
+                var chance = i < group.PerkChances.Length ? group.PerkChances[i] : 0;
+
+                if (IsOfferable(run, perkId) == false)
+                {
+                    _logger.LogDebug("[Run] perk {PerkId} is already active and not repeatable runId = {RunId}", perkId, run.Id);
+
+                    continue;
+                }
+
+                ids.Add(perkId);
+                chances.Add(chance);
+            }
+
+            offerableIds = ids.ToArray();
+            offerableChances = chances.ToArray();
+        }
+
+        private bool IsOfferable(RunDocument run, int perkId)
+        {
+            if (run.Perks.Contains(perkId) == false)
+                return true;
+
+            if (_configDistributor.Perks.TryGet(perkId, out var perkMapper) == false)
+                return false;
+
+            return perkMapper.IsMultiplePicks;
+        }
+
+        private void ApplyPerkUsages(RunDocument run, IBattleScriptResponse script)
+        {
+            var usages = script.PerkUsages;
+
+            for (int i = 0; i < usages.Count; i++)
+            {
+                var usage = usages[i];
+
+                if (usage == null)
+                    continue;
+
+                if (0 < usage.RemainingUses)
+                {
+                    StorePerkUsage(run, usage.PerkId, usage.UsedCount);
+
+                    continue;
+                }
+
+                run.Perks.Remove(usage.PerkId);
+                RemovePerkUsage(run, usage.PerkId);
+
+                _logger.LogInformation("[Run] perk {PerkId} is exhausted and removed runId = {RunId} used = {Used}", usage.PerkId, run.Id, usage.UsedCount);
+            }
+        }
+
+        private void StorePerkUsage(RunDocument run, int perkId, int usedCount)
+        {
+            for (int i = 0; i < run.PerkUsages.Count; i++)
+            {
+                if (run.PerkUsages[i].PerkId != perkId)
+                    continue;
+
+                run.PerkUsages[i].UsedCount = usedCount;
+
+                return;
+            }
+
+            if (usedCount <= 0)
+                return;
+
+            run.PerkUsages.Add(new RunPerkUsageDocument { PerkId = perkId, UsedCount = usedCount });
+        }
+
+        private void RemovePerkUsage(RunDocument run, int perkId)
+        {
+            for (int i = run.PerkUsages.Count - 1; 0 <= i; i--)
+            {
+                if (run.PerkUsages[i].PerkId == perkId)
+                    run.PerkUsages.RemoveAt(i);
+            }
+        }
+
         private RunPendingChoiceDocument? RollPerkChoice(RunDocument run, IStoryLevelMapper level)
         {
             if (_configDistributor.ExperienceLevelPatterns.TryGet(level.ExperienceLevelId, run.ExperienceLevel, out var pattern) == false)
@@ -632,8 +725,17 @@ namespace Server.Runs
 
             run.RollIndex += 1;
 
-            var count = group.RandomPerksCount <= 0 ? group.PerkIds.Length : group.RandomPerksCount;
-            var options = _runRandomFactory.PickDistinct(perkRandom, group.PerkIds, group.PerkChances, count);
+            CollectOfferablePerks(run, group, out var offerableIds, out var offerableChances);
+
+            if (offerableIds.Length == 0)
+            {
+                _logger.LogInformation("[Run] perk group {GroupId} has no offerable perks left runId = {RunId}", groupId, run.Id);
+
+                return null;
+            }
+
+            var count = group.RandomPerksCount <= 0 ? offerableIds.Length : group.RandomPerksCount;
+            var options = _runRandomFactory.PickDistinct(perkRandom, offerableIds, offerableChances, count);
 
             if (options.Count == 0)
                 return null;

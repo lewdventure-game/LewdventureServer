@@ -10,6 +10,12 @@ namespace Server.Battles
 
         public int TriggerOrder { get; }
 
+        public int UsedCount { get; }
+
+        public int RemainingUses { get; }
+
+        public void RestoreUsage(int usedCount);
+
         public void OnEquipped(IUnitState owner, List<BattleCommand> commands);
 
         public bool CanTrigger(int currentTurn);

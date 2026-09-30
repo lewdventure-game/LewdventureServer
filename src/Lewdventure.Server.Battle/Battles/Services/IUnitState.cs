@@ -26,6 +26,8 @@ namespace Server.Battles
 
         public IReadOnlyList<EquippedEntityRef> EquippedEntities { get; }
 
+        public IReadOnlyList<string> EquipmentSkillKeys { get; }
+
         public bool IsAlive();
 
         public bool CanUseNormalAttack(int currentTurn);

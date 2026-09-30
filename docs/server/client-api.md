@@ -57,11 +57,14 @@
   "characters": [ { "id": 1, "copies": 3, "upgradesApplied": 2 } ],
   "summons": [ { "id": 1, "copies": 4, "level": 3, "masteryLevel": 1 } ],
   "equipment": [ { "instanceId": "eq_…", "configId": 5, "level": 2, "mergeNumber": 0 } ],
+  "bonuses": [ { "id": 1, "count": 2 } ],
   "loadout": { "characterId": 1, "equipment": { "weapon": "eq_…" }, "summons": [1, 2] },
   "story": { "completedLevelIds": [1], "currentRunId": "run_…" },
   "flags": { "tutorial_done": 1 }
 }
 ```
+
+`bonuses` — постоянные бонусы аккаунта (`permanent` / `if_equipped` из листа `Bonuses`), выданные наградами; в бой они уезжают сами, клиенту нужны только для показа.
 
 `loadout.equipment` — словарь «слот → `instanceId`»; имена слотов задаёт клиент и конфиг экипировки. Сервер проверяет: персонаж открыт и есть в конфигах, не более трёх саммонов, саммоны без повторов и в собственности, экипировка в собственности и не занимает два слота одновременно. Нарушение — `400` с текстом причины.
 
@@ -87,7 +90,7 @@
   "combo1Chance": 0.1, "combo2Chance": 0.05, "comboMultiplier": 0.5,
   "counterChance": 0.1, "counterMultiplier": 0.7,
   "energy": 0, "energyGain": 30, "maxEnergy": 100,
-  "skillMultiplier": 1, "vampyrism": 0, "healingBoost": 1
+  "skillMultiplier": 1, "equipmentSpellMultiplier": 1, "vampyrism": 0, "healingBoost": 1
 }
 ```
 
@@ -270,7 +273,9 @@
 { "teamA": { "mainUnits": [ … ], "summons": [ … ] }, "teamB": { … }, "storyLevelId": 1, "stageId": 10, "seed": 42 }
 ```
 
-`UnitSnapshot`: `id`, `level`, `masteryLevel`, `equipments` (`id`, `level`), `equipmentIds`, `trainingLevel`, `artifactIds`, `aspectIds`, `activePerkIds`, `activeSkillIds`, `activeStatusIds`, `activeBonuses` (`id`, `count`, `remainingBattles`), `slotIndex`, `currentHealth`.
+`UnitSnapshot`: `id`, `level`, `masteryLevel`, `equipments` (`id`, `level`), `equipmentIds`, `trainingLevel`, `artifactIds`, `aspectIds`, `activePerkIds`, `perkUsages` (`perkId`, `usedCount`), `activeSkillIds`, `activeStatusIds`, `activeBonuses` (`id`, `count`, `remainingBattles`), `slotIndex`, `currentHealth`.
+
+`BattleScriptResponse` кроме `steps` несёт `perkUsages` (`perkId`, `usedCount`, `remainingUses`) — расход перков с лимитом использований (сейчас воскрешение). Для проигрывания боя поле не нужно, забег использует его сам.
 
 Клиент этот объект не собирает: его строит сервер. Единственное применение на клиенте — передать в `IBattleCore.Replay(...)`.
 

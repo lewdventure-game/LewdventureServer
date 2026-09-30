@@ -1,4 +1,4 @@
-﻿
+
 namespace Server.Battles
 {
     public interface IBattleScriptResponse
@@ -10,5 +10,7 @@ namespace Server.Battles
         public OutcomeType OutcomeType { get; set; }
 
         public List<BattleStep> Steps { get; set; }
+
+        public List<PerkUsage> PerkUsages { get; set; }
     }
 }

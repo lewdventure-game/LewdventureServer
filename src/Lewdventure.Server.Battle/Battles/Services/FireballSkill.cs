@@ -31,7 +31,7 @@ namespace Server.Battles
             var commands = new List<BattleCommand>();
             BeginCast(context, commands);
 
-            var damageMultiplier = context.Actor.CharacteristicState.SkillMultiplier * _damageRatio;
+            var damageMultiplier = context.SpellMultiplier * _damageRatio;
 
             for (int i = 0; i < _projectileCount; i++)
             {

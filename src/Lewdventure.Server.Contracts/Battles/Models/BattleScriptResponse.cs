@@ -9,5 +9,7 @@ namespace Server.Battles
         public OutcomeType OutcomeType { get; set; }
 
         public List<BattleStep> Steps { get; set; } = new();
+
+        public List<PerkUsage> PerkUsages { get; set; } = new();
     }
 }

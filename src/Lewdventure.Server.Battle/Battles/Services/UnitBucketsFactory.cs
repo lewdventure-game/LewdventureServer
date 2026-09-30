@@ -10,6 +10,8 @@ namespace Server.Battles
 {
     internal sealed class UnitBucketsFactory : IUnitBucketsFactory
     {
+        private const float DefaultEquipmentSpellMultiplier = 1f;
+
         private const float DefaultMasteryMultiplier = 1f;
 
         private readonly IBattleConstantsReader _battleConstantsReader;
@@ -67,6 +69,7 @@ namespace Server.Battles
                 CounterChanceBase = ToFormula3Start(enemyMapper.CounterChance),
                 CounterMultiplierBase = ToFormula3Start(enemyMapper.CounterMultiplier),
                 SkillMultiplierBase = ToFormula3Start(enemyMapper.SpellMultiplier),
+                EquipmentSpellMultiplierBase = ReadEquipmentSpellMultiplierBase(),
                 EnergyBase = enemyMapper.Energy,
                 EnergyMaxBase = enemyMapper.MaxEnergy,
                 VampyrismBase = enemyMapper.Vampyrism,
@@ -216,6 +219,7 @@ namespace Server.Battles
             buckets.CounterChanceBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.CounterChanceBaseKey));
             buckets.CounterMultiplierBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.CounterMultiplierBaseKey));
             buckets.SkillMultiplierBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.SkillMultiplierBaseKey));
+            buckets.EquipmentSpellMultiplierBase = ReadEquipmentSpellMultiplierBase();
             buckets.EnergyBase = _battleConstantsReader.Get(ConstantKeys.EnergyBaseKey);
             buckets.EnergyMaxBase = _battleConstantsReader.Get(ConstantKeys.EnergyMaxBaseKey);
             buckets.DefenceCoefficient = _battleConstantsReader.Get(ConstantKeys.DefenceCoefficientKey);
@@ -238,6 +242,14 @@ namespace Server.Battles
             }
 
             return combo1;
+        }
+
+        private float ReadEquipmentSpellMultiplierBase()
+        {
+            if (_battleConstantsReader.TryGet(ConstantKeys.EquipmentSpellMultiplierBaseKey, out var value))
+                return value;
+
+            return DefaultEquipmentSpellMultiplier;
         }
 
         private float ToFormula3Start(float finalValue)

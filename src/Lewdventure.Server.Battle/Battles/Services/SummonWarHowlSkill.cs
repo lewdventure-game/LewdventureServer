@@ -26,7 +26,7 @@ namespace Server.Battles
 
             if (context.Target.IsAlive())
             {
-                var chipMultiplier = context.Actor.CharacteristicState.SkillMultiplier * _damageRatio;
+                var chipMultiplier = context.SpellMultiplier * _damageRatio;
                 context.TryDealStrike(commands, chipMultiplier, out _, out _);
             }
 

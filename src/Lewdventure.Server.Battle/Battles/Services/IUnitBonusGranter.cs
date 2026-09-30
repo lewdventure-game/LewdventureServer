@@ -4,7 +4,7 @@ namespace Server.Battles
 {
     internal interface IUnitBonusGranter
     {
-        public void GrantBuildBonus(IUnitState unitState, int bonusId, float value, string sourceKey);
+        public void GrantBuildBonus(IUnitState unitState, int bonusId, string sourceKey);
 
         public void GrantCharacterUpgradeBonuses(UnitState unitState, ICharacterMapper characterMapper, int characterLevel);
 

@@ -112,6 +112,32 @@ namespace Server.Runs
             for (int i = 0; i < run.Perks.Count; i++)
                 unit.ActivePerkIds.Add(run.Perks[i]);
 
+            for (int i = 0; i < run.PerkUsages.Count; i++)
+            {
+                var usage = run.PerkUsages[i];
+
+                unit.PerkUsages.Add(new PerkUsage
+                {
+                    PerkId = usage.PerkId,
+                    UsedCount = usage.UsedCount,
+                });
+            }
+
+            for (int i = 0; i < run.Statuses.Count; i++)
+                unit.ActiveStatusIds.Add(run.Statuses[i]);
+
+            for (int i = 0; i < profile.Bonuses.Count; i++)
+            {
+                var accountBonus = profile.Bonuses[i];
+
+                unit.ActiveBonuses.Add(new BonusGrantSnapshot
+                {
+                    Id = accountBonus.BonusId,
+                    Count = accountBonus.Count,
+                    RemainingBattles = 0,
+                });
+            }
+
             for (int i = 0; i < run.Bonuses.Count; i++)
             {
                 var bonus = run.Bonuses[i];

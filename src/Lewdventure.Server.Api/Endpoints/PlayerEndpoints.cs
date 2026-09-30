@@ -223,6 +223,7 @@ namespace Server.Api.Endpoints
                 EnergyGain = characteristics.EnergyGain,
                 MaxEnergy = characteristics.MaxEnergy,
                 SkillMultiplier = characteristics.SkillMultiplier,
+                EquipmentSpellMultiplier = characteristics.EquipmentSpellMultiplier,
                 Vampyrism = characteristics.Vampyrism,
                 HealingBoost = characteristics.HealingBoost,
             });

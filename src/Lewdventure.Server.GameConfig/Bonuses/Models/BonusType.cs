@@ -115,5 +115,11 @@ namespace Server.Bonuses
         HealingFromMax = 54,
         [EnumMember(Value = "healing")]
         Healing = 55,
+        [EnumMember(Value = "equip_spell_multiplier_local")]
+        EquipmentSpellMultiplierLocal = 56,
+        [EnumMember(Value = "equip_spell_multiplier_perk")]
+        EquipmentSpellMultiplierPerk = 57,
+        [EnumMember(Value = "equip_spell_multiplier_global")]
+        EquipmentSpellMultiplierGlobal = 58,
     }
 }

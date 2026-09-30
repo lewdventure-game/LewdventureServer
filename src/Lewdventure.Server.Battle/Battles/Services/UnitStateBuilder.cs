@@ -98,7 +98,7 @@ namespace Server.Battles
 
             if (isSummon == false && battleSide == BattleSide.Attacking && _configDistributor.Characters.TryGet(unitSnapshot.Id, out var attackingCharacter))
             {
-                _unitBonusGranter.GrantBuildBonus(unitState, attackingCharacter.StartBonusId, attackingCharacter.StartBonusValue, "build:start");
+                _unitBonusGranter.GrantBuildBonus(unitState, attackingCharacter.StartBonusId, "build:start");
                 _unitBonusGranter.GrantCharacterUpgradeBonuses(unitState, attackingCharacter, unitSnapshot.Level);
                 _unitBonusGranter.GrantTrainingBonuses(unitState, unitSnapshot.TrainingLevel);
                 _unitBonusGranter.GrantEquipmentBonuses(unitState, unitSnapshot);

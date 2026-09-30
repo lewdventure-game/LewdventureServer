@@ -5,7 +5,8 @@ namespace Server.Battles
     internal sealed class ResurrectionPerk : BasePerk
     {
         private readonly float _healthRatio;
-        private int _remainingResurrections;
+        private readonly int _resurrectionsCount;
+        private int _usedResurrections;
         private readonly ICoreLog _coreLog;
 
         internal ResurrectionPerk(
@@ -16,13 +17,30 @@ namespace Server.Battles
             : base(mapper)
         {
             _healthRatio = healthRatio;
-            _remainingResurrections = resurrectionsCount;
+            _resurrectionsCount = resurrectionsCount;
             _coreLog = coreLog;
+        }
+
+        public override int UsedCount => _usedResurrections;
+
+        public override int RemainingUses => ResolveRemaining();
+
+        public override void RestoreUsage(int usedCount)
+        {
+            if (usedCount <= 0)
+                return;
+
+            _usedResurrections = usedCount;
+
+            if (_resurrectionsCount < _usedResurrections)
+                _usedResurrections = _resurrectionsCount;
+
+            _coreLog.Debug($"[Story][Battle]: Perk resurrection usage restored, perkId = {Id}, used = {_usedResurrections}, remaining = {ResolveRemaining()}");
         }
 
         public override bool CanTrigger(int currentTurn)
         {
-            return 0 < _remainingResurrections;
+            return 0 < ResolveRemaining();
         }
 
         public override void Trigger(IPerkExecutionContext context)
@@ -42,7 +60,7 @@ namespace Server.Battles
             IBattleCommandFactory battleCommandFactory,
             IBattleScriptBuilder battleScriptBuilder)
         {
-            if (_remainingResurrections <= 0)
+            if (ResolveRemaining() <= 0)
                 return false;
 
             if (0 < owner.CharacteristicState.Health)
@@ -73,7 +91,7 @@ namespace Server.Battles
                 healDelta = 0f;
 
             characteristics.Health = healthAfter;
-            _remainingResurrections -= 1;
+            _usedResurrections += 1;
 
             var commands = new List<BattleCommand>
             {
@@ -90,28 +108,19 @@ namespace Server.Battles
                 commands,
                 owner);
 
-            _coreLog.Information($"[Story][Battle]: Perk resurrection, perkId = {Id}, ownerId = {owner.Id}, healDelta = {healDelta}, health = {healthAfter}, remaining = {_remainingResurrections}");
-
-            if (_remainingResurrections == 0)
-                RemoveSelfFromOwner(owner);
+            _coreLog.Information($"[Story][Battle]: Perk resurrection, perkId = {Id}, ownerId = {owner.Id}, healDelta = {healDelta}, health = {healthAfter}, used = {_usedResurrections}, remaining = {ResolveRemaining()}");
 
             return true;
         }
 
-        private void RemoveSelfFromOwner(IUnitState owner)
+        private int ResolveRemaining()
         {
-            var perks = owner.Perks;
+            var remaining = _resurrectionsCount - _usedResurrections;
 
-            for (int i = 0; i < perks.Count; i++)
-            {
-                if (ReferenceEquals(perks[i], this) == false)
-                    continue;
+            if (remaining < 0)
+                remaining = 0;
 
-                perks.RemoveAt(i);
-                _coreLog.Warning($"[Story][Battle]: Resurrection perk removed exhausted, perkId = {Id}, ownerId = {owner.Id}");
-
-                return;
-            }
+            return remaining;
         }
     }
 }

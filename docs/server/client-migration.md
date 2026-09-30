@@ -181,7 +181,7 @@
 
 ### Локальные расчёты, которые можно выключить
 
-`Game/Characteristics/Services/CharacteristicHudService.RefreshFromServer` ходит на сервер за характеристиками. Их можно считать локально: `IBattleCore.BuildCharacteristics(...)` даёт те же 20 значений, что и `GET /api/player/characteristics`, — числа совпадают до бита, потому что считает один и тот же код. Сетевой вызов при этом исчезает.
+`Game/Characteristics/Services/CharacteristicHudService.RefreshFromServer` ходит на сервер за характеристиками. Их можно считать локально: `IBattleCore.BuildCharacteristics(...)` даёт те же 21 значение, что и `GET /api/player/characteristics`, — числа совпадают до бита, потому что считает один и тот же код. Сетевой вызов при этом исчезает.
 
 ## Как разработчику обнулить себя
 

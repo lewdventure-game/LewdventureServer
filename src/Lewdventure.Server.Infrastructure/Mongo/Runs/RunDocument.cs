@@ -46,6 +46,8 @@ namespace Server.Infrastructure.Mongo.Runs
 
         public List<int> Statuses { get; set; } = new();
 
+        public List<RunPerkUsageDocument> PerkUsages { get; set; } = new();
+
         public List<RunBonusDocument> Bonuses { get; set; } = new();
 
         public RunPendingChoiceDocument? PendingChoice { get; set; }

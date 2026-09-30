@@ -106,11 +106,3 @@
 105 critical 3f77af00
 106 evasion 3f210090
 107 critical 3f73f879
-108 counter 3e51c8d0
-109 combo 3f6f3e1c
-110 evasion 3f6d3bdc
-111 critical 3ddcb140
-112 evasion 3eda8fc4
-113 critical 3ec4362e
-114 evasion 3f76e06d
-115 critical 3f29af0d

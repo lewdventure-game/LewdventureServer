@@ -47,7 +47,7 @@ namespace Server.Battles
                 return;
             }
 
-            GrantBonusPairs(unitState, trainingMapper.BonusIds, trainingMapper.BonusValues, $"build:training:{trainingLevel}");
+            GrantBonusIds(unitState, trainingMapper.BonusIds, $"build:training:{trainingLevel}");
 
             _coreLog.Debug($"[Story][Battle]: Training bonuses granted, trainingLevel = {trainingLevel}, bonusCount = {trainingMapper.BonusIds.Length}");
         }
@@ -77,7 +77,7 @@ namespace Server.Battles
                     continue;
                 }
 
-                GrantBonusPairs(unitState, artifactMapper.BonusIds, artifactMapper.BonusValues, $"build:artifact:{artifactId}");
+                GrantBonusIds(unitState, artifactMapper.BonusIds, $"build:artifact:{artifactId}");
 
                 _coreLog.Debug($"[Story][Battle]: Artifact bonuses granted, artifactId = {artifactId}, bonusCount = {artifactMapper.BonusIds.Length}");
             }
@@ -108,31 +108,19 @@ namespace Server.Battles
                     continue;
                 }
 
-                GrantBonusPairs(unitState, aspectMapper.BonusIds, aspectMapper.BonusValues, $"build:aspect:{aspectId}");
+                GrantBonusIds(unitState, aspectMapper.BonusIds, $"build:aspect:{aspectId}");
 
                 _coreLog.Debug($"[Story][Battle]: Aspect bonuses granted, aspectId = {aspectId}, bonusCount = {aspectMapper.BonusIds.Length}");
             }
         }
 
-        private void GrantBonusPairs(UnitState unitState, int[] bonusIds, float[] bonusValues, string sourcePrefix)
+        private void GrantBonusIds(UnitState unitState, int[] bonusIds, string sourcePrefix)
         {
-            if (bonusIds == null || bonusIds.Length == 0)
+            if (bonusIds.Length == 0)
                 return;
 
-            var pairCount = bonusIds.Length;
-
-            if (bonusValues != null && bonusValues.Length < pairCount)
-                pairCount = bonusValues.Length;
-
-            for (int i = 0; i < pairCount; i++)
-            {
-                var value = 0f;
-
-                if (bonusValues != null && i < bonusValues.Length)
-                    value = bonusValues[i];
-
-                GrantBuildBonus(unitState, bonusIds[i], value, $"{sourcePrefix}:{i}");
-            }
+            for (int i = 0; i < bonusIds.Length; i++)
+                GrantBuildBonus(unitState, bonusIds[i], $"{sourcePrefix}:{i}");
         }
 
         public void GrantCharacterUpgradeBonuses(UnitState unitState, ICharacterMapper characterMapper, int characterLevel)
@@ -150,8 +138,7 @@ namespace Server.Battles
                 return;
 
             var upgradeCosts = characterMapper.UpgradeCosts;
-            var upgradeBonusTypes = characterMapper.UpgradeBonusTypes;
-            var upgradeBonusValues = characterMapper.UpgradeBonusValues;
+            var upgradeBonusIds = characterMapper.UpgradeBonusIds;
 
             if (upgradeCosts.Length == 0)
             {
@@ -167,27 +154,19 @@ namespace Server.Battles
 
             for (int upgradeIndex = 0; upgradeIndex < appliedUpgrades; upgradeIndex++)
             {
-                if (upgradeBonusTypes.Length <= upgradeIndex)
+                if (upgradeBonusIds.Length <= upgradeIndex)
                 {
-                    _coreLog.Warning($"[Story][Battle]: Character upgrade type missing, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}");
+                    _coreLog.Warning($"[Story][Battle]: Character upgrade bonus missing, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}");
 
                     break;
                 }
 
-                if (upgradeBonusValues.Length <= upgradeIndex)
-                {
-                    _coreLog.Warning($"[Story][Battle]: Character upgrade value missing, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}");
-
-                    break;
-                }
-
-                var bonusId = upgradeBonusTypes[upgradeIndex];
-                var value = upgradeBonusValues[upgradeIndex];
+                var bonusId = upgradeBonusIds[upgradeIndex];
                 var sourceKey = $"build:upgrade:{characterMapper.Id}:{upgradeIndex + 1}";
 
-                GrantBuildBonus(unitState, bonusId, value, sourceKey);
+                GrantBuildBonus(unitState, bonusId, sourceKey);
 
-                _coreLog.Debug($"[Story][Battle]: Character upgrade grant, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}, cost = {upgradeCosts[upgradeIndex]}, bonusId = {bonusId}, value = {value}");
+                _coreLog.Debug($"[Story][Battle]: Character upgrade grant, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}, cost = {upgradeCosts[upgradeIndex]}, bonusId = {bonusId}");
             }
 
             if (upgradeCosts.Length < purchasedUpgrades)
@@ -211,7 +190,7 @@ namespace Server.Battles
                 {
                     var sourceKey = $"build:summon-mastery:{summonSnapshot.Id}:{masteryLevel}";
 
-                    GrantBuildBonus(mainUnit, masteryMapper.BonusId, 0f, sourceKey);
+                    GrantBuildBonus(mainUnit, masteryMapper.BonusId, sourceKey);
 
                     _coreLog.Debug($"[Story][Battle]: Summon mastery bonus grant, mainId = {mainUnit.Id}, summonId = {summonSnapshot.Id}, masteryLevel = {masteryLevel}, bonusId = {masteryMapper.BonusId}");
                 }
@@ -259,7 +238,7 @@ namespace Server.Battles
 
             _coreLog.Debug($"[Story][Battle] equipment grant slot sourceKey = {sourceKey} level = {equipmentLevel} bonusId = {bonusId} value = {value}");
 
-            GrantBuildBonus(unitState, bonusId, value, sourceKey);
+            GrantLeveledBonus(unitState, bonusId, value, sourceKey);
         }
 
         private bool TryResolveEquipmentBonusId(string bonusTypeRaw, out int bonusId)
@@ -488,18 +467,40 @@ namespace Server.Battles
             }
         }
 
-        public void GrantBuildBonus(IUnitState unitState, int bonusId, float value, string sourceKey)
+        public void GrantBuildBonus(IUnitState unitState, int bonusId, string sourceKey)
         {
             if (bonusId <= 0)
                 return;
 
-            if (_configDistributor.Bonuses.TryGet(bonusId, out var bonusMapper) == false)
-            {
-                _coreLog.Error($"[Story][Battle]: Bonus missing, id = {bonusId}");
+            if (TryReadBonus(bonusId, out var bonusMapper) == false)
+                return;
 
-                throw new InvalidOperationException($"[Story][Battle]: Bonus missing, id = {bonusId}");
-            }
+            GrantResolvedBonus(unitState, bonusId, bonusMapper, bonusMapper.BonusValue, sourceKey);
+        }
 
+        private void GrantLeveledBonus(IUnitState unitState, int bonusId, float value, string sourceKey)
+        {
+            if (bonusId <= 0)
+                return;
+
+            if (TryReadBonus(bonusId, out var bonusMapper) == false)
+                return;
+
+            GrantResolvedBonus(unitState, bonusId, bonusMapper, value, sourceKey);
+        }
+
+        private bool TryReadBonus(int bonusId, out IBonusMapper bonusMapper)
+        {
+            if (_configDistributor.Bonuses.TryGet(bonusId, out bonusMapper))
+                return true;
+
+            _coreLog.Error($"[Story][Battle]: Bonus missing, id = {bonusId}");
+
+            throw new InvalidOperationException($"[Story][Battle]: Bonus missing, id = {bonusId}");
+        }
+
+        private void GrantResolvedBonus(IUnitState unitState, int bonusId, IBonusMapper bonusMapper, float value, string sourceKey)
+        {
             if (bonusMapper.BonusType == BonusType.Healing
                 || bonusMapper.BonusType == BonusType.HealingFromMax
                 || bonusMapper.BonusType == BonusType.CurrentHealthLocal)
@@ -517,22 +518,18 @@ namespace Server.Battles
                 return;
             }
 
-            var grantValue = value;
-
-            if (MathF.Abs(grantValue) <= 0.0001f)
-                grantValue = bonusMapper.BonusValue;
-
             unitState.ActiveBonuses.Add(
                 new ActiveBattleBonus(
                     bonusId,
                     1,
                     bonusMapper.BonusType,
-                    grantValue,
+                    value,
                     bonusMapper.OperatorType,
                     workMode,
                     sourceKey));
 
-            _coreLog.Debug($"[Story][Battle]: Build bonus queued, id = {bonusId}, type = {bonusMapper.BonusType}, value = {grantValue}, operator = {bonusMapper.OperatorType}, workMode = {workMode.Format()}, sourceKey = {sourceKey}");
+            _coreLog.Debug($"[Story][Battle]: Build bonus queued, id = {bonusId}, type = {bonusMapper.BonusType}, value = {value}, operator = {bonusMapper.OperatorType}, workMode = {workMode.Format()}, sourceKey = {sourceKey}");
         }
+
     }
 }

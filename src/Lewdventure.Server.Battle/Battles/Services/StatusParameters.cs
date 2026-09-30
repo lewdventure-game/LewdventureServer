@@ -4,6 +4,8 @@ namespace Server.Battles
     {
         public float DamageRatio { get; }
 
+        public float FlatValue { get; }
+
         public int DamageLength { get; }
 
         public int MaxStacks { get; }
@@ -12,11 +14,13 @@ namespace Server.Battles
 
         public StatusParameters(
             float damageRatio,
+            float flatValue,
             int damageLength,
             int maxStacks,
             IReadOnlyList<RewardBonus> bonuses)
         {
             DamageRatio = damageRatio;
+            FlatValue = flatValue;
             DamageLength = damageLength;
             MaxStacks = maxStacks;
             Bonuses = bonuses;

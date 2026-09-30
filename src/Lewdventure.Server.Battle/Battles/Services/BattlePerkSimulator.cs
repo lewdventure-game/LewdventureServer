@@ -6,6 +6,8 @@ namespace Server.Battles
 {
     internal sealed class BattlePerkSimulator : IBattlePerkSimulator
     {
+        private int _nextOwnerOrder;
+
         private readonly ICoreLog _coreLog;
         private readonly IBattleBonusService _battleBonusService;
         private readonly IBattleCommandFactory _battleCommandFactory;
@@ -42,6 +44,7 @@ namespace Server.Battles
             BattleTurnState turnState)
         {
             _queueBuffer.Clear();
+            _nextOwnerOrder = 0;
 
             CollectPerks(attacker.MainUnits);
             CollectPerks(attacker.Summons);
@@ -218,9 +221,12 @@ namespace Server.Battles
             {
                 var unit = units[i];
                 var perks = unit.Perks;
+                var ownerOrder = _nextOwnerOrder;
+
+                _nextOwnerOrder += 1;
 
                 for (int j = 0; j < perks.Count; j++)
-                    _queueBuffer.Add(new PerkQueueEntry(unit, perks[j]));
+                    _queueBuffer.Add(new PerkQueueEntry(unit, perks[j], ownerOrder));
             }
         }
 
@@ -232,12 +238,20 @@ namespace Server.Battles
             {
                 for (int j = 0; j < count - 1 - i; j++)
                 {
-                    if (_queueBuffer[j].Perk.TriggerOrder <= _queueBuffer[j + 1].Perk.TriggerOrder)
+                    if (IsQueuedEarlier(_queueBuffer[j], _queueBuffer[j + 1]))
                         continue;
 
                     (_queueBuffer[j + 1], _queueBuffer[j]) = (_queueBuffer[j], _queueBuffer[j + 1]);
                 }
             }
+        }
+
+        private bool IsQueuedEarlier(in PerkQueueEntry left, in PerkQueueEntry right)
+        {
+            if (left.OwnerOrder != right.OwnerOrder)
+                return left.OwnerOrder < right.OwnerOrder;
+
+            return left.Perk.TriggerOrder <= right.Perk.TriggerOrder;
         }
 
         private PerkExecutionContext CreateContext(
@@ -283,15 +297,19 @@ namespace Server.Battles
         {
             private readonly IUnitState _owner;
             private readonly IPerk _perk;
+            private readonly int _ownerOrder;
 
             internal IUnitState Owner => _owner;
 
             internal IPerk Perk => _perk;
 
-            internal PerkQueueEntry(IUnitState owner, IPerk perk)
+            internal int OwnerOrder => _ownerOrder;
+
+            internal PerkQueueEntry(IUnitState owner, IPerk perk, int ownerOrder)
             {
                 _owner = owner;
                 _perk = perk;
+                _ownerOrder = ownerOrder;
             }
         }
     }

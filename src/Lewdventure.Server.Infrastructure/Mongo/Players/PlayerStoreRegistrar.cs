@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Server.Battles;
+using Server.Bonuses;
 using Server.Infrastructure.Mongo.Runs;
 using Server.Infrastructure.Players;
 
@@ -31,7 +32,10 @@ namespace Server.Infrastructure.Mongo.Players
 
         private RewardApplier CreateRewardApplier(IServiceProvider serviceProvider)
         {
-            return new RewardApplier(CreateRewardParser(serviceProvider), serviceProvider.GetRequiredService<ILogger<RewardApplier>>());
+            return new RewardApplier(
+                CreateRewardParser(serviceProvider),
+                serviceProvider.GetRequiredService<IBonusWorkModeParser>(),
+                serviceProvider.GetRequiredService<ILogger<RewardApplier>>());
         }
 
         private PlayerRewardService CreateRewardService(IServiceProvider serviceProvider)

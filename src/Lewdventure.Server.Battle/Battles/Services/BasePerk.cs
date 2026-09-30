@@ -14,11 +14,19 @@ namespace Server.Battles
 
         public int TriggerOrder => _triggerOrder;
 
+        public virtual int UsedCount => 0;
+
+        public virtual int RemainingUses => -1;
+
         protected BasePerk(IPerkMapper mapper)
         {
             _id = mapper.Id;
             _perkType = mapper.PerkType;
             _triggerOrder = mapper.TriggerOrder;
+        }
+
+        public virtual void RestoreUsage(int usedCount)
+        {
         }
 
         public virtual void OnEquipped(IUnitState owner, List<BattleCommand> commands)

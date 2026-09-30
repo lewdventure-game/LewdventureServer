@@ -33,7 +33,30 @@ namespace Tests.Unit.Players
             var result = builder.Build(snapshot, "test");
 
             _configDistributor = result.ConfigSet!.Distributor;
-            _applier = new RewardApplier(_parser, NullLogger<RewardApplier>.Instance);
+            _applier = new RewardApplier(_parser, new BonusWorkModeParser(new SilentCoreLog()), NullLogger<RewardApplier>.Instance);
+        }
+
+        [Test]
+        public void Apply_PermanentBonus_GoesToAccount()
+        {
+            var profile = CreateProfile();
+
+            _applier.Apply(profile, _parser.Parse("bonus:1:2"), _configDistributor, DateTime.UtcNow);
+            _applier.Apply(profile, _parser.Parse("bonus:1:1"), _configDistributor, DateTime.UtcNow);
+
+            Assert.That(profile.Bonuses, Has.Count.EqualTo(1));
+            Assert.That(profile.Bonuses[0].BonusId, Is.EqualTo(1));
+            Assert.That(profile.Bonuses[0].Count, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void Apply_RunScopedBonus_IsNotGrantedToAccount()
+        {
+            var profile = CreateProfile();
+
+            _applier.Apply(profile, _parser.Parse("bonus:4:1"), _configDistributor, DateTime.UtcNow);
+
+            Assert.That(profile.Bonuses, Is.Empty);
         }
 
         [Test]
@@ -112,10 +135,11 @@ namespace Tests.Unit.Players
         {
             var profile = CreateProfile();
 
-            var entries = _applier.Apply(profile, _parser.Parse("bonus:1:1,status:1:1"), _configDistributor, DateTime.UtcNow);
+            var entries = _applier.Apply(profile, _parser.Parse("status:1:1"), _configDistributor, DateTime.UtcNow);
 
             Assert.That(entries, Is.Empty);
             Assert.That(profile.Resources, Is.Empty);
+            Assert.That(profile.Bonuses, Is.Empty);
         }
 
         [Test]

@@ -20,6 +20,8 @@ namespace Server.Battles
 
         public List<int> ActivePerkIds { get; set; } = new();
 
+        public List<PerkUsage> PerkUsages { get; set; } = new();
+
         public List<string> ActiveSkillIds { get; set; } = new();
 
         public List<int> ActiveStatusIds { get; set; } = new();

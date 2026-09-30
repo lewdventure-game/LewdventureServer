@@ -135,6 +135,15 @@ namespace Server.Battles
                 case BonusType.SpellMultiplierGlobal:
                     buckets.SkillMultiplierGlobal += value;
                     break;
+                case BonusType.EquipmentSpellMultiplierLocal:
+                    buckets.EquipmentSpellMultiplierLocal += value;
+                    break;
+                case BonusType.EquipmentSpellMultiplierPerk:
+                    buckets.EquipmentSpellMultiplierPerk += value;
+                    break;
+                case BonusType.EquipmentSpellMultiplierGlobal:
+                    buckets.EquipmentSpellMultiplierGlobal += value;
+                    break;
                 case BonusType.ArmorLocal:
                     buckets.ArmorLocal += value;
                     break;

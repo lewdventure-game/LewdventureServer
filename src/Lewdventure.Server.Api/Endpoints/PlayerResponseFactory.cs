@@ -63,6 +63,17 @@ namespace Server.Api.Endpoints
                 });
             }
 
+            for (int i = 0; i < profile.Bonuses.Count; i++)
+            {
+                var bonus = profile.Bonuses[i];
+
+                response.Bonuses.Add(new PlayerBonusResponse
+                {
+                    Id = bonus.BonusId,
+                    Count = bonus.Count,
+                });
+            }
+
             return response;
         }
     }

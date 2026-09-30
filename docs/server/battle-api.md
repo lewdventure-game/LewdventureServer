@@ -73,7 +73,7 @@ Rewards in battle: `bonus` / `status` применяются в симуляци
 - Итоги считаются из **слоёв** (`CharacteristicBuckets` + `ICharacteristicCalculator`, формулы GDD 1/2/5/6/7), не через flat `+=` на finals.
 - Formula 2 multipliers с округлением: `КРИТ_МН`, `КОМБО_1/2_МН`, `КОНТР_МН`, `СПЕЛЛ_МН` (`MathF.Round` после replace).
 - Источники build: constants → character start/upgrades → training → equipment(level) → summon mastery/account → artifacts → aspects → perks/statuses/runtime.
-- Character upgrades (GDD): `min(level - 1, upgrade_costs.Length)` штук; апгрейд `i` грантит только `upgrade_bonus_types[i]` с value `upgrade_bonus_values[i]` (не спам всех пар на каждый лвл). Start/upgrade value из Characters, не `Bonuses.bonus_value`.
+- Character upgrades (GDD): `min(level - 1, upgrade_costs.Length)` штук; апгрейд `i` грантит только `upgrade_bonuses[i]` (не спам всех id на каждый лвл). Значение, operator и work_mode — из `Bonuses` по id; своих значений в Characters нет. Устаревшие колонки `start_bonus_type` / `upgrade_bonus_types` ещё читаются, `*_value(s)` игнорируются.
 - Equipment `equip_bonus_type_*`: **bonus id** или техническое имя `BonusType`; `equip_bonus_values_*`: уровни через `,` или `;` (берётся более «длинный» split; при равенстве — `,`).
 - `IBattleBonusService` применяет `operator` (`add` / `replace`) и battle `work_mode`: `end_of_battle`, `first_turns:N`, `every_turn`, `next_battles:N` (RemainingBattles, decrement на battle end), `if_equipped`.
 - `current_health_local` + `replace` → set HP (clamp MaxHealth); `add` → delta.
@@ -92,9 +92,10 @@ Rewards in battle: `bonus` / `status` применяются в симуляци
 
 ### Statuses
 
-- `parameters`: `key:value;...` (`damage_ratio`, `damage_length`, `max_stacks`, `bonuses`).
+- `parameters`: `key:value;...` (`damage_ratio`, `flat_value`, `damage_length`, `max_stacks`, `bonuses`).
+- `activeBonuses` в snapshot: бонусы аккаунта (`remainingBattles = 0`) + бонусы забега; сервер грантит их через `IBattleBonusService.Grant` с `sourceKey run:{id}:{index}`.
 - Apply учитывает `status_target` (`caster` / `enemy`) относительно source/target reward.
-- Damage over time: side-wide queue by `proc_order`; tick damage = live `source.Damage * damage_ratio * (1-DEF)`; crit from live source; seed `sourceUnitId = -1` → bearer fallback + Warning.
+- Damage over time: side-wide queue by `proc_order`; tick damage = live `source.Damage * damage_ratio * (1-DEF)`; crit from live source. `sourceUnitId = -1` (статус из награды события или стартовый статус забега) → tick damage = `flat_value * (1-DEF)`, крита нет, roll крита не тратится; нет `flat_value` → Warning и урон 0.
 - Non–damage-over-time statuses expire at battle end (`bonus_change` lifecycle).
 - Resurrection perk: charges → 0 removes perk; death-time resurrect aborts remainder of current side-turn.
 

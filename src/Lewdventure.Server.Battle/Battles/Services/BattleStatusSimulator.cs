@@ -421,16 +421,29 @@ namespace Server.Battles
         {
             isCritical = false;
 
-            ResolveLiveSourceStats(
-                unitState,
-                ownerTeam,
-                opponentTeam,
-                activeStatus,
-                out var sourceDamage,
-                out var criticalChance,
-                out var criticalMultiplier);
+            var hasSource = 0 <= activeStatus.SourceUnitId;
+            var sourceDamage = 0f;
+            var criticalChance = 0f;
+            var criticalMultiplier = 0f;
+            var tickDamageBase = activeStatus.FlatValue;
 
-            var tickDamageBase = sourceDamage * activeStatus.DamageRatio;
+            if (hasSource)
+            {
+                ResolveLiveSourceStats(
+                    unitState,
+                    ownerTeam,
+                    opponentTeam,
+                    activeStatus,
+                    out sourceDamage,
+                    out criticalChance,
+                    out criticalMultiplier);
+
+                tickDamageBase = sourceDamage * activeStatus.DamageRatio;
+            }
+            else if (tickDamageBase <= 0f)
+            {
+                _coreLog.Warning($"[Story][Battle]: Status without source has no flat_value, bearerId = {unitState.Id}, statusId = {activeStatus.StatusId}");
+            }
 
             if (tickDamageBase <= 0f)
                 return 0f;
@@ -441,6 +454,14 @@ namespace Server.Battles
                 defenceFactor = 0f;
 
             var damage = tickDamageBase * defenceFactor;
+
+            if (hasSource == false)
+            {
+                _coreLog.Debug($"[Story][Battle]: Damage over time flat stack, unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, flatValue = {activeStatus.FlatValue}, defence = {unitState.CharacteristicState.Defence}, damage = {damage}");
+
+                return damage;
+            }
+
             var criticalRoll = seededRandomService.GetRandomValue(RandomRollNames.Critical);
             isCritical = criticalRoll < criticalChance;
 
@@ -464,13 +485,6 @@ namespace Server.Battles
             sourceDamage = 0f;
             criticalChance = 0f;
             criticalMultiplier = 0f;
-
-            if (activeStatus.SourceUnitId < 0)
-            {
-                _coreLog.Error($"[Story][Battle]: Damage over time source unset, bearerId = {bearer.Id}, statusId = {activeStatus.StatusId}");
-
-                return;
-            }
 
             if (TryFindMain(ownerTeam, activeStatus.SourceUnitId, out var sourceUnit)
                 || TryFindMain(opponentTeam, activeStatus.SourceUnitId, out sourceUnit))

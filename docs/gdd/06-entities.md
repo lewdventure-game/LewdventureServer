@@ -31,15 +31,16 @@ Bundle id: `art_name`.
 ### Получение и прокачка
 
 - Reward type `character`.
-- Первый дроп: доступен + `start_bonus_type` / `start_bonus_value` (value из Characters; тип = bonus id в Bonuses).
+- Первый дроп: доступен + бонус по id из `start_bonus` (значение, operator и work_mode берутся из Bonuses по этому id).
 - Повторки → прокачки по спискам Characters (ниже); overflow → `character_overflow_resource` (meta).
 
 **Прокачки (GDD, battle build):**
 
 - `upgrade_costs` — список стоимостей; **длина = макс. число прокачек**.
-- `upgrade_bonus_types[i]` + `upgrade_bonus_values[i]` — бонус **только** за прокачку `i + 1` (ordinal 1:1 с costs). Не «на каждый лвл заново все пары».
-- В simulate: число применённых апгрейдов = `min(level - 1, upgrade_costs.Length)` (дальше cap; type/value короче costs → Warning + stop).
-- Сила апгрейда = `upgrade_bonus_values[i]`, не `Bonuses.bonus_value` (таблица Bonuses даёт type/operator/work_mode по id).
+- `upgrade_bonuses[i]` — id бонуса **только** за прокачку `i + 1` (ordinal 1:1 с costs). Не «на каждый лвл заново все пары».
+- В simulate: число применённых апгрейдов = `min(level - 1, upgrade_costs.Length)` (дальше cap; список id короче costs → Warning + stop).
+- Сила апгрейда = `Bonuses.bonus_value` по id; своих значений в Characters больше нет.
+- Переходный период: пока лист не переименован, сервер читает устаревшие `start_bonus_type` / `upgrade_bonus_types`; колонки `start_bonus_value` / `upgrade_bonus_values` игнорируются (валидатор помечает их как неиспользуемые).
 
 Для battle сейчас: character id, `level`, skill presets в snapshot.
 

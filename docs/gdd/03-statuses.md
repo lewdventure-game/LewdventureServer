@@ -41,13 +41,14 @@ Unknown `status_target` / нет живого main → ERROR, apply нет. Defa
 
 ## Типы статусов (`status_type`)
 
-`parameters` — **named keys**, не ordinal. Пример DoT: `damage_ratio:0.1;damage_length:3;max_stacks:5`.
+`parameters` — **named keys**, не ordinal. Пример DoT: `damage_ratio:0.1;flat_value:40;damage_length:3;max_stacks:5`.
 
 ### burning (1) / poison (3)
 
 DoT. Формулы и cap **свои на каждый status id**. `burning_strong` **не** делит `max_stacks` с `burning`. Poison — свой VFX, не огонь.
 
-- Урон стака: live ДМГ **main наложившей стороны** × `damage_ratio` × `(1 - ЗАЩИТА носителя)`
+- Урон стака с источником: live ДМГ **main наложившей стороны** × `damage_ratio` × `(1 - ЗАЩИТА носителя)`
+- Урон стака без источника (статус из награды события / стартовый статус забега): `flat_value` × `(1 - ЗАЩИТА носителя)`, крита нет, roll крита не тратится
 - Крит от live КРИТ_ШАНС / КРИТ_МН того же main
 - Уклониться нельзя
 - Длится `damage_length` срабатываний урона, затем стак спадает
@@ -55,9 +56,9 @@ DoT. Формулы и cap **свои на каждый status id**. `burning_st
 - Несколько стаков одного `statusId` суммируют урон за один тик хода
 - Стаки независимы по оставшимся тикам
 
-Обязательные ключи: `damage_ratio`, `damage_length` (> 0), `max_stacks` (> 0).
+Обязательные ключи: `damage_ratio`, `damage_length` (> 0), `max_stacks` (> 0). Необязательный `flat_value` — плоский урон для статусов без источника.
 
-Нет живого main-источника на тике → ERROR, урон 0, **не** статы носителя. `damage_length` всё равно тратится.
+Статус повешен без источника (`sourceUnitId = -1`) и `flat_value` не задан → Warning, урон 0. Источник был, но живого main на тике нет → ERROR, урон 0, **не** статы носителя. `damage_length` всё равно тратится.
 
 ### burning_strong (2) / poison_strong (4)
 

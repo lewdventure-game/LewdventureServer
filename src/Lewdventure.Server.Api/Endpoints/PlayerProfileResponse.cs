@@ -14,6 +14,8 @@ namespace Server.Api.Endpoints
 
         public List<PlayerEquipmentResponse> Equipment { get; set; } = new();
 
+        public List<PlayerBonusResponse> Bonuses { get; set; } = new();
+
         public PlayerLoadoutResponse Loadout { get; set; } = new();
 
         public PlayerStoryResponse Story { get; set; } = new();

@@ -114,6 +114,10 @@ namespace Server.Battles
             ApplyBattleEndBonuses(steps, stateB, currentTurn);
 
             var outcomeType = ResolveOutcomeType(stateA, stateB, currentTurn, maxTurns);
+
+            if (outcomeType == OutcomeType.Timeout)
+                EmitTurnLimitDeath(steps, stateA, currentTurn);
+
             var maxTurnFromSteps = GetMaxTurnFromSteps(steps);
 
             LogLivingSummonsLeftInScript(stateA);
@@ -135,9 +139,70 @@ namespace Server.Battles
                 Seed = seed,
                 OutcomeType = outcomeType,
                 Steps = steps,
+                PerkUsages = CollectPerkUsages(stateA),
             };
 
             return response;
+        }
+
+        private void EmitTurnLimitDeath(List<BattleStep> steps, ITeamSimulationState state, int currentTurn)
+        {
+            var mainUnits = state.MainUnits;
+
+            for (int i = 0; i < mainUnits.Count; i++)
+            {
+                var unit = mainUnits[i];
+
+                if (unit.IsAlive() == false)
+                    continue;
+
+                unit.CharacteristicState.Health = 0f;
+
+                var commands = new List<BattleCommand>
+                {
+                    _battleCommandFactory.SetHp(unit.Id, unit.SlotIndex, 0f),
+                    _battleCommandFactory.KillUnit(unit.Id, unit.SlotIndex),
+                };
+
+                _battleScriptBuilder.Add(
+                    steps,
+                    currentTurn,
+                    BattlePhaseType.Death,
+                    unit,
+                    commands);
+
+                _coreLog.Information($"[Story][Battle]: Turn limit death, unitId = {unit.Id}, slot = {unit.SlotIndex}, turn = {currentTurn}");
+            }
+        }
+
+        private List<PerkUsage> CollectPerkUsages(ITeamSimulationState state)
+        {
+            var usages = new List<PerkUsage>();
+            var mainUnits = state.MainUnits;
+
+            for (int i = 0; i < mainUnits.Count; i++)
+            {
+                var perks = mainUnits[i].Perks;
+
+                for (int perkIndex = 0; perkIndex < perks.Count; perkIndex++)
+                {
+                    var perk = perks[perkIndex];
+
+                    if (perk.RemainingUses < 0)
+                        continue;
+
+                    usages.Add(new PerkUsage
+                    {
+                        PerkId = perk.Id,
+                        UsedCount = perk.UsedCount,
+                        RemainingUses = perk.RemainingUses,
+                    });
+
+                    _coreLog.Debug($"[Story][Battle]: Perk usage reported, unitId = {mainUnits[i].Id}, perkId = {perk.Id}, used = {perk.UsedCount}, remaining = {perk.RemainingUses}");
+                }
+            }
+
+            return usages;
         }
 
         private int GetMaxTurnFromSteps(List<BattleStep> steps)

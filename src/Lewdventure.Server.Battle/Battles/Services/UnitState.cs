@@ -15,6 +15,7 @@ namespace Server.Battles
         private readonly BattleSide _side;
         private readonly List<ActiveStatus> _activeStatuses = new();
         private readonly List<EquippedEntityRef> _equippedEntities = new();
+        private readonly List<string> _equipmentSkillKeys = new();
         private int _nextAttackTurn;
 
         public int Id => _id;
@@ -40,6 +41,8 @@ namespace Server.Battles
         public List<ActiveStatus> ActiveStatuses => _activeStatuses;
 
         public IReadOnlyList<EquippedEntityRef> EquippedEntities => _equippedEntities;
+
+        public IReadOnlyList<string> EquipmentSkillKeys => _equipmentSkillKeys;
 
         public UnitState(
             int id,
@@ -81,6 +84,22 @@ namespace Server.Battles
         public void RegisterNormalAttack(int currentTurn)
         {
             _nextAttackTurn = currentTurn + _attackCooldownTurns + 1;
+        }
+
+        public void RegisterEquipmentSkill(string skillKey)
+        {
+            if (string.IsNullOrWhiteSpace(skillKey))
+                return;
+
+            var trimmed = skillKey.Trim();
+
+            for (int i = 0; i < _equipmentSkillKeys.Count; i++)
+            {
+                if (string.Equals(_equipmentSkillKeys[i], trimmed, StringComparison.Ordinal))
+                    return;
+            }
+
+            _equipmentSkillKeys.Add(trimmed);
         }
 
         public void RegisterEquippedEntity(string entityType, int entityId)

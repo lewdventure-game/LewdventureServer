@@ -26,7 +26,7 @@ namespace Server.Battles
             var commands = new List<BattleCommand>();
             BeginCast(context, commands);
 
-            var damageMultiplier = context.Actor.CharacteristicState.SkillMultiplier * _damageRatio;
+            var damageMultiplier = context.SpellMultiplier * _damageRatio;
             var hit = context.TryDealStrike(commands, damageMultiplier, out var dealtDamage, out _);
 
             if (hit)

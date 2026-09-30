@@ -22,6 +22,8 @@ namespace Server.Infrastructure.Mongo.Players
 
         public List<PlayerEquipmentDocument> Equipment { get; set; } = new();
 
+        public List<PlayerBonusDocument> Bonuses { get; set; } = new();
+
         public PlayerLoadoutDocument Loadout { get; set; } = new();
 
         public PlayerStoryDocument Story { get; set; } = new();

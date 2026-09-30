@@ -241,6 +241,7 @@ namespace Server.Battles
                     parameters.DamageLength,
                     applyingMain.Id,
                     parameters.DamageRatio,
+                    parameters.FlatValue,
                     true,
                     appliesBonuses,
                     parameters.Bonuses,
