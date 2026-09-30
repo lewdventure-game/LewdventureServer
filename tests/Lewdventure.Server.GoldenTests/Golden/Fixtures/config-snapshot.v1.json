@@ -1,7 +1,7 @@
 {
   "format": "lewdventure-config-snapshot",
   "formatVersion": 1,
-  "version": "sha256:5f4eeb3ddfcde9ec3f475dcf8d8409a2fb8538df5a5aee41bbba85911b0e41ec",
+  "version": "sha256:c18cc9df931b09743523c406c7025b0d9b70765a6620a4a7378b69bb1197242f",
   "createdAt": "2026-09-27T08:38:58.5530000Z",
   "sourceKind": "SheetsUpload",
   "domains": [
@@ -297,24 +297,270 @@
     {
       "domain": "Characters",
       "spreadsheetId": "1rB22U8FrboY1hHqg1AwhEvDBzb1OxK9JTUWZ_1isRTg",
-      "range": "A1:K2",
+      "range": "A1:H2",
       "rows": [
         {
           "name": "",
           "is_off": false,
           "id": "1",
           "is_melee": true,
-          "upgrade_costs": "10",
-          "start_bonus_type": "1",
-          "start_bonus_value": "10",
-          "upgrade_bonus_types": "1",
-          "upgrade_bonus_values": "10",
-          "art_name": "pizduk",
-          "skill_ids": "1;2"
+          "promote_id": "1",
+          "skill_ids": "1;2",
+          "promote_to_skill_levels": "0;1;2;3;4;5;6;7",
+          "art_name": "pizduk"
         }
       ],
       "sourceRows": [
         2
+      ]
+    },
+    {
+      "domain": "Character_promotes",
+      "spreadsheetId": "1KIFCUVaiB4MK0933zj1vM-IYsIh_-YC9YS3Cp-0JLXw",
+      "range": "A1:I21",
+      "rows": [
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "1",
+          "frame_id": "1",
+          "copies_to_upgrade": "1",
+          "reward_types": "resource;story",
+          "reward_ids": "harem_points;101",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "2",
+          "frame_id": "2",
+          "copies_to_upgrade": "1",
+          "reward_types": "resource",
+          "reward_ids": "harem_points",
+          "reward_values": "150"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "3",
+          "frame_id": "3",
+          "copies_to_upgrade": "1",
+          "reward_types": "resource;story",
+          "reward_ids": "harem_points;102",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "4",
+          "frame_id": "4",
+          "copies_to_upgrade": "1",
+          "reward_types": "resource",
+          "reward_ids": "harem_points",
+          "reward_values": "150"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "5",
+          "frame_id": "5",
+          "copies_to_upgrade": "1",
+          "reward_types": "resource;story",
+          "reward_ids": "harem_points;103",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "6",
+          "frame_id": "6",
+          "copies_to_upgrade": "1",
+          "reward_types": "resource",
+          "reward_ids": "harem_points",
+          "reward_values": "150"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "7",
+          "frame_id": "7",
+          "copies_to_upgrade": "1",
+          "reward_types": "resource;story",
+          "reward_ids": "harem_points;104",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "8",
+          "frame_id": "7",
+          "copies_to_upgrade": "2",
+          "reward_types": "resource;bonus",
+          "reward_ids": "harem_points;1",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "9",
+          "frame_id": "7",
+          "copies_to_upgrade": "2",
+          "reward_types": "resource;bonus",
+          "reward_ids": "harem_points;1",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "10",
+          "frame_id": "7",
+          "copies_to_upgrade": "2",
+          "reward_types": "resource;bonus",
+          "reward_ids": "harem_points;1",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "11",
+          "frame_id": "7",
+          "copies_to_upgrade": "2",
+          "reward_types": "resource;bonus",
+          "reward_ids": "harem_points;1",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "12",
+          "frame_id": "7",
+          "copies_to_upgrade": "3",
+          "reward_types": "resource;bonus",
+          "reward_ids": "harem_points;1",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "13",
+          "frame_id": "7",
+          "copies_to_upgrade": "3",
+          "reward_types": "resource;bonus",
+          "reward_ids": "harem_points;1",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "14",
+          "frame_id": "7",
+          "copies_to_upgrade": "3",
+          "reward_types": "resource;bonus",
+          "reward_ids": "harem_points;1",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "15",
+          "frame_id": "7",
+          "copies_to_upgrade": "4",
+          "reward_types": "resource;bonus",
+          "reward_ids": "harem_points;1",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "16",
+          "frame_id": "7",
+          "copies_to_upgrade": "4",
+          "reward_types": "resource;bonus",
+          "reward_ids": "harem_points;1",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "17",
+          "frame_id": "7",
+          "copies_to_upgrade": "4",
+          "reward_types": "resource;bonus",
+          "reward_ids": "harem_points;1",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "18",
+          "frame_id": "7",
+          "copies_to_upgrade": "4",
+          "reward_types": "resource;bonus",
+          "reward_ids": "harem_points;1",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "19",
+          "frame_id": "7",
+          "copies_to_upgrade": "5",
+          "reward_types": "resource;bonus",
+          "reward_ids": "harem_points;1",
+          "reward_values": "100;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "promote_level": "20",
+          "frame_id": "7",
+          "copies_to_upgrade": "5",
+          "reward_types": "resource;bonus",
+          "reward_ids": "harem_points;1",
+          "reward_values": "100;1"
+        }
+      ],
+      "sourceRows": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21
       ]
     },
     {

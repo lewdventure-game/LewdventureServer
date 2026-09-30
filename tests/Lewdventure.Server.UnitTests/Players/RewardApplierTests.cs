@@ -82,17 +82,36 @@ namespace Tests.Unit.Players
         }
 
         [Test]
-        public void Apply_EnoughCopies_AppliesUpgradeAndOverflow()
+        public void Apply_EnoughCopies_PromotesCharacterAndGrantsPromoteRewards()
         {
             var profile = CreateProfile();
 
-            _applier.Apply(profile, _parser.Parse("character:1:12"), _configDistributor, DateTime.UtcNow);
+            _applier.Apply(profile, _parser.Parse("character:1:11"), _configDistributor, DateTime.UtcNow);
 
             var character = profile.Characters[0];
 
-            Assert.That(character.UpgradesApplied, Is.EqualTo(1));
+            Assert.That(character.UpgradesApplied, Is.EqualTo(8));
+            Assert.That(character.Copies, Is.EqualTo(1));
+            Assert.That(profile.Resources["harem_points"], Is.EqualTo(950));
+            Assert.That(profile.Bonuses, Has.Count.EqualTo(1));
+            Assert.That(profile.Bonuses[0].BonusId, Is.EqualTo(1));
+            Assert.That(profile.Bonuses[0].Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Apply_CopiesOverLastPromote_ConvertToOverflowResource()
+        {
+            var profile = CreateProfile();
+
+            _applier.Apply(profile, _parser.Parse("character:1:60"), _configDistributor, DateTime.UtcNow);
+
+            var character = profile.Characters[0];
+
+            Assert.That(character.UpgradesApplied, Is.EqualTo(20));
             Assert.That(character.Copies, Is.EqualTo(0));
-            Assert.That(profile.Resources["hard_money"], Is.EqualTo(500));
+            Assert.That(profile.Resources["harem_points"], Is.EqualTo(2150));
+            Assert.That(profile.Bonuses[0].Count, Is.EqualTo(13));
+            Assert.That(profile.Resources["hard_money"], Is.EqualTo(4500));
         }
 
         [Test]

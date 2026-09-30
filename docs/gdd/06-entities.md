@@ -31,18 +31,19 @@ Bundle id: `art_name`.
 ### Получение и прокачка
 
 - Reward type `character`.
-- Первый дроп: доступен + бонус по id из `start_bonus` (значение, operator и work_mode берутся из Bonuses по этому id).
-- Повторки → прокачки по спискам Characters (ниже); overflow → `character_overflow_resource` (meta).
+- Первый дроп: персонаж открывается, бонусов сам по себе не даёт — стартового бонуса в Characters больше нет.
+- Повторки → промоуты по листу `Character_promotes`; overflow сверх последнего уровня → `character_overflow_resource` (meta).
 
-**Прокачки (GDD, battle build):**
+**Промоуты (лист `Character_promotes`, подключён 2026-09-30):**
 
-- `upgrade_costs` — список стоимостей; **длина = макс. число прокачек**.
-- `upgrade_bonuses[i]` — id бонуса **только** за прокачку `i + 1` (ordinal 1:1 с costs). Не «на каждый лвл заново все пары».
-- В simulate: число применённых апгрейдов = `min(level - 1, upgrade_costs.Length)` (дальше cap; список id короче costs → Warning + stop).
-- Сила апгрейда = `Bonuses.bonus_value` по id; своих значений в Characters больше нет.
-- Переходный период: пока лист не переименован, сервер читает устаревшие `start_bonus_type` / `upgrade_bonus_types`; колонки `start_bonus_value` / `upgrade_bonus_values` игнорируются (валидатор помечает их как неиспользуемые).
+- Персонаж ссылается на набор промоутов через `promote_id`; строки набора нумерованы `promote_level` (1, 2, 3 …).
+- `copies_to_upgrade` — цена уровня в повторках. Копии тратятся автоматически, пока хватает на следующий уровень.
+- `frame_id` — рамка/ранг для визуала, сервер только отдаёт значение.
+- `reward_types` / `reward_ids` / `reward_values` — награды за уровень тремя параллельными колонками через `;`. Внутри встречаются `resource`, `bonus` (постоянный бонус на аккаунт) и `story` (**семантика не описана в ГДД, сервер логирует Warning и ничего не открывает**).
+- Бонусы за прокачку теперь приходят наградой на аккаунт и попадают в бой через `activeBonuses`, а не считаются в билде из Characters.
+- `promote_to_skill_levels` в Characters читается и отдаётся как есть; связь «уровень промоута → пресет значений скилла» пока не определена, бой её не использует.
 
-Для battle сейчас: character id, `level`, skill presets в snapshot.
+Для battle сейчас: character id, `level` (= число применённых промоутов + 1), skill ids в snapshot.
 
 ---
 

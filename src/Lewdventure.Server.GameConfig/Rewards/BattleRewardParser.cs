@@ -183,6 +183,9 @@ namespace Server.Battles
             if (typeSpan.Equals("account", StringComparison.OrdinalIgnoreCase))
                 return BattleRewardType.Account;
 
+            if (typeSpan.Equals("story", StringComparison.OrdinalIgnoreCase))
+                return BattleRewardType.Story;
+
             return BattleRewardType.None;
         }
     }

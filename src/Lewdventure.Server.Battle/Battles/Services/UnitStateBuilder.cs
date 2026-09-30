@@ -96,10 +96,8 @@ namespace Server.Battles
 
             _unitLoadoutBinder.RegisterSnapshotEquippedEntities(unitState, unitSnapshot, isSummon, battleSide);
 
-            if (isSummon == false && battleSide == BattleSide.Attacking && _configDistributor.Characters.TryGet(unitSnapshot.Id, out var attackingCharacter))
+            if (isSummon == false && battleSide == BattleSide.Attacking)
             {
-                _unitBonusGranter.GrantBuildBonus(unitState, attackingCharacter.StartBonusId, "build:start");
-                _unitBonusGranter.GrantCharacterUpgradeBonuses(unitState, attackingCharacter, unitSnapshot.Level);
                 _unitBonusGranter.GrantTrainingBonuses(unitState, unitSnapshot.TrainingLevel);
                 _unitBonusGranter.GrantEquipmentBonuses(unitState, unitSnapshot);
                 _unitBonusGranter.GrantArtifactBonuses(unitState, unitSnapshot);

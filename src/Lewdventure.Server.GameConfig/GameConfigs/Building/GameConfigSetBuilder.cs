@@ -70,6 +70,7 @@ namespace Server.GameConfigs
         {
             var tempConstants = ParseDomain<ConstantsMapper>(snapshot, ConfigDomainNames.Constants, errors);
             var tempCharacters = ParseDomain<CharacterMapper>(snapshot, ConfigDomainNames.Characters, errors);
+            var tempCharacterPromotes = ParseDomain<CharacterPromoteMapper>(snapshot, ConfigDomainNames.CharacterPromotes, errors);
             var tempBonuses = ParseDomain<BonusMapper>(snapshot, ConfigDomainNames.Bonuses, errors);
             var tempStatuses = ParseDomain<StatusMapper>(snapshot, ConfigDomainNames.Statuses, errors);
             var tempSummons = ParseDomain<SummonMapper>(snapshot, ConfigDomainNames.Summons, errors);
@@ -89,6 +90,7 @@ namespace Server.GameConfigs
 
             AddList(distributor.Constants, tempConstants, ConfigDomainNames.Constants);
             AddList(distributor.Characters, tempCharacters, ConfigDomainNames.Characters);
+            AddList(distributor.CharacterPromotes, tempCharacterPromotes, ConfigDomainNames.CharacterPromotes);
             AddBonuses(distributor, tempBonuses);
             AddList(distributor.Statuses, tempStatuses, ConfigDomainNames.Statuses);
             AddList(distributor.Summons, tempSummons, ConfigDomainNames.Summons);
@@ -104,6 +106,9 @@ namespace Server.GameConfigs
             AddList(distributor.PerkGroups, tempPerkGroups, ConfigDomainNames.PerkGroups);
             AddList(distributor.Skills, tempSkills, ConfigDomainNames.Skills);
 
+            if (distributor.CharacterPromotes.Collection.Count == 0)
+                _coreLog.Information("[Config] Character_promotes empty; sheet id not wired");
+
             _coreLog.Information($"[Config] Trainings stub empty; sheet id not wired count = {distributor.Trainings.Collection.Count}");
             _coreLog.Information($"[Config] Artifacts stub empty; sheet id not wired count = {distributor.Artifacts.Collection.Count}");
             _coreLog.Information($"[Config] Aspects stub empty; sheet id not wired count = {distributor.Aspects.Collection.Count}");
@@ -115,7 +120,8 @@ namespace Server.GameConfigs
         private List<T> ParseDomain<T>(GameConfigSnapshot snapshot, string domainName, List<string> errors)
             where T : class
         {
-            snapshot.TryGetDomain(domainName, out var domain);
+            if (snapshot.TryGetDomain(domainName, out var domain) == false)
+                return new List<T>();
 
             return _configRowsParser.Parse<T>(domain, errors);
         }

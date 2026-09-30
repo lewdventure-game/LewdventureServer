@@ -358,6 +358,8 @@ Skills: `id` + `type` + `parameters` из Skills sheet (`C:F`). Factory без �
 
 Story level: `enemies_attack_multiplier` / `enemies_health_multiplier` применяются к health/damage врагов при build по `storyLevelId`.
 Stage: при `stageId > 0` дополнительно умножается `StoryStage.EnemyStatsMultiplier` на health/damage врагов.
+Промоуты персонажа (`Character_promotes`) бонусов в бою не дают: их награды (`bonus:<id>`) выдаются на аккаунт в мете и приезжают в снапшоте через `activeBonuses`.
+
 Статусы без источника (`sourceUnitId = -1`): тик считается от `flat_value` из `parameters`, `damage_ratio` не применяется, крит не роллится. Нет `flat_value` → Warning и урон 0.
 
 Характеристика СНАР_СПЕЛЛ_МН: бонусы `equip_spell_multiplier_local/perk/global` (BonusType 56/57/58), формула 2, база — константа `equip_spell_multiplier_base` (нет константы → `1`). Множитель применяется только к скиллам, которые пришли из снаряжения (`Equipments.skill_id`), остальные скиллы считаются по СПЕЛЛ_МН.

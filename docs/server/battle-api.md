@@ -73,7 +73,7 @@ Rewards in battle: `bonus` / `status` применяются в симуляци
 - Итоги считаются из **слоёв** (`CharacteristicBuckets` + `ICharacteristicCalculator`, формулы GDD 1/2/5/6/7), не через flat `+=` на finals.
 - Formula 2 multipliers с округлением: `КРИТ_МН`, `КОМБО_1/2_МН`, `КОНТР_МН`, `СПЕЛЛ_МН` (`MathF.Round` после replace).
 - Источники build: constants → character start/upgrades → training → equipment(level) → summon mastery/account → artifacts → aspects → perks/statuses/runtime.
-- Character upgrades (GDD): `min(level - 1, upgrade_costs.Length)` штук; апгрейд `i` грантит только `upgrade_bonuses[i]` (не спам всех id на каждый лвл). Значение, operator и work_mode — из `Bonuses` по id; своих значений в Characters нет. Устаревшие колонки `start_bonus_type` / `upgrade_bonus_types` ещё читаются, `*_value(s)` игнорируются.
+- Промоуты персонажа бонусов в бою **не** дают: лист `Character_promotes` выдаёт награды на аккаунт в момент прокачки (в том числе `bonus:<id>`), и в бой они приезжают через `activeBonuses` снапшота. В билде юнита остаются константы, тренировки, снаряжение, мастерство саммонов, артефакты, аспекты, перки и статусы.
 - Equipment `equip_bonus_type_*`: **bonus id** или техническое имя `BonusType`; `equip_bonus_values_*`: уровни через `,` или `;` (берётся более «длинный» split; при равенстве — `,`).
 - `IBattleBonusService` применяет `operator` (`add` / `replace`) и battle `work_mode`: `end_of_battle`, `first_turns:N`, `every_turn`, `next_battles:N` (RemainingBattles, decrement на battle end), `if_equipped`.
 - `current_health_local` + `replace` → set HP (clamp MaxHealth); `add` → delta.

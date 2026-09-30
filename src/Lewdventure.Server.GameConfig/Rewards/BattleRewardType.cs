@@ -10,5 +10,6 @@ namespace Server.Battles
         Summon = 5,
         Equipment = 6,
         Account = 7,
+        Story = 8,
     }
 }

@@ -30,31 +30,23 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
-        public void StartBonus_TakesValueFromBonusesConfig()
+        public void CharacterWithoutBonusColumns_UsesConstantsOnly()
         {
             var battleCore = CreateCore(_domains);
             var characteristics = battleCore.BuildCharacteristics(CreateUnitSnapshot(), BattleSide.Attacking, false, 0, 0);
 
-            Assert.That(characteristics.MaxHealth, Is.EqualTo(690f).Within(0.001f));
+            Assert.That(characteristics.MaxHealth, Is.EqualTo(600f).Within(0.001f));
         }
 
         [Test]
-        public void StartBonus_ReadsRenamedColumn()
+        public void AccountBonus_FromSnapshot_ChangesCharacteristics()
         {
-            var renamed = ReplaceDomain(_domains, "Characters", rows =>
-            {
-                var row = (JObject)rows[0];
+            var battleCore = CreateCore(_domains);
+            var unitSnapshot = CreateUnitSnapshot();
 
-                row["start_bonus"] = row["start_bonus_type"];
-                row["upgrade_bonuses"] = row["upgrade_bonus_types"];
-                row.Remove("start_bonus_type");
-                row.Remove("upgrade_bonus_types");
-                row.Remove("start_bonus_value");
-                row.Remove("upgrade_bonus_values");
-            });
+            unitSnapshot.ActiveBonuses.Add(new BonusGrantSnapshot { Id = 1, Count = 1, RemainingBattles = 0 });
 
-            var battleCore = CreateCore(renamed);
-            var characteristics = battleCore.BuildCharacteristics(CreateUnitSnapshot(), BattleSide.Attacking, false, 0, 0);
+            var characteristics = battleCore.BuildCharacteristics(unitSnapshot, BattleSide.Attacking, false, 0, 0);
 
             Assert.That(characteristics.MaxHealth, Is.EqualTo(690f).Within(0.001f));
         }
@@ -80,7 +72,11 @@ namespace Tests.Unit.Battles
             });
 
             var battleCore = CreateCore(patched);
-            var characteristics = battleCore.BuildCharacteristics(CreateUnitSnapshot(), BattleSide.Attacking, false, 0, 0);
+            var unitSnapshot = CreateUnitSnapshot();
+
+            unitSnapshot.ActiveBonuses.Add(new BonusGrantSnapshot { Id = 1, Count = 1, RemainingBattles = 0 });
+
+            var characteristics = battleCore.BuildCharacteristics(unitSnapshot, BattleSide.Attacking, false, 0, 0);
 
             Assert.That(characteristics.EquipmentSpellMultiplier, Is.EqualTo(1.5f).Within(0.001f));
             Assert.That(characteristics.MaxHealth, Is.EqualTo(600f).Within(0.001f));

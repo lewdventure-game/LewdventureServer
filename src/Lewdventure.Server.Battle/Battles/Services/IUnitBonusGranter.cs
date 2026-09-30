@@ -6,8 +6,6 @@ namespace Server.Battles
     {
         public void GrantBuildBonus(IUnitState unitState, int bonusId, string sourceKey);
 
-        public void GrantCharacterUpgradeBonuses(UnitState unitState, ICharacterMapper characterMapper, int characterLevel);
-
         public void GrantTrainingBonuses(UnitState unitState, int trainingLevel);
 
         public void GrantEquipmentBonuses(UnitState unitState, IUnitSnapshot unitSnapshot);

@@ -24,6 +24,7 @@ namespace Server.GameConfigs
         {
             [ConfigDomainNames.Constants] = typeof(ConstantsMapper),
             [ConfigDomainNames.Characters] = typeof(CharacterMapper),
+            [ConfigDomainNames.CharacterPromotes] = typeof(CharacterPromoteMapper),
             [ConfigDomainNames.Bonuses] = typeof(BonusMapper),
             [ConfigDomainNames.Statuses] = typeof(StatusMapper),
             [ConfigDomainNames.Summons] = typeof(SummonMapper),

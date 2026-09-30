@@ -27,7 +27,7 @@ namespace Tests.Unit.GameConfig
                 var reloaded = await source.LoadAsync(path, CancellationToken.None);
 
                 Assert.That(reloaded.Version, Is.EqualTo(snapshot.Version));
-                Assert.That(reloaded.Domains, Has.Count.EqualTo(16));
+                Assert.That(reloaded.Domains, Has.Count.EqualTo(17));
             }
             finally
             {

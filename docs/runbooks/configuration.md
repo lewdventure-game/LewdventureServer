@@ -84,12 +84,13 @@ openssl rand -base64 48
 
 | Лист | Что сделать |
 | --- | --- |
-| `Characters` | переименовать `start_bonus_type` → `start_bonus`, `upgrade_bonus_types` → `upgrade_bonuses`, удалить `start_bonus_value` и `upgrade_bonus_values`. Значение бонуса теперь берётся из `Bonuses` по id; старые имена пока читаются, чтобы публикация не падала |
+| `Characters` | лист уже переведён на `promote_id`, `skill_ids`, `promote_to_skill_levels`, `art_name` — сервер читает именно эти колонки; бонусных колонок больше нет |
+| `Character_promotes` | новый лист, `SpreadsheetId` прописан в `ConfigSheets`; Apps Script забирает его вместе с остальными. Промоуты персонажа считаются по нему: цена уровня — `copies_to_upgrade`, награды уровня выдаются на аккаунт |
 | `Bonuses` | проверить значения: до правки сила стартового бонуса персонажа и бонусов за прокачку задавалась в `Characters`, поэтому строки `Bonuses` могли стоять «заглушками» |
 | `Statuses` | у статусов, которые вешаются наградой события или стартом забега, задать `flat_value` — плоский урон за тик, когда источника нет |
 | `Constants` | необязательная `equip_spell_multiplier_base` — база характеристики СНАР_СПЕЛЛ_МН; нет константы → `1` |
 
-Проверка: после публикации в предупреждениях валидатора не должно остаться неизвестных колонок (`колонка start_bonus_value сервером не используется`), а `GET /api/player/characteristics` должен показывать ожидаемые `maxHealth` и `damage`.
+Проверка: после публикации в предупреждениях валидатора не должно остаться неизвестных колонок, а `GET /api/player/characteristics` должен показывать ожидаемые `maxHealth` и `damage`.
 
 Диагностика в логах: `[Player] start content constant is missing` — константы нет; `[Player] start content granted nothing` — константа есть, но из неё не разобралась ни одна награда (почти всегда забытое количество); `[Player] start content granted` — выдано.
 

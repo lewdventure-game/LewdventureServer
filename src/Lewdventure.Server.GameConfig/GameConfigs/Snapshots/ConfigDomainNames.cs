@@ -4,6 +4,7 @@ namespace Server.GameConfigs
     {
         public const string Constants = "Constants";
         public const string Characters = "Characters";
+        public const string CharacterPromotes = "Character_promotes";
         public const string Bonuses = "Bonuses";
         public const string Statuses = "Statuses";
         public const string Summons = "Summons";
@@ -23,6 +24,7 @@ namespace Server.GameConfigs
         {
             Constants,
             Characters,
+            CharacterPromotes,
             Bonuses,
             Statuses,
             Summons,

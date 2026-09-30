@@ -25,6 +25,8 @@ namespace Server.Services
 
         public ICharacterMapperManager Characters { get; } = new CharacterMapperManager();
 
+        public ICharacterPromoteMapperManager CharacterPromotes { get; } = new CharacterPromoteMapperManager();
+
         public IEnemyMapperManager Enemies { get; } = new EnemyMapperManager();
 
         public IEquipmentMapperManager Equipments { get; } = new EquipmentMapperManager();

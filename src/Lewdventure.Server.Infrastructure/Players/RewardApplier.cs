@@ -1,4 +1,5 @@
 using Server.Battles;
+using Server.Entities;
 using Server.Bonuses;
 using Server.Configs;
 using Server.Infrastructure.Mongo.Players;
@@ -16,6 +17,7 @@ namespace Server.Infrastructure.Players
         private const string EquipmentEntry = "equipment";
         private const string FlagEntry = "flag";
         private const string BonusEntry = "bonus";
+        private const string PromoteEntry = "promote";
 
         private readonly IBattleRewardParser _battleRewardParser;
         private readonly IBonusWorkModeParser _bonusWorkModeParser;
@@ -118,6 +120,13 @@ namespace Server.Infrastructure.Players
             if (reward.Type == BattleRewardType.Bonus)
             {
                 AddBonus(profile, reward.Id, reward.Count, configDistributor, now, entries);
+
+                return;
+            }
+
+            if (reward.Type == BattleRewardType.Story)
+            {
+                _logger.LogWarning("[Player] story reward {StoryId} is not implemented yet, nothing is unlocked", reward.Id);
 
                 return;
             }
@@ -237,9 +246,11 @@ namespace Server.Infrastructure.Players
             character.Copies += remaining;
             entries.Add(CreateEntry(CharacterEntry, characterId.ToString(), count));
 
-            ApplyCharacterUpgrades(character, mapper.UpgradeCosts);
+            ApplyCharacterPromotes(profile, character, mapper, configDistributor, now, entries);
 
-            if (mapper.UpgradeCosts.Length <= character.UpgradesApplied && 0 < character.Copies)
+            var maxPromoteLevel = configDistributor.CharacterPromotes.GetMaxPromoteLevel(mapper.PromoteId);
+
+            if (0 < maxPromoteLevel && maxPromoteLevel <= character.UpgradesApplied && 0 < character.Copies)
             {
                 var overflow = character.Copies;
 
@@ -248,18 +259,118 @@ namespace Server.Infrastructure.Players
             }
         }
 
-        private void ApplyCharacterUpgrades(PlayerCharacterDocument character, int[] upgradeCosts)
+        private void ApplyCharacterPromotes(
+            PlayerProfileDocument profile,
+            PlayerCharacterDocument character,
+            ICharacterMapper mapper,
+            IConfigDistributor configDistributor,
+            DateTime now,
+            List<PlayerLedgerEntryDocument> entries)
         {
-            while (character.UpgradesApplied < upgradeCosts.Length)
+            if (mapper.PromoteId <= 0)
             {
-                var cost = upgradeCosts[character.UpgradesApplied];
+                _logger.LogWarning("[Player] character {CharacterId} has no promote_id, copies stay unspent", mapper.Id);
 
-                if (cost <= 0 || character.Copies < cost)
+                return;
+            }
+
+            var promotes = configDistributor.CharacterPromotes;
+
+            if (promotes.Collection.Count == 0)
+            {
+                _logger.LogWarning("[Player] Character_promotes is empty, character {CharacterId} copies stay unspent", mapper.Id);
+
+                return;
+            }
+
+            while (true)
+            {
+                var nextLevel = character.UpgradesApplied + 1;
+
+                if (promotes.TryGet(mapper.PromoteId, nextLevel, out var promote) == false)
                     return;
 
-                character.Copies -= cost;
-                character.UpgradesApplied += 1;
+                if (promote.CopiesToUpgrade <= 0)
+                {
+                    _logger.LogWarning(
+                        "[Player] promote {PromoteId} level {Level} has copies_to_upgrade {Copies}, promotion stopped",
+                        mapper.PromoteId,
+                        nextLevel,
+                        promote.CopiesToUpgrade);
+
+                    return;
+                }
+
+                if (character.Copies < promote.CopiesToUpgrade)
+                    return;
+
+                character.Copies -= promote.CopiesToUpgrade;
+                character.UpgradesApplied = nextLevel;
+                entries.Add(CreateEntry(PromoteEntry, $"{mapper.Id}:{nextLevel}", promote.CopiesToUpgrade));
+
+                _logger.LogInformation(
+                    "[Player] character {CharacterId} promoted to level {Level} for {Copies} copies",
+                    mapper.Id,
+                    nextLevel,
+                    promote.CopiesToUpgrade);
+
+                ApplyPromoteRewards(profile, promote, configDistributor, now, entries);
             }
+        }
+
+        private void ApplyPromoteRewards(
+            PlayerProfileDocument profile,
+            ICharacterPromoteMapper promote,
+            IConfigDistributor configDistributor,
+            DateTime now,
+            List<PlayerLedgerEntryDocument> entries)
+        {
+            var rewards = BuildPromoteRewards(promote);
+
+            if (rewards.Count == 0)
+                return;
+
+            for (int i = 0; i < rewards.Count; i++)
+                ApplyReward(profile, rewards[i], configDistributor, now, entries);
+        }
+
+        private IReadOnlyList<BattleReward> BuildPromoteRewards(ICharacterPromoteMapper promote)
+        {
+            var types = promote.RewardTypes;
+            var ids = promote.RewardIds;
+            var values = promote.RewardValues;
+
+            if (types.Length == 0)
+                return Array.Empty<BattleReward>();
+
+            if (types.Length != ids.Length || types.Length != values.Length)
+            {
+                _logger.LogWarning(
+                    "[Player] promote {PromoteId} level {Level} has {Types} types, {Ids} ids and {Values} values, rewards skipped",
+                    promote.Id,
+                    promote.PromoteLevel,
+                    types.Length,
+                    ids.Length,
+                    values.Length);
+
+                return Array.Empty<BattleReward>();
+            }
+
+            var builder = new System.Text.StringBuilder();
+
+            for (int i = 0; i < types.Length; i++)
+            {
+                if (0 < builder.Length)
+                    builder.Append(',');
+
+                builder.Append(types[i]);
+                builder.Append(':');
+                builder.Append(ids[i]);
+                builder.Append(':');
+                builder.Append(values[i]);
+            }
+
+            return _battleRewardParser.Parse(builder.ToString());
         }
 
         private void AddSummon(

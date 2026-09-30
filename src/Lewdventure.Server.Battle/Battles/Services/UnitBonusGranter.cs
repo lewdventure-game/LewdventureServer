@@ -123,56 +123,6 @@ namespace Server.Battles
                 GrantBuildBonus(unitState, bonusIds[i], $"{sourcePrefix}:{i}");
         }
 
-        public void GrantCharacterUpgradeBonuses(UnitState unitState, ICharacterMapper characterMapper, int characterLevel)
-        {
-            if (characterLevel <= 0)
-            {
-                _coreLog.Error($"[Story][Battle]: Invalid character level = {characterLevel}, characterId = {characterMapper.Id}");
-
-                throw new InvalidOperationException($"[Story][Battle]: Invalid character level = {characterLevel}, characterId = {characterMapper.Id}");
-            }
-
-            var purchasedUpgrades = characterLevel - 1;
-
-            if (purchasedUpgrades <= 0)
-                return;
-
-            var upgradeCosts = characterMapper.UpgradeCosts;
-            var upgradeBonusIds = characterMapper.UpgradeBonusIds;
-
-            if (upgradeCosts.Length == 0)
-            {
-                _coreLog.Debug($"[Story][Battle]: Character upgrades skipped, id = {characterMapper.Id}; upgrade_costs empty");
-
-                return;
-            }
-
-            var appliedUpgrades = purchasedUpgrades;
-
-            if (upgradeCosts.Length < appliedUpgrades)
-                appliedUpgrades = upgradeCosts.Length;
-
-            for (int upgradeIndex = 0; upgradeIndex < appliedUpgrades; upgradeIndex++)
-            {
-                if (upgradeBonusIds.Length <= upgradeIndex)
-                {
-                    _coreLog.Warning($"[Story][Battle]: Character upgrade bonus missing, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}");
-
-                    break;
-                }
-
-                var bonusId = upgradeBonusIds[upgradeIndex];
-                var sourceKey = $"build:upgrade:{characterMapper.Id}:{upgradeIndex + 1}";
-
-                GrantBuildBonus(unitState, bonusId, sourceKey);
-
-                _coreLog.Debug($"[Story][Battle]: Character upgrade grant, characterId = {characterMapper.Id}, upgrade = {upgradeIndex + 1}, cost = {upgradeCosts[upgradeIndex]}, bonusId = {bonusId}");
-            }
-
-            if (upgradeCosts.Length < purchasedUpgrades)
-                _coreLog.Debug($"[Story][Battle]: Character upgrades capped, characterId = {characterMapper.Id}, level = {characterLevel}, purchased = {purchasedUpgrades}, maxFromCosts = {upgradeCosts.Length}");
-        }
-
         public void GrantSummonAccountBonuses(IUnitState mainUnit, IUnitSnapshot summonSnapshot)
         {
             if (_configDistributor.Summons.TryGet(summonSnapshot.Id, out var summonMapper) == false)

@@ -8,14 +8,12 @@ namespace Server.Entities
 
         public bool IsMelee { get; }
 
-        public int[] UpgradeCosts { get; }
-
-        public int StartBonusId { get; }
-
-        public int[] UpgradeBonusIds { get; }
-
-        public string ArtName { get; }
+        public int PromoteId { get; }
 
         public int[] SkillIds { get; }
+
+        public int[] PromoteToSkillLevels { get; }
+
+        public string ArtName { get; }
     }
 }
