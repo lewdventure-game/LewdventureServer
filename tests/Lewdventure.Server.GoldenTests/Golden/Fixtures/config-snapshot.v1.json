@@ -1,8 +1,8 @@
 {
   "format": "lewdventure-config-snapshot",
   "formatVersion": 1,
-  "version": "sha256:c18cc9df931b09743523c406c7025b0d9b70765a6620a4a7378b69bb1197242f",
-  "createdAt": "2026-09-27T08:38:58.5530000Z",
+  "version": "sha256:53ab01b11f8f7653bf8977e3cf23f19599391240d496b2b52031bf114ed13031",
+  "createdAt": "2026-09-30T03:37:36.6330000Z",
   "sourceKind": "SheetsUpload",
   "domains": [
     {
@@ -321,7 +321,7 @@
       "rows": [
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "1",
           "frame_id": "1",
@@ -332,7 +332,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "2",
           "frame_id": "2",
@@ -343,7 +343,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "3",
           "frame_id": "3",
@@ -354,7 +354,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "4",
           "frame_id": "4",
@@ -365,7 +365,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "5",
           "frame_id": "5",
@@ -376,7 +376,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "6",
           "frame_id": "6",
@@ -387,7 +387,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "7",
           "frame_id": "7",
@@ -398,7 +398,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "8",
           "frame_id": "7",
@@ -409,7 +409,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "9",
           "frame_id": "7",
@@ -420,7 +420,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "10",
           "frame_id": "7",
@@ -431,7 +431,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "11",
           "frame_id": "7",
@@ -442,7 +442,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "12",
           "frame_id": "7",
@@ -453,7 +453,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "13",
           "frame_id": "7",
@@ -464,7 +464,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "14",
           "frame_id": "7",
@@ -475,7 +475,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "15",
           "frame_id": "7",
@@ -486,7 +486,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "16",
           "frame_id": "7",
@@ -497,7 +497,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "17",
           "frame_id": "7",
@@ -508,7 +508,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "18",
           "frame_id": "7",
@@ -519,7 +519,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "19",
           "frame_id": "7",
@@ -530,7 +530,7 @@
         },
         {
           "name": "",
-          "is_off": false,
+          "is_off": "",
           "id": "1",
           "promote_level": "20",
           "frame_id": "7",
@@ -1980,7 +1980,7 @@
     {
       "domain": "Mastery",
       "spreadsheetId": "1grplwUHMfdcs0-0QvFZvhQqsrcS4ywwe6nTQsEB6EOg",
-      "range": "A1:S654",
+      "range": "A1:J644",
       "rows": [
         {
           "name": "",
@@ -1990,11 +1990,7 @@
           "copies_to_upgrade": "1",
           "bonus_id": "1",
           "art_name": "",
-          "dmg_multiplier": "1.05",
-          "эпик": "3831",
-          "красный": "5394",
-          "серый": "7587",
-          "золотой": "10671"
+          "dmg_multiplier": "1.05"
         },
         {
           "name": "",
@@ -2004,11 +2000,7 @@
           "copies_to_upgrade": "1",
           "bonus_id": "0",
           "art_name": "",
-          "dmg_multiplier": "1.10",
-          "эпик": "4022.55",
-          "красный": "5663.7",
-          "серый": "7966.35",
-          "золотой": "11204.55"
+          "dmg_multiplier": "1.10"
         },
         {
           "name": "",
@@ -2018,11 +2010,7 @@
           "copies_to_upgrade": "2",
           "bonus_id": "1",
           "art_name": "",
-          "dmg_multiplier": "1.16",
-          "эпик": "4214.1",
-          "красный": "5933.4",
-          "серый": "8345.7",
-          "золотой": "11738.1"
+          "dmg_multiplier": "1.16"
         },
         {
           "name": "",
@@ -2032,11 +2020,7 @@
           "copies_to_upgrade": "2",
           "bonus_id": "0",
           "art_name": "",
-          "dmg_multiplier": "1.22",
-          "эпик": "4405.65",
-          "красный": "6203.1",
-          "серый": "8725.05",
-          "золотой": "12271.65"
+          "dmg_multiplier": "1.22"
         },
         {
           "name": "",
@@ -2046,11 +2030,7 @@
           "copies_to_upgrade": "3",
           "bonus_id": "1",
           "art_name": "",
-          "dmg_multiplier": "1.28",
-          "эпик": "4597.2",
-          "красный": "6472.8",
-          "серый": "9104.4",
-          "золотой": "12805.2"
+          "dmg_multiplier": "1.28"
         },
         {
           "name": "",
@@ -2060,11 +2040,7 @@
           "copies_to_upgrade": "3",
           "bonus_id": "0",
           "art_name": "",
-          "dmg_multiplier": "1.34",
-          "эпик": "4788.75",
-          "красный": "6742.5",
-          "серый": "9483.75",
-          "золотой": "13338.75"
+          "dmg_multiplier": "1.34"
         },
         {
           "name": "",
@@ -2074,11 +2050,7 @@
           "copies_to_upgrade": "4",
           "bonus_id": "1",
           "art_name": "",
-          "dmg_multiplier": "1.41",
-          "эпик": "4980.3",
-          "красный": "7012.2",
-          "серый": "9863.1",
-          "золотой": "13872.3"
+          "dmg_multiplier": "1.41"
         },
         {
           "name": "",
@@ -2088,11 +2060,7 @@
           "copies_to_upgrade": "4",
           "bonus_id": "0",
           "art_name": "",
-          "dmg_multiplier": "1.48",
-          "эпик": "5171.85",
-          "красный": "7281.9",
-          "серый": "10242.45",
-          "золотой": "14405.85"
+          "dmg_multiplier": "1.48"
         },
         {
           "name": "",
@@ -2102,11 +2070,7 @@
           "copies_to_upgrade": "5",
           "bonus_id": "1",
           "art_name": "",
-          "dmg_multiplier": "1.55",
-          "эпик": "5363.4",
-          "красный": "7551.6",
-          "серый": "10621.8",
-          "золотой": "14939.4"
+          "dmg_multiplier": "1.55"
         },
         {
           "name": "",
@@ -2116,11 +2080,7 @@
           "copies_to_upgrade": "5",
           "bonus_id": "0",
           "art_name": "",
-          "dmg_multiplier": "1.63",
-          "эпик": "5554.95",
-          "красный": "7821.3",
-          "серый": "11001.15",
-          "золотой": "15472.95"
+          "dmg_multiplier": "1.63"
         },
         {
           "name": "",
@@ -2130,11 +2090,7 @@
           "copies_to_upgrade": "5",
           "bonus_id": "1",
           "art_name": "",
-          "dmg_multiplier": "1.71",
-          "эпик": "5746.5",
-          "красный": "8091",
-          "серый": "11380.5",
-          "золотой": "16006.5"
+          "dmg_multiplier": "1.71"
         },
         {
           "name": "",
@@ -2144,11 +2100,7 @@
           "copies_to_upgrade": "5",
           "bonus_id": "0",
           "art_name": "",
-          "dmg_multiplier": "1.80",
-          "эпик": "5938.05",
-          "красный": "8360.7",
-          "серый": "11759.85",
-          "золотой": "16540.05"
+          "dmg_multiplier": "1.80"
         },
         {
           "name": "",
@@ -2158,11 +2110,7 @@
           "copies_to_upgrade": "5",
           "bonus_id": "1",
           "art_name": "",
-          "dmg_multiplier": "1.89",
-          "эпик": "6129.6",
-          "красный": "8630.4",
-          "серый": "12139.2",
-          "золотой": "17073.6"
+          "dmg_multiplier": "1.89"
         },
         {
           "name": "",
@@ -2172,11 +2120,7 @@
           "copies_to_upgrade": "5",
           "bonus_id": "0",
           "art_name": "",
-          "dmg_multiplier": "1.98",
-          "эпик": "6321.15",
-          "красный": "8900.1",
-          "серый": "12518.55",
-          "золотой": "17607.15"
+          "dmg_multiplier": "1.98"
         },
         {
           "name": "",
@@ -2186,11 +2130,7 @@
           "copies_to_upgrade": "5",
           "bonus_id": "1",
           "art_name": "",
-          "dmg_multiplier": "2.08",
-          "эпик": "6512.7",
-          "красный": "9169.8",
-          "серый": "12897.9",
-          "золотой": "18140.7"
+          "dmg_multiplier": "2.08"
         },
         {
           "name": "",
@@ -2200,11 +2140,7 @@
           "copies_to_upgrade": "5",
           "bonus_id": "0",
           "art_name": "",
-          "dmg_multiplier": "2.19",
-          "эпик": "6704.25",
-          "красный": "9439.5",
-          "серый": "13277.25",
-          "золотой": "18674.25"
+          "dmg_multiplier": "2.19"
         },
         {
           "name": "",
@@ -2214,11 +2150,7 @@
           "copies_to_upgrade": "5",
           "bonus_id": "1",
           "art_name": "",
-          "dmg_multiplier": "2.29",
-          "эпик": "6895.8",
-          "красный": "9709.2",
-          "серый": "13656.6",
-          "золотой": "19207.8"
+          "dmg_multiplier": "2.29"
         }
       ],
       "sourceRows": [
