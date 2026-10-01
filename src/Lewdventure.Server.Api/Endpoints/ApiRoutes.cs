@@ -9,6 +9,7 @@ namespace Server.Api.Endpoints
         public const string ConfigStatus = "/api/config/status";
         public const string ConfigSheets = "/api/config/sheets";
         public const string ConfigUpload = "/api/config/upload";
+        public const string ConfigBundle = "/api/config/bundle";
         public const string AuthDevice = "/api/auth/device";
         public const string AuthRefresh = "/api/auth/refresh";
         public const string PlayerProfile = "/api/player/profile";

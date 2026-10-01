@@ -61,7 +61,7 @@ namespace Server.GameConfigs
             if (0 < errors.Count)
                 return new GameConfigBuildResult(null, errors, warnings);
 
-            var configSet = new GameConfigSet(snapshot.Version, DateTime.UtcNow, source, distributor);
+            var configSet = new GameConfigSet(snapshot.Version, DateTime.UtcNow, source, distributor, snapshot);
 
             return new GameConfigBuildResult(configSet, errors, warnings);
         }

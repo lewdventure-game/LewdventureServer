@@ -4,9 +4,16 @@ namespace Server.GameConfigs
 {
     internal sealed class GameConfigSetProvider : IGameConfigSetProvider
     {
+        private const string EmptySource = "none";
+
         private readonly ICoreLog _coreLog;
 
-        private GameConfigSet _current = new(GameConfigSet.EmptyVersion, DateTime.MinValue, "none", new ConfigDistributor());
+        private GameConfigSet _current = new(
+            GameConfigSet.EmptyVersion,
+            DateTime.MinValue,
+            EmptySource,
+            new ConfigDistributor(),
+            new GameConfigSnapshot(GameConfigSet.EmptyVersion, DateTime.MinValue, EmptySource, Array.Empty<ConfigSnapshotDomain>()));
 
         public GameConfigSetProvider(ICoreLog coreLog)
         {

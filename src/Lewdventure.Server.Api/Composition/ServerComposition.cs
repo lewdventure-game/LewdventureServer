@@ -167,6 +167,7 @@ namespace Server.Api.Composition
                 .AddSingleton<GameConfigSetBuilder>()
                 .AddSingleton<IGameConfigSetProvider, GameConfigSetProvider>()
                 .AddSingleton<IBonusWorkModeParser, BonusWorkModeParser>()
+                .AddSingleton<ClientConfigBundleFactory>()
                 .AddSingleton<ConfigResponseFactory>()
                 .AddScoped(ResolveConfigDistributor);
         }

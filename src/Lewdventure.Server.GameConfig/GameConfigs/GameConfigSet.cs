@@ -6,12 +6,13 @@ namespace Server.GameConfigs
     {
         public const string EmptyVersion = "empty";
 
-        public GameConfigSet(string version, DateTime loadedAt, string source, IConfigDistributor distributor)
+        public GameConfigSet(string version, DateTime loadedAt, string source, IConfigDistributor distributor, GameConfigSnapshot snapshot)
         {
             Version = version;
             LoadedAt = loadedAt;
             Source = source;
             Distributor = distributor;
+            Snapshot = snapshot;
         }
 
         public string Version { get; }
@@ -21,6 +22,8 @@ namespace Server.GameConfigs
         public string Source { get; }
 
         public IConfigDistributor Distributor { get; }
+
+        public GameConfigSnapshot Snapshot { get; }
 
         public bool IsEmpty => string.Equals(Version, EmptyVersion, StringComparison.Ordinal);
     }

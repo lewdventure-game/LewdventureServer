@@ -27,15 +27,15 @@
 
 ### Шаг 3. Создать ядро один раз
 
-Ядру нужен текст `ConfigBundle.json` — тот же, что читает клиент. Его отдаёт `IConfigSource.Load()`, а этот тип `internal` для сборки `Core`, поэтому ядро проще всего создавать там же — в `Core/Installers/ConfigInstaller.cs`:
+Ядру нужен **бандл конфигов с сервера**: `GET /api/config/bundle` (под игровым токеном) отдаёт активный снапшот ровно в том виде, из которого сервер сам собирает бой. Локальный `Assets/Configs/Core/Json/ConfigBundle.json` для ядра не подходит — у него другие имена доменов, значения уже типизированы парсерами клиента и состав колонок свой, поэтому `ConfigVersion` такого ядра никогда не совпадёт с `configVersion` забега, а половина доменов не прочитается. Подробнее — «Бандл конфигов» ниже.
 
 ```csharp
 Container.Bind<Server.Battles.IBattleCore>().FromMethod(CreateBattleCore).AsSingle();
 
 private Server.Battles.IBattleCore CreateBattleCore(InjectContext context)
 {
-    var configSource = context.Container.Resolve<IConfigSource>();
-    var result = new Server.Battles.BattleCoreFactory().CreateFromBundle(configSource.Load(), new UnityCoreLog());
+    var bundleJson = context.Container.Resolve<IServerConfigBundleCache>().Load();
+    var result = new Server.Battles.BattleCoreFactory().CreateFromBundle(bundleJson, new UnityCoreLog());
 
     if (result.Succeeded == false)
         throw new InvalidOperationException($"[Battle]: battle core not created: {string.Join("; ", result.Errors)}");
@@ -53,6 +53,28 @@ private Server.Battles.IBattleCore CreateBattleCore(InjectContext context)
 - `result.Warnings` стоит логировать: там те же предупреждения, что видит геймдизайнер при публикации конфигов (незнакомый тип перка, опечатка в параметрах, отсутствующая колонка).
 - Если удобнее создавать ядро в `Game`, достаточно сделать `IConfigSource` публичным — тогда биндинг переезжает в `GameInstaller`.
 - Сборка ядра из бандла занимает десятки миллисекунд. Если не хочется даже такого фриза на первом бою, дёрните `battleCore.ConfigVersion` на загрузочном экране — ядро создастся там.
+- Бандл надо успеть скачать до создания ядра: загрузочный экран качает его сразу после входа, кладёт в кэш и только потом пускает в меню.
+
+### Бандл конфигов
+
+`GET /api/config/bundle` — игровой токен в `Authorization`, ответ:
+
+```json
+{
+  "Version": "sha256:53ab01b11f8f…",
+  "ShortVersion": "cfg-53ab01b11f8f",
+  "Configs": [ { "Name": "Constants", "Content": "[{…}]" }, { "Name": "Characters", "Content": "[{…}]" } ]
+}
+```
+
+`Content` — строка с сырыми строками листа; `BattleCoreFactory.CreateFromBundle` принимает это тело целиком, лишние поля игнорирует и считает `ConfigVersion` по тем же байтам, что сервер, поэтому версии совпадают по построению.
+
+Правила работы с ним:
+
+- в ответе есть `ETag`; присылайте его в `If-None-Match` — если версия не менялась, придёт `304` без тела;
+- сохраняйте тело на диск (`Application.persistentDataPath`) вместе с версией: при старте можно сразу собрать ядро из кэша и уже потом проверить `304`;
+- если `battleCore.ConfigVersion` не совпал с `run.configVersion` — скачайте бандл заново и пересоберите ядро; активный забег в этот момент начинать нельзя;
+- `503` — конфиги на сервере ещё не загружены, повторить позже.
 
 ### Шаг 4. Перейти на модели из DLL
 
@@ -83,7 +105,7 @@ Enum'ы механик берутся оттуда же и свои удаляю
 ### Шаг 5. Проверить, что встало
 
 - В консоли при первом обращении не должно быть ошибок создания ядра.
-- `battleCore.ConfigVersion` сравнить с `configVersion` из ответа забега: не совпало — у клиента другой бандл конфигов, бой играть нельзя.
+- `battleCore.ConfigVersion` сравнить с `configVersion` из ответа забега: не совпало — ядро собрано не из серверного бандла или бандл устарел, надо перекачать `GET /api/config/bundle` и пересобрать ядро.
 - Пересобрать проект с IL2CPP хотя бы раз: именно там проявляется забытый `link.xml`.
 
 ### Обновление DLL

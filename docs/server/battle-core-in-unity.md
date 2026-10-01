@@ -38,7 +38,9 @@ if (result.Succeeded == false)
 var battleCore = result.BattleCore;
 ```
 
-`bundleJson` — это содержимое `Assets/Configs/Core/Json/ConfigBundle.json` как есть: фасад читает формат `{"Configs":[{"Name":"Constants","Content":"[...]"}]}` сам. Если конфиги приходят другим путём, есть `CreateFromDomains(IReadOnlyList<CoreConfigDomain>, ICoreLog)`, где `CoreConfigDomain` — имя листа плюс JSON строк.
+`bundleJson` — это тело `GET /api/config/bundle`: фасад читает формат `{"Configs":[{"Name":"Constants","Content":"[...]"}]}` сам и игнорирует лишние поля вроде `Version`. Если конфиги приходят другим путём, есть `CreateFromDomains(IReadOnlyList<CoreConfigDomain>, ICoreLog)`, где `CoreConfigDomain` — имя листа плюс JSON строк.
+
+Клиентский `Assets/Configs/Core/Json/ConfigBundle.json` для этого не подходит, хотя формат выглядит так же: в нём имена доменов клиентские (`StoryStages` вместо `Story_stages`), значения уже типизированы парсерами клиента (`"id":1` вместо `"id":"1"`) и состав колонок свой. Ядро соберётся, но часть доменов окажется пустой, а `ConfigVersion` не совпадёт с `configVersion` забега. Серверный бандл нужен именно для боя; свой бандл клиент продолжает использовать для визуала и редактора.
 
 `result.Warnings` стоит выводить в консоль: там те же предупреждения, что видит геймдизайнер при публикации конфигов (незнакомый тип перка, опечатка в параметрах, отсутствующая колонка).
 

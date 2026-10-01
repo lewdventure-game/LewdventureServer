@@ -110,6 +110,7 @@ namespace Server.Api.Hosting
         {
             new SystemEndpoints().Map(application);
             new ConfigEndpoints().Map(application);
+            new ConfigBundleEndpoints().Map(application);
             new AdminConfigEndpoints().Map(application);
             new AdminPlayerEndpoints().Map(application);
             new AuthEndpoints().Map(application);
