@@ -48,7 +48,7 @@ jobs:
 
       - name: build and push api
         id: api
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/docker/Dockerfile
@@ -69,7 +69,7 @@ jobs:
 
       - name: build and push config-tool
         id: tool
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/docker/Dockerfile
