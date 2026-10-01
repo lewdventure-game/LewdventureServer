@@ -1,0 +1,64 @@
+name: unity-core
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "src/Lewdventure.Server.Contracts/**"
+      - "src/Lewdventure.Server.GameConfig/**"
+      - "src/Lewdventure.Server.Battle/**"
+      - "deploy/unity/**"
+      - "deploy/scripts/build-unity-core.sh"
+      - ".github/workflows/unity-core.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: unity-core
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+  RELEASE_TAG: unity-core-latest
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: build kit
+        run: bash deploy/scripts/build-unity-core.sh
+      - name: pack
+        run: |
+          cd out/unity-core
+          zip -q -r ../unity-core.zip .
+          cd -
+          cat out/unity-core/VERSION.txt >> "$GITHUB_STEP_SUMMARY"
+      - name: upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-core
+          path: out/unity-core.zip
+          retention-days: 90
+      - name: publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          short="$(git rev-parse --short HEAD)"
+          protocol="$(grep -oE 'protocolVersion=[0-9]+' out/unity-core/VERSION.txt | cut -d= -f2)"
+          notes="$(printf 'Ядро боя для Unity.\n\n```\n%s\n```\n\nОбновление на клиенте: `pwsh Tools/update-battle-core.ps1`' "$(cat out/unity-core/VERSION.txt)")"
+
+          gh release delete "$RELEASE_TAG" --yes --cleanup-tag || true
+          gh release create "$RELEASE_TAG" out/unity-core.zip \
+            --title "unity-core $short (protocol $protocol)" \
+            --notes "$notes" \
+            --target "$GITHUB_SHA"
