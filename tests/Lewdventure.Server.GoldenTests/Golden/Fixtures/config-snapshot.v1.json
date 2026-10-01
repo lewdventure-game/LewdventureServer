@@ -1,8 +1,8 @@
 {
   "format": "lewdventure-config-snapshot",
   "formatVersion": 1,
-  "version": "sha256:53ab01b11f8f7653bf8977e3cf23f19599391240d496b2b52031bf114ed13031",
-  "createdAt": "2026-09-30T03:37:36.6330000Z",
+  "version": "sha256:86fd641f7d6013ec0a2531f8cff6e9c8a2dbd5bfe3e053aecd4d1ec4354671ed",
+  "createdAt": "2026-10-01T05:16:37.2330000Z",
   "sourceKind": "SheetsUpload",
   "domains": [
     {
@@ -297,7 +297,7 @@
     {
       "domain": "Characters",
       "spreadsheetId": "1rB22U8FrboY1hHqg1AwhEvDBzb1OxK9JTUWZ_1isRTg",
-      "range": "A1:H2",
+      "range": "A1:G2",
       "rows": [
         {
           "name": "",
@@ -306,8 +306,7 @@
           "is_melee": true,
           "promote_id": "1",
           "skill_ids": "1;2",
-          "promote_to_skill_levels": "0;1;2;3;4;5;6;7",
-          "art_name": "pizduk"
+          "promote_to_skill_levels": "0;1;2;3;4;5;6;7"
         }
       ],
       "sourceRows": [
@@ -2761,7 +2760,7 @@
     {
       "domain": "Skills",
       "spreadsheetId": "1I6krV3fGIHHxpNXem0jvKYoMOmC5pSeHN0pOavOjmrw",
-      "range": "A1:G999",
+      "range": "A1:F999",
       "rows": [
         {
           "name": "",
@@ -2769,8 +2768,7 @@
           "id": "1",
           "type": "fireball",
           "proc_order": "1",
-          "parameters": "damage_ratio:[1];\nprojectile_count:[1];\nduration:[2,5]",
-          "energy": ""
+          "parameters": "damage_ratio:[1];\nprojectile_count:[1];\nduration:[2,5]"
         },
         {
           "name": "",
@@ -2778,8 +2776,7 @@
           "id": "2",
           "type": "summon_1_skill_1",
           "proc_order": "1",
-          "parameters": "damage_ratio:[1];\nhit_rewards:[status:3:2];\nduration:[2,5]",
-          "energy": ""
+          "parameters": "damage_ratio:[1];\nhit_rewards:[status:3:2];\nduration:[2,5]"
         },
         {
           "name": "",
@@ -2787,8 +2784,7 @@
           "id": "3",
           "type": "summon_2_skill_1",
           "proc_order": "1",
-          "parameters": "damage_ratio:[0.35];\nheal_from_max_ratio:[0.12];\nally_rewards:[bonus:2:1,status:5:1];\nduration:[2,5]",
-          "energy": ""
+          "parameters": "damage_ratio:[0.35];\nheal_from_max_ratio:[0.12];\nally_rewards:[bonus:2:1,status:5:1];\nduration:[2,5]"
         },
         {
           "name": "",
@@ -2796,8 +2792,7 @@
           "id": "4",
           "type": "summon_3_skill_1",
           "proc_order": "1",
-          "parameters": "damage_ratio:[1.25];\nlife_steal_ratio:[0.5];\nhit_rewards:[status:1:1];\nally_rewards:[bonus:8:1];\nduration:[2,5]",
-          "energy": ""
+          "parameters": "damage_ratio:[1.25];\nlife_steal_ratio:[0.5];\nhit_rewards:[status:1:1];\nally_rewards:[bonus:8:1];\nduration:[2,5]"
         },
         {
           "name": "",
@@ -2805,8 +2800,7 @@
           "id": "6",
           "type": "energy",
           "proc_order": "1",
-          "parameters": "duration:[2,0]",
-          "energy": ""
+          "parameters": "duration:[2,0]"
         }
       ],
       "sourceRows": [
