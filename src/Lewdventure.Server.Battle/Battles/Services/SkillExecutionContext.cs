@@ -103,6 +103,36 @@ namespace Server.Battles
             _battleFlytextTimer = battleFlytextTimer;
         }
 
+        public float DealFixedDamage(IUnitState target, float damageMultiplier, List<BattleCommand> commands)
+        {
+            var actorCharacteristics = _actor.CharacteristicState;
+            var targetCharacteristics = target.CharacteristicState;
+            var damage = _battleDamageMath.RoundDamage(actorCharacteristics.Damage * damageMultiplier);
+
+            if (damage <= 0f)
+            {
+                _coreLog.Debug($"[Story][Battle]: Skill action damage is zero, actorId = {_actor.Id}, targetId = {target.Id}, multiplier = {damageMultiplier}");
+
+                return 0f;
+            }
+
+            var healthAfter = targetCharacteristics.Health - damage;
+
+            if (healthAfter < 0f)
+                healthAfter = 0f;
+
+            targetCharacteristics.Health = healthAfter;
+
+            commands.Add(_battleCommandFactory.ShowDamage(_actor.Id, _actor.SlotIndex, target.Id, target.SlotIndex, damage, false, false));
+            commands.Add(_battleCommandFactory.SetHp(target.Id, target.SlotIndex, healthAfter));
+
+            _pendingAnyDamageCount += 1;
+
+            _coreLog.Information($"[Story][Battle]: Skill action damage, actorId = {_actor.Id}, targetId = {target.Id}, damage = {damage}, health = {healthAfter}");
+
+            return damage;
+        }
+
         public bool TryDealStrike(List<BattleCommand> commands, float damageMultiplier, out float dealtDamage, out bool isCritical)
         {
             dealtDamage = 0f;

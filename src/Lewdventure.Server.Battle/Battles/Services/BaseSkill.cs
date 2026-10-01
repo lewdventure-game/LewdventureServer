@@ -20,6 +20,10 @@ namespace Server.Battles
 
         public float CastDurationSeconds => _castDurationSeconds;
 
+        public bool RequiresEnergy => _skillType == SkillType.Energy;
+
+        public virtual bool AllowsInstantActivation => false;
+
         protected BaseSkill(ISkillMapper mapper, ParserUtils parserUtils)
         {
             _id = mapper.Id;
@@ -29,6 +33,15 @@ namespace Server.Battles
         }
 
         public abstract void Execute(ISkillExecutionContext context);
+
+        public virtual bool CanActivate(SkillActivationContext context)
+        {
+            return true;
+        }
+
+        public virtual void NotifyActivated(SkillActivationContext context)
+        {
+        }
 
         protected void BeginCast(ISkillExecutionContext context, List<BattleCommand> commands)
         {

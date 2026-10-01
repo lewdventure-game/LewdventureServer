@@ -360,6 +360,8 @@ Story level: `enemies_attack_multiplier` / `enemies_health_multiplier` прим�
 Stage: при `stageId > 0` дополнительно умножается `StoryStage.EnemyStatsMultiplier` на health/damage врагов.
 Промоуты персонажа (`Character_promotes`) бонусов в бою не дают: их награды (`bonus:<id>`) выдаются на аккаунт в мете и приезжают в снапшоте через `activeBonuses`.
 
+Скиллы (с 2026-10-01): механика собирается из конфига `Skills` — колонки `triggers` и `actions`, аргументы перечисляются по уровням прокачки. Условия: `energy_needed`, `ally_health_lower`, `on_cooldown` (несколько = И). Действия: `damage` (без уклонения, без крита, ЗАЩИТА цели не применяется), `set_status`, `set_bonus`; порядок по `timing`, между действиями `Wait`. Цель: `0` союзник, `1`/`2` враг в слоте с откатом, `3` все враги. Уровень скилла персонажа — из `promote_to_skill_levels`. При `is_instant_activation` скилл может сработать вне очереди — проверка идёт после каждого удара и не тратит RNG. Подробности: [`docs/gdd/12-skills.md`](../../docs/gdd/12-skills.md).
+
 Статусы без источника (`sourceUnitId = -1`): тик считается от `flat_value` из `parameters`, `damage_ratio` не применяется, крит не роллится. Нет `flat_value` → Warning и урон 0.
 
 Характеристика СНАР_СПЕЛЛ_МН: бонусы `equip_spell_multiplier_local/perk/global` (BonusType 56/57/58), формула 2, база — константа `equip_spell_multiplier_base` (нет константы → `1`). Множитель применяется только к скиллам, которые пришли из снаряжения (`Equipments.skill_id`), остальные скиллы считаются по СПЕЛЛ_МН.

@@ -10,6 +10,11 @@ namespace Server.Battles
         private readonly ICoreLog _coreLog;
         private readonly IConfigDistributor _configDistributor;
         private readonly ParserUtils _parserUtils;
+        private readonly ISkillActionRegistry _skillActionRegistry;
+        private readonly ISkillArgumentReader _skillArgumentReader;
+        private readonly ISkillDefinitionParser _skillDefinitionParser;
+        private readonly ISkillTargetResolver _skillTargetResolver;
+        private readonly ISkillTriggerRegistry _skillTriggerRegistry;
         private readonly Dictionary<SkillType, ISkillCreator> _creatorsByType = new();
         private readonly Dictionary<string, ISkillCreator> _creatorsByTypeKey = new(StringComparer.OrdinalIgnoreCase);
 
@@ -17,11 +22,21 @@ namespace Server.Battles
             ICoreLog coreLog,
             IConfigDistributor configDistributor,
             ParserUtils parserUtils,
+            ISkillActionRegistry skillActionRegistry,
+            ISkillArgumentReader skillArgumentReader,
+            ISkillDefinitionParser skillDefinitionParser,
+            ISkillTargetResolver skillTargetResolver,
+            ISkillTriggerRegistry skillTriggerRegistry,
             IReadOnlyList<ISkillCreator> skillCreators)
         {
             _coreLog = coreLog;
             _configDistributor = configDistributor;
             _parserUtils = parserUtils;
+            _skillActionRegistry = skillActionRegistry;
+            _skillArgumentReader = skillArgumentReader;
+            _skillDefinitionParser = skillDefinitionParser;
+            _skillTargetResolver = skillTargetResolver;
+            _skillTriggerRegistry = skillTriggerRegistry;
 
             for (int i = 0; i < skillCreators.Count; i++)
             {
@@ -50,6 +65,20 @@ namespace Server.Battles
                 return new UnknownSkill(new SkillMapper(0, trimmed, SkillType.Unknown, string.Empty), _parserUtils);
             }
 
+            if (_skillDefinitionParser.TryParse(skillConfig, out var definition))
+            {
+                _coreLog.Debug($"[Story][Battle]: Skill built from triggers and actions, skillId = {skillConfig.Id}, triggers = {definition.Triggers.Count}, actions = {definition.Actions.Count}");
+
+                return new ConfiguredSkill(
+                    definition,
+                    trimmed,
+                    _coreLog,
+                    _skillActionRegistry,
+                    _skillArgumentReader,
+                    _skillTargetResolver,
+                    _skillTriggerRegistry);
+            }
+
             if (TryResolveCreator(skillConfig.Type, out var creator) == false)
             {
                 _coreLog.Warning($"[Story][Battle]: Skill unknown type, id = {trimmed}, type = {skillConfig.Type}");
@@ -73,6 +102,9 @@ namespace Server.Battles
 
             if (TryFindSkillConfig(trimmed, out var skillConfig) == false)
                 return false;
+
+            if (_skillDefinitionParser.TryParse(skillConfig, out _))
+                return true;
 
             return TryResolveCreator(skillConfig.Type, out _);
         }

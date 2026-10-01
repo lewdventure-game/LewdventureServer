@@ -124,24 +124,85 @@ namespace Server.Battles
             if (actor.IsAlive() == false)
                 return;
 
+            if (TryFindEnergySkill(actor, out var energySkill) == false)
+            {
+                LogMissingEnergySkill(actor);
+
+                return;
+            }
+
+            if (energySkill.SkillType == SkillType.Configured)
+            {
+                TryCastConfiguredEnergySkill(steps, actor, attacker, defender, energySkill, currentTurn, seededRandomService, turnState);
+
+                return;
+            }
+
+            TryCastLegacyEnergySkill(steps, actor, attacker, defender, currentTurn, seededRandomService, turnState);
+        }
+
+        private void TryCastConfiguredEnergySkill(
+            List<BattleStep> steps,
+            IUnitState actor,
+            ITeamSimulationState attacker,
+            ITeamSimulationState defender,
+            ISkill energySkill,
+            int currentTurn,
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
+        {
+            var activationContext = CreateActivationContext(actor, attacker, defender, energySkill, currentTurn, false);
+
+            if (energySkill.CanActivate(activationContext) == false)
+            {
+                _coreLog.Debug($"[Story][Battle]: Energy skill triggers not satisfied, unitId = {actor.Id}, skillId = {energySkill.SkillKey}, energy = {actor.CharacteristicState.Energy}");
+
+                return;
+            }
+
+            var targetIndex = _battleTeamQuery.FindTargetIndex(defender);
+
+            if (targetIndex < 0)
+                return;
+
+            var target = defender.MainUnits[targetIndex];
+            var cooldown = _battleConstantsReader.Get(ConstantKeys.UnitsCooldownKey);
+            var context = CreateContext(
+                steps,
+                actor,
+                target,
+                attacker,
+                defender,
+                currentTurn,
+                BattlePhaseType.EnergySkill,
+                false,
+                cooldown,
+                IsEquipmentSkill(actor, energySkill.SkillKey),
+                seededRandomService,
+                turnState);
+
+            _coreLog.Information($"[Story][Battle]: Energy skill cast, unitId = {actor.Id}, targetId = {target.Id}, skillId = {energySkill.SkillKey}, energy = {actor.CharacteristicState.Energy}");
+
+            energySkill.NotifyActivated(activationContext);
+            energySkill.Execute(context);
+
+            if (target.IsAlive() == false)
+                context.EmitDeath(target);
+        }
+
+        private void TryCastLegacyEnergySkill(
+            List<BattleStep> steps,
+            IUnitState actor,
+            ITeamSimulationState attacker,
+            ITeamSimulationState defender,
+            int currentTurn,
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
+        {
             var characteristics = actor.CharacteristicState;
 
             if (characteristics.MaxEnergy <= 0f)
                 return;
-
-            if (HasEnergySkill(actor) == false)
-            {
-                if (characteristics.Energy < characteristics.MaxEnergy)
-                {
-                    _coreLog.Debug($"[Story][Battle]: Energy skill skip no skill, unitId = {actor.Id}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}");
-
-                    return;
-                }
-
-                _coreLog.Warning($"[Story][Battle]: Energy skill skip bar full without skill, unitId = {actor.Id}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}");
-
-                return;
-            }
 
             if (characteristics.Energy < characteristics.MaxEnergy)
             {
@@ -193,13 +254,46 @@ namespace Server.Battles
                 context.EmitDeath(target);
         }
 
+        private bool TryFindEnergySkill(IUnitState actor, out ISkill energySkill)
+        {
+            var skills = actor.Skills;
+
+            for (int i = 0; i < skills.Count; i++)
+            {
+                if (skills[i].RequiresEnergy == false)
+                    continue;
+
+                energySkill = skills[i];
+
+                return true;
+            }
+
+            energySkill = null!;
+
+            return false;
+        }
+
+        private void LogMissingEnergySkill(IUnitState actor)
+        {
+            var characteristics = actor.CharacteristicState;
+
+            if (characteristics.MaxEnergy <= 0f || characteristics.Energy < characteristics.MaxEnergy)
+            {
+                _coreLog.Debug($"[Story][Battle]: Energy skill skip no skill, unitId = {actor.Id}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}");
+
+                return;
+            }
+
+            _coreLog.Warning($"[Story][Battle]: Energy skill skip bar full without skill, unitId = {actor.Id}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}");
+        }
+
         private bool HasEnergySkill(IUnitState actor)
         {
             var skills = actor.Skills;
 
             for (int i = 0; i < skills.Count; i++)
             {
-                if (skills[i].SkillType == SkillType.Energy)
+                if (skills[i].RequiresEnergy)
                     return true;
             }
 
@@ -214,7 +308,7 @@ namespace Server.Battles
             {
                 var skill = skills[i];
 
-                if (skill.SkillType != SkillType.Energy)
+                if (skill.RequiresEnergy == false)
                     continue;
 
                 if (skill.CastDurationSeconds <= 0f)
@@ -271,9 +365,18 @@ namespace Server.Battles
 
                 var skill = skills[i];
 
-                if (skill.SkillType == SkillType.Energy)
+                if (skill.RequiresEnergy)
                 {
                     _coreLog.Debug($"[Story][Battle]: Skill cast skip energy in unit phase, unitId = {actor.Id}, skillId = {skill.SkillKey}, turn = {currentTurn}");
+
+                    continue;
+                }
+
+                var activationContext = CreateActivationContext(actor, attacker, defender, skill, currentTurn, false);
+
+                if (skill.CanActivate(activationContext) == false)
+                {
+                    _coreLog.Debug($"[Story][Battle]: Skill triggers not satisfied, unitId = {actor.Id}, skillId = {skill.SkillKey}, turn = {currentTurn}");
 
                     continue;
                 }
@@ -302,6 +405,7 @@ namespace Server.Battles
                     turnState);
 
                 skill.Execute(context);
+                skill.NotifyActivated(activationContext);
                 executedCount += 1;
 
                 if (target.IsAlive() == false)
@@ -371,11 +475,100 @@ namespace Server.Battles
 
             for (int i = 0; i < skills.Count; i++)
             {
-                if (skills[i].SkillType == SkillType.Energy)
+                if (skills[i].RequiresEnergy)
                     return skills[i].SkillKey;
             }
 
             return string.Empty;
+        }
+
+        public void TrySimulateInstantSkills(
+            List<BattleStep> steps,
+            ITeamSimulationState attacker,
+            ITeamSimulationState defender,
+            int currentTurn,
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
+        {
+            SimulateInstantSkillsForTeam(steps, defender, attacker, currentTurn, seededRandomService, turnState);
+            SimulateInstantSkillsForTeam(steps, attacker, defender, currentTurn, seededRandomService, turnState);
+        }
+
+        private void SimulateInstantSkillsForTeam(
+            List<BattleStep> steps,
+            ITeamSimulationState ownerTeam,
+            ITeamSimulationState opponentTeam,
+            int currentTurn,
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
+        {
+            var mainUnits = ownerTeam.MainUnits;
+
+            for (int unitIndex = 0; unitIndex < mainUnits.Count; unitIndex++)
+            {
+                var owner = mainUnits[unitIndex];
+
+                if (owner.IsAlive() == false)
+                    continue;
+
+                var skills = owner.Skills;
+
+                for (int skillIndex = 0; skillIndex < skills.Count; skillIndex++)
+                {
+                    var skill = skills[skillIndex];
+
+                    if (skill.AllowsInstantActivation == false)
+                        continue;
+
+                    var activationContext = CreateActivationContext(owner, ownerTeam, opponentTeam, skill, currentTurn, true);
+
+                    if (skill.CanActivate(activationContext) == false)
+                        continue;
+
+                    var targetIndex = _battleTeamQuery.FindTargetIndex(opponentTeam);
+                    var target = targetIndex < 0 ? owner : opponentTeam.MainUnits[targetIndex];
+                    var cooldown = _battleConstantsReader.Get(ConstantKeys.UnitsCooldownKey);
+                    var context = CreateContext(
+                        steps,
+                        owner,
+                        target,
+                        ownerTeam,
+                        opponentTeam,
+                        currentTurn,
+                        BattlePhaseType.UnitSkill,
+                        false,
+                        cooldown,
+                        IsEquipmentSkill(owner, skill.SkillKey),
+                        seededRandomService,
+                        turnState);
+
+                    _coreLog.Information($"[Story][Battle]: Instant skill activation, unitId = {owner.Id}, skillId = {skill.SkillKey}, turn = {currentTurn}");
+
+                    skill.Execute(context);
+                    skill.NotifyActivated(activationContext);
+
+                    if (target.IsAlive() == false)
+                        context.EmitDeath(target);
+                }
+            }
+        }
+
+        private SkillActivationContext CreateActivationContext(
+            IUnitState owner,
+            ITeamSimulationState ownerTeam,
+            ITeamSimulationState opponentTeam,
+            ISkill skill,
+            int currentTurn,
+            bool isInstantCheck)
+        {
+            return new SkillActivationContext(
+                owner,
+                ownerTeam,
+                opponentTeam,
+                owner.GetSkillState(skill.Id),
+                owner.SkillLevel,
+                currentTurn,
+                isInstantCheck);
         }
 
         private SkillExecutionContext CreateContext(

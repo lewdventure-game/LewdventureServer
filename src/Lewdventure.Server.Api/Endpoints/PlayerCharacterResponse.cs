@@ -7,5 +7,7 @@ namespace Server.Api.Endpoints
         public int Copies { get; set; }
 
         public int UpgradesApplied { get; set; }
+
+        public List<int> UnlockedScenes { get; set; } = new();
     }
 }

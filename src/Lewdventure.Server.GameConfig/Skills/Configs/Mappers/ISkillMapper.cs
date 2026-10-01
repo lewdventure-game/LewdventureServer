@@ -11,5 +11,9 @@ namespace Server.Skills
         public int ProcOrder { get; }
 
         public string Parameters { get; }
+
+        public string Triggers { get; }
+
+        public string Actions { get; }
     }
 }

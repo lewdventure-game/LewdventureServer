@@ -23,6 +23,7 @@ namespace Server.Entities
         public int[] PromoteToSkillLevels { get; init; } = Array.Empty<int>();
 
         [JsonProperty("art_name")]
+        [OptionalColumn("визуал настраивается в билде по id персонажа, колонка из листа убрана")]
         public string ArtName { get; init; } = string.Empty;
     }
 }

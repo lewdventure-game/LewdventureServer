@@ -54,7 +54,7 @@
   "userId": "usr_…",
   "rev": 12,
   "resources": { "soft_money": 1500, "summon_exp": 40 },
-  "characters": [ { "id": 1, "copies": 3, "upgradesApplied": 2 } ],
+  "characters": [ { "id": 1, "copies": 3, "upgradesApplied": 2, "unlockedScenes": [101, 102] } ],
   "summons": [ { "id": 1, "copies": 4, "level": 3, "masteryLevel": 1 } ],
   "equipment": [ { "instanceId": "eq_…", "configId": 5, "level": 2, "mergeNumber": 0 } ],
   "bonuses": [ { "id": 1, "count": 2 } ],
@@ -95,6 +95,30 @@
 ```
 
 То же самое клиент может посчитать локально через ядро: `IBattleCore.BuildCharacteristics(...)`.
+
+### `POST /api/player/summon/level/reset`
+
+```json
+{ "summonId": 1, "requestId": "…" }
+```
+
+Уровень саммона падает до первого, на аккаунт возвращается часть потраченного `summon_exp` (коэффициент `summon_level_reset_coeff`), сама операция стоит ресурс из константы `summon_level_reset_resource`. Ответ — профиль.
+
+### `POST /api/player/equipment/level/reset`
+
+```json
+{ "instanceId": "eq_…", "requestId": "…" }
+```
+
+Уровень предмета падает до первого, возвращается часть потраченных ресурсов (`equipment_lvl_drop_proportion`). Ответ — профиль.
+
+### `POST /api/player/equipment/merge`
+
+```json
+{ "instanceId": "eq_…", "paymentInstanceIds": ["eq_…", "eq_…"], "requestId": "…" }
+```
+
+Трансформация по редкости: сервер проверяет плату по `merge_requirements` предмета (`equipment_id:<id>` — конкретный предмет, `equipment_rarity:<редкость>` — любой предмет того же `type` и указанной редкости), удаляет предмет и плату, выдаёт предмет той же `merge_group` с `merge_number` на 1 больше и тем же уровнем. Если исходный предмет был экипирован, новый занимает его слот. Ответ — профиль.
 
 ### `POST /api/player/equipment/level`
 

@@ -8,6 +8,8 @@ namespace Server.Infrastructure.Mongo.Players
 
         public int UpgradesApplied { get; set; }
 
+        public List<int> UnlockedSceneIds { get; set; } = new();
+
         public DateTime UnlockedAt { get; set; }
     }
 }

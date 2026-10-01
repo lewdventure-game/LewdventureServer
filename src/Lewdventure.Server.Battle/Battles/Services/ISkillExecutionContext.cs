@@ -36,6 +36,8 @@ namespace Server.Battles
 
         public ICoreLog CoreLog { get; }
 
+        public float DealFixedDamage(IUnitState target, float damageMultiplier, List<BattleCommand> commands);
+
         public bool TryDealStrike(List<BattleCommand> commands, float damageMultiplier, out float dealtDamage, out bool isCritical);
 
         public void Heal(IUnitState unit, float amount, List<BattleCommand> commands);

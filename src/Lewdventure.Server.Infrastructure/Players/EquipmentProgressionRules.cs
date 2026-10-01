@@ -65,6 +65,69 @@ namespace Server.Infrastructure.Players
             return true;
         }
 
+        public bool TryResolveLevelRefund(
+            IEquipmentMapper equipment,
+            int currentLevel,
+            float dropProportion,
+            out List<ResourceCost> refunds,
+            out string error)
+        {
+            refunds = new List<ResourceCost>();
+            error = string.Empty;
+
+            if (currentLevel <= 1)
+            {
+                error = $"Equipment {equipment.Id} is already at level 1.";
+
+                return false;
+            }
+
+            var types = Split(equipment.LevelUpTypes);
+            var values = Split(equipment.LevelUpValues);
+            var spent = new Dictionary<string, long>(StringComparer.Ordinal);
+
+            for (int stepIndex = 0; stepIndex < currentLevel - 1; stepIndex++)
+            {
+                if (types.Count <= stepIndex || values.Count <= stepIndex)
+                {
+                    error = $"Equipment {equipment.Id} has no cost for level {stepIndex + 2}.";
+
+                    return false;
+                }
+
+                var resourceKey = ResolveResourceKey(types[stepIndex]);
+
+                if (string.IsNullOrEmpty(resourceKey))
+                {
+                    error = $"Equipment {equipment.Id} level {stepIndex + 2} has an unsupported cost type {types[stepIndex]}.";
+
+                    return false;
+                }
+
+                if (int.TryParse(values[stepIndex], NumberStyles.Integer, CultureInfo.InvariantCulture, out var amount) == false || amount <= 0)
+                {
+                    error = $"Equipment {equipment.Id} level {stepIndex + 2} has an invalid cost {values[stepIndex]}.";
+
+                    return false;
+                }
+
+                spent.TryGetValue(resourceKey, out var current);
+                spent[resourceKey] = current + amount;
+            }
+
+            foreach (var pair in spent)
+            {
+                var refund = (int)MathF.Round(pair.Value * dropProportion, MidpointRounding.AwayFromZero);
+
+                if (refund <= 0)
+                    continue;
+
+                refunds.Add(new ResourceCost(pair.Key, refund));
+            }
+
+            return true;
+        }
+
         private string ResolveResourceKey(string rawType)
         {
             var value = rawType.Trim();

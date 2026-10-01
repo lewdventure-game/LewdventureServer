@@ -29,6 +29,9 @@
 | `/api/player/summon/level` | POST | Bearer | поднять уровень саммона за ресурсы |
 | `/api/player/summon/mastery` | POST | Bearer | поднять мастерство саммона за копии |
 | `/api/player/equipment/level` | POST | Bearer | поднять уровень инстанса снаряжения за ресурсы |
+| `/api/player/summon/level/reset` | POST | Bearer | сбросить уровень саммона до первого с возвратом части `summon_exp` |
+| `/api/player/equipment/level/reset` | POST | Bearer | сбросить уровень снаряжения до первого с возвратом части ресурсов |
+| `/api/player/equipment/merge` | POST | Bearer | трансформация снаряжения по редкости |
 | `/api/player/characteristics` | GET | Bearer | итоговые характеристики, посчитанные сервером |
 
 Тело `loadout`: `{requestId, characterId, equipment: {слот: instanceId}, summons: [id]}`.
@@ -43,8 +46,8 @@
 | --- | --- |
 | `resource:<ключ>:<n>` | прибавляет к `resources[ключ]` |
 | `character:<id>:<n>` | первая копия открывает персонажа, остальные идут в `copies`; копии автоматически тратятся на промоуты по листу `Character_promotes` (цена — `copies_to_upgrade` уровня), за каждый промоут выдаются его награды, лишние копии сверх последнего уровня конвертируются по константе `character_overflow_resource` |
-| `story:<id>:<n>` | пока не реализовано: сервер пишет Warning и ничего не открывает, ждём от геймдизайна, что открывает эта награда |
-| `summon:<id>:<n>` | первая копия открывает саммона, остальные идут в `copies` |
+| `story:<id>:<n>` | открывает сцену персонажа: id сцены складывается в `characters[].unlockedScenes`. Нужен контекст персонажа — сейчас такие награды приходят из промоутов (`Character_promotes`), поэтому владелец сцены известен; без контекста сервер пишет Warning и ничего не открывает |
+| `summon:<id>:<n>` | первая копия открывает саммона, остальные идут в `copies`; когда мастерство саммона уже максимальное, лишние копии конвертируются по константе редкости (`rare/epic/legendary/mythic_summon_overflow_resource`) |
 | `equipment:<id>:<n>` | создаёт `n` инстансов первого уровня с собственным `instanceId` |
 | `account:<флаг>:<n>` | прибавляет к `flags[флаг]`, например `start_perk_choice_single` |
 | `bonus:<id>:<n>` | бонус на аккаунт: `n` складывается в `bonuses[id].count`, если у бонуса в `Bonuses` стоят только `permanent` и/или `if_equipped`. Режимы забега (`end_of_game`, `end_of_battle`, `next_battles`, `first_turns`, `every_turn`) на аккаунт не выдаются — Warning и пропуск, по ГДД они живут только внутри забега |

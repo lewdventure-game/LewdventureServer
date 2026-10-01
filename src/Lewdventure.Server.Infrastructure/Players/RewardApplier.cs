@@ -1,4 +1,5 @@
 using Server.Battles;
+using Server.Common;
 using Server.Entities;
 using Server.Bonuses;
 using Server.Configs;
@@ -10,6 +11,10 @@ namespace Server.Infrastructure.Players
     internal sealed class RewardApplier
     {
         private const string CharacterOverflowConstant = "character_overflow_resource";
+        private const string RareSummonOverflowConstant = "rare_summon_overflow_resource";
+        private const string EpicSummonOverflowConstant = "epic_summon_overflow_resource";
+        private const string LegendarySummonOverflowConstant = "legendary_summon_overflow_resource";
+        private const string MythicSummonOverflowConstant = "mythic_summon_overflow_resource";
         private const string EquipmentInstancePrefix = "eq_";
         private const string ResourceEntry = "resource";
         private const string CharacterEntry = "character";
@@ -18,6 +23,8 @@ namespace Server.Infrastructure.Players
         private const string FlagEntry = "flag";
         private const string BonusEntry = "bonus";
         private const string PromoteEntry = "promote";
+        private const string SceneEntry = "scene";
+        private const int NoSceneOwner = 0;
 
         private readonly IBattleRewardParser _battleRewardParser;
         private readonly IBonusWorkModeParser _bonusWorkModeParser;
@@ -54,7 +61,7 @@ namespace Server.Infrastructure.Players
             var entries = new List<PlayerLedgerEntryDocument>();
 
             for (int i = 0; i < rewards.Count; i++)
-                ApplyReward(profile, rewards[i], configDistributor, now, entries);
+                ApplyReward(profile, rewards[i], NoSceneOwner, configDistributor, now, entries);
 
             return entries;
         }
@@ -62,6 +69,7 @@ namespace Server.Infrastructure.Players
         private void ApplyReward(
             PlayerProfileDocument profile,
             in BattleReward reward,
+            int sceneOwnerId,
             IConfigDistributor configDistributor,
             DateTime now,
             List<PlayerLedgerEntryDocument> entries)
@@ -126,12 +134,50 @@ namespace Server.Infrastructure.Players
 
             if (reward.Type == BattleRewardType.Story)
             {
-                _logger.LogWarning("[Player] story reward {StoryId} is not implemented yet, nothing is unlocked", reward.Id);
+                AddStoryScene(profile, reward.Id, sceneOwnerId, entries);
 
                 return;
             }
 
             _logger.LogDebug("[Player] reward type {Type} is run scoped and does not change the profile", reward.Type);
+        }
+
+        private void AddStoryScene(PlayerProfileDocument profile, int sceneId, int sceneOwnerId, List<PlayerLedgerEntryDocument> entries)
+        {
+            if (sceneId <= 0)
+            {
+                _logger.LogWarning("[Player] story scene id {SceneId} is not positive", sceneId);
+
+                return;
+            }
+
+            if (sceneOwnerId <= 0)
+            {
+                _logger.LogWarning("[Player] story scene {SceneId} has no character context and is not unlocked", sceneId);
+
+                return;
+            }
+
+            var character = FindCharacter(profile, sceneOwnerId);
+
+            if (character == null)
+            {
+                _logger.LogWarning("[Player] story scene {SceneId} owner {CharacterId} is not owned", sceneId, sceneOwnerId);
+
+                return;
+            }
+
+            if (character.UnlockedSceneIds.Contains(sceneId))
+            {
+                _logger.LogDebug("[Player] story scene {SceneId} is already unlocked for character {CharacterId}", sceneId, sceneOwnerId);
+
+                return;
+            }
+
+            character.UnlockedSceneIds.Add(sceneId);
+            entries.Add(CreateEntry(SceneEntry, $"{sceneOwnerId}:{sceneId}", 1));
+
+            _logger.LogInformation("[Player] story scene {SceneId} unlocked for character {CharacterId}", sceneId, sceneOwnerId);
         }
 
         private void AddBonus(
@@ -314,13 +360,14 @@ namespace Server.Infrastructure.Players
                     nextLevel,
                     promote.CopiesToUpgrade);
 
-                ApplyPromoteRewards(profile, promote, configDistributor, now, entries);
+                ApplyPromoteRewards(profile, promote, mapper.Id, configDistributor, now, entries);
             }
         }
 
         private void ApplyPromoteRewards(
             PlayerProfileDocument profile,
             ICharacterPromoteMapper promote,
+            int sceneOwnerId,
             IConfigDistributor configDistributor,
             DateTime now,
             List<PlayerLedgerEntryDocument> entries)
@@ -331,7 +378,7 @@ namespace Server.Infrastructure.Players
                 return;
 
             for (int i = 0; i < rewards.Count; i++)
-                ApplyReward(profile, rewards[i], configDistributor, now, entries);
+                ApplyReward(profile, rewards[i], sceneOwnerId, configDistributor, now, entries);
         }
 
         private IReadOnlyList<BattleReward> BuildPromoteRewards(ICharacterPromoteMapper promote)
@@ -381,7 +428,7 @@ namespace Server.Infrastructure.Players
             DateTime now,
             List<PlayerLedgerEntryDocument> entries)
         {
-            if (configDistributor.Summons.TryGet(summonId, out _) == false)
+            if (configDistributor.Summons.TryGet(summonId, out var summonMapper) == false)
             {
                 _logger.LogWarning("[Player] summon {SummonId} is missing in configs, reward skipped", summonId);
 
@@ -402,6 +449,80 @@ namespace Server.Infrastructure.Players
             }
 
             entries.Add(CreateEntry(SummonEntry, summonId.ToString(), count));
+            ApplySummonCopiesOverflow(profile, summon, summonMapper, configDistributor, entries);
+        }
+
+        private void ApplySummonCopiesOverflow(
+            PlayerProfileDocument profile,
+            PlayerSummonDocument summon,
+            ISummonMapper summonMapper,
+            IConfigDistributor configDistributor,
+            List<PlayerLedgerEntryDocument> entries)
+        {
+            if (summon.Copies <= 0)
+                return;
+
+            var maxMasteryLevel = configDistributor.Masteries.GetMaxMasteryLevel(summonMapper.MasteryId);
+
+            if (maxMasteryLevel <= 0 || summon.MasteryLevel < maxMasteryLevel)
+                return;
+
+            if (TryResolveSummonOverflowConstant(summonMapper.Rarity, out var constantKey) == false)
+            {
+                _logger.LogWarning(
+                    "[Player] summon {SummonId} rarity {Rarity} has no overflow constant, {Copies} copies stay unspent",
+                    summonMapper.Id,
+                    summonMapper.Rarity,
+                    summon.Copies);
+
+                return;
+            }
+
+            var overflow = summon.Copies;
+
+            summon.Copies = 0;
+            ApplyOverflow(profile, constantKey, overflow, configDistributor, entries);
+
+            _logger.LogInformation(
+                "[Player] summon {SummonId} copies converted after max mastery {Mastery}, copies = {Copies}",
+                summonMapper.Id,
+                maxMasteryLevel,
+                overflow);
+        }
+
+        private bool TryResolveSummonOverflowConstant(RarityType rarity, out string constantKey)
+        {
+            if (rarity == RarityType.Rare)
+            {
+                constantKey = RareSummonOverflowConstant;
+
+                return true;
+            }
+
+            if (rarity == RarityType.Epic)
+            {
+                constantKey = EpicSummonOverflowConstant;
+
+                return true;
+            }
+
+            if (rarity == RarityType.Legendary)
+            {
+                constantKey = LegendarySummonOverflowConstant;
+
+                return true;
+            }
+
+            if (rarity == RarityType.Mythic)
+            {
+                constantKey = MythicSummonOverflowConstant;
+
+                return true;
+            }
+
+            constantKey = string.Empty;
+
+            return false;
         }
 
         private void AddEquipment(

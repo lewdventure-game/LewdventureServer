@@ -24,10 +24,26 @@ namespace Server.Infrastructure.Mongo.Players
             services.AddSingleton<PlayerProfileService>();
             services.AddSingleton<SummonProgressionRules>();
             services.AddSingleton<EquipmentProgressionRules>();
-            services.AddSingleton<PlayerProgressionService>();
+            services.AddSingleton<EquipmentMergeRules>();
+            services.AddSingleton(CreateProgressionService);
             services.AddSingleton<PlayerDataService>();
             services.AddSingleton(CreateRewardApplier);
             services.AddSingleton(CreateRewardService);
+        }
+
+        private PlayerProgressionService CreateProgressionService(IServiceProvider serviceProvider)
+        {
+            return new PlayerProgressionService(
+                CreateRewardParser(serviceProvider),
+                serviceProvider.GetRequiredService<EquipmentMergeRules>(),
+                serviceProvider.GetRequiredService<EquipmentProgressionRules>(),
+                serviceProvider.GetRequiredService<IdempotencyRepository>(),
+                serviceProvider.GetRequiredService<ILogger<PlayerProgressionService>>(),
+                serviceProvider.GetRequiredService<PlayerLedgerRepository>(),
+                serviceProvider.GetRequiredService<PlayerProfileRepository>(),
+                serviceProvider.GetRequiredService<PlayerProfileService>(),
+                serviceProvider.GetRequiredService<SummonProgressionRules>(),
+                serviceProvider.GetRequiredService<TimeProvider>());
         }
 
         private RewardApplier CreateRewardApplier(IServiceProvider serviceProvider)

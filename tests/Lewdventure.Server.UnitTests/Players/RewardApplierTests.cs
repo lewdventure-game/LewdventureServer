@@ -37,6 +37,47 @@ namespace Tests.Unit.Players
         }
 
         [Test]
+        public void Apply_PromoteWithStoryReward_UnlocksCharacterScene()
+        {
+            var profile = CreateProfile();
+
+            _applier.Apply(profile, _parser.Parse("character:1:2"), _configDistributor, DateTime.UtcNow);
+
+            var character = profile.Characters[0];
+
+            Assert.That(character.UpgradesApplied, Is.EqualTo(1));
+            Assert.That(character.UnlockedSceneIds, Does.Contain(101));
+        }
+
+        [Test]
+        public void Apply_SummonCopiesAfterMaxMastery_ConvertToOverflowResource()
+        {
+            var profile = CreateProfile();
+
+            _applier.Apply(profile, _parser.Parse("summon:1:1"), _configDistributor, DateTime.UtcNow);
+
+            var summon = profile.Summons[0];
+
+            summon.MasteryLevel = _configDistributor.Masteries.GetMaxMasteryLevel(1);
+
+            _applier.Apply(profile, _parser.Parse("summon:1:3"), _configDistributor, DateTime.UtcNow);
+
+            Assert.That(summon.Copies, Is.EqualTo(0));
+            Assert.That(profile.Resources["hard_money"], Is.EqualTo(300));
+        }
+
+        [Test]
+        public void Apply_SummonCopiesBeforeMaxMastery_StayOnAccount()
+        {
+            var profile = CreateProfile();
+
+            _applier.Apply(profile, _parser.Parse("summon:1:4"), _configDistributor, DateTime.UtcNow);
+
+            Assert.That(profile.Summons[0].Copies, Is.EqualTo(3));
+            Assert.That(profile.Resources.ContainsKey("hard_money"), Is.False);
+        }
+
+        [Test]
         public void Apply_PermanentBonus_GoesToAccount()
         {
             var profile = CreateProfile();

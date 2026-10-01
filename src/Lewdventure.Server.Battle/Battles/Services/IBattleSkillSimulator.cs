@@ -22,6 +22,14 @@ namespace Server.Battles
             ISeededRandomService seededRandomService,
             BattleTurnState turnState);
 
+        public void TrySimulateInstantSkills(
+            List<BattleStep> steps,
+            ITeamSimulationState attacker,
+            ITeamSimulationState defender,
+            int currentTurn,
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState);
+
         public void ApplyEnergyGain(
             List<BattleStep> steps,
             IUnitState actor,

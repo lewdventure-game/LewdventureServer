@@ -62,6 +62,27 @@ namespace Server.Api.Endpoints
                 .Produces<PlayerProfileResponse>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status400BadRequest);
 
+            application.MapPost(ApiRoutes.PlayerSummonLevelReset, ResetSummonLevelAsync)
+                .RequireAuthorization(SecurityNames.PlayerPolicy)
+                .RequireRateLimiting(SecurityNames.PlayerRateLimitPolicy)
+                .WithMetadata(new GameConfigRequiredMetadata())
+                .Produces<PlayerProfileResponse>(StatusCodes.Status200OK)
+                .Produces(StatusCodes.Status400BadRequest);
+
+            application.MapPost(ApiRoutes.PlayerEquipmentLevelReset, ResetEquipmentLevelAsync)
+                .RequireAuthorization(SecurityNames.PlayerPolicy)
+                .RequireRateLimiting(SecurityNames.PlayerRateLimitPolicy)
+                .WithMetadata(new GameConfigRequiredMetadata())
+                .Produces<PlayerProfileResponse>(StatusCodes.Status200OK)
+                .Produces(StatusCodes.Status400BadRequest);
+
+            application.MapPost(ApiRoutes.PlayerEquipmentMerge, MergeEquipmentAsync)
+                .RequireAuthorization(SecurityNames.PlayerPolicy)
+                .RequireRateLimiting(SecurityNames.PlayerRateLimitPolicy)
+                .WithMetadata(new GameConfigRequiredMetadata())
+                .Produces<PlayerProfileResponse>(StatusCodes.Status200OK)
+                .Produces(StatusCodes.Status400BadRequest);
+
             application.MapPost(ApiRoutes.PlayerReset, ResetProgressAsync)
                 .RequireAuthorization(SecurityNames.PlayerPolicy)
                 .RequireRateLimiting(SecurityNames.PlayerRateLimitPolicy)
@@ -252,6 +273,98 @@ namespace Server.Api.Endpoints
             var progressionService = httpContext.RequestServices.GetRequiredService<PlayerProgressionService>();
             var result = await progressionService.UpgradeEquipmentLevelAsync(userId, request.InstanceId, request.RequestId, configDistributor, httpContext.RequestAborted);
 
+            if (result.Conflict)
+                return Results.Json(new { error = "Profile was changed by another request." }, statusCode: StatusCodes.Status409Conflict);
+
+            if (result.Succeeded == false)
+                return Results.BadRequest(new { errors = result.Errors });
+
+            return Results.Ok(playerResponseFactory.Create(result.Profile!));
+        }
+
+        private async Task<IResult> ResetSummonLevelAsync(
+            HttpContext httpContext,
+            [FromBody] PlayerSummonRequest? request,
+            [FromServices] IConfigDistributor configDistributor,
+            [FromServices] PlayerIdentityReader playerIdentityReader,
+            [FromServices] PlayerResponseFactory playerResponseFactory)
+        {
+            if (_isMongoEnabled == false)
+                return Results.Problem(detail: StorageRequiredMessage, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+            var userId = playerIdentityReader.Read(httpContext.User);
+
+            if (string.IsNullOrEmpty(userId))
+                return Results.Unauthorized();
+
+            if (request == null || request.SummonId <= 0)
+                return Results.BadRequest(new { error = "summonId is required." });
+
+            var progressionService = httpContext.RequestServices.GetRequiredService<PlayerProgressionService>();
+            var result = await progressionService.ResetSummonLevelAsync(userId, request.SummonId, request.RequestId, configDistributor, httpContext.RequestAborted);
+
+            return CreateProgressionResult(result, playerResponseFactory);
+        }
+
+        private async Task<IResult> ResetEquipmentLevelAsync(
+            HttpContext httpContext,
+            [FromBody] PlayerEquipmentRequest? request,
+            [FromServices] IConfigDistributor configDistributor,
+            [FromServices] PlayerIdentityReader playerIdentityReader,
+            [FromServices] PlayerResponseFactory playerResponseFactory)
+        {
+            if (_isMongoEnabled == false)
+                return Results.Problem(detail: StorageRequiredMessage, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+            var userId = playerIdentityReader.Read(httpContext.User);
+
+            if (string.IsNullOrEmpty(userId))
+                return Results.Unauthorized();
+
+            if (request == null || string.IsNullOrWhiteSpace(request.InstanceId))
+                return Results.BadRequest(new { error = "instanceId is required." });
+
+            var progressionService = httpContext.RequestServices.GetRequiredService<PlayerProgressionService>();
+            var result = await progressionService.ResetEquipmentLevelAsync(userId, request.InstanceId, request.RequestId, configDistributor, httpContext.RequestAborted);
+
+            return CreateProgressionResult(result, playerResponseFactory);
+        }
+
+        private async Task<IResult> MergeEquipmentAsync(
+            HttpContext httpContext,
+            [FromBody] PlayerEquipmentMergeRequest? request,
+            [FromServices] IConfigDistributor configDistributor,
+            [FromServices] PlayerIdentityReader playerIdentityReader,
+            [FromServices] PlayerResponseFactory playerResponseFactory)
+        {
+            if (_isMongoEnabled == false)
+                return Results.Problem(detail: StorageRequiredMessage, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+            var userId = playerIdentityReader.Read(httpContext.User);
+
+            if (string.IsNullOrEmpty(userId))
+                return Results.Unauthorized();
+
+            if (request == null || string.IsNullOrWhiteSpace(request.InstanceId))
+                return Results.BadRequest(new { error = "instanceId is required." });
+
+            if (request.PaymentInstanceIds.Count == 0)
+                return Results.BadRequest(new { error = "paymentInstanceIds is required." });
+
+            var progressionService = httpContext.RequestServices.GetRequiredService<PlayerProgressionService>();
+            var result = await progressionService.MergeEquipmentAsync(
+                userId,
+                request.InstanceId,
+                request.PaymentInstanceIds,
+                request.RequestId,
+                configDistributor,
+                httpContext.RequestAborted);
+
+            return CreateProgressionResult(result, playerResponseFactory);
+        }
+
+        private IResult CreateProgressionResult(PlayerUpdateResult result, PlayerResponseFactory playerResponseFactory)
+        {
             if (result.Conflict)
                 return Results.Json(new { error = "Profile was changed by another request." }, statusCode: StatusCodes.Status409Conflict);
 

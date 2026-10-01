@@ -159,6 +159,8 @@ namespace Server.Battles
                 commands,
                 target);
 
+            _battleSkillSimulator.TrySimulateInstantSkills(steps, attacker, defender, currentTurn, seededRandomService, turnState);
+
             _coreLog.Debug($"[Story][Battle]: Normal attack chain decision, actorId = {actor.Id}, targetId = {target.Id}, hit = {hit}");
 
             if (hit)
@@ -323,6 +325,8 @@ namespace Server.Battles
                 commands,
                 counterTarget);
 
+            _battleSkillSimulator.TrySimulateInstantSkills(steps, attacker, defender, currentTurn, seededRandomService, turnState);
+
             if (hit)
             {
                 NotifyPerkAction(
@@ -391,6 +395,8 @@ namespace Server.Battles
                 actor,
                 commands,
                 target);
+
+            _battleSkillSimulator.TrySimulateInstantSkills(steps, attacker, defender, currentTurn, seededRandomService, turnState);
 
             if (hit)
             {

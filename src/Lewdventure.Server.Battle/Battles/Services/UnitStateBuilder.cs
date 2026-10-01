@@ -15,6 +15,7 @@ namespace Server.Battles
         private readonly IConfigDistributor _configDistributor;
         private readonly IUnitBonusGranter _unitBonusGranter;
         private readonly IUnitBucketsFactory _unitBucketsFactory;
+        private readonly ISkillLevelResolver _skillLevelResolver;
         private readonly IUnitLoadoutBinder _unitLoadoutBinder;
 
         public UnitStateBuilder(
@@ -24,6 +25,7 @@ namespace Server.Battles
             IConfigDistributor configDistributor,
             IUnitBonusGranter unitBonusGranter,
             IUnitBucketsFactory unitBucketsFactory,
+            ISkillLevelResolver skillLevelResolver,
             IUnitLoadoutBinder unitLoadoutBinder)
         {
             _coreLog = coreLog;
@@ -32,6 +34,7 @@ namespace Server.Battles
             _configDistributor = configDistributor;
             _unitBonusGranter = unitBonusGranter;
             _unitBucketsFactory = unitBucketsFactory;
+            _skillLevelResolver = skillLevelResolver;
             _unitLoadoutBinder = unitLoadoutBinder;
         }
 
@@ -95,6 +98,7 @@ namespace Server.Battles
                 battleSide);
 
             _unitLoadoutBinder.RegisterSnapshotEquippedEntities(unitState, unitSnapshot, isSummon, battleSide);
+            ApplySkillLevel(unitState, unitSnapshot, isSummon, battleSide);
 
             if (isSummon == false && battleSide == BattleSide.Attacking)
             {
@@ -121,6 +125,26 @@ namespace Server.Battles
         public void GrantSummonAccountBonuses(IUnitState mainUnit, IUnitSnapshot summonSnapshot)
         {
             _unitBonusGranter.GrantSummonAccountBonuses(mainUnit, summonSnapshot);
+        }
+
+        private void ApplySkillLevel(UnitState unitState, IUnitSnapshot unitSnapshot, bool isSummon, BattleSide battleSide)
+        {
+            if (isSummon || battleSide != BattleSide.Attacking)
+                return;
+
+            if (_configDistributor.Characters.TryGet(unitSnapshot.Id, out var characterMapper) == false)
+                return;
+
+            var promoteLevel = unitSnapshot.Level - 1;
+
+            if (promoteLevel < 0)
+                promoteLevel = 0;
+
+            var skillLevel = _skillLevelResolver.Resolve(characterMapper.PromoteToSkillLevels, promoteLevel);
+
+            unitState.SetSkillLevel(skillLevel);
+
+            _coreLog.Debug($"[Story][Battle]: Skill level resolved, unitId = {unitState.Id}, promoteLevel = {promoteLevel}, skillLevel = {skillLevel}");
         }
 
         private void ApplySnapshotHealth(IUnitState unitState, IUnitSnapshot unitSnapshot)

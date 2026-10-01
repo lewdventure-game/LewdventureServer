@@ -23,5 +23,22 @@ namespace Server.Entities
 
             return false;
         }
+
+        public int GetMaxMasteryLevel(int masteryId)
+        {
+            var maxLevel = 0;
+
+            for (int i = 0; i < Collection.Count; i++)
+            {
+                var currentMapper = Collection[i];
+
+                if (currentMapper.Id != masteryId || currentMapper.MasteryLevel <= maxLevel)
+                    continue;
+
+                maxLevel = currentMapper.MasteryLevel;
+            }
+
+            return maxLevel;
+        }
     }
 }

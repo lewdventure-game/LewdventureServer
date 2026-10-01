@@ -34,6 +34,7 @@ namespace Server.Api.Endpoints
                     Id = character.ConfigId,
                     Copies = character.Copies,
                     UpgradesApplied = character.UpgradesApplied,
+                    UnlockedScenes = new List<int>(character.UnlockedSceneIds),
                 });
             }
 

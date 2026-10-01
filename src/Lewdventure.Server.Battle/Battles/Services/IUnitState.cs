@@ -28,6 +28,10 @@ namespace Server.Battles
 
         public IReadOnlyList<string> EquipmentSkillKeys { get; }
 
+        public int SkillLevel { get; }
+
+        public SkillRuntimeState GetSkillState(int skillId);
+
         public bool IsAlive();
 
         public bool CanUseNormalAttack(int currentTurn);

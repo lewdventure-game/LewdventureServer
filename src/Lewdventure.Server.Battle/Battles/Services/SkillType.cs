@@ -8,5 +8,6 @@ namespace Server.Battles
         VenomStrike = 3,
         WarHowl = 4,
         SoulSiphon = 5,
+        Configured = 6,
     }
 }

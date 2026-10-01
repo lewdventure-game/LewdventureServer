@@ -24,6 +24,8 @@
 | [08-triggers-rewards.md](08-triggers-rewards.md) | Триггеры и награды |
 | [09-implementation-roadmap.md](09-implementation-roadmap.md) | Краткий план реализации battle-скоупа |
 | [10-client-battle-ai.md](10-client-battle-ai.md) | Handoff для ИИ: что реализовать на Unity-клиенте под protocol |
+| [11-open-questions.md](11-open-questions.md) | Что нужно от геймдизайна: пустые конфиги, нерешённые правила, расхождения ГДД с листами |
+| [12-skills.md](12-skills.md) | Движок скиллов: формат `triggers` / `actions`, условия, действия, уровни, внеочередная активация |
 
 ## Правила документов
 

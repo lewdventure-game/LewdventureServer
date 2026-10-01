@@ -38,7 +38,21 @@ namespace Server.Battles
             _battleRewardParser = new BattleRewardParser(coreLog);
             _battleScriptDigest = new BattleScriptDigest();
             _bonusWorkModeParser = new BonusWorkModeParser(coreLog);
-            _skillFactory = new SkillFactory(coreLog, configDistributor, parserUtils, CreateSkillCreators(parserUtils));
+            var skillArgumentReader = new SkillArgumentReader(coreLog);
+            var skillTargetResolver = new SkillTargetResolver(coreLog);
+            var skillTriggerRegistry = new SkillTriggerRegistry(CreateSkillTriggerEvaluators(coreLog, skillArgumentReader));
+            var skillActionRegistry = new SkillActionRegistry(CreateSkillActionExecutors(coreLog, skillArgumentReader));
+
+            _skillFactory = new SkillFactory(
+                coreLog,
+                configDistributor,
+                parserUtils,
+                skillActionRegistry,
+                skillArgumentReader,
+                new SkillDefinitionParser(coreLog),
+                skillTargetResolver,
+                skillTriggerRegistry,
+                CreateSkillCreators(parserUtils));
 
             var bonusService = new BattleBonusService(coreLog, commandFactory, _bonusWorkModeParser, bucketApplicator, characteristicCalculator, configDistributor);
             var rewardService = new BattleRewardService(coreLog, bonusService, commandFactory, _battleRewardParser, configDistributor, statusParametersParser);
@@ -53,7 +67,7 @@ namespace Server.Battles
             var bonusGranter = new UnitBonusGranter(coreLog, bonusService, _bonusWorkModeParser, configDistributor, bucketsFactory);
             var loadoutBinder = new UnitLoadoutBinder(coreLog, bonusService, configDistributor, _perkFactory, _skillFactory, statusParametersParser);
 
-            _unitStateBuilder = new UnitStateBuilder(coreLog, bonusService, characteristicCalculator, configDistributor, bonusGranter, bucketsFactory, loadoutBinder);
+            _unitStateBuilder = new UnitStateBuilder(coreLog, bonusService, characteristicCalculator, configDistributor, bonusGranter, bucketsFactory, new SkillLevelResolver(), loadoutBinder);
             _battleSimulationValidator = new BattleSimulationValidator(coreLog, configDistributor, _skillFactory);
 
             var turnPhases = new List<IBattleTurnPhase>
@@ -97,6 +111,26 @@ namespace Server.Battles
         public ISkillFactory SkillFactory => _skillFactory;
 
         public IUnitStateBuilder UnitStateBuilder => _unitStateBuilder;
+
+        private IReadOnlyList<ISkillTriggerEvaluator> CreateSkillTriggerEvaluators(ICoreLog coreLog, ISkillArgumentReader skillArgumentReader)
+        {
+            return new List<ISkillTriggerEvaluator>
+            {
+                new EnergyNeededTriggerEvaluator(coreLog, skillArgumentReader),
+                new AllyHealthLowerTriggerEvaluator(coreLog, skillArgumentReader),
+                new OnCooldownTriggerEvaluator(coreLog, skillArgumentReader),
+            };
+        }
+
+        private IReadOnlyList<ISkillActionExecutor> CreateSkillActionExecutors(ICoreLog coreLog, ISkillArgumentReader skillArgumentReader)
+        {
+            return new List<ISkillActionExecutor>
+            {
+                new DamageSkillActionExecutor(coreLog, skillArgumentReader),
+                new SetStatusSkillActionExecutor(coreLog, skillArgumentReader),
+                new SetBonusSkillActionExecutor(coreLog, skillArgumentReader),
+            };
+        }
 
         private IReadOnlyList<ISkillCreator> CreateSkillCreators(ParserUtils parserUtils)
         {

@@ -30,6 +30,41 @@ namespace Tests.Golden
         }
 
         [Test]
+        public void EverySkillRow_IsReadableByServer()
+        {
+            var distributor = _host.Services.GetRequiredService<IGameConfigSetProvider>().Current.Distributor;
+            var parser = new SkillDefinitionParser(new SilentCoreLog());
+            var unreadable = new List<string>();
+            var skills = distributor.Skills.Collection;
+
+            for (int i = 0; i < skills.Count; i++)
+            {
+                var skill = skills[i];
+                var hasNewFormat = string.IsNullOrWhiteSpace(skill.Triggers) == false || string.IsNullOrWhiteSpace(skill.Actions) == false;
+
+                if (hasNewFormat == false)
+                {
+                    if (_battleComposition.SkillFactory.IsKnownSkillId(skill.Id.ToString()) == false)
+                        unreadable.Add($"{skill.Id}: нет ни triggers/actions, ни известного type");
+
+                    continue;
+                }
+
+                if (parser.TryParse(skill, out var definition) == false)
+                {
+                    unreadable.Add($"{skill.Id}: triggers или actions не читаются");
+
+                    continue;
+                }
+
+                if (definition.Triggers.Count == 0 || definition.Actions.Count == 0)
+                    unreadable.Add($"{skill.Id}: нет условий или действий");
+            }
+
+            Assert.That(unreadable, Is.Empty, "сервер не понимает скиллы: " + string.Join("; ", unreadable));
+        }
+
+        [Test]
         public void EveryKnownSkillType_HasGoldenCase()
         {
             var cases = _host.Catalog.LoadAll();
