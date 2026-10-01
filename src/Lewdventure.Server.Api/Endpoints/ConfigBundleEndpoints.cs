@@ -29,6 +29,7 @@ namespace Server.Api.Endpoints
         private IResult Get(
             HttpContext httpContext,
             [FromServices] ClientConfigBundleFactory clientConfigBundleFactory,
+            [FromServices] EntityTagReader entityTagReader,
             [FromServices] IGameConfigSetProvider gameConfigSetProvider)
         {
             var bundle = clientConfigBundleFactory.Create(gameConfigSetProvider.Current);
@@ -36,24 +37,19 @@ namespace Server.Api.Endpoints
             httpContext.Response.Headers[HeaderNames.ETag] = bundle.EntityTag;
             httpContext.Response.Headers[HeaderNames.CacheControl] = "no-cache";
 
-            if (IsNotModified(httpContext, bundle))
+            if (IsNotModified(httpContext, entityTagReader, bundle))
                 return Results.StatusCode(StatusCodes.Status304NotModified);
 
             return Results.Content(bundle.Json, ContentType);
         }
 
-        private bool IsNotModified(HttpContext httpContext, ClientConfigBundle bundle)
+        private bool IsNotModified(HttpContext httpContext, EntityTagReader entityTagReader, ClientConfigBundle bundle)
         {
             var requestedTags = httpContext.Request.Headers[HeaderNames.IfNoneMatch];
 
             for (int i = 0; i < requestedTags.Count; i++)
             {
-                var requestedTag = requestedTags[i];
-
-                if (string.IsNullOrEmpty(requestedTag))
-                    continue;
-
-                if (string.Equals(requestedTag, bundle.EntityTag, StringComparison.Ordinal))
+                if (entityTagReader.Matches(requestedTags[i]!, bundle.EntityTagValue))
                     return true;
             }
 

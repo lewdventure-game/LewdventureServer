@@ -45,7 +45,7 @@ namespace Server.Api.Endpoints
 
             return new ClientConfigBundle(
                 configSet.Version,
-                "\"" + _configSnapshotHasher.ToShortVersion(configSet.Version) + "\"",
+                _configSnapshotHasher.ToShortVersion(configSet.Version),
                 JsonConvert.SerializeObject(payload));
         }
     }

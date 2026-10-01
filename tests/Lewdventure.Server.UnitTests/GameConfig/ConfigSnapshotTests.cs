@@ -129,6 +129,30 @@ namespace Tests.Unit.GameConfig
         }
 
         [Test]
+        public void Builder_CharactersWithoutArtName_WarnsInsteadOfFailing()
+        {
+            var rows = "[{\"id\":\"1\",\"is_melee\":\"1\",\"promote_id\":\"1\",\"skill_ids\":\"1\",\"promote_to_skill_levels\":\"0\"}]";
+            var snapshot = new GameConfigSnapshot("sha256:test", DateTime.UtcNow, "test", CreateDomains("[]", Array.Empty<int>(), ConfigDomainNames.Characters, rows));
+
+            var result = CreateBuilder().Build(snapshot, "test");
+
+            Assert.That(result.Errors, Has.None.Contains("art_name"), "art_name снова стал обязательным");
+            Assert.That(result.Warnings, Has.Some.Contains("Лист Characters: нет необязательной колонки art_name"));
+        }
+
+        [Test]
+        public void Builder_CharactersWithoutRequiredColumn_Fails()
+        {
+            var rows = "[{\"id\":\"1\",\"is_melee\":\"1\",\"skill_ids\":\"1\",\"promote_to_skill_levels\":\"0\"}]";
+            var snapshot = new GameConfigSnapshot("sha256:test", DateTime.UtcNow, "test", CreateDomains("[]", Array.Empty<int>(), ConfigDomainNames.Characters, rows));
+
+            var result = CreateBuilder().Build(snapshot, "test");
+
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.Errors, Has.Some.Contains("Лист Characters: нет обязательной колонки promote_id"));
+        }
+
+        [Test]
         public void Serializer_RoundTrip_KeepsSourceRows()
         {
             var serializer = new ConfigSnapshotSerializer(_hasher);
@@ -149,11 +173,23 @@ namespace Tests.Unit.GameConfig
 
         private List<ConfigSnapshotDomain> CreateDomains(string constantsRows, IReadOnlyList<int> constantsSourceRows)
         {
+            return CreateDomains(constantsRows, constantsSourceRows, string.Empty, string.Empty);
+        }
+
+        private List<ConfigSnapshotDomain> CreateDomains(string constantsRows, IReadOnlyList<int> constantsSourceRows, string extraDomain, string extraRows)
+        {
             var domains = new List<ConfigSnapshotDomain>();
             var names = _domainNames.Ordered;
 
             for (int i = 0; i < names.Count; i++)
-                domains.Add(new ConfigSnapshotDomain(names[i], "sheet", "B:Z", i == 0 ? constantsRows : "[]", i == 0 ? constantsSourceRows : Array.Empty<int>()));
+            {
+                var rows = i == 0 ? constantsRows : "[]";
+
+                if (string.Equals(names[i], extraDomain, StringComparison.Ordinal))
+                    rows = extraRows;
+
+                domains.Add(new ConfigSnapshotDomain(names[i], "sheet", "B:Z", rows, i == 0 ? constantsSourceRows : Array.Empty<int>()));
+            }
 
             return domains;
         }

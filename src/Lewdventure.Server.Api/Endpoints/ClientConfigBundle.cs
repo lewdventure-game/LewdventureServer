@@ -2,16 +2,18 @@ namespace Server.Api.Endpoints
 {
     internal sealed class ClientConfigBundle
     {
-        public ClientConfigBundle(string version, string entityTag, string json)
+        public ClientConfigBundle(string version, string entityTagValue, string json)
         {
             Version = version;
-            EntityTag = entityTag;
+            EntityTagValue = entityTagValue;
             Json = json;
         }
 
         public string Version { get; }
 
-        public string EntityTag { get; }
+        public string EntityTagValue { get; }
+
+        public string EntityTag => "\"" + EntityTagValue + "\"";
 
         public string Json { get; }
     }

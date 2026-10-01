@@ -57,6 +57,30 @@ namespace Tests.Golden
             Assert.That(result.ConfigVersion, Is.EqualTo(_activeVersion));
         }
 
+        [TestCase("W/\"{0}-gzip\"", TestName = "слабый тег с суффиксом gzip от Caddy")]
+        [TestCase("W/\"{0}\"", TestName = "слабый тег без суффикса")]
+        [TestCase("\"{0}-br\"", TestName = "суффикс brotli")]
+        [TestCase("\"wrong\", \"{0}\"", TestName = "список тегов")]
+        [TestCase("*", TestName = "любой тег")]
+        public async Task Bundle_WithProxyRewrittenEntityTag_IsNotModified(string tagTemplate)
+        {
+            var first = await _host.Client.GetAsync(GoldenHttpClient.ConfigBundlePath, string.Empty);
+            var shortVersion = JObject.Parse(first.Body)["ShortVersion"]!.Value<string>();
+            var requestedTag = string.Format(tagTemplate, shortVersion);
+            var second = await _host.Client.GetAsync(GoldenHttpClient.ConfigBundlePath, requestedTag);
+
+            Assert.That(second.StatusCode, Is.EqualTo(304), $"тег {requestedTag} не распознан");
+        }
+
+        [TestCase("\"cfg-000000000000\"", TestName = "чужая версия")]
+        [TestCase("W/\"cfg-000000000000-gzip\"", TestName = "чужая версия со суффиксом")]
+        public async Task Bundle_WithForeignEntityTag_IsReturnedAgain(string requestedTag)
+        {
+            var response = await _host.Client.GetAsync(GoldenHttpClient.ConfigBundlePath, requestedTag);
+
+            Assert.That(response.StatusCode, Is.EqualTo(200));
+        }
+
         [Test]
         public async Task Bundle_WithKnownEntityTag_IsNotModified()
         {
