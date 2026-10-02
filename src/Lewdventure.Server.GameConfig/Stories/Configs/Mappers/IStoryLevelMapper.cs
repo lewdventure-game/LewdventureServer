@@ -16,6 +16,8 @@ namespace Server.Stories
 
         public int MaxBattleTurns { get; }
 
+        public float EnemyStatsMultiplier { get; }
+
         public StoryLevelTriggerType[] TriggerTypes { get; }
 
         public int[] TriggerValues { get; }

@@ -1,41 +1,28 @@
+using Server.Common;
 using Server.Configs;
 
 namespace Server.Equipments
 {
     public interface IEquipmentMapper : IConfigMapper
     {
-        public string Id { get; }
+        public int Id { get; }
 
-        public string Type { get; }
+        public EquipmentType Type { get; }
 
-        public string Rarity { get; }
+        public RarityType Rarity { get; }
 
-        public string LevelUpTypes { get; }
+        public int PromoteId { get; }
 
-        public string LevelUpValues { get; }
+        public int[] BonusIds { get; }
 
-        public string EquipmentBonusTypeOne { get; }
+        public int[] SkillIds { get; }
 
-        public string EquipmentBonusValuesOne { get; }
+        public int MergeGroup { get; }
 
-        public string EquipmentBonusTypeTwo { get; }
-
-        public string EquipmentBonusValuesTwo { get; }
-
-        public string EquipmentBonusTypeThree { get; }
-
-        public string EquipmentBonusValuesThree { get; }
-
-        public string MergeGroup { get; }
-
-        public string MergeNumber { get; }
+        public int MergeNumber { get; }
 
         public string MergeRequirements { get; }
 
         public string ArtName { get; }
-
-        public string IsMelee { get; }
-
-        public string SkillId { get; }
     }
 }

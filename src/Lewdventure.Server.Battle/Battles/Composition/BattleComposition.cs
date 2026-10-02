@@ -7,6 +7,8 @@ namespace Server.Battles
     internal sealed class BattleComposition
     {
         private readonly IBattleParameterParser _battleParameterParser;
+        private readonly ISkillActionRegistry _skillActionRegistry;
+        private readonly ISkillTriggerRegistry _skillTriggerRegistry;
         private readonly IBattleRewardParser _battleRewardParser;
         private readonly IBattleScriptDigest _battleScriptDigest;
         private readonly IBattleSimulationValidator _battleSimulationValidator;
@@ -42,6 +44,9 @@ namespace Server.Battles
             var skillTargetResolver = new SkillTargetResolver(coreLog);
             var skillTriggerRegistry = new SkillTriggerRegistry(CreateSkillTriggerEvaluators(coreLog, skillArgumentReader));
             var skillActionRegistry = new SkillActionRegistry(CreateSkillActionExecutors(coreLog, skillArgumentReader));
+
+            _skillTriggerRegistry = skillTriggerRegistry;
+            _skillActionRegistry = skillActionRegistry;
 
             _skillFactory = new SkillFactory(
                 coreLog,
@@ -108,7 +113,11 @@ namespace Server.Battles
 
         public IPerkFactory PerkFactory => _perkFactory;
 
+        public ISkillActionRegistry SkillActionRegistry => _skillActionRegistry;
+
         public ISkillFactory SkillFactory => _skillFactory;
+
+        public ISkillTriggerRegistry SkillTriggerRegistry => _skillTriggerRegistry;
 
         public IUnitStateBuilder UnitStateBuilder => _unitStateBuilder;
 

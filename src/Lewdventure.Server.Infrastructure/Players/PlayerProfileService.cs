@@ -11,6 +11,7 @@ namespace Server.Infrastructure.Players
 
         private const string StartContentConstant = "start_content";
 
+        private readonly EquipmentSlotReader _equipmentSlotReader = new();
         private readonly IdempotencyRepository _idempotencyRepository;
         private readonly ILogger<PlayerProfileService> _logger;
         private readonly PlayerProfileRepository _playerProfileRepository;
@@ -169,7 +170,7 @@ namespace Server.Infrastructure.Players
                     continue;
                 }
 
-                if (string.Equals(mapper.Type, pair.Key, StringComparison.OrdinalIgnoreCase) == false)
+                if (_equipmentSlotReader.Matches(mapper.Type, pair.Key) == false)
                     errors.Add($"Equipment {pair.Value} has type {mapper.Type} and does not fit slot {pair.Key}.");
             }
 

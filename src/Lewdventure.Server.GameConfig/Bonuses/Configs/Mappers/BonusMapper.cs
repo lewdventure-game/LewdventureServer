@@ -1,4 +1,5 @@
 using Newtonsoft.Json;
+using Server.Configs;
 
 namespace Server.Bonuses
 {
@@ -17,6 +18,9 @@ namespace Server.Bonuses
         public BonusType BonusType { get; init; }
 
         [JsonProperty("bonus_value")]
-        public float BonusValue { get; init; }
+        [JsonConverter(typeof(DelimitedFloatArrayConverter), ';')]
+        public float[] BonusValues { get; init; } = Array.Empty<float>();
+
+        public float BonusValue => BonusValues.Length == 0 ? 0f : BonusValues[0];
     }
 }

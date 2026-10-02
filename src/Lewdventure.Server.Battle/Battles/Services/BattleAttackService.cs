@@ -484,11 +484,21 @@ namespace Server.Battles
             commands.Add(_battleCommandFactory.ShowDamage(actor.Id, actor.SlotIndex, target.Id, target.SlotIndex, damage, isCritical, false));
             commands.Add(_battleCommandFactory.SetHp(target.Id, target.SlotIndex, healthAfter));
 
-            ApplyVampyrism(commands, actor, damage);
+            if (IsVampyrismPhase(phase))
+                ApplyVampyrism(commands, actor, damage);
 
             _coreLog.Debug($"[Story][Battle]: Damage applied, phase = {phase}, actorId = {actor.Id}, targetId = {target.Id}, damage = {damage}, damageMultiplier = {damageMultiplier}, defence = {targetCharacteristics.Defence}, isCritical = {isCritical}, health = {healthAfter}");
 
             return true;
+        }
+
+        private bool IsVampyrismPhase(BattlePhaseType phase)
+        {
+            return phase == BattlePhaseType.NormalAttack
+                || phase == BattlePhaseType.CounterAttack
+                || phase == BattlePhaseType.Combo1Attack
+                || phase == BattlePhaseType.Combo2Attack
+                || phase == BattlePhaseType.SummonAttack;
         }
 
         private void ApplyVampyrism(List<BattleCommand> commands, IUnitState actor, float dealtDamage)

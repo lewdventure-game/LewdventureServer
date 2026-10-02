@@ -197,7 +197,7 @@ namespace Server.Infrastructure.Players
                     return Failed($"Equipment config {instance.ConfigId} is missing.");
                 }
 
-                if (_equipmentProgressionRules.TryResolveLevelStep(equipmentConfig, instance.Level, out var costs, out var error) == false)
+                if (_equipmentProgressionRules.TryResolveLevelStep(equipmentConfig, instance.Level, configDistributor.EquipmentPromotes, out var costs, out var error) == false)
                 {
                     await ReleaseAsync(userId, requestId, cancellationToken);
 
@@ -326,7 +326,7 @@ namespace Server.Infrastructure.Players
                     return Failed($"Equipment config {instance.ConfigId} is missing.");
                 }
 
-                if (_equipmentProgressionRules.TryResolveLevelRefund(equipmentConfig, instance.Level, dropProportion, out var refunds, out var refundError) == false)
+                if (_equipmentProgressionRules.TryResolveLevelRefund(equipmentConfig, instance.Level, dropProportion, configDistributor.EquipmentPromotes, out var refunds, out var refundError) == false)
                 {
                     await ReleaseAsync(userId, requestId, cancellationToken);
 
@@ -414,14 +414,8 @@ namespace Server.Infrastructure.Players
                     return Failed(targetError);
                 }
 
-                if (int.TryParse(targetConfig.Id, out var targetConfigId) == false)
-                {
-                    await ReleaseAsync(userId, requestId, cancellationToken);
-
-                    return Failed($"Equipment config id {targetConfig.Id} is not a number.");
-                }
-
-                _equipmentMergeRules.TryParseMergeNumber(targetConfig.MergeNumber, out var targetMergeNumber);
+                var targetConfigId = targetConfig.Id;
+                var targetMergeNumber = targetConfig.MergeNumber;
 
                 var sourceSlot = FindEquippedSlot(profile, instanceId);
                 var entries = new List<PlayerLedgerEntryDocument>

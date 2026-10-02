@@ -103,12 +103,6 @@ namespace Server.Battles
                 buckets.SkillMultiplierPerk,
                 buckets.SkillMultiplierGlobal,
                 "spellMultiplier");
-            var equipmentSpellMultiplier = ApplyFormula2(
-                buckets.EquipmentSpellMultiplierBase,
-                buckets.EquipmentSpellMultiplierLocal,
-                buckets.EquipmentSpellMultiplierPerk,
-                buckets.EquipmentSpellMultiplierGlobal,
-                "equipSpellMultiplier");
             var energyGain = ApplyFormula2(
                 buckets.EnergyBase,
                 buckets.EnergyLocal,
@@ -145,7 +139,6 @@ namespace Server.Battles
                 ref counterChance,
                 ref counterMultiplier,
                 ref skillMultiplier,
-                ref equipmentSpellMultiplier,
                 ref energyGain,
                 ref vampyrism,
                 ref healingBoost);
@@ -167,7 +160,6 @@ namespace Server.Battles
             state.CounterChance = counterChance;
             state.CounterMultiplier = counterMultiplier;
             state.SkillMultiplier = skillMultiplier;
-            state.EquipmentSpellMultiplier = equipmentSpellMultiplier;
             state.EnergyGain = energyGain;
             state.MaxEnergy = buckets.EnergyMaxBase;
             state.Vampyrism = vampyrism;
@@ -241,7 +233,6 @@ namespace Server.Battles
             ref float counterChance,
             ref float counterMultiplier,
             ref float skillMultiplier,
-            ref float equipmentSpellMultiplier,
             ref float energyGain,
             ref float vampyrism,
             ref float healingBoost)
@@ -321,11 +312,6 @@ namespace Server.Battles
                     case BonusType.SpellMultiplierPerk:
                     case BonusType.SpellMultiplierGlobal:
                         skillMultiplier = value;
-                        break;
-                    case BonusType.EquipmentSpellMultiplierLocal:
-                    case BonusType.EquipmentSpellMultiplierPerk:
-                    case BonusType.EquipmentSpellMultiplierGlobal:
-                        equipmentSpellMultiplier = value;
                         break;
                     case BonusType.EnergyLocal:
                     case BonusType.EnergyPerk:

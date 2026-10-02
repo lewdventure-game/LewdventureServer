@@ -20,6 +20,7 @@ namespace Server.GameConfigs
         private readonly ConfigDomainNames _configDomainNames;
         private readonly EffectParametersValidator _effectParametersValidator;
         private readonly EnemyDataValidator _enemyDataValidator;
+        private readonly SkillComponentValidator _skillComponentValidator;
         private readonly Dictionary<string, Type> _mapperTypes = new(StringComparer.Ordinal)
         {
             [ConfigDomainNames.Constants] = typeof(ConstantsMapper),
@@ -32,6 +33,7 @@ namespace Server.GameConfigs
             [ConfigDomainNames.Mastery] = typeof(MasteryMapper),
             [ConfigDomainNames.Enemies] = typeof(EnemyMapper),
             [ConfigDomainNames.Equipments] = typeof(EquipmentMapper),
+            [ConfigDomainNames.EquipmentPromotes] = typeof(EquipmentPromoteMapper),
             [ConfigDomainNames.StoryLevels] = typeof(StoryLevelMapper),
             [ConfigDomainNames.StoryStages] = typeof(StoryStageMapper),
             [ConfigDomainNames.StoryEvents] = typeof(StoryEventMapper),
@@ -44,11 +46,13 @@ namespace Server.GameConfigs
         public ConfigSnapshotValidator(
             ConfigDomainNames configDomainNames,
             EffectParametersValidator effectParametersValidator,
-            EnemyDataValidator enemyDataValidator)
+            EnemyDataValidator enemyDataValidator,
+            SkillComponentValidator skillComponentValidator)
         {
             _configDomainNames = configDomainNames;
             _effectParametersValidator = effectParametersValidator;
             _enemyDataValidator = enemyDataValidator;
+            _skillComponentValidator = skillComponentValidator;
         }
 
         public void ValidateStructure(GameConfigSnapshot snapshot, List<string> errors, List<string> warnings)
@@ -76,7 +80,10 @@ namespace Server.GameConfigs
                     _effectParametersValidator.CollectStatuses(domain, warnings);
 
                 if (string.Equals(domains[i], ConfigDomainNames.Skills, StringComparison.Ordinal))
+                {
                     _effectParametersValidator.CollectSkills(domain, warnings);
+                    _skillComponentValidator.Validate(domain, errors, warnings);
+                }
             }
         }
 

@@ -10,7 +10,6 @@ namespace Server.Battles
 {
     internal sealed class UnitBucketsFactory : IUnitBucketsFactory
     {
-        private const float DefaultEquipmentSpellMultiplier = 1f;
 
         private const float DefaultMasteryMultiplier = 1f;
 
@@ -30,6 +29,7 @@ namespace Server.Battles
 
         public CharacteristicBuckets BuildEnemyBuckets(IEnemyMapper enemyMapper, int storyLevelId, int stageId)
         {
+            var levelMultiplier = ReadStoryLevelMultiplier(storyLevelId);
             var stageMultiplier = 1f;
 
             if (0 < stageId)
@@ -51,7 +51,9 @@ namespace Server.Battles
                 }
             }
 
-            _coreLog.Debug($"[Story][Battle]: Enemy multipliers, storyLevelId = {storyLevelId}, stageId = {stageId}, stage = {stageMultiplier}");
+            stageMultiplier *= levelMultiplier;
+
+            _coreLog.Debug($"[Story][Battle]: Enemy multipliers, storyLevelId = {storyLevelId}, stageId = {stageId}, level = {levelMultiplier}, total = {stageMultiplier}");
 
             var buckets = new CharacteristicBuckets
             {
@@ -69,7 +71,6 @@ namespace Server.Battles
                 CounterChanceBase = ToFormula3Start(enemyMapper.CounterChance),
                 CounterMultiplierBase = ToFormula3Start(enemyMapper.CounterMultiplier),
                 SkillMultiplierBase = ToFormula3Start(enemyMapper.SpellMultiplier),
-                EquipmentSpellMultiplierBase = ReadEquipmentSpellMultiplierBase(),
                 EnergyBase = enemyMapper.Energy,
                 EnergyMaxBase = enemyMapper.MaxEnergy,
                 VampyrismBase = enemyMapper.Vampyrism,
@@ -219,7 +220,6 @@ namespace Server.Battles
             buckets.CounterChanceBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.CounterChanceBaseKey));
             buckets.CounterMultiplierBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.CounterMultiplierBaseKey));
             buckets.SkillMultiplierBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.SkillMultiplierBaseKey));
-            buckets.EquipmentSpellMultiplierBase = ReadEquipmentSpellMultiplierBase();
             buckets.EnergyBase = _battleConstantsReader.Get(ConstantKeys.EnergyBaseKey);
             buckets.EnergyMaxBase = _battleConstantsReader.Get(ConstantKeys.EnergyMaxBaseKey);
             buckets.DefenceCoefficient = _battleConstantsReader.Get(ConstantKeys.DefenceCoefficientKey);
@@ -244,12 +244,26 @@ namespace Server.Battles
             return combo1;
         }
 
-        private float ReadEquipmentSpellMultiplierBase()
+        private float ReadStoryLevelMultiplier(int storyLevelId)
         {
-            if (_battleConstantsReader.TryGet(ConstantKeys.EquipmentSpellMultiplierBaseKey, out var value))
-                return value;
+            if (storyLevelId <= 0)
+                return 1f;
 
-            return DefaultEquipmentSpellMultiplier;
+            if (_configDistributor.StoryLevels.TryGet(storyLevelId, out var storyLevel) == false)
+            {
+                _coreLog.Warning($"[Story][Battle]: Story level missing for enemy multiplier, storyLevelId = {storyLevelId}");
+
+                return 1f;
+            }
+
+            if (storyLevel.EnemyStatsMultiplier <= 0f)
+            {
+                _coreLog.Warning($"[Story][Battle]: Story level enemy_stats_multiplier is not set, storyLevelId = {storyLevelId}");
+
+                return 1f;
+            }
+
+            return storyLevel.EnemyStatsMultiplier;
         }
 
         private float ToFormula3Start(float finalValue)

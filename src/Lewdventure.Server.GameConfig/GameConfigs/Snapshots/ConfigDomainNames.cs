@@ -12,6 +12,7 @@ namespace Server.GameConfigs
         public const string Mastery = "Mastery";
         public const string Enemies = "Enemies";
         public const string Equipments = "Equipments";
+        public const string EquipmentPromotes = "Equipment_promotes";
         public const string StoryLevels = "Story_levels";
         public const string StoryStages = "Story_stages";
         public const string StoryEvents = "Story_events";
@@ -32,6 +33,7 @@ namespace Server.GameConfigs
             Mastery,
             Enemies,
             Equipments,
+            EquipmentPromotes,
             StoryLevels,
             StoryStages,
             StoryEvents,

@@ -2,6 +2,7 @@ using Server.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Server.Bonuses;
 using Server.GameConfigs;
+using Server.Skills;
 using Tests.Unit.Api;
 
 namespace Tests.Unit.GameConfig
@@ -27,7 +28,7 @@ namespace Tests.Unit.GameConfig
                 var reloaded = await source.LoadAsync(path, CancellationToken.None);
 
                 Assert.That(reloaded.Version, Is.EqualTo(snapshot.Version));
-                Assert.That(reloaded.Domains, Has.Count.EqualTo(17));
+                Assert.That(reloaded.Domains, Has.Count.EqualTo(18));
             }
             finally
             {
@@ -199,7 +200,7 @@ namespace Tests.Unit.GameConfig
             return new GameConfigSetBuilder(
                 new BonusWorkModeParser(new SilentCoreLog()),
                 new ConfigRowsParser(new ConfigRowLocator(new ConfigRangeReader())),
-                new ConfigSnapshotValidator(_domainNames, new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator()),
+                new ConfigSnapshotValidator(_domainNames, new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator(), new SkillComponentValidator(new SkillComponentRegistry())),
                 new SilentCoreLog());
         }
     }

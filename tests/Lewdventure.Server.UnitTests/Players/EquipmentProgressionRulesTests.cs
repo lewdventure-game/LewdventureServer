@@ -1,3 +1,4 @@
+using Server.Common;
 using Server.Equipments;
 using Server.Infrastructure.Players;
 
@@ -6,72 +7,68 @@ namespace Tests.Unit.Players
     [TestFixture]
     public sealed class EquipmentProgressionRulesTests
     {
+        private const int PromoteId = 4;
+
         private readonly EquipmentProgressionRules _rules = new();
 
         [Test]
-        public void TryResolveLevelStep_FirstLevel_TakesFirstCost()
+        public void TryResolveLevelStep_SecondLevel_TakesCostOfThatLevel()
         {
-            var mapper = new FakeEquipmentMapper("equip_lvl;equip_lvl;equip_break", "10;20;1");
+            var promotes = CreatePromotes();
 
-            var resolved = _rules.TryResolveLevelStep(mapper, 1, out var costs, out var error);
+            var resolved = _rules.TryResolveLevelStep(CreateMapper(), 1, promotes, out var costs, out var error);
 
             Assert.That(resolved, Is.True, error);
             Assert.That(costs, Has.Count.EqualTo(1));
             Assert.That(costs[0].Key, Is.EqualTo("equip_lvl"));
-            Assert.That(costs[0].Amount, Is.EqualTo(10));
-        }
-
-        [Test]
-        public void TryResolveLevelStep_ThirdLevel_TakesThirdCost()
-        {
-            var mapper = new FakeEquipmentMapper("equip_lvl;equip_lvl;equip_break", "10;20;1");
-
-            var resolved = _rules.TryResolveLevelStep(mapper, 3, out var costs, out var error);
-
-            Assert.That(resolved, Is.True, error);
-            Assert.That(costs[0].Key, Is.EqualTo("equip_break"));
             Assert.That(costs[0].Amount, Is.EqualTo(1));
         }
 
         [Test]
-        public void TryResolveLevelStep_PrefixedResource_IsAccepted()
+        public void TryResolveLevelStep_LevelWithTwoResources_TakesBoth()
         {
-            var mapper = new FakeEquipmentMapper("resource:equip_lvl", "5");
+            var promotes = CreatePromotes();
 
-            var resolved = _rules.TryResolveLevelStep(mapper, 1, out var costs, out var error);
+            var resolved = _rules.TryResolveLevelStep(CreateMapper(), 4, promotes, out var costs, out var error);
 
             Assert.That(resolved, Is.True, error);
+            Assert.That(costs, Has.Count.EqualTo(2));
             Assert.That(costs[0].Key, Is.EqualTo("equip_lvl"));
+            Assert.That(costs[0].Amount, Is.EqualTo(4));
+            Assert.That(costs[1].Key, Is.EqualTo("equip_break"));
+            Assert.That(costs[1].Amount, Is.EqualTo(1));
         }
 
         [Test]
         public void TryResolveLevelStep_BeyondMaxLevel_Fails()
         {
-            var mapper = new FakeEquipmentMapper("equip_lvl;equip_lvl", "10;20");
+            var promotes = CreatePromotes();
 
-            var resolved = _rules.TryResolveLevelStep(mapper, 3, out _, out var error);
+            var resolved = _rules.TryResolveLevelStep(CreateMapper(), 5, promotes, out _, out var error);
 
             Assert.That(resolved, Is.False);
-            Assert.That(error, Does.Contain("max level 2"));
+            Assert.That(error, Does.Contain("max level 5"));
         }
 
         [Test]
-        public void TryResolveLevelStep_WithoutConfig_Fails()
+        public void TryResolveLevelStep_WithoutPromoteId_Fails()
         {
-            var mapper = new FakeEquipmentMapper(string.Empty, string.Empty);
+            var promotes = CreatePromotes();
 
-            var resolved = _rules.TryResolveLevelStep(mapper, 1, out _, out var error);
+            var resolved = _rules.TryResolveLevelStep(CreateMapper(0), 1, promotes, out _, out var error);
 
             Assert.That(resolved, Is.False);
-            Assert.That(error, Does.Contain("no level up costs"));
+            Assert.That(error, Does.Contain("no promote_id"));
         }
 
         [Test]
         public void TryResolveLevelStep_UnsupportedType_Fails()
         {
-            var mapper = new FakeEquipmentMapper("summon:1", "5");
+            var promotes = new EquipmentPromoteMapperManagerDouble();
 
-            var resolved = _rules.TryResolveLevelStep(mapper, 1, out _, out var error);
+            promotes.Add(new FakeEquipmentPromoteMapper(PromoteId, 2, new[] { "summon" }, new[] { "1" }, new[] { 5 }));
+
+            var resolved = _rules.TryResolveLevelStep(CreateMapper(), 1, promotes, out _, out var error);
 
             Assert.That(resolved, Is.False);
             Assert.That(error, Does.Contain("unsupported cost type"));
@@ -80,55 +77,166 @@ namespace Tests.Unit.Players
         [Test]
         public void TryResolveLevelStep_InvalidValue_Fails()
         {
-            var mapper = new FakeEquipmentMapper("equip_lvl", "abc");
+            var promotes = new EquipmentPromoteMapperManagerDouble();
 
-            var resolved = _rules.TryResolveLevelStep(mapper, 1, out _, out var error);
+            promotes.Add(new FakeEquipmentPromoteMapper(PromoteId, 2, new[] { "resource" }, new[] { "equip_lvl" }, new[] { 0 }));
+
+            var resolved = _rules.TryResolveLevelStep(CreateMapper(), 1, promotes, out _, out var error);
 
             Assert.That(resolved, Is.False);
             Assert.That(error, Does.Contain("invalid cost"));
         }
 
-        private sealed class FakeEquipmentMapper : IEquipmentMapper
+        [Test]
+        public void TryResolveLevelRefund_SumsEverySpentLevel()
         {
-            public FakeEquipmentMapper(string levelUpTypes, string levelUpValues)
+            var promotes = CreatePromotes();
+
+            var resolved = _rules.TryResolveLevelRefund(CreateMapper(), 5, 0.8f, promotes, out var refunds, out var error);
+
+            Assert.That(resolved, Is.True, error);
+            Assert.That(refunds, Has.Count.EqualTo(2));
+            Assert.That(refunds[0].Key, Is.EqualTo("equip_lvl"));
+            Assert.That(refunds[0].Amount, Is.EqualTo(8));
+            Assert.That(refunds[1].Key, Is.EqualTo("equip_break"));
+            Assert.That(refunds[1].Amount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void TryResolveLevelRefund_FirstLevel_Fails()
+        {
+            var promotes = CreatePromotes();
+
+            var resolved = _rules.TryResolveLevelRefund(CreateMapper(), 1, 0.8f, promotes, out _, out var error);
+
+            Assert.That(resolved, Is.False);
+            Assert.That(error, Does.Contain("already at level 1"));
+        }
+
+        private EquipmentPromoteMapperManagerDouble CreatePromotes()
+        {
+            var promotes = new EquipmentPromoteMapperManagerDouble();
+
+            promotes.Add(new FakeEquipmentPromoteMapper(PromoteId, 2, new[] { "resource" }, new[] { "equip_lvl" }, new[] { 1 }));
+            promotes.Add(new FakeEquipmentPromoteMapper(PromoteId, 3, new[] { "resource" }, new[] { "equip_lvl" }, new[] { 2 }));
+            promotes.Add(new FakeEquipmentPromoteMapper(PromoteId, 4, new[] { "resource" }, new[] { "equip_lvl" }, new[] { 3 }));
+            promotes.Add(new FakeEquipmentPromoteMapper(PromoteId, 5, new[] { "resource", "resource" }, new[] { "equip_lvl", "equip_break" }, new[] { 4, 1 }));
+
+            return promotes;
+        }
+
+        private FakeEquipmentMapper CreateMapper()
+        {
+            return CreateMapper(PromoteId);
+        }
+
+        private FakeEquipmentMapper CreateMapper(int promoteId)
+        {
+            return new FakeEquipmentMapper(promoteId);
+        }
+
+        private sealed class EquipmentPromoteMapperManagerDouble : IEquipmentPromoteMapperManager
+        {
+            private readonly List<IEquipmentPromoteMapper> _collection = new();
+
+            public IReadOnlyList<IEquipmentPromoteMapper> Collection => _collection;
+
+            public void Add(IEquipmentPromoteMapper value)
             {
-                LevelUpTypes = levelUpTypes;
-                LevelUpValues = levelUpValues;
+                _collection.Add(value);
             }
 
-            public string Id => "210";
+            public void Remove(IEquipmentPromoteMapper value)
+            {
+                _collection.Remove(value);
+            }
 
-            public string Type => "weapon";
+            public void Clear()
+            {
+                _collection.Clear();
+            }
 
-            public string Rarity => "common";
+            public bool TryGet(int promoteId, int level, out IEquipmentPromoteMapper mapper)
+            {
+                for (int i = 0; i < _collection.Count; i++)
+                {
+                    if (_collection[i].Id != promoteId || _collection[i].Level != level)
+                        continue;
 
-            public string LevelUpTypes { get; }
+                    mapper = _collection[i];
 
-            public string LevelUpValues { get; }
+                    return true;
+                }
 
-            public string EquipmentBonusTypeOne => string.Empty;
+                mapper = null!;
 
-            public string EquipmentBonusValuesOne => string.Empty;
+                return false;
+            }
 
-            public string EquipmentBonusTypeTwo => string.Empty;
+            public int GetMaxLevel(int promoteId)
+            {
+                var maxLevel = 1;
 
-            public string EquipmentBonusValuesTwo => string.Empty;
+                for (int i = 0; i < _collection.Count; i++)
+                {
+                    if (_collection[i].Id != promoteId || _collection[i].Level <= maxLevel)
+                        continue;
 
-            public string EquipmentBonusTypeThree => string.Empty;
+                    maxLevel = _collection[i].Level;
+                }
 
-            public string EquipmentBonusValuesThree => string.Empty;
+                return maxLevel;
+            }
+        }
 
-            public string MergeGroup => string.Empty;
+        private sealed class FakeEquipmentPromoteMapper : IEquipmentPromoteMapper
+        {
+            public FakeEquipmentPromoteMapper(int id, int level, string[] resourceTypes, string[] resourceIds, int[] resourceValues)
+            {
+                Id = id;
+                Level = level;
+                ResourceTypes = resourceTypes;
+                ResourceIds = resourceIds;
+                ResourceValues = resourceValues;
+            }
 
-            public string MergeNumber => string.Empty;
+            public int Id { get; }
+
+            public int Level { get; }
+
+            public string[] ResourceTypes { get; }
+
+            public string[] ResourceIds { get; }
+
+            public int[] ResourceValues { get; }
+        }
+
+        private sealed class FakeEquipmentMapper : IEquipmentMapper
+        {
+            public FakeEquipmentMapper(int promoteId)
+            {
+                PromoteId = promoteId;
+            }
+
+            public int Id => 210;
+
+            public EquipmentType Type => EquipmentType.Body;
+
+            public RarityType Rarity => RarityType.Common;
+
+            public int PromoteId { get; }
+
+            public int[] BonusIds => Array.Empty<int>();
+
+            public int[] SkillIds => Array.Empty<int>();
+
+            public int MergeGroup => 0;
+
+            public int MergeNumber => 0;
 
             public string MergeRequirements => string.Empty;
 
             public string ArtName => string.Empty;
-
-            public string IsMelee => string.Empty;
-
-            public string SkillId => string.Empty;
         }
     }
 }

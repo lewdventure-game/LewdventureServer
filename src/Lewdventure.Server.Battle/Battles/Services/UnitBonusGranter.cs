@@ -155,7 +155,7 @@ namespace Server.Battles
             {
                 var entry = equipment[i];
 
-                if (entry == null)
+                if (entry == null || entry.Id <= 0)
                     continue;
 
                 var equipmentId = entry.Id;
@@ -168,193 +168,45 @@ namespace Server.Battles
                     throw new InvalidOperationException($"[Story][Battle]: Equipment missing id = {equipmentId}");
                 }
 
-                GrantEquipmentBonusSlot(unitState, equipmentMapper.EquipmentBonusTypeOne, equipmentMapper.EquipmentBonusValuesOne, equipmentLevel, $"build:equip:{equipmentId}:1");
-                GrantEquipmentBonusSlot(unitState, equipmentMapper.EquipmentBonusTypeTwo, equipmentMapper.EquipmentBonusValuesTwo, equipmentLevel, $"build:equip:{equipmentId}:2");
-                GrantEquipmentBonusSlot(unitState, equipmentMapper.EquipmentBonusTypeThree, equipmentMapper.EquipmentBonusValuesThree, equipmentLevel, $"build:equip:{equipmentId}:3");
+                var bonusIds = equipmentMapper.BonusIds;
+
+                for (int bonusIndex = 0; bonusIndex < bonusIds.Length; bonusIndex++)
+                    GrantEquipmentBonus(unitState, bonusIds[bonusIndex], equipmentLevel, $"build:equip:{equipmentId}:{bonusIds[bonusIndex]}");
             }
         }
 
-        private void GrantEquipmentBonusSlot(
-            UnitState unitState,
-            string bonusTypeRaw,
-            string bonusValueRaw,
-            int equipmentLevel,
-            string sourceKey)
+        private void GrantEquipmentBonus(UnitState unitState, int bonusId, int equipmentLevel, string sourceKey)
         {
-            if (TryResolveEquipmentBonusId(bonusTypeRaw, out var bonusId) == false)
+            if (bonusId <= 0)
                 return;
 
-            var value = ParseEquipmentBonusValue(bonusValueRaw, equipmentLevel);
+            if (TryReadBonus(bonusId, out var bonusMapper) == false)
+                return;
 
-            _coreLog.Debug($"[Story][Battle] equipment grant slot sourceKey = {sourceKey} level = {equipmentLevel} bonusId = {bonusId} value = {value}");
+            var values = bonusMapper.BonusValues;
 
-            GrantLeveledBonus(unitState, bonusId, value, sourceKey);
-        }
-
-        private bool TryResolveEquipmentBonusId(string bonusTypeRaw, out int bonusId)
-        {
-            bonusId = 0;
-
-            if (string.IsNullOrWhiteSpace(bonusTypeRaw))
-                return false;
-
-            var trimmed = bonusTypeRaw.Trim();
-
-            if (int.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out bonusId))
+            if (values.Length == 0)
             {
-                if (bonusId <= 0)
-                {
-                    _coreLog.Warning($"[Story][Battle]: Equipment bonus id invalid raw = {bonusTypeRaw}");
+                _coreLog.Warning($"[Story][Battle]: Equipment bonus has no values, bonusId = {bonusId}, sourceKey = {sourceKey}");
 
-                    return false;
-                }
-
-                return true;
+                return;
             }
 
-            if (TryParseBonusTypeName(trimmed, out var bonusType) == false || bonusType == BonusType.Unknown)
-            {
-                _coreLog.Warning($"[Story][Battle]: Equipment bonus type parse failed raw = {bonusTypeRaw}");
+            var index = equipmentLevel - 1;
 
-                return false;
+            if (index < 0)
+                index = 0;
+
+            if (values.Length <= index)
+            {
+                _coreLog.Warning($"[Story][Battle]: Equipment bonus has no value for level, bonusId = {bonusId}, level = {equipmentLevel}, values = {values.Length}");
+
+                index = values.Length - 1;
             }
 
-            IBonusMapper lowestIdMatch = default!;
+            _coreLog.Debug($"[Story][Battle] equipment grant sourceKey = {sourceKey} level = {equipmentLevel} bonusId = {bonusId} value = {values[index]}");
 
-            var hasMatch = false;
-            var matchCount = 0;
-
-            foreach (var bonusMapper in _configDistributor.Bonuses.Values)
-            {
-                if (bonusMapper.BonusType != bonusType)
-                    continue;
-
-                matchCount += 1;
-
-                if (hasMatch && lowestIdMatch.Id <= bonusMapper.Id)
-                    continue;
-
-                lowestIdMatch = bonusMapper;
-                hasMatch = true;
-            }
-
-            if (hasMatch == false)
-            {
-                _coreLog.Warning($"[Story][Battle]: Equipment bonus type missing, type = {bonusType}, raw = {bonusTypeRaw}");
-
-                return false;
-            }
-
-            if (1 < matchCount)
-                _coreLog.Warning($"[Story][Battle]: Equipment bonus type ambiguous, type = {bonusType}, matches = {matchCount}, usingId = {lowestIdMatch.Id}");
-
-            bonusId = lowestIdMatch.Id;
-
-            return true;
-        }
-
-        private bool TryParseBonusTypeName(string value, out BonusType bonusType)
-        {
-            bonusType = BonusType.Unknown;
-
-            if (string.IsNullOrWhiteSpace(value))
-                return false;
-
-            foreach (var field in typeof(BonusType).GetFields())
-            {
-                var attributes = field.GetCustomAttributes(typeof(System.Runtime.Serialization.EnumMemberAttribute), false);
-
-                if (attributes.Length == 0)
-                    continue;
-
-                var attribute = (System.Runtime.Serialization.EnumMemberAttribute)attributes[0];
-
-                if (string.Equals(attribute.Value, value, StringComparison.OrdinalIgnoreCase) == false)
-                    continue;
-
-                var fieldValue = field.GetValue(null);
-
-                if (fieldValue is BonusType parsedBonusType)
-                {
-                    bonusType = parsedBonusType;
-
-                    return true;
-                }
-            }
-
-            if (Enum.TryParse(value, true, out bonusType) && bonusType != BonusType.Unknown)
-                return true;
-
-            var parts = value.Split('_');
-            var pascalBuilder = new System.Text.StringBuilder(value.Length);
-
-            for (int i = 0; i < parts.Length; i++)
-            {
-                var part = parts[i];
-
-                if (part.Length == 0)
-                    continue;
-
-                pascalBuilder.Append(char.ToUpperInvariant(part[0]));
-
-                if (1 < part.Length)
-                    pascalBuilder.Append(part.Substring(1).ToLowerInvariant());
-            }
-
-            if (Enum.TryParse(pascalBuilder.ToString(), true, out bonusType) && bonusType != BonusType.Unknown)
-                return true;
-
-            bonusType = BonusType.Unknown;
-
-            return false;
-        }
-
-        private float ParseEquipmentBonusValue(string bonusValueRaw, int equipmentLevel)
-        {
-            if (string.IsNullOrWhiteSpace(bonusValueRaw))
-                return 0f;
-
-            var levelIndex = equipmentLevel - 1;
-
-            if (levelIndex < 0)
-                levelIndex = 0;
-
-            var segments = SplitEquipmentBonusValueSegments(bonusValueRaw);
-
-            if (segments.Length == 0)
-                return 0f;
-
-            if (segments.Length <= levelIndex)
-                levelIndex = segments.Length - 1;
-
-            var segment = segments[levelIndex].Trim();
-
-            if (float.TryParse(segment, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
-                return value;
-
-            _coreLog.Warning($"[Story][Battle]: Equipment bonus value parse failed, raw = {bonusValueRaw}, level = {equipmentLevel}, segment = {segment}");
-
-            return 0f;
-        }
-
-        private string[] SplitEquipmentBonusValueSegments(string bonusValueRaw)
-        {
-            var commaSegments = bonusValueRaw.Split(',');
-            var semicolonSegments = bonusValueRaw.Split(';');
-
-            if (commaSegments.Length == 1 && semicolonSegments.Length == 1)
-                return commaSegments;
-
-            if (semicolonSegments.Length < commaSegments.Length)
-                return commaSegments;
-
-            if (commaSegments.Length < semicolonSegments.Length)
-                return semicolonSegments;
-
-            if (1 < commaSegments.Length)
-                return commaSegments;
-
-            return semicolonSegments;
+            GrantResolvedBonus(unitState, bonusId, bonusMapper, values[index], sourceKey);
         }
 
         public void GrantSnapshotRunBonuses(IUnitState unitState, IUnitSnapshot unitSnapshot)

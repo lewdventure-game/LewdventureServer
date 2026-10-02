@@ -135,15 +135,6 @@ namespace Server.Battles
                 case BonusType.SpellMultiplierGlobal:
                     buckets.SkillMultiplierGlobal += value;
                     break;
-                case BonusType.EquipmentSpellMultiplierLocal:
-                    buckets.EquipmentSpellMultiplierLocal += value;
-                    break;
-                case BonusType.EquipmentSpellMultiplierPerk:
-                    buckets.EquipmentSpellMultiplierPerk += value;
-                    break;
-                case BonusType.EquipmentSpellMultiplierGlobal:
-                    buckets.EquipmentSpellMultiplierGlobal += value;
-                    break;
                 case BonusType.ArmorLocal:
                     buckets.ArmorLocal += value;
                     break;
@@ -179,6 +170,12 @@ namespace Server.Battles
                     break;
                 case BonusType.HealingBoostGlobal:
                     buckets.HealingBoostGlobal += value;
+                    break;
+                case BonusType.EquipmentSpellMultiplierLocal:
+                case BonusType.EquipmentSpellMultiplierPerk:
+                case BonusType.EquipmentSpellMultiplierGlobal:
+                    _coreLog.Warning($"[Story][Battle]: Bonus type is dropped from design and ignored, bonusType = {bonusType}, value = {value}");
+
                     break;
                 case BonusType.CurrentHealthLocal:
                 case BonusType.Healing:

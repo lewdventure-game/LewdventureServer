@@ -24,6 +24,9 @@ namespace Server.Stories
         [JsonProperty("max_battle_turns")]
         public int MaxBattleTurns { get; init; }
 
+        [JsonProperty("enemy_stats_multiplier")]
+        public float EnemyStatsMultiplier { get; init; }
+
         [JsonProperty("trigger_types")]
         [JsonConverter(typeof(DelimitedEnumArrayConverter<StoryLevelTriggerType>), ';')]
         public StoryLevelTriggerType[] TriggerTypes { get; init; } = Array.Empty<StoryLevelTriggerType>();

@@ -38,7 +38,6 @@ namespace Server.Battles
 
         public float SkillMultiplier { get; set; }
 
-        public float EquipmentSpellMultiplier { get; set; }
 
         public float Vampyrism { get; set; }
 

@@ -59,10 +59,6 @@ namespace Server.Battles
         public float SkillMultiplierLocal;
         public float SkillMultiplierPerk;
         public float SkillMultiplierGlobal;
-        public float EquipmentSpellMultiplierBase;
-        public float EquipmentSpellMultiplierLocal;
-        public float EquipmentSpellMultiplierPerk;
-        public float EquipmentSpellMultiplierGlobal;
         public float EnergyBase;
         public float EnergyLocal;
         public float EnergyPerk;

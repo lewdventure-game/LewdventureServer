@@ -78,6 +78,7 @@ namespace Server.GameConfigs
             var tempMasteries = ParseDomain<MasteryMapper>(snapshot, ConfigDomainNames.Mastery, errors);
             var tempEnemies = ParseDomain<EnemyMapper>(snapshot, ConfigDomainNames.Enemies, errors);
             var tempEquipments = ParseDomain<EquipmentMapper>(snapshot, ConfigDomainNames.Equipments, errors);
+            var tempEquipmentPromotes = ParseDomain<EquipmentPromoteMapper>(snapshot, ConfigDomainNames.EquipmentPromotes, errors);
             var tempStoryLevels = ParseDomain<StoryLevelMapper>(snapshot, ConfigDomainNames.StoryLevels, errors);
             var tempStoryStages = ParseDomain<StoryStageMapper>(snapshot, ConfigDomainNames.StoryStages, errors);
             var tempStoryEvents = ParseDomain<StoryEventMapper>(snapshot, ConfigDomainNames.StoryEvents, errors);
@@ -98,6 +99,7 @@ namespace Server.GameConfigs
             AddList(distributor.Masteries, tempMasteries, ConfigDomainNames.Mastery);
             AddList(distributor.Enemies, tempEnemies, ConfigDomainNames.Enemies);
             AddList(distributor.Equipments, tempEquipments, ConfigDomainNames.Equipments);
+            AddList(distributor.EquipmentPromotes, tempEquipmentPromotes, ConfigDomainNames.EquipmentPromotes);
             AddList(distributor.StoryLevels, tempStoryLevels, ConfigDomainNames.StoryLevels);
             AddList(distributor.StoryStages, tempStoryStages, ConfigDomainNames.StoryStages);
             AddList(distributor.StoryEvents, tempStoryEvents, ConfigDomainNames.StoryEvents);

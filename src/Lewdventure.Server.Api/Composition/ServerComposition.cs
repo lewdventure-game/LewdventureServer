@@ -14,6 +14,7 @@ using Server.GameConfigs;
 using Server.Infrastructure.Mongo.ConfigSnapshots;
 using Server.Infrastructure.Mongo.Players;
 using Server.Runs;
+using Server.Skills;
 using Server.Infrastructure.Logging;
 using Server.Infrastructure.Mongo;
 using Server.Services;
@@ -156,6 +157,8 @@ namespace Server.Api.Composition
                 .AddSingleton<EffectParameterRegistry>()
                 .AddSingleton<EffectParametersValidator>()
                 .AddSingleton<EnemyDataValidator>()
+                .AddSingleton<SkillComponentRegistry>()
+                .AddSingleton<SkillComponentValidator>()
                 .AddSingleton<ConfigSnapshotValidator>()
                 .AddSingleton<ConfigSnapshotDiff>()
                 .AddSingleton<ConfigRangeReader>()

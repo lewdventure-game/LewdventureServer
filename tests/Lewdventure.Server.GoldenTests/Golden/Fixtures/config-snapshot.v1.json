@@ -1,7 +1,7 @@
 {
   "format": "lewdventure-config-snapshot",
   "formatVersion": 1,
-  "version": "sha256:53ab01b11f8f7653bf8977e3cf23f19599391240d496b2b52031bf114ed13031",
+  "version": "sha256:ce011d8f32aa793a6bb875242a7506cdc1539e25c7795c5d63dbe08cb6cbe431",
   "createdAt": "2026-09-30T03:37:36.6330000Z",
   "sourceKind": "SheetsUpload",
   "domains": [
@@ -648,6 +648,33 @@
           "bonus_type": "healing_from_max",
           "bonus_value": "0.5",
           "work_modes": "permanent"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "10",
+          "operator": "add",
+          "bonus_type": "damage_local",
+          "bonus_value": "10;12;14;16;18;20;22;24;26;28",
+          "work_modes": "if_equipped:equipment:1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "11",
+          "operator": "add",
+          "bonus_type": "damage_local",
+          "bonus_value": "30;32;34;36;38;40;42;44;46;48",
+          "work_modes": "if_equipped:equipment:2"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "12",
+          "operator": "add",
+          "bonus_type": "damage_local",
+          "bonus_value": "50;52;54;56;58;60;62;64;66;68",
+          "work_modes": "if_equipped:equipment:3"
         }
       ],
       "sourceRows": [
@@ -659,7 +686,10 @@
         7,
         8,
         9,
-        10
+        10,
+        11,
+        12,
+        13
       ]
     },
     {
@@ -2209,31 +2239,154 @@
     {
       "domain": "Equipments",
       "spreadsheetId": "1XP47_4sQ5uK2_6rGSBH4bkWgXVDBLfiYIYtVk9qIB0E",
-      "range": "A1:R2",
+      "range": "A1:K4",
       "rows": [
         {
           "name": "",
           "is_off": false,
-          "id": "",
-          "type": "",
-          "rarity": "",
-          "lvlup_types": "",
-          "lvlup_values": "",
-          "equip_bonus_type_1": "",
-          "equip_bonus_values_1": "",
-          "equip_bonus_type_2": "",
-          "equip_bonus_values_2": "",
-          "equip_bonus_type_3": "",
-          "equip_bonus_values_3": "",
-          "merge_group": "",
-          "merge_number": "",
+          "id": "1",
+          "type": "body",
+          "rarity": "legendary_2",
+          "promote_id": "1",
+          "bonus_ids": "10",
+          "skill_ids": "",
+          "merge_group": "1",
+          "merge_number": "1",
+          "merge_requirements": "equipment_rarity:legendary_2:1",
+          "art_name": "norm_boobs"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "2",
+          "type": "body",
+          "rarity": "legendary_3",
+          "promote_id": "1",
+          "bonus_ids": "11",
+          "skill_ids": "1",
+          "merge_group": "1",
+          "merge_number": "2",
+          "merge_requirements": "equipment_id:2:1",
+          "art_name": "norm_boobs"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "3",
+          "type": "body",
+          "rarity": "mythic",
+          "promote_id": "1",
+          "bonus_ids": "12",
+          "skill_ids": "1;2",
+          "merge_group": "1",
+          "merge_number": "3",
           "merge_requirements": "",
-          "art_name": "",
-          "is_melee": ""
+          "art_name": "norm_boobs"
         }
       ],
       "sourceRows": [
-        2
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "domain": "Equipment_promotes",
+      "spreadsheetId": "10wXneFrnl_f-NwvuhjewmMupw1Bp7f8V_ii4ITIL-l4",
+      "range": "A1:F10",
+      "rows": [
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "level": "2",
+          "resource_types": "resource",
+          "resource_ids": "equip_lvl",
+          "resource_values": "1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "level": "3",
+          "resource_types": "resource",
+          "resource_ids": "equip_lvl",
+          "resource_values": "2"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "level": "4",
+          "resource_types": "resource",
+          "resource_ids": "equip_lvl",
+          "resource_values": "3"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "level": "5",
+          "resource_types": "resource;resource",
+          "resource_ids": "equip_lvl;equip_break",
+          "resource_values": "4;1"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "level": "6",
+          "resource_types": "resource",
+          "resource_ids": "equip_lvl",
+          "resource_values": "5"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "level": "7",
+          "resource_types": "resource",
+          "resource_ids": "equip_lvl",
+          "resource_values": "6"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "level": "8",
+          "resource_types": "resource",
+          "resource_ids": "equip_lvl",
+          "resource_values": "7"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "level": "9",
+          "resource_types": "resource",
+          "resource_ids": "equip_lvl",
+          "resource_values": "8"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "1",
+          "level": "10",
+          "resource_types": "resource;resource",
+          "resource_ids": "equip_lvl;equip_break",
+          "resource_values": "9;2"
+        }
+      ],
+      "sourceRows": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
       ]
     },
     {
@@ -2394,7 +2547,7 @@
           "event_type": "default_event",
           "event_art_preset": "",
           "event_parameters": "loc_key:[narrative.event.1.text];\nrewards:[bonus:1:1]",
-          "level_exp": "0"
+          "reward_xp_value": "0"
         },
         {
           "name": "",
@@ -2403,7 +2556,7 @@
           "event_type": "fight",
           "event_art_preset": "",
           "event_parameters": "loc_key_start:[narrative.event.2.start];\nloc_key_end:[narrative.event.2.end];\nenemies:[10101]",
-          "level_exp": "20"
+          "reward_xp_value": "20"
         },
         {
           "name": "",
@@ -2412,7 +2565,7 @@
           "event_type": "fork_event",
           "event_art_preset": "ForkEventForestTree",
           "event_parameters": "loc_key_start:[narrative.event.3.start];\nloc_key_button1:[narrative.event.3.button.1];\nchance_event1:[0.7];\nloc_key_event1:[narrative.event.3.outcome.1];\nrewards_event1:[resource:hard_money:100];\nreward_lenght_event1:[0];\nloc_key_event2:[narrative.event.3.outcome.2];\nrewards_event2:[resource:hard_money:100,bonus:1:1];\nreward_lenght_event2:[0];\nloc_key_button2:[narrative.event.3.button.2];\nchance_event3:[0.1];\nloc_key_event3:[narrative.event.3.outcome.3];\nrewards_event3:[resource:hard_money:100,bonus:1:1];\nreward_lenght_event3:[3];\nloc_key_event4:[narrative.event.3.outcome.4];\nrewards_event4:[resource:hard_money:100];\nreward_lenght_event4:[0]",
-          "level_exp": "50"
+          "reward_xp_value": "50"
         },
         {
           "name": "",
@@ -2421,7 +2574,7 @@
           "event_type": "default_event",
           "event_art_preset": "",
           "event_parameters": "loc_key:[narrative.event.1.text];\nrewards:[bonus:1:1]",
-          "level_exp": "0"
+          "reward_xp_value": "0"
         },
         {
           "name": "",
@@ -2430,7 +2583,7 @@
           "event_type": "fight",
           "event_art_preset": "",
           "event_parameters": "loc_key_start:[narrative.event.2.start];\nloc_key_end:[narrative.event.2.end];\nenemies:[10101,10102]",
-          "level_exp": "20"
+          "reward_xp_value": "20"
         },
         {
           "name": "",
@@ -2439,7 +2592,7 @@
           "event_type": "fork_event",
           "event_art_preset": "fork_event_lava_dildo",
           "event_parameters": "loc_key_start:[narrative.event.3.start];\nloc_key_button1:[narrative.event.3.button.1];\nchance_event1:[0.7];\nloc_key_event1:[narrative.event.3.outcome.1];\nrewards_event1:[resource:hard_money:100];\nreward_lenght_event1:[0];\nloc_key_event2:[narrative.event.3.outcome.2];\nrewards_event2:[resource:hard_money:100,bonus:1:1];\nreward_lenght_event2:[0];\nloc_key_button2:[narrative.event.3.button.2];\nchance_event3:[0.1];\nloc_key_event3:[narrative.event.3.outcome.3];\nrewards_event3:[resource:hard_money:100,bonus:1:1];\nreward_lenght_event3:[3];\nloc_key_event4:[narrative.event.3.outcome.4];\nrewards_event4:[resource:hard_money:100];\nreward_lenght_event4:[0]",
-          "level_exp": "50"
+          "reward_xp_value": "50"
         },
         {
           "name": "",
@@ -2448,7 +2601,7 @@
           "event_type": "fight",
           "event_art_preset": "",
           "event_parameters": "loc_key_start:[Battle with 1 enemy is about to start];\nloc_key_end:[If you see this - you won the battle. Tap button to go next];\nenemies:[10101]",
-          "level_exp": "20"
+          "reward_xp_value": "20"
         },
         {
           "name": "",
@@ -2457,7 +2610,7 @@
           "event_type": "fight",
           "event_art_preset": "",
           "event_parameters": "loc_key_start:[Battle with 2 enemies is about to start];\nloc_key_end:[If you see this - you won the battle. Tap button to go next];\nenemies:[10101,10102]",
-          "level_exp": "20"
+          "reward_xp_value": "20"
         }
       ],
       "sourceRows": [

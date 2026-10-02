@@ -1,4 +1,5 @@
 using System.Globalization;
+using Server.Common;
 using Server.Equipments;
 using Server.Services;
 
@@ -11,6 +12,8 @@ namespace Server.Infrastructure.Players
         private const char ValueSeparator = ':';
         private const string ConfigIdRequirement = "equipment_id";
         private const string RarityRequirement = "equipment_rarity";
+
+        private readonly RarityReader _rarityReader = new();
 
         public bool TryResolveRequirements(IEquipmentMapper source, out List<EquipmentMergeRequirement> requirements, out string error)
         {
@@ -33,28 +36,53 @@ namespace Server.Infrastructure.Players
                 if (part.Length == 0)
                     continue;
 
-                var separator = part.IndexOf(ValueSeparator);
+                var fields = part.Split(ValueSeparator, StringSplitOptions.RemoveEmptyEntries);
 
-                if (separator <= 0 || separator == part.Length - 1)
+                if (fields.Length < 2)
                 {
                     error = $"Equipment {source.Id} has an unreadable merge requirement {part}.";
 
                     return false;
                 }
 
-                var key = part.Substring(0, separator).Trim();
-                var value = part.Substring(separator + 1).Trim();
+                var key = fields[0].Trim();
+                var value = fields[1].Trim();
+                var count = 1;
+
+                if (2 < fields.Length)
+                {
+                    if (int.TryParse(fields[2].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out count) == false || count <= 0)
+                    {
+                        error = $"Equipment {source.Id} has an unreadable count in merge requirement {part}.";
+
+                        return false;
+                    }
+                }
 
                 if (string.Equals(key, ConfigIdRequirement, StringComparison.OrdinalIgnoreCase))
                 {
-                    requirements.Add(new EquipmentMergeRequirement(EquipmentMergeRequirementKind.ConfigId, value));
+                    if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var configId) == false || configId <= 0)
+                    {
+                        error = $"Equipment {source.Id} has an unreadable equipment id in merge requirement {part}.";
+
+                        return false;
+                    }
+
+                    requirements.Add(new EquipmentMergeRequirement(EquipmentMergeRequirementKind.ConfigId, configId, RarityType.Unknown, count));
 
                     continue;
                 }
 
                 if (string.Equals(key, RarityRequirement, StringComparison.OrdinalIgnoreCase))
                 {
-                    requirements.Add(new EquipmentMergeRequirement(EquipmentMergeRequirementKind.Rarity, value));
+                    if (_rarityReader.TryRead(value, out var rarity) == false)
+                    {
+                        error = $"Equipment {source.Id} has an unknown rarity {value} in merge requirement {part}.";
+
+                        return false;
+                    }
+
+                    requirements.Add(new EquipmentMergeRequirement(EquipmentMergeRequirementKind.Rarity, 0, rarity, count));
 
                     continue;
                 }
@@ -74,6 +102,16 @@ namespace Server.Infrastructure.Players
             return true;
         }
 
+        public int CountRequiredItems(IReadOnlyList<EquipmentMergeRequirement> requirements)
+        {
+            var total = 0;
+
+            for (int i = 0; i < requirements.Count; i++)
+                total += requirements[i].Count;
+
+            return total;
+        }
+
         public bool TryMatchPayment(
             IEquipmentMapper source,
             IReadOnlyList<EquipmentMergeRequirement> requirements,
@@ -82,9 +120,11 @@ namespace Server.Infrastructure.Players
         {
             error = string.Empty;
 
-            if (candidates.Count != requirements.Count)
+            var required = CountRequiredItems(requirements);
+
+            if (candidates.Count != required)
             {
-                error = $"Transformation needs {requirements.Count} items, got {candidates.Count}.";
+                error = $"Transformation needs {required} items, got {candidates.Count}.";
 
                 return false;
             }
@@ -94,9 +134,9 @@ namespace Server.Infrastructure.Players
                 if (requirements[i].Kind != EquipmentMergeRequirementKind.ConfigId)
                     continue;
 
-                if (TryUseCandidate(requirements[i], source, candidates) == false)
+                if (TryUseCandidates(requirements[i], source, candidates) == false)
                 {
-                    error = $"Transformation needs equipment with id {requirements[i].Value}.";
+                    error = $"Transformation needs {requirements[i].Count} equipment with id {requirements[i].ConfigId}.";
 
                     return false;
                 }
@@ -107,9 +147,9 @@ namespace Server.Infrastructure.Players
                 if (requirements[i].Kind != EquipmentMergeRequirementKind.Rarity)
                     continue;
 
-                if (TryUseCandidate(requirements[i], source, candidates) == false)
+                if (TryUseCandidates(requirements[i], source, candidates) == false)
                 {
-                    error = $"Transformation needs equipment of type {source.Type} with rarity {requirements[i].Value}.";
+                    error = $"Transformation needs {requirements[i].Count} equipment of type {source.Type} with rarity {requirements[i].Rarity}.";
 
                     return false;
                 }
@@ -123,16 +163,9 @@ namespace Server.Infrastructure.Players
             target = null!;
             error = string.Empty;
 
-            if (string.IsNullOrWhiteSpace(source.MergeGroup))
+            if (source.MergeGroup <= 0)
             {
                 error = $"Equipment {source.Id} has no merge_group.";
-
-                return false;
-            }
-
-            if (TryParseMergeNumber(source.MergeNumber, out var sourceNumber) == false)
-            {
-                error = $"Equipment {source.Id} has an unreadable merge_number {source.MergeNumber}.";
 
                 return false;
             }
@@ -143,13 +176,10 @@ namespace Server.Infrastructure.Players
             {
                 var candidate = equipments[i];
 
-                if (string.Equals(candidate.MergeGroup.Trim(), source.MergeGroup.Trim(), StringComparison.OrdinalIgnoreCase) == false)
+                if (candidate.MergeGroup != source.MergeGroup)
                     continue;
 
-                if (TryParseMergeNumber(candidate.MergeNumber, out var candidateNumber) == false)
-                    continue;
-
-                if (candidateNumber != sourceNumber + 1)
+                if (candidate.MergeNumber != source.MergeNumber + 1)
                     continue;
 
                 target = candidate;
@@ -157,27 +187,19 @@ namespace Server.Infrastructure.Players
                 return true;
             }
 
-            error = $"Merge group {source.MergeGroup} has no equipment with merge_number {sourceNumber + 1}.";
+            error = $"Merge group {source.MergeGroup} has no equipment with merge_number {source.MergeNumber + 1}.";
 
             return false;
         }
 
-        public bool TryParseMergeNumber(string rawValue, out int mergeNumber)
-        {
-            mergeNumber = 0;
-
-            if (string.IsNullOrWhiteSpace(rawValue))
-                return true;
-
-            return int.TryParse(rawValue.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out mergeNumber);
-        }
-
-        private bool TryUseCandidate(
+        private bool TryUseCandidates(
             in EquipmentMergeRequirement requirement,
             IEquipmentMapper source,
             IReadOnlyList<EquipmentMergeCandidate> candidates)
         {
-            for (int i = 0; i < candidates.Count; i++)
+            var taken = 0;
+
+            for (int i = 0; i < candidates.Count && taken < requirement.Count; i++)
             {
                 var candidate = candidates[i];
 
@@ -188,22 +210,21 @@ namespace Server.Infrastructure.Players
                     continue;
 
                 candidate.IsUsed = true;
-
-                return true;
+                taken += 1;
             }
 
-            return false;
+            return taken == requirement.Count;
         }
 
         private bool Matches(in EquipmentMergeRequirement requirement, IEquipmentMapper source, IEquipmentMapper candidate)
         {
             if (requirement.Kind == EquipmentMergeRequirementKind.ConfigId)
-                return string.Equals(candidate.Id.Trim(), requirement.Value, StringComparison.OrdinalIgnoreCase);
+                return candidate.Id == requirement.ConfigId;
 
-            if (string.Equals(candidate.Type.Trim(), source.Type.Trim(), StringComparison.OrdinalIgnoreCase) == false)
+            if (candidate.Type != source.Type)
                 return false;
 
-            return string.Equals(candidate.Rarity.Trim(), requirement.Value, StringComparison.OrdinalIgnoreCase);
+            return candidate.Rarity == requirement.Rarity;
         }
     }
 }

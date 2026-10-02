@@ -15,7 +15,6 @@ namespace Server.Battles
         private readonly BattlePhaseType _phase;
         private readonly bool _allowCritical;
         private readonly float _cooldown;
-        private readonly bool _isEquipmentSkill;
         private readonly ISeededRandomService _seededRandomService;
         private readonly BattleTurnState _turnState;
         private readonly IBattleCommandFactory _battleCommandFactory;
@@ -69,7 +68,6 @@ namespace Server.Battles
             BattlePhaseType phase,
             bool allowCritical,
             float cooldown,
-            bool isEquipmentSkill,
             ISeededRandomService seededRandomService,
             BattleTurnState turnState,
             IBattleCommandFactory battleCommandFactory,
@@ -90,7 +88,6 @@ namespace Server.Battles
             _phase = phase;
             _allowCritical = allowCritical;
             _cooldown = cooldown;
-            _isEquipmentSkill = isEquipmentSkill;
             _seededRandomService = seededRandomService;
             _turnState = turnState;
             _battleCommandFactory = battleCommandFactory;
@@ -199,12 +196,7 @@ namespace Server.Battles
 
         private float ResolveSpellMultiplier()
         {
-            var characteristics = _actor.CharacteristicState;
-
-            if (_isEquipmentSkill == false)
-                return characteristics.SkillMultiplier;
-
-            return characteristics.SkillMultiplier * characteristics.EquipmentSpellMultiplier;
+            return _actor.CharacteristicState.SkillMultiplier;
         }
 
         public void Heal(IUnitState unit, float amount, List<BattleCommand> commands)

@@ -2,6 +2,7 @@ using Server.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Server.Bonuses;
 using Server.GameConfigs;
+using Server.Skills;
 using Server.Infrastructure.Mongo.Players;
 using Server.Infrastructure.Mongo.Runs;
 using Server.Runs;
@@ -29,7 +30,7 @@ namespace Tests.Unit.Players
             var builder = new GameConfigSetBuilder(
                 new BonusWorkModeParser(new SilentCoreLog()),
                 new ConfigRowsParser(new ConfigRowLocator(new ConfigRangeReader())),
-                new ConfigSnapshotValidator(new ConfigDomainNames(), new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator()),
+                new ConfigSnapshotValidator(new ConfigDomainNames(), new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator(), new SkillComponentValidator(new SkillComponentRegistry())),
                 new SilentCoreLog());
 
             _configDistributor = builder.Build(snapshot, "test").ConfigSet!.Distributor;

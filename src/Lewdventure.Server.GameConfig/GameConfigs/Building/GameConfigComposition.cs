@@ -1,4 +1,5 @@
 using Server.Bonuses;
+using Server.Skills;
 
 namespace Server.GameConfigs
 {
@@ -15,7 +16,8 @@ namespace Server.GameConfigs
             var configSnapshotValidator = new ConfigSnapshotValidator(
                 new ConfigDomainNames(),
                 new EffectParametersValidator(new EffectParameterRegistry()),
-                new EnemyDataValidator());
+                new EnemyDataValidator(),
+                new SkillComponentValidator(new SkillComponentRegistry()));
 
             _configSnapshotHasher = new ConfigSnapshotHasher();
             _gameConfigSetBuilder = new GameConfigSetBuilder(new BonusWorkModeParser(coreLog), configRowsParser, configSnapshotValidator, coreLog);

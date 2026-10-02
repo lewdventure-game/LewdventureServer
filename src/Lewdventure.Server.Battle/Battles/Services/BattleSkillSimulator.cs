@@ -177,7 +177,6 @@ namespace Server.Battles
                 BattlePhaseType.EnergySkill,
                 false,
                 cooldown,
-                IsEquipmentSkill(actor, energySkill.SkillKey),
                 seededRandomService,
                 turnState);
 
@@ -229,7 +228,6 @@ namespace Server.Battles
                 BattlePhaseType.EnergySkill,
                 false,
                 cooldown,
-                IsEquipmentSkill(actor, FindEnergySkillKey(actor)),
                 seededRandomService,
                 turnState);
 
@@ -400,7 +398,6 @@ namespace Server.Battles
                     phase,
                     allowCritical,
                     cooldown,
-                    IsEquipmentSkill(actor, skill.SkillKey),
                     seededRandomService,
                     turnState);
 
@@ -451,22 +448,6 @@ namespace Server.Battles
                 commands);
 
             _coreLog.Debug($"[Story][Battle]: Unit skill phase wait, unitId = {actor.Id}, wait = {cooldown}, executed = {executedCount}");
-        }
-
-        private bool IsEquipmentSkill(IUnitState actor, string skillKey)
-        {
-            if (string.IsNullOrEmpty(skillKey))
-                return false;
-
-            var equipmentSkillKeys = actor.EquipmentSkillKeys;
-
-            for (int i = 0; i < equipmentSkillKeys.Count; i++)
-            {
-                if (string.Equals(equipmentSkillKeys[i], skillKey, StringComparison.Ordinal))
-                    return true;
-            }
-
-            return false;
         }
 
         private string FindEnergySkillKey(IUnitState actor)
@@ -538,7 +519,6 @@ namespace Server.Battles
                         BattlePhaseType.UnitSkill,
                         false,
                         cooldown,
-                        IsEquipmentSkill(owner, skill.SkillKey),
                         seededRandomService,
                         turnState);
 
@@ -581,7 +561,6 @@ namespace Server.Battles
             BattlePhaseType phase,
             bool allowCritical,
             float cooldown,
-            bool isEquipmentSkill,
             ISeededRandomService seededRandomService,
             BattleTurnState turnState)
         {
@@ -595,7 +574,6 @@ namespace Server.Battles
                 phase,
                 allowCritical,
                 cooldown,
-                isEquipmentSkill,
                 seededRandomService,
                 turnState,
                 _battleCommandFactory,
@@ -607,6 +585,5 @@ namespace Server.Battles
                 _coreLog,
                 _battleFlytextTimer);
         }
-
     }
 }

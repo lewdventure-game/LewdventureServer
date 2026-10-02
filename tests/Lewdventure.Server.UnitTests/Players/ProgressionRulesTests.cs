@@ -1,7 +1,9 @@
 using Server.Bonuses;
 using Server.Entities;
+using Server.Common;
 using Server.Equipments;
 using Server.GameConfigs;
+using Server.Skills;
 using Server.Infrastructure.Players;
 using Server.Logging;
 using Server.Services;
@@ -27,7 +29,7 @@ namespace Tests.Unit.Players
             var builder = new GameConfigSetBuilder(
                 new BonusWorkModeParser(new SilentCoreLog()),
                 new ConfigRowsParser(new ConfigRowLocator(new ConfigRangeReader())),
-                new ConfigSnapshotValidator(new ConfigDomainNames(), new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator()),
+                new ConfigSnapshotValidator(new ConfigDomainNames(), new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator(), new SkillComponentValidator(new SkillComponentRegistry())),
                 new SilentCoreLog());
             var result = builder.Build(snapshot, "test");
 
@@ -53,33 +55,24 @@ namespace Tests.Unit.Players
         }
 
         [Test]
-        public void EquipmentLevelRefund_UsesDropProportion()
-        {
-            var equipment = CreateEquipment("5", "weapon", "rare", levelUpTypes: "resource:equip_lvl;resource:equip_lvl", levelUpValues: "10;20");
-
-            Assert.That(_equipmentRules.TryResolveLevelRefund(equipment, 3, 0.8f, out var refunds, out var error), Is.True, error);
-            Assert.That(refunds, Has.Count.EqualTo(1));
-            Assert.That(refunds[0].Key, Is.EqualTo("equip_lvl"));
-            Assert.That(refunds[0].Amount, Is.EqualTo(24));
-        }
-
-        [Test]
         public void MergeRequirements_ParseIdAndRarity()
         {
-            var source = CreateEquipment("10", "weapon", "epic", mergeGroup: "sword", mergeNumber: "0", mergeRequirements: "equipment_id:5;equipment_rarity:rare");
+            var source = CreateEquipment(10, EquipmentType.Body, RarityType.Epic, mergeGroup: 1, mergeNumber: 0, mergeRequirements: "equipment_id:5:1;equipment_rarity:rare:1");
 
             Assert.That(_mergeRules.TryResolveRequirements(source, out var requirements, out var error), Is.True, error);
             Assert.That(requirements, Has.Count.EqualTo(2));
             Assert.That(requirements[0].Kind, Is.EqualTo(EquipmentMergeRequirementKind.ConfigId));
-            Assert.That(requirements[0].Value, Is.EqualTo("5"));
+            Assert.That(requirements[0].ConfigId, Is.EqualTo(5));
+            Assert.That(requirements[0].Count, Is.EqualTo(1));
             Assert.That(requirements[1].Kind, Is.EqualTo(EquipmentMergeRequirementKind.Rarity));
-            Assert.That(requirements[1].Value, Is.EqualTo("rare"));
+            Assert.That(requirements[1].Rarity, Is.EqualTo(RarityType.Rare));
+            Assert.That(requirements[1].Count, Is.EqualTo(1));
         }
 
         [Test]
         public void MergeRequirements_Empty_IsRejected()
         {
-            var source = CreateEquipment("10", "weapon", "epic", mergeGroup: "sword", mergeNumber: "0");
+            var source = CreateEquipment(10, EquipmentType.Body, RarityType.Epic, mergeGroup: 1, mergeNumber: 0);
 
             Assert.That(_mergeRules.TryResolveRequirements(source, out _, out var error), Is.False);
             Assert.That(error, Does.Contain("merge_requirements is empty"));
@@ -88,14 +81,14 @@ namespace Tests.Unit.Players
         [Test]
         public void MergePayment_MatchesIdAndRarityOfSameType()
         {
-            var source = CreateEquipment("10", "weapon", "epic", mergeGroup: "sword", mergeNumber: "0", mergeRequirements: "equipment_id:5;equipment_rarity:rare");
+            var source = CreateEquipment(10, EquipmentType.Body, RarityType.Epic, mergeGroup: 1, mergeNumber: 0, mergeRequirements: "equipment_id:5:1;equipment_rarity:rare:1");
 
             Assert.That(_mergeRules.TryResolveRequirements(source, out var requirements, out _), Is.True);
 
             var candidates = new List<EquipmentMergeCandidate>
             {
-                CreateCandidate("eq_a", CreateEquipment("7", "weapon", "rare")),
-                CreateCandidate("eq_b", CreateEquipment("5", "armor", "common")),
+                CreateCandidate("eq_a", CreateEquipment(7, EquipmentType.Body, RarityType.Rare)),
+                CreateCandidate("eq_b", CreateEquipment(5, EquipmentType.Pants, RarityType.Common)),
             };
 
             Assert.That(_mergeRules.TryMatchPayment(source, requirements, candidates, out var error), Is.True, error);
@@ -106,29 +99,29 @@ namespace Tests.Unit.Players
         [Test]
         public void MergePayment_RarityOfOtherType_IsRejected()
         {
-            var source = CreateEquipment("10", "weapon", "epic", mergeGroup: "sword", mergeNumber: "0", mergeRequirements: "equipment_rarity:rare");
+            var source = CreateEquipment(10, EquipmentType.Body, RarityType.Epic, mergeGroup: 1, mergeNumber: 0, mergeRequirements: "equipment_rarity:rare");
 
             Assert.That(_mergeRules.TryResolveRequirements(source, out var requirements, out _), Is.True);
 
             var candidates = new List<EquipmentMergeCandidate>
             {
-                CreateCandidate("eq_a", CreateEquipment("7", "armor", "rare")),
+                CreateCandidate("eq_a", CreateEquipment(7, EquipmentType.Pants, RarityType.Rare)),
             };
 
             Assert.That(_mergeRules.TryMatchPayment(source, requirements, candidates, out var error), Is.False);
-            Assert.That(error, Does.Contain("rarity rare"));
+            Assert.That(error, Does.Contain("rarity Rare"));
         }
 
         [Test]
         public void MergePayment_WrongCount_IsRejected()
         {
-            var source = CreateEquipment("10", "weapon", "epic", mergeGroup: "sword", mergeNumber: "0", mergeRequirements: "equipment_id:5;equipment_id:5");
+            var source = CreateEquipment(10, EquipmentType.Body, RarityType.Epic, mergeGroup: 1, mergeNumber: 0, mergeRequirements: "equipment_id:5:2");
 
             Assert.That(_mergeRules.TryResolveRequirements(source, out var requirements, out _), Is.True);
 
             var candidates = new List<EquipmentMergeCandidate>
             {
-                CreateCandidate("eq_a", CreateEquipment("5", "weapon", "rare")),
+                CreateCandidate("eq_a", CreateEquipment(5, EquipmentType.Body, RarityType.Rare)),
             };
 
             Assert.That(_mergeRules.TryMatchPayment(source, requirements, candidates, out var error), Is.False);
@@ -140,7 +133,7 @@ namespace Tests.Unit.Players
             var instance = new Server.Infrastructure.Mongo.Players.PlayerEquipmentDocument
             {
                 InstanceId = instanceId,
-                ConfigId = int.Parse(mapper.Id),
+                ConfigId = mapper.Id,
                 Level = 1,
             };
 
@@ -148,13 +141,11 @@ namespace Tests.Unit.Players
         }
 
         private IEquipmentMapper CreateEquipment(
-            string id,
-            string type,
-            string rarity,
-            string levelUpTypes = "",
-            string levelUpValues = "",
-            string mergeGroup = "",
-            string mergeNumber = "",
+            int id,
+            EquipmentType type,
+            RarityType rarity,
+            int mergeGroup = 0,
+            int mergeNumber = 0,
             string mergeRequirements = "")
         {
             return new EquipmentMapper
@@ -162,8 +153,6 @@ namespace Tests.Unit.Players
                 Id = id,
                 Type = type,
                 Rarity = rarity,
-                LevelUpTypes = levelUpTypes,
-                LevelUpValues = levelUpValues,
                 MergeGroup = mergeGroup,
                 MergeNumber = mergeNumber,
                 MergeRequirements = mergeRequirements,

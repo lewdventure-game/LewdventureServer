@@ -12,6 +12,8 @@ namespace Server.Bonuses
 
         public BonusType BonusType { get; }
 
+        public float[] BonusValues { get; }
+
         public float BonusValue { get; }
     }
 }

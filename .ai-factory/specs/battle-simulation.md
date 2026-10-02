@@ -364,7 +364,11 @@ Stage: при `stageId > 0` дополнительно умножается `Sto
 
 Статусы без источника (`sourceUnitId = -1`): тик считается от `flat_value` из `parameters`, `damage_ratio` не применяется, крит не роллится. Нет `flat_value` → Warning и урон 0.
 
-Характеристика СНАР_СПЕЛЛ_МН: бонусы `equip_spell_multiplier_local/perk/global` (BonusType 56/57/58), формула 2, база — константа `equip_spell_multiplier_base` (нет константы → `1`). Множитель применяется только к скиллам, которые пришли из снаряжения (`Equipments.skill_id`), остальные скиллы считаются по СПЕЛЛ_МН.
+Характеристика СНАР_СПЕЛЛ_МН удалена 2026-10-02 (геймдизайн отказался): скиллы снаряжения считаются по СПЕЛЛ_МН, как любые другие. Значения `BonusType` 56/57/58 (`equip_spell_multiplier_local/perk/global`) остались ради нумерации протокола; `CharacteristicBucketApplicator` их игнорирует с предупреждением, а `SkillComponentValidator` не трогает (проверка таких бонусов идёт по листу `Bonuses`).
+
+Снаряжение (с 2026-10-02): бонусы берутся из `Equipments.bonus_ids`, значение выбирается по уровню предмета из списка `Bonuses.bonus_value` (`10;12;14;...`), скиллы — из `Equipments.skill_ids`. Стоимости уровней — лист `Equipment_promotes` по `promote_id`. Требования трансформации с количеством: `equipment_id:<id>:<n>`, `equipment_rarity:<редкость>:<n>`. Редкости — 15 значений, в `RarityType` добавлены в конец, сравнивать числом нельзя. Подробности: [`docs/gdd/07-equipment.md`](../../docs/gdd/07-equipment.md).
+
+Вампиризм (формула 6) начисляется только в фазах `NormalAttack`, `CounterAttack`, `Combo1Attack`, `Combo2Attack`, `SummonAttack`. Урон скиллов, перков и статусов лечение не даёт.
 
 Bonus `work_mode` — строка на mapper, parse через `BonusWorkModeParser`; battle apply (`operator` + `end_of_battle` / `first_turns` / `every_turn`) — `IBattleBonusService` + layered `CharacteristicBuckets` rebuild (формулы GDD 1/2/3/5/6/7; формула 5 со `|raw|` в знаменателе; шансы и множители по формуле 3, база из константы приводится как `constant - 1`, чтобы без бонусов итог равнялся константе). Status apply uses `status_target`; damage-over-time stacks aggregate into one presentation tick per `statusId` per turn, queue = attacking mains only.
 Training / Artifact / Aspect sheets — data-only mappers + managers; grant в `UnitStateBuilder` из snapshot ids/levels. Пустые sheets = runtime no-op.

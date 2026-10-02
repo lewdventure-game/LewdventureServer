@@ -52,16 +52,68 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
-        public void EquipmentSpellMultiplier_WithoutConstant_DefaultsToOne()
+        public void Vampyrism_HealsOnAttacksOnly()
         {
-            var battleCore = CreateCore(_domains);
-            var characteristics = battleCore.BuildCharacteristics(CreateUnitSnapshot(), BattleSide.Attacking, false, 0, 0);
+            var patched = ReplaceDomain(_domains, "Bonuses", rows =>
+            {
+                var row = (JObject)rows[0];
 
-            Assert.That(characteristics.EquipmentSpellMultiplier, Is.EqualTo(1f).Within(0.001f));
+                row["bonus_type"] = "vampyrism_local";
+                row["bonus_value"] = "0.5";
+                row["work_mode"] = "permanent";
+            });
+
+            patched = ReplaceDomain(patched, "Skills", rows =>
+            {
+                rows.Clear();
+                rows.Add(new JObject
+                {
+                    ["id"] = "1",
+                    ["triggers"] = "on_cooldown:[cooldown:{1},is_start_availiable:{1}]",
+                    ["actions"] = "damage:[damage:{1},target:{1},is_spell_amp:{0},timing:{0.1}]",
+                });
+            });
+
+            patched = ReplaceDomain(patched, "Characters", rows =>
+            {
+                var row = (JObject)rows[0];
+
+                row["skill_ids"] = "1";
+                row["promote_to_skill_levels"] = "0";
+            });
+
+            var battleCore = CreateCore(patched);
+            var unitSnapshot = CreateUnitSnapshot();
+
+            unitSnapshot.ActiveBonuses.Add(new BonusGrantSnapshot { Id = 1, Count = 1, RemainingBattles = 0 });
+
+            var script = battleCore.Replay(CreateReplayData(unitSnapshot));
+            var healedInAttack = false;
+            var healedInSkill = false;
+
+            for (int i = 0; i < script.Steps.Count; i++)
+            {
+                var step = script.Steps[i];
+                var commands = step.Commands;
+
+                for (int commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    if (commands[commandIndex].CommandType != CommandType.ShowHeal)
+                        continue;
+
+                    if (step.Phase == BattlePhaseType.UnitSkill || step.Phase == BattlePhaseType.EnergySkill)
+                        healedInSkill = true;
+                    else
+                        healedInAttack = true;
+                }
+            }
+
+            Assert.That(healedInAttack, Is.True, "вампиризм не сработал на обычной атаке");
+            Assert.That(healedInSkill, Is.False, "вампиризм сработал на скилле");
         }
 
         [Test]
-        public void EquipmentSpellMultiplier_WithLocalBonus_UsesFormulaTwo()
+        public void DroppedEquipmentSpellMultiplierBonus_IsIgnoredWithoutBreakingBattle()
         {
             var patched = ReplaceDomain(_domains, "Bonuses", rows =>
             {
@@ -78,8 +130,8 @@ namespace Tests.Unit.Battles
 
             var characteristics = battleCore.BuildCharacteristics(unitSnapshot, BattleSide.Attacking, false, 0, 0);
 
-            Assert.That(characteristics.EquipmentSpellMultiplier, Is.EqualTo(1.5f).Within(0.001f));
             Assert.That(characteristics.MaxHealth, Is.EqualTo(600f).Within(0.001f));
+            Assert.That(characteristics.SkillMultiplier, Is.EqualTo(0f).Within(0.001f));
         }
 
         [Test]

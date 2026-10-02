@@ -199,13 +199,13 @@ namespace Server.Bonuses
 
         private bool IsAllowedEquippedEntityType(string entityType)
         {
-            if (entityType.Equals("equipments", StringComparison.OrdinalIgnoreCase))
+            if (entityType.Equals("equipments", StringComparison.OrdinalIgnoreCase) || entityType.Equals("equipment", StringComparison.OrdinalIgnoreCase))
                 return true;
 
-            if (entityType.Equals("characters", StringComparison.OrdinalIgnoreCase))
+            if (entityType.Equals("characters", StringComparison.OrdinalIgnoreCase) || entityType.Equals("character", StringComparison.OrdinalIgnoreCase))
                 return true;
 
-            if (entityType.Equals("summons", StringComparison.OrdinalIgnoreCase))
+            if (entityType.Equals("summons", StringComparison.OrdinalIgnoreCase) || entityType.Equals("summon", StringComparison.OrdinalIgnoreCase))
                 return true;
 
             return false;

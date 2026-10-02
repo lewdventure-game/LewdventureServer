@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using Server.Collections;
-using System.Globalization;
 
 namespace Server.Equipments
 {
@@ -8,13 +7,11 @@ namespace Server.Equipments
     {
         public bool TryGet(int equipmentId, [MaybeNullWhen(false)] out IEquipmentMapper equipmentMapper)
         {
-            var equipmentIdText = equipmentId.ToString(CultureInfo.InvariantCulture);
-
             for (int i = 0; i < Collection.Count; i++)
             {
                 var mapper = Collection[i];
 
-                if (string.Equals(mapper.Id, equipmentIdText, StringComparison.Ordinal) == false)
+                if (mapper.Id != equipmentId)
                     continue;
 
                 equipmentMapper = mapper;

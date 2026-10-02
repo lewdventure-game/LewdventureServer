@@ -31,6 +31,8 @@ namespace Server.Services
 
         public IEquipmentMapperManager Equipments { get; } = new EquipmentMapperManager();
 
+        public IEquipmentPromoteMapperManager EquipmentPromotes { get; } = new EquipmentPromoteMapperManager();
+
         public IExperienceLevelPatternMapperManager ExperienceLevelPatterns { get; } = new ExperienceLevelPatternMapperManager();
 
         public IMasteryMapperManager Masteries { get; } = new MasteryMapperManager();

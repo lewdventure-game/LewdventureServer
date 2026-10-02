@@ -1,3 +1,4 @@
+using System.Globalization;
 using Server.Common;
 using Server.Perks;
 using Server.Configs;
@@ -64,8 +65,13 @@ namespace Server.Battles
 
                 unitState.RegisterEquippedEntity("equipments", entry.Id);
 
-                if (_configDistributor.Equipments.TryGet(entry.Id, out var equipmentMapper) && string.IsNullOrWhiteSpace(equipmentMapper.SkillId) == false)
-                    unitState.RegisterEquipmentSkill(equipmentMapper.SkillId);
+                if (_configDistributor.Equipments.TryGet(entry.Id, out var equipmentMapper) == false)
+                    continue;
+
+                var equipmentSkillIds = equipmentMapper.SkillIds;
+
+                for (int skillIndex = 0; skillIndex < equipmentSkillIds.Length; skillIndex++)
+                    unitState.RegisterEquipmentSkill(equipmentSkillIds[skillIndex].ToString(CultureInfo.InvariantCulture));
             }
 
             _coreLog.Debug($"[Story][Battle]: Equipped entities registered, unitId = {unitState.Id}, count = {unitState.EquippedEntities.Count}");
@@ -223,27 +229,18 @@ namespace Server.Battles
                 if (_configDistributor.Equipments.TryGet(entry.Id, out var equipmentMapper) == false)
                     continue;
 
-                var skillId = equipmentMapper.SkillId;
+                var equipmentSkillIds = equipmentMapper.SkillIds;
 
-                if (string.IsNullOrWhiteSpace(skillId))
-                    continue;
-
-                var trimmed = skillId.Trim();
-                var probe = _skillFactory.Create(trimmed);
-
-                if (probe.SkillType == SkillType.Unknown)
+                for (int skillIndex = 0; skillIndex < equipmentSkillIds.Length; skillIndex++)
                 {
-                    _coreLog.Warning($"[Story][Battle]: Equipment skill_id unknown skipped, equipmentId = {entry.Id}, skillId = {trimmed}, unitId = {unitSnapshot.Id}");
+                    var skillId = equipmentSkillIds[skillIndex].ToString(CultureInfo.InvariantCulture);
+                    var beforeCount = skillIds.Count;
 
-                    continue;
+                    AddUniqueSkillId(skillIds, skillId);
+
+                    if (beforeCount < skillIds.Count)
+                        _coreLog.Debug($"[Story][Battle]: Equipment skill injected, unitId = {unitSnapshot.Id}, equipmentId = {entry.Id}, skillId = {skillId}");
                 }
-
-                var beforeCount = skillIds.Count;
-
-                AddUniqueSkillId(skillIds, trimmed);
-
-                if (beforeCount < skillIds.Count)
-                    _coreLog.Debug($"[Story][Battle]: Equipment skill injected, unitId = {unitSnapshot.Id}, equipmentId = {entry.Id}, skillId = {trimmed}, type = {probe.SkillType}");
             }
         }
 

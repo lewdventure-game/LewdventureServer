@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Server.Bonuses;
 using Server.GameConfigs;
+using Server.Skills;
 using Server.Infrastructure.Alerts;
 using Server.Infrastructure.Logging;
 using Server.Logging;
@@ -113,6 +114,8 @@ namespace Server.ConfigTool
             builder.Services.AddSingleton<EffectParameterRegistry>()
                 .AddSingleton<EffectParametersValidator>()
                 .AddSingleton<EnemyDataValidator>()
+                .AddSingleton<SkillComponentRegistry>()
+                .AddSingleton<SkillComponentValidator>()
                 .AddSingleton<ConfigSnapshotValidator>();
             builder.Services.AddSingleton<ConfigSnapshotDiff>();
             builder.Services.AddSingleton<ConfigRangeReader>()

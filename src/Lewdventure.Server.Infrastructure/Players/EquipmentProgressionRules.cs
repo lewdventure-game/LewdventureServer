@@ -1,74 +1,53 @@
-using System.Globalization;
 using Server.Equipments;
 
 namespace Server.Infrastructure.Players
 {
     internal sealed class EquipmentProgressionRules
     {
-        private const char ListSeparator = ';';
-        private const char TypeSeparator = ':';
-        private const string ResourcePrefix = "resource";
+        private const string ResourceType = "resource";
 
         public bool TryResolveLevelStep(
             IEquipmentMapper equipment,
             int currentLevel,
+            IEquipmentPromoteMapperManager promotes,
             out List<ResourceCost> costs,
             out string error)
         {
             costs = new List<ResourceCost>();
             error = string.Empty;
 
-            var types = Split(equipment.LevelUpTypes);
-            var values = Split(equipment.LevelUpValues);
-
-            if (types.Count == 0 || values.Count == 0)
+            if (equipment.PromoteId <= 0)
             {
-                error = $"Equipment {equipment.Id} has no level up costs configured.";
+                error = $"Equipment {equipment.Id} has no promote_id.";
 
                 return false;
             }
 
-            var stepIndex = currentLevel - 1;
+            var nextLevel = currentLevel + 1;
+            var maxLevel = promotes.GetMaxLevel(equipment.PromoteId);
 
-            if (stepIndex < 0 || types.Count <= stepIndex)
+            if (maxLevel < nextLevel)
             {
-                error = $"Equipment {equipment.Id} is already at max level {types.Count}.";
+                error = $"Equipment {equipment.Id} is already at max level {maxLevel}.";
 
                 return false;
             }
 
-            if (values.Count <= stepIndex)
+            if (promotes.TryGet(equipment.PromoteId, nextLevel, out var promote) == false)
             {
-                error = $"Equipment {equipment.Id} has no cost value for level {currentLevel + 1}.";
+                error = $"Equipment {equipment.Id} has no cost for level {nextLevel}.";
 
                 return false;
             }
 
-            var resourceKey = ResolveResourceKey(types[stepIndex]);
-
-            if (string.IsNullOrEmpty(resourceKey))
-            {
-                error = $"Equipment {equipment.Id} level {currentLevel + 1} has an unsupported cost type {types[stepIndex]}.";
-
-                return false;
-            }
-
-            if (int.TryParse(values[stepIndex], NumberStyles.Integer, CultureInfo.InvariantCulture, out var amount) == false || amount <= 0)
-            {
-                error = $"Equipment {equipment.Id} level {currentLevel + 1} has an invalid cost {values[stepIndex]}.";
-
-                return false;
-            }
-
-            costs.Add(new ResourceCost(resourceKey, amount));
-
-            return true;
+            return TryCollectCosts(equipment, promote, costs, out error);
         }
 
         public bool TryResolveLevelRefund(
             IEquipmentMapper equipment,
             int currentLevel,
             float dropProportion,
+            IEquipmentPromoteMapperManager promotes,
             out List<ResourceCost> refunds,
             out string error)
         {
@@ -82,37 +61,34 @@ namespace Server.Infrastructure.Players
                 return false;
             }
 
-            var types = Split(equipment.LevelUpTypes);
-            var values = Split(equipment.LevelUpValues);
+            if (equipment.PromoteId <= 0)
+            {
+                error = $"Equipment {equipment.Id} has no promote_id.";
+
+                return false;
+            }
+
             var spent = new Dictionary<string, long>(StringComparer.Ordinal);
 
-            for (int stepIndex = 0; stepIndex < currentLevel - 1; stepIndex++)
+            for (int level = 2; level <= currentLevel; level++)
             {
-                if (types.Count <= stepIndex || values.Count <= stepIndex)
+                if (promotes.TryGet(equipment.PromoteId, level, out var promote) == false)
                 {
-                    error = $"Equipment {equipment.Id} has no cost for level {stepIndex + 2}.";
+                    error = $"Equipment {equipment.Id} has no cost for level {level}.";
 
                     return false;
                 }
 
-                var resourceKey = ResolveResourceKey(types[stepIndex]);
+                var costs = new List<ResourceCost>();
 
-                if (string.IsNullOrEmpty(resourceKey))
-                {
-                    error = $"Equipment {equipment.Id} level {stepIndex + 2} has an unsupported cost type {types[stepIndex]}.";
-
+                if (TryCollectCosts(equipment, promote, costs, out error) == false)
                     return false;
-                }
 
-                if (int.TryParse(values[stepIndex], NumberStyles.Integer, CultureInfo.InvariantCulture, out var amount) == false || amount <= 0)
+                for (int i = 0; i < costs.Count; i++)
                 {
-                    error = $"Equipment {equipment.Id} level {stepIndex + 2} has an invalid cost {values[stepIndex]}.";
-
-                    return false;
+                    spent.TryGetValue(costs[i].Key, out var current);
+                    spent[costs[i].Key] = current + costs[i].Amount;
                 }
-
-                spent.TryGetValue(resourceKey, out var current);
-                spent[resourceKey] = current + amount;
             }
 
             foreach (var pair in spent)
@@ -128,45 +104,57 @@ namespace Server.Infrastructure.Players
             return true;
         }
 
-        private string ResolveResourceKey(string rawType)
+        private bool TryCollectCosts(IEquipmentMapper equipment, IEquipmentPromoteMapper promote, List<ResourceCost> costs, out string error)
         {
-            var value = rawType.Trim();
+            error = string.Empty;
 
-            if (value.Length == 0)
-                return string.Empty;
+            var types = promote.ResourceTypes;
+            var ids = promote.ResourceIds;
+            var values = promote.ResourceValues;
 
-            var separator = value.IndexOf(TypeSeparator);
-
-            if (separator < 0)
-                return value;
-
-            var prefix = value.Substring(0, separator).Trim();
-            var key = value.Substring(separator + 1).Trim();
-
-            if (string.Equals(prefix, ResourcePrefix, StringComparison.OrdinalIgnoreCase) == false)
-                return string.Empty;
-
-            return key;
-        }
-
-        private List<string> Split(string value)
-        {
-            var result = new List<string>();
-
-            if (string.IsNullOrWhiteSpace(value))
-                return result;
-
-            var parts = value.Split(ListSeparator, StringSplitOptions.RemoveEmptyEntries);
-
-            for (int i = 0; i < parts.Length; i++)
+            if (types.Length == 0)
             {
-                var part = parts[i].Trim();
+                error = $"Equipment {equipment.Id} level {promote.Level} has no cost configured.";
 
-                if (0 < part.Length)
-                    result.Add(part);
+                return false;
             }
 
-            return result;
+            if (types.Length != ids.Length || types.Length != values.Length)
+            {
+                error = $"Equipment {equipment.Id} level {promote.Level} has mismatched cost columns.";
+
+                return false;
+            }
+
+            for (int i = 0; i < types.Length; i++)
+            {
+                if (string.Equals(types[i].Trim(), ResourceType, StringComparison.OrdinalIgnoreCase) == false)
+                {
+                    error = $"Equipment {equipment.Id} level {promote.Level} has an unsupported cost type {types[i]}.";
+
+                    return false;
+                }
+
+                var resourceId = ids[i].Trim();
+
+                if (resourceId.Length == 0)
+                {
+                    error = $"Equipment {equipment.Id} level {promote.Level} has an empty cost resource.";
+
+                    return false;
+                }
+
+                if (values[i] <= 0)
+                {
+                    error = $"Equipment {equipment.Id} level {promote.Level} has an invalid cost {values[i]}.";
+
+                    return false;
+                }
+
+                costs.Add(new ResourceCost(resourceId, values[i]));
+            }
+
+            return true;
         }
     }
 }
