@@ -41,6 +41,8 @@ namespace Server.Api.Composition
             new AlertsRegistrar(_configuration).Register(services);
             new BattleServicesRegistrar().Register(services);
 
+            services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JObjectJsonConverter()));
+
             services.AddSingleton<PlayerResponseFactory>();
             services.AddSingleton<RunResponseFactory>();
             services.AddSingleton(new BattleJsonSettingsFactory().Create());
