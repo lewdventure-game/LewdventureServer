@@ -60,17 +60,25 @@ function publishConfigs_(environmentName) {
     return;
   }
 
+  const readSheets = payload.readSheets;
+
+  delete payload.readSheets;
+
   const response = request_(environment, 'post', '/api/config/upload', payload);
-  ui.alert('Публикация на ' + environment.title, formatPublishResult_(response), ui.ButtonSet.OK);
+  ui.alert(
+    'Публикация на ' + environment.title,
+    formatPublishResult_(response) + BREAK + BREAK + 'Прочитанные вкладки:' + BREAK + readSheets.join(BREAK),
+    ui.ButtonSet.OK);
 }
 
 function collectSheets_(sheets, reason) {
   const collected = [];
+  const readSheets = [];
 
   for (let i = 0; i < sheets.length; i++) {
     const definition = sheets[i];
     const spreadsheet = SpreadsheetApp.openById(definition.spreadsheetId);
-    const sheet = spreadsheet.getSheets()[0];
+    const sheet = findFirstVisibleSheet_(spreadsheet, definition.domain);
     const dataRange = sheet.getDataRange();
 
     collected.push({
@@ -79,9 +87,23 @@ function collectSheets_(sheets, reason) {
       range: dataRange.getA1Notation(),
       values: trimTrailingEmptyRows_(dataRange.getDisplayValues()),
     });
+
+    readSheets.push(definition.domain + ' <- ' + sheet.getName() + ' ' + dataRange.getA1Notation());
   }
 
-  return { reason: reason, sheets: collected };
+  return { reason: reason, sheets: collected, readSheets: readSheets };
+}
+
+function findFirstVisibleSheet_(spreadsheet, domain) {
+  const all = spreadsheet.getSheets();
+
+  for (let i = 0; i < all.length; i++) {
+    if (all[i].isSheetHidden() === false) {
+      return all[i];
+    }
+  }
+
+  throw 'В таблице домена ' + domain + ' нет ни одной видимой вкладки';
 }
 
 function trimTrailingEmptyRows_(values) {

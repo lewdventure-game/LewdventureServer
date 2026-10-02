@@ -16,7 +16,9 @@ namespace Server.Infrastructure.Players
         private const string EquipmentMergeAction = "equipment-merge";
         private const string SummonLevelResetCoefficientConstant = "summon_level_reset_coeff";
         private const string SummonLevelResetResourceConstant = "summon_level_reset_resource";
+        private const string EquipmentLevelDropCoefficientConstant = "equipment_lvl_drop_coeff";
         private const string EquipmentLevelDropProportionConstant = "equipment_lvl_drop_proportion";
+        private const string EquipmentLevelDropResourceConstant = "equipment_lvl_drop_resource";
         private const string EquipmentInstancePrefix = "eq_";
         private const string RefundEntry = "refund";
         private const string SpendEntry = "spend";
@@ -301,8 +303,13 @@ namespace Server.Infrastructure.Players
             IConfigDistributor configDistributor,
             CancellationToken cancellationToken)
         {
-            if (TryReadFloatConstant(configDistributor, EquipmentLevelDropProportionConstant, out var dropProportion) == false)
-                return Failed($"Constant {EquipmentLevelDropProportionConstant} is missing or unreadable.");
+            if (TryReadFloatConstant(configDistributor, EquipmentLevelDropCoefficientConstant, out var dropProportion) == false
+                && TryReadFloatConstant(configDistributor, EquipmentLevelDropProportionConstant, out dropProportion) == false)
+            {
+                return Failed($"Constant {EquipmentLevelDropCoefficientConstant} is missing or unreadable.");
+            }
+
+            TryReadResourceConstant(configDistributor, EquipmentLevelDropResourceConstant, out var resetCosts);
 
             if (await IsAlreadyAppliedAsync(userId, requestId, EquipmentLevelResetAction, cancellationToken))
                 return new PlayerUpdateResult(await _playerProfileService.GetOrCreateAsync(userId, cancellationToken), false, new List<string>());
@@ -333,8 +340,14 @@ namespace Server.Infrastructure.Players
                     return Failed(refundError);
                 }
 
+                if (TrySpend(profile, resetCosts, out var entries, out var spendError) == false)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed(spendError);
+                }
+
                 var previousLevel = instance.Level;
-                var entries = new List<PlayerLedgerEntryDocument>();
 
                 instance.Level = 1;
                 instance.ExpSpent = 0;
