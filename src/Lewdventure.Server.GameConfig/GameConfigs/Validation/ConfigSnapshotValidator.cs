@@ -63,7 +63,10 @@ namespace Server.GameConfigs
             {
                 if (snapshot.TryGetDomain(domains[i], out var domain) == false)
                 {
-                    errors.Add($"Config snapshot domain {domains[i]} is missing.");
+                    if (_configDomainNames.IsOptional(domains[i]))
+                        warnings.Add($"Лист {domains[i]} ещё не публиковался, сервер работает без него.");
+                    else
+                        errors.Add($"Config snapshot domain {domains[i]} is missing.");
 
                     continue;
                 }

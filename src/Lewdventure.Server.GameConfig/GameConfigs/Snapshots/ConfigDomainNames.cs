@@ -43,6 +43,22 @@ namespace Server.GameConfigs
             Skills,
         };
 
+        private readonly string[] _optional =
+        {
+            EquipmentPromotes,
+        };
+
         public IReadOnlyList<string> Ordered => _ordered;
+
+        public bool IsOptional(string domainName)
+        {
+            for (int i = 0; i < _optional.Length; i++)
+            {
+                if (string.Equals(_optional[i], domainName, StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
+        }
     }
 }

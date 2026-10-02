@@ -130,6 +130,28 @@ namespace Tests.Unit.GameConfig
         }
 
         [Test]
+        public void Builder_WithoutOptionalDomain_WarnsInsteadOfFailing()
+        {
+            var domains = new List<ConfigSnapshotDomain>();
+            var names = _domainNames.Ordered;
+
+            for (int i = 0; i < names.Count; i++)
+            {
+                if (_domainNames.IsOptional(names[i]))
+                    continue;
+
+                domains.Add(new ConfigSnapshotDomain(names[i], "sheet", "B:Z", i == 0 ? "[{\"id\":\"1\",\"constant_name\":\"health_base\",\"constant_value\":\"600\",\"constant_type\":\"Float\"}]" : "[]"));
+            }
+
+            var snapshot = new GameConfigSnapshot("sha256:test", DateTime.UtcNow, "test", domains);
+
+            var result = CreateBuilder().Build(snapshot, "test");
+
+            Assert.That(result.Errors, Has.None.Contains("Equipment_promotes"), "необязательный лист снова стал обязательным");
+            Assert.That(result.Warnings, Has.Some.Contains("Лист Equipment_promotes ещё не публиковался"));
+        }
+
+        [Test]
         public void Builder_CharactersWithoutArtName_WarnsInsteadOfFailing()
         {
             var rows = "[{\"id\":\"1\",\"is_melee\":\"1\",\"promote_id\":\"1\",\"skill_ids\":\"1\",\"promote_to_skill_levels\":\"0\"}]";
