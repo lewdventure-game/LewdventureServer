@@ -7,6 +7,9 @@ namespace Server.GameConfigs
 {
     internal sealed class ConfigRowsParser
     {
+        private const string NameColumn = "name";
+        private const string ServiceColumn = "is_off";
+
         private readonly ConfigRowLocator _configRowLocator;
         private readonly JsonSerializer _serializer;
 
@@ -40,6 +43,9 @@ namespace Server.GameConfigs
 
             for (int i = 0; i < rows.Count; i++)
             {
+                if (IsEmptyRow(rows[i]))
+                    continue;
+
                 try
                 {
                     var item = rows[i].ToObject<T>(_serializer);
@@ -54,6 +60,33 @@ namespace Server.GameConfigs
             }
 
             return parsed;
+        }
+
+        private bool IsEmptyRow(JToken row)
+        {
+            if (row is JObject rowObject == false)
+                return false;
+
+            foreach (var property in rowObject.Properties())
+            {
+                if (string.Equals(property.Name, NameColumn, StringComparison.Ordinal))
+                    continue;
+
+                if (string.Equals(property.Name, ServiceColumn, StringComparison.Ordinal))
+                    continue;
+
+                var value = property.Value;
+
+                if (value == null || value.Type == JTokenType.Null)
+                    continue;
+
+                if (value.Type == JTokenType.String && value.ToString().Trim().Length == 0)
+                    continue;
+
+                return false;
+            }
+
+            return true;
         }
     }
 }

@@ -130,6 +130,17 @@ namespace Tests.Unit.GameConfig
         }
 
         [Test]
+        public void Builder_EmptyPlaceholderRow_IsSkipped()
+        {
+            var rows = "[{\"name\":\"\",\"is_off\":false,\"id\":\"\",\"type\":\"\",\"rarity\":\"\",\"merge_group\":\"\",\"merge_number\":\"\",\"merge_requirements\":\"\",\"art_name\":\"\"}]";
+            var snapshot = new GameConfigSnapshot("sha256:test", DateTime.UtcNow, "test", CreateDomains("[]", Array.Empty<int>(), ConfigDomainNames.Equipments, rows));
+
+            var result = CreateBuilder().Build(snapshot, "test");
+
+            Assert.That(result.Errors, Has.None.Contains("Лист Equipments"), "пустая строка-заглушка снова ломает сборку");
+        }
+
+        [Test]
         public void Builder_WithoutOptionalDomain_WarnsInsteadOfFailing()
         {
             var domains = new List<ConfigSnapshotDomain>();
