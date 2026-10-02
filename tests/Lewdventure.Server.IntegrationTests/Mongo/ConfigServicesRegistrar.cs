@@ -2,6 +2,7 @@ using Server.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Server.Bonuses;
 using Server.GameConfigs;
+using Server.Skills;
 using Server.Infrastructure.Alerts;
 using Server.Infrastructure.Mongo.ConfigSnapshots;
 
@@ -17,6 +18,8 @@ namespace Tests.Integration.Mongo
             services.AddSingleton<EffectParameterRegistry>()
                 .AddSingleton<EffectParametersValidator>()
                 .AddSingleton<EnemyDataValidator>()
+                .AddSingleton<SkillComponentRegistry>()
+                .AddSingleton<SkillComponentValidator>()
                 .AddSingleton<ConfigSnapshotValidator>();
             services.AddSingleton<ConfigSnapshotDiff>();
             services.AddSingleton<ConfigRangeReader>()
