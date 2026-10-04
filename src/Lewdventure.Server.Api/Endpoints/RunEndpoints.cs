@@ -154,7 +154,11 @@ namespace Server.Api.Endpoints
             if (result.Succeeded == false || result.Run == null)
                 return Results.Json(new { errors = result.Errors }, statusCode: errorStatusCode);
 
-            return Results.Ok(runResponseFactory.Create(result.Run, result.Step, battleDelivery));
+            var response = runResponseFactory.Create(result.Run, result.Step, battleDelivery);
+
+            response.Replayed = result.Replayed;
+
+            return Results.Ok(response);
         }
     }
 }

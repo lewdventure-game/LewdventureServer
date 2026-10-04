@@ -7,6 +7,8 @@ namespace Server.Infrastructure.Players
     internal sealed class PlayerRewardService
     {
         private const int MaxAttempts = 3;
+        private const int StaleReservationSeconds = 30;
+        private const string InProgressError = "Rewards for this request are being applied by another request.";
 
         private readonly IBattleRewardParser _battleRewardParser;
         private readonly IdempotencyRepository _idempotencyRepository;
@@ -68,8 +70,16 @@ namespace Server.Infrastructure.Players
                 if (applied != null && 0 < applied.ResultRev)
                     return new PlayerUpdateResult(await _playerProfileService.GetOrCreateAsync(userId, cancellationToken), false, new List<string>());
 
-                if (applied == null && await ReserveAsync(userId, requestId, source, cancellationToken) == false)
-                    return new PlayerUpdateResult(await _playerProfileService.GetOrCreateAsync(userId, cancellationToken), false, new List<string>());
+                var claimed = applied == null
+                    ? await ReserveAsync(userId, requestId, source, cancellationToken)
+                    : await TryTakeOverAsync(applied, cancellationToken);
+
+                if (claimed == false)
+                {
+                    _logger.LogInformation("[Player] rewards already in progress userId = {UserId} source = {Source}", userId, source);
+
+                    return new PlayerUpdateResult(null, true, new List<string> { InProgressError });
+                }
             }
 
             for (int attempt = 1; attempt <= MaxAttempts; attempt++)
@@ -130,6 +140,16 @@ namespace Server.Infrastructure.Players
                 CreatedAt = now,
                 UpdatedAt = now,
             }, cancellationToken);
+        }
+
+        private async Task<bool> TryTakeOverAsync(IdempotencyDocument reservation, CancellationToken cancellationToken)
+        {
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+            if (now < reservation.UpdatedAt.AddSeconds(StaleReservationSeconds))
+                return false;
+
+            return await _idempotencyRepository.TryTakeOverAsync(reservation, now, cancellationToken);
         }
 
         private async Task CompleteAsync(string userId, string requestId, long resultRev, DateTime now, CancellationToken cancellationToken)

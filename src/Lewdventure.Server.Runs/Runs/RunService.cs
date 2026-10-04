@@ -120,6 +120,7 @@ namespace Server.Runs
                 StoryLevelId = storyLevelId,
                 ConfigVersion = _gameConfigSelection.Current.Version,
                 Seed = seed,
+                BattleSeedKey = _runRandomFactory.CreateBattleSeedKey(),
                 RollIndex = roll.RollIndex,
                 Stages = roll.Stages,
                 CreatedAt = now,
@@ -142,10 +143,18 @@ namespace Server.Runs
 
         public async Task<RunOperationResult> AdvanceAsync(string userId, string runId, string requestId, CancellationToken cancellationToken)
         {
-            var run = await LoadActiveAsync(userId, runId, cancellationToken);
+            var run = await LoadForStepAsync(userId, runId, cancellationToken);
 
             if (run == null)
                 return Failed("No active run.");
+
+            if (IsReplay(run, requestId))
+                return Replayed(run);
+
+            if (IsActive(run) == false)
+                return Failed("No active run.");
+
+            run.LastRequestId = requestId;
 
             if (run.PendingChoice != null)
                 return Failed("Run waits for a choice.");
@@ -169,17 +178,25 @@ namespace Server.Runs
                 return await OpenForkAsync(run, storyEvent, parameters, cancellationToken);
 
             if (storyEvent.EventType == StoryEventType.Fight)
-                return await ResolveFightAsync(userId, run, level, stage, storyEvent, parameters, requestId, cancellationToken);
+                return await ResolveFightAsync(userId, run, level, stage, storyEvent, parameters, cancellationToken);
 
-            return await ResolveDefaultAsync(userId, run, level, stage, storyEvent, parameters, requestId, cancellationToken);
+            return await ResolveDefaultAsync(userId, run, level, stage, storyEvent, parameters, cancellationToken);
         }
 
         public async Task<RunOperationResult> ChooseAsync(string userId, string runId, IReadOnlyList<int> picks, string requestId, CancellationToken cancellationToken)
         {
-            var run = await LoadActiveAsync(userId, runId, cancellationToken);
+            var run = await LoadForStepAsync(userId, runId, cancellationToken);
 
             if (run == null)
                 return Failed("No active run.");
+
+            if (IsReplay(run, requestId))
+                return Replayed(run);
+
+            if (IsActive(run) == false)
+                return Failed("No active run.");
+
+            run.LastRequestId = requestId;
 
             if (run.PendingChoice == null)
                 return Failed("Run has no pending choice.");
@@ -190,7 +207,7 @@ namespace Server.Runs
             if (string.Equals(run.PendingChoice.Kind, RunPendingChoiceDocument.PerkKind, StringComparison.Ordinal))
                 return await ChoosePerksAsync(run, level, picks, cancellationToken);
 
-            return await ChooseForkAsync(userId, run, level, picks, requestId, cancellationToken);
+            return await ChooseForkAsync(userId, run, level, picks, cancellationToken);
         }
 
         public async Task<RunOperationResult> AbandonAsync(string userId, string runId, CancellationToken cancellationToken)
@@ -219,7 +236,6 @@ namespace Server.Runs
             RunStageDocument stage,
             IStoryEventMapper storyEvent,
             Dictionary<string, string> parameters,
-            string requestId,
             CancellationToken cancellationToken)
         {
             var outcome = new RunStepOutcome
@@ -231,7 +247,12 @@ namespace Server.Runs
             };
             var experience = storyEvent.RewardExperienceValue;
 
-            experience += await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, requestId, outcome, cancellationToken);
+            var grant = await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, outcome, cancellationToken);
+
+            if (grant.IsConflict)
+                return Conflict();
+
+            experience += grant.Experience;
 
             ApplyExperience(run, level, experience, outcome);
             ResolveStage(run, stage);
@@ -278,7 +299,6 @@ namespace Server.Runs
             RunDocument run,
             IStoryLevelMapper level,
             IReadOnlyList<int> picks,
-            string requestId,
             CancellationToken cancellationToken)
         {
             if (picks.Count != 1 || picks[0] < 1 || 2 < picks[0])
@@ -313,7 +333,12 @@ namespace Server.Runs
             };
             var experience = storyEvent.RewardExperienceValue;
 
-            experience += await ApplyRewardsAsync(userId, run, rewards, rewardLength, requestId, outcome, cancellationToken);
+            var grant = await ApplyRewardsAsync(userId, run, rewards, rewardLength, outcome, cancellationToken);
+
+            if (grant.IsConflict)
+                return Conflict();
+
+            experience += grant.Experience;
 
             run.PendingChoice = null;
 
@@ -364,7 +389,6 @@ namespace Server.Runs
             RunStageDocument stage,
             IStoryEventMapper storyEvent,
             Dictionary<string, string> parameters,
-            string requestId,
             CancellationToken cancellationToken)
         {
             var profile = await _playerProfileService.GetOrCreateAsync(userId, _configDistributor, cancellationToken);
@@ -382,7 +406,7 @@ namespace Server.Runs
                 TeamB = simulationData.TeamB,
                 StoryLevelId = simulationData.StoryLevelId,
                 StageId = simulationData.StageId,
-                Seed = _runRandomFactory.CreateBattleSeed(run.Seed, run.StageIndex),
+                Seed = _runRandomFactory.CreateBattleSeed(run.Seed, run.StageIndex, run.BattleSeedKey),
             };
             var script = _battleSimulatorService.Replay(replayData);
 
@@ -421,7 +445,12 @@ namespace Server.Runs
 
             var experience = storyEvent.RewardExperienceValue;
 
-            experience += await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, requestId, outcome, cancellationToken);
+            var grant = await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, outcome, cancellationToken);
+
+            if (grant.IsConflict)
+                return Conflict();
+
+            experience += grant.Experience;
 
             run.CurrentHealth = ReadFinalHealth(script, profile.Loadout.CharacterId, run.CurrentHealth);
 
@@ -482,17 +511,16 @@ namespace Server.Runs
             return Conflict();
         }
 
-        private async Task<int> ApplyRewardsAsync(
+        private async Task<RunRewardGrant> ApplyRewardsAsync(
             string userId,
             RunDocument run,
             string rewards,
             int rewardLength,
-            string requestId,
             RunStepOutcome outcome,
             CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(rewards))
-                return 0;
+                return new RunRewardGrant(0, false);
 
             var parsed = _battleRewardParser.Parse(rewards);
             var profileRewards = new List<BattleReward>(parsed.Count);
@@ -529,9 +557,12 @@ namespace Server.Runs
 
             if (0 < profileRewards.Count)
             {
-                var stepRequestId = string.IsNullOrEmpty(requestId) ? string.Empty : requestId + ":" + run.StageIndex.ToString(CultureInfo.InvariantCulture);
                 var source = "run:" + run.Id;
-                var result = await _playerRewardService.GrantAsync(userId, profileRewards, source, stepRequestId, _configDistributor, cancellationToken);
+                var stepKey = source + ":stage:" + run.StageIndex.ToString(CultureInfo.InvariantCulture);
+                var result = await _playerRewardService.GrantAsync(userId, profileRewards, source, stepKey, _configDistributor, cancellationToken);
+
+                if (result.Conflict)
+                    return new RunRewardGrant(experience, true);
 
                 if (result.Succeeded == false)
                     _logger.LogWarning("[Run] rewards not applied userId = {UserId} runId = {RunId} errors = {Errors}", userId, run.Id, string.Join("; ", result.Errors));
@@ -539,7 +570,7 @@ namespace Server.Runs
                     CollectAppliedRewards(profileRewards, result.Profile!, outcome);
             }
 
-            return experience;
+            return new RunRewardGrant(experience, false);
         }
 
         private void CollectAppliedRewards(List<BattleReward> profileRewards, PlayerProfileDocument profile, RunStepOutcome outcome)
@@ -833,6 +864,35 @@ namespace Server.Runs
             }
 
             return health;
+        }
+
+        private async Task<RunDocument?> LoadForStepAsync(string userId, string runId, CancellationToken cancellationToken)
+        {
+            var run = string.IsNullOrEmpty(runId)
+                ? await _runRepository.GetActiveAsync(userId, cancellationToken)
+                : await _runRepository.GetAsync(runId, cancellationToken);
+
+            if (run == null || string.Equals(run.UserId, userId, StringComparison.Ordinal) == false)
+                return null;
+
+            return run;
+        }
+
+        private bool IsReplay(RunDocument run, string requestId)
+        {
+            return string.IsNullOrEmpty(requestId) == false && string.Equals(run.LastRequestId, requestId, StringComparison.Ordinal);
+        }
+
+        private bool IsActive(RunDocument run)
+        {
+            return string.Equals(run.Status, RunDocument.ActiveStatus, StringComparison.Ordinal);
+        }
+
+        private RunOperationResult Replayed(RunDocument run)
+        {
+            _logger.LogInformation("[Run] step replay ignored userId = {UserId} runId = {RunId} stage = {Stage}", run.UserId, run.Id, run.StageIndex);
+
+            return new RunOperationResult(run, null, false, new List<string>(), true);
         }
 
         private async Task<RunDocument?> LoadActiveAsync(string userId, string runId, CancellationToken cancellationToken)

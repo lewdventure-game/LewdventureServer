@@ -28,6 +28,10 @@ namespace Server.Infrastructure.Mongo.Runs
 
         public long Seed { get; set; }
 
+        public string BattleSeedKey { get; set; } = string.Empty;
+
+        public string LastRequestId { get; set; } = string.Empty;
+
         public int RollIndex { get; set; }
 
         public int StageIndex { get; set; }

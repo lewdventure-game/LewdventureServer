@@ -51,6 +51,18 @@ namespace Server.Infrastructure.Mongo.Players
             }
         }
 
+        public async Task<bool> TryTakeOverAsync(IdempotencyDocument reservation, DateTime now, CancellationToken cancellationToken)
+        {
+            var filter = Builders<IdempotencyDocument>.Filter.And(
+                Builders<IdempotencyDocument>.Filter.Eq(item => item.Id, reservation.Id),
+                Builders<IdempotencyDocument>.Filter.Eq(item => item.ResultRev, 0L),
+                Builders<IdempotencyDocument>.Filter.Eq(item => item.UpdatedAt, reservation.UpdatedAt));
+            var update = Builders<IdempotencyDocument>.Update.Set(item => item.UpdatedAt, now);
+            var result = await Collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
+
+            return 0 < result.ModifiedCount;
+        }
+
         public async Task CompleteAsync(string userId, string requestId, long resultRev, DateTime now, CancellationToken cancellationToken)
         {
             var filter = Builders<IdempotencyDocument>.Filter.Eq(item => item.Id, CreateKey(userId, requestId));

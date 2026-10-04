@@ -69,5 +69,18 @@ namespace Tests.Unit.Players
             Assert.That(_factory.CreateBattleSeed(77, 2), Is.EqualTo(_factory.CreateBattleSeed(77, 2)));
             Assert.That(_factory.CreateBattleSeed(77, 2), Is.Not.EqualTo(_factory.CreateBattleSeed(77, 3)));
         }
+
+        [Test]
+        public void CreateBattleSeed_WithRunKey_IsStableAndNotDerivableFromRunSeed()
+        {
+            var firstKey = _factory.CreateBattleSeedKey();
+            var secondKey = _factory.CreateBattleSeedKey();
+
+            Assert.That(_factory.CreateBattleSeed(77, 2, firstKey), Is.EqualTo(_factory.CreateBattleSeed(77, 2, firstKey)));
+            Assert.That(_factory.CreateBattleSeed(77, 2, firstKey), Is.Not.EqualTo(_factory.CreateBattleSeed(77, 3, firstKey)));
+            Assert.That(_factory.CreateBattleSeed(77, 2, firstKey), Is.Not.EqualTo(_factory.CreateBattleSeed(77, 2, secondKey)));
+            Assert.That(_factory.CreateBattleSeed(77, 2, firstKey), Is.Not.EqualTo(_factory.CreateBattleSeed(77, 2)));
+            Assert.That(_factory.CreateBattleSeed(77, 2, string.Empty), Is.EqualTo(_factory.CreateBattleSeed(77, 2)));
+        }
     }
 }

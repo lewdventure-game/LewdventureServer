@@ -6,6 +6,7 @@ namespace Server.Runs
     internal sealed class RunRandomFactory
     {
         private const ulong Mix = 0x9E3779B97F4A7C15UL;
+        private const int BattleSeedKeyBytes = 32;
 
         public long CreateSeed()
         {
@@ -18,6 +19,24 @@ namespace Server.Runs
             {
                 return new SeededRandomService((ulong)seed ^ ((ulong)(rollIndex + 1) * Mix));
             }
+        }
+
+        public string CreateBattleSeedKey()
+        {
+            return Convert.ToBase64String(RandomNumberGenerator.GetBytes(BattleSeedKeyBytes));
+        }
+
+        public ulong CreateBattleSeed(long seed, int stageIndex, string battleSeedKey)
+        {
+            if (string.IsNullOrEmpty(battleSeedKey))
+                return CreateBattleSeed(seed, stageIndex);
+
+            var message = new byte[12];
+
+            BitConverter.TryWriteBytes(message.AsSpan(0, 8), seed);
+            BitConverter.TryWriteBytes(message.AsSpan(8, 4), stageIndex);
+
+            return BitConverter.ToUInt64(HMACSHA256.HashData(Convert.FromBase64String(battleSeedKey), message), 0);
         }
 
         public ulong CreateBattleSeed(long seed, int stageIndex)

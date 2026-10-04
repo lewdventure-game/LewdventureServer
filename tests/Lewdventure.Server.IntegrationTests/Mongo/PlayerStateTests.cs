@@ -215,6 +215,37 @@ namespace Tests.Integration.Mongo
         }
 
         [Test]
+        [Order(6)]
+        public async Task Grant_ReservationInProgress_IsNotApplied()
+        {
+            var rewardService = _environment.Services.GetRequiredService<PlayerRewardService>();
+            var idempotency = _environment.Services.GetRequiredService<IdempotencyRepository>();
+
+            await ReserveAsync(idempotency, "usr_reward_busy", "grant-busy", DateTime.UtcNow);
+
+            var result = await rewardService.GrantAsync("usr_reward_busy", "resource:soft_money:100", "test", "grant-busy", _configDistributor, CancellationToken.None);
+
+            Assert.That(result.Conflict, Is.True, "незавершённый резерв не должен давать повторную выдачу");
+        }
+
+        [Test]
+        [Order(6)]
+        public async Task Grant_StaleReservation_IsTakenOverAndAppliedOnce()
+        {
+            var rewardService = _environment.Services.GetRequiredService<PlayerRewardService>();
+            var idempotency = _environment.Services.GetRequiredService<IdempotencyRepository>();
+
+            await ReserveAsync(idempotency, "usr_reward_stale", "grant-stale", DateTime.UtcNow.AddMinutes(-5));
+
+            var first = await rewardService.GrantAsync("usr_reward_stale", "resource:soft_money:100", "test", "grant-stale", _configDistributor, CancellationToken.None);
+            var repeated = await rewardService.GrantAsync("usr_reward_stale", "resource:soft_money:100", "test", "grant-stale", _configDistributor, CancellationToken.None);
+
+            Assert.That(first.Succeeded, Is.True, string.Join("; ", first.Errors));
+            Assert.That(first.Profile!.Resources["soft_money"], Is.EqualTo(100));
+            Assert.That(repeated.Profile!.Resources["soft_money"], Is.EqualTo(100));
+        }
+
+        [Test]
         [Order(7)]
         public async Task Grant_WithoutRequestId_AppliesEveryTime()
         {
@@ -264,6 +295,19 @@ namespace Tests.Integration.Mongo
             var staleRev = profile.Rev - 1;
 
             Assert.That(await repository.ReplaceAsync(profile, staleRev, CancellationToken.None), Is.False);
+        }
+
+        private async Task ReserveAsync(IdempotencyRepository idempotency, string userId, string requestId, DateTime updatedAt)
+        {
+            Assert.That(await idempotency.TryReserveAsync(new IdempotencyDocument
+            {
+                Id = idempotency.CreateKey(userId, requestId),
+                UserId = userId,
+                RequestId = requestId,
+                Action = "test",
+                CreatedAt = updatedAt,
+                UpdatedAt = updatedAt,
+            }, CancellationToken.None), Is.True);
         }
     }
 }
