@@ -2,7 +2,7 @@
 
 Branch: feature/config-versions-and-experiments
 Created: 2026-10-04
-Status: фазы 1 и 2 готовы (в master, не запушено); дальше фаза 3 — приём аналитики в формате Isekai
+Status: фазы 1, 2 и 5 (веб-админка) готовы и выкачены на dev; дальше фаза 3 — приём аналитики в формате Isekai
 
 ## Settings
 
