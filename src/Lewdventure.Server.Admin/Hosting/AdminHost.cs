@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.WebEncoders;
 using Server.Admin.Accounts;
+using Server.Admin.Analytics;
 using Server.Admin.Backend;
 using Server.Admin.Options;
 
@@ -60,6 +61,7 @@ namespace Server.Admin.Hosting
             services.Configure<ForwardedHeadersOptions>(ConfigureForwardedHeaders);
             services.Configure<WebEncoderOptions>(encoder => encoder.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All));
             services.AddHttpClient(GameAdminClient.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(20));
+            services.AddHttpClient(ClickHouseQueryClient.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(60));
 
             services.AddSingleton(TimeProvider.System);
             services.AddSingleton(new AdminAccountStore(options.DataPath));
@@ -68,6 +70,10 @@ namespace Server.Admin.Hosting
             services.AddSingleton<AdminLoginThrottle>();
             services.AddSingleton<AdminEnvironmentSelector>();
             services.AddSingleton<GameAdminClient>();
+            services.AddSingleton<ClickHouseQueryClient>();
+            services.AddSingleton<AnalyticsQueryBuilder>();
+            services.AddSingleton<AnalyticsReportService>();
+            services.AddSingleton<SvgChartBuilder>();
             services.AddSingleton(CreateAuditLog);
         }
 
@@ -126,7 +132,6 @@ namespace Server.Admin.Hosting
             application.UseAuthentication();
             application.UseAuthorization();
             application.MapGet("/health", () => Results.Text("ok")).AllowAnonymous();
-            new GrafanaAuthEndpoint().Map(application);
             application.MapRazorPages();
         }
     }

@@ -8,20 +8,7 @@
 		Strict-Transport-Security "max-age=31536000"
 		-Server
 	}
-	request_header -X-WEBAUTH-USER
-	request_header -X-WEBAUTH-ROLE
-
-	handle /grafana* {
-		forward_auth lewdventure-admin:8080 {
-			uri /auth/grafana
-			copy_headers X-WEBAUTH-USER X-WEBAUTH-ROLE
-		}
-		reverse_proxy lewdventure-grafana:3000
-	}
-
-	handle {
-		reverse_proxy lewdventure-admin:8080 {
-			header_up X-Forwarded-For {client_ip}
-		}
+	reverse_proxy lewdventure-admin:8080 {
+		header_up X-Forwarded-For {client_ip}
 	}
 }

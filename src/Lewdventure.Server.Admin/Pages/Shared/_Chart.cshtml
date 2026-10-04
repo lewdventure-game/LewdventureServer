@@ -1,0 +1,48 @@
+@using System.Globalization
+@model Server.Admin.Analytics.SvgChart
+@{
+    string F(double value) => value.ToString("0.#", CultureInfo.InvariantCulture);
+    var right = Model.Width - Server.Admin.Analytics.SvgChartBuilder.PaddingRight;
+    var left = Server.Admin.Analytics.SvgChartBuilder.PaddingLeft;
+}
+@if (Model.IsEmpty)
+{
+    <p class="muted chart-empty">Нет данных за выбранный период.</p>
+}
+else
+{
+    <div class="chart">
+        <svg viewBox="0 0 @Model.Width @Model.Height" role="img" preserveAspectRatio="xMidYMid meet">
+            @foreach (var tick in Model.YTicks)
+            {
+                <g>
+                    <line class="grid" x1="@left" x2="@right" y1="@F(tick.Position)" y2="@F(tick.Position)"></line>
+                    <text class="axis" x="@(left - 6)" y="@F(tick.Position + 4)" text-anchor="end">@tick.Label</text>
+                </g>
+            }
+            @foreach (var tick in Model.XTicks)
+            {
+                <g>
+                    <text class="axis" x="@F(tick.Position)" y="@(Model.Height - 8)" text-anchor="middle">@tick.Label</text>
+                </g>
+            }
+            @foreach (var line in Model.Lines)
+            {
+                <polyline class="line series-@line.ColorIndex" points="@line.Points"></polyline>
+                @foreach (var dot in line.Dots)
+                {
+                    <circle class="dot series-@line.ColorIndex" cx="@F(dot.X)" cy="@F(dot.Y)" r="3"><title>@dot.Title</title></circle>
+                }
+            }
+        </svg>
+        @if (1 < Model.Lines.Count || (Model.Lines.Count == 1 && Model.Lines[0].Name != "все"))
+        {
+            <div class="legend">
+                @foreach (var line in Model.Lines)
+                {
+                    <span class="legend-item"><i class="swatch series-@line.ColorIndex"></i>@line.Name</span>
+                }
+            </div>
+        }
+    </div>
+}

@@ -1,0 +1,134 @@
+@page
+@using Server.Admin.Analytics
+@model Server.Admin.Pages.Analytics.EventsModel
+@{
+    ViewData["Title"] = "Конструктор отчётов";
+    var f = Model.Filter;
+}
+<div class="heading">
+    <h1>Конструктор отчётов · @Model.CurrentEnvironment</h1>
+    <a class="button" href="/Analytics">← Обзор</a>
+</div>
+<form method="get" class="card form report-form">
+    <div class="row">
+        <label>Событие
+            <select name="Filter.EventType">
+                <option value="">все события</option>
+                @foreach (var eventType in Model.Report.EventTypes)
+                {
+                    <option value="@eventType" selected="@(eventType == f.EventType)">@eventType</option>
+                }
+            </select>
+        </label>
+        <label>Что считать
+            <select name="Filter.Metric">
+                <option value="@AnalyticsFilterValues.MetricEvents" selected="@(f.Metric == AnalyticsFilterValues.MetricEvents)">сколько раз произошло</option>
+                <option value="@AnalyticsFilterValues.MetricUsers" selected="@(f.Metric == AnalyticsFilterValues.MetricUsers)">сколько разных игроков</option>
+                <option value="@AnalyticsFilterValues.MetricSum" selected="@(f.Metric == AnalyticsFilterValues.MetricSum)">сумму значения</option>
+                <option value="@AnalyticsFilterValues.MetricAverage" selected="@(f.Metric == AnalyticsFilterValues.MetricAverage)">среднее значение</option>
+            </select>
+        </label>
+        <label>Значение (для суммы и среднего)
+            <input name="Filter.MetricKey" value="@f.MetricKey" list="property-keys" placeholder="например stage_index">
+        </label>
+    </div>
+    <div class="row">
+        <label>Разбить по
+            <select name="Filter.GroupBy">
+                <option value="@AnalyticsFilterValues.GroupNone" selected="@(f.GroupBy == AnalyticsFilterValues.GroupNone)">не разбивать</option>
+                <option value="@AnalyticsFilterValues.GroupExperiment" selected="@(f.GroupBy == AnalyticsFilterValues.GroupExperiment)">группам A/B</option>
+                <option value="@AnalyticsFilterValues.GroupEventType" selected="@(f.GroupBy == AnalyticsFilterValues.GroupEventType)">событиям</option>
+                <option value="@AnalyticsFilterValues.GroupCountry" selected="@(f.GroupBy == AnalyticsFilterValues.GroupCountry)">странам</option>
+                <option value="@AnalyticsFilterValues.GroupAppVersion" selected="@(f.GroupBy == AnalyticsFilterValues.GroupAppVersion)">версиям клиента</option>
+                <option value="@AnalyticsFilterValues.GroupPlatform" selected="@(f.GroupBy == AnalyticsFilterValues.GroupPlatform)">платформам</option>
+                <option value="@AnalyticsFilterValues.GroupSource" selected="@(f.GroupBy == AnalyticsFilterValues.GroupSource)">источнику (клиент / сервер)</option>
+                <option value="@AnalyticsFilterValues.GroupProperty" selected="@(f.GroupBy == AnalyticsFilterValues.GroupProperty)">значению свойства</option>
+            </select>
+        </label>
+        <label>Свойство (для разбивки по значению)
+            <input name="Filter.GroupKey" value="@f.GroupKey" list="property-keys" placeholder="например outcome">
+        </label>
+        <label>с <input type="date" name="Filter.From" value="@f.From"></label>
+        <label>по <input type="date" name="Filter.To" value="@f.To"></label>
+        <label>Шаг
+            <select name="Filter.Step">
+                <option value="@AnalyticsFilterValues.StepDay" selected="@(f.Step != AnalyticsFilterValues.StepHour)">по дням</option>
+                <option value="@AnalyticsFilterValues.StepHour" selected="@(f.Step == AnalyticsFilterValues.StepHour)">по часам</option>
+            </select>
+        </label>
+    </div>
+    <details open="@(Model.HasExtraFilters ? "open" : null)">
+        <summary>Дополнительные фильтры</summary>
+        <div class="row">
+            <label>Игрок <input name="Filter.UserId" value="@f.UserId" placeholder="usr_…"></label>
+            <label>Эксперимент
+                <select name="Filter.ExperimentId">
+                    <option value="">любой</option>
+                    <option value="@AnalyticsFilterValues.MasterLabel" selected="@(f.ExperimentId == AnalyticsFilterValues.MasterLabel)">без эксперимента (мастер)</option>
+                    @foreach (var experiment in Model.Experiments)
+                    {
+                        <option value="@experiment.Id" selected="@(experiment.Id == f.ExperimentId)">@experiment.Id</option>
+                    }
+                </select>
+            </label>
+            <label>Группа <input name="Filter.GroupId" value="@f.GroupId" placeholder="test"></label>
+            <label>Страна <input name="Filter.Country" value="@f.Country" placeholder="US"></label>
+            <label>Источник
+                <select name="Filter.Source">
+                    <option value="">любой</option>
+                    <option value="client" selected="@(f.Source == "client")">клиент</option>
+                    <option value="server" selected="@(f.Source == "server")">сервер</option>
+                </select>
+            </label>
+        </div>
+        <div class="row">
+            <label>Свойство <input name="Filter.PropertyKey" value="@f.PropertyKey" list="property-keys" placeholder="например outcome"></label>
+            <label>равно <input name="Filter.PropertyValue" value="@f.PropertyValue" placeholder="например TeamAWin"></label>
+        </div>
+    </details>
+    <datalist id="property-keys">
+        @foreach (var key in Model.Report.PropertyKeys)
+        {
+            <option value="@key"></option>
+        }
+    </datalist>
+    <div class="inline">
+        <button type="submit" class="primary">Построить</button>
+        <a href="/Analytics/Events">Сбросить</a>
+    </div>
+</form>
+@foreach (var error in Model.Report.Errors)
+{
+    <div class="alert alert-error">@error</div>
+}
+<div class="tiles">
+    <div class="tile"><div class="tile-value">@Model.Report.Events</div><div class="tile-label">Событий</div></div>
+    <div class="tile"><div class="tile-value">@Model.Report.Users</div><div class="tile-label">Игроков</div></div>
+    @if (f.Metric == AnalyticsFilterValues.MetricSum || f.Metric == AnalyticsFilterValues.MetricAverage)
+    {
+        <div class="tile"><div class="tile-value">@Model.Report.MetricValue</div><div class="tile-label">@(f.Metric == AnalyticsFilterValues.MetricSum ? "Сумма" : "Среднее") @f.MetricKey</div></div>
+    }
+</div>
+<section class="card">
+    <h2>@Model.MetricTitle</h2>
+    <partial name="_Chart" model="Model.Chart" />
+</section>
+@if (f.GroupBy != AnalyticsFilterValues.GroupNone)
+{
+    <section class="card">
+        <h2>Разбивка</h2>
+        <table class="table compact">
+            <thead><tr><th>Значение</th><th>Событий</th><th>Игроков</th><th>@Model.MetricTitle</th></tr></thead>
+            <tbody>
+            @foreach (var row in Model.Report.Breakdown)
+            {
+                <tr><td>@row.Group</td><td>@row.Events</td><td>@row.Users</td><td>@row.Metric</td></tr>
+            }
+            </tbody>
+        </table>
+    </section>
+}
+<section class="card">
+    <h2>Последние события</h2>
+    <partial name="_EventTable" model="Model.Report.Latest" />
+</section>

@@ -1,0 +1,80 @@
+@page
+@model Server.Admin.Pages.Analytics.IndexModel
+@{
+    ViewData["Title"] = "Аналитика";
+}
+<div class="heading">
+    <h1>Аналитика · @Model.CurrentEnvironment</h1>
+    <a class="button" href="/Analytics/Events">Конструктор отчётов →</a>
+</div>
+<form method="get" class="card inline period">
+    <span class="muted">Период:</span>
+    <a class="button @(Model.Days == 1 ? "primary" : string.Empty)" href="?days=1">Сегодня</a>
+    <a class="button @(Model.Days == 7 ? "primary" : string.Empty)" href="?days=7">7 дней</a>
+    <a class="button @(Model.Days == 30 ? "primary" : string.Empty)" href="?days=30">30 дней</a>
+    <a class="button @(Model.Days == 90 ? "primary" : string.Empty)" href="?days=90">90 дней</a>
+    <label class="inline">с <input type="date" name="from" value="@Model.Filter.From"></label>
+    <label class="inline">по <input type="date" name="to" value="@Model.Filter.To"></label>
+    <button type="submit">Показать</button>
+</form>
+@foreach (var error in Model.Report.Errors)
+{
+    <div class="alert alert-error">@error</div>
+}
+<div class="tiles">
+    <div class="tile"><div class="tile-value">@Model.Report.ActivePlayers</div><div class="tile-label">Активных игроков</div></div>
+    <div class="tile"><div class="tile-value">@Model.Report.NewPlayers</div><div class="tile-label">Новых игроков</div></div>
+    <div class="tile"><div class="tile-value">@Model.Report.Sessions</div><div class="tile-label">Сессий</div></div>
+    <div class="tile"><div class="tile-value">@Model.Report.RunsStarted</div><div class="tile-label">Забегов начато</div></div>
+    <div class="tile"><div class="tile-value">@Model.Report.RunsCompleted</div><div class="tile-label">Забегов пройдено</div></div>
+    <div class="tile"><div class="tile-value">@Model.Report.BattleWinRate%</div><div class="tile-label">Побед в боях</div></div>
+</div>
+<div class="grid charts">
+    <section class="card">
+        <h2>Активные игроки по дням</h2>
+        <partial name="_Chart" model="Model.ActivePlayersChart" />
+    </section>
+    <section class="card">
+        <h2>Новые игроки по странам</h2>
+        <partial name="_Chart" model="Model.NewPlayersChart" />
+    </section>
+    <section class="card">
+        <h2>Забеги</h2>
+        <partial name="_Chart" model="Model.RunsChart" />
+    </section>
+    <section class="card">
+        <h2>Доля побед в боях, %</h2>
+        <partial name="_Chart" model="Model.WinRateChart" />
+    </section>
+</div>
+<div class="grid">
+    <section class="card">
+        <h2>Самые частые события</h2>
+        <table class="table compact">
+            <thead><tr><th>Событие</th><th>Раз</th><th>Игроков</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var row in Model.Report.TopEvents)
+            {
+                <tr>
+                    <td>@row.Group</td>
+                    <td>@row.Events</td>
+                    <td>@row.Users</td>
+                    <td><a href="/Analytics/Events?Filter.EventType=@Uri.EscapeDataString(row.Group)&Filter.From=@Model.Filter.From&Filter.To=@Model.Filter.To">подробнее</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </section>
+    <section class="card">
+        <h2>Игроки по странам</h2>
+        <table class="table compact">
+            <thead><tr><th>Страна</th><th>Игроков</th><th>Событий</th></tr></thead>
+            <tbody>
+            @foreach (var row in Model.Report.Countries)
+            {
+                <tr><td>@row.Group</td><td>@row.Users</td><td>@row.Events</td></tr>
+            }
+            </tbody>
+        </table>
+    </section>
+</div>

@@ -12,6 +12,8 @@ namespace Server.Admin.Options
 
         public int LockoutMinutes { get; set; } = 15;
 
+        public AdminClickHouseOptions ClickHouse { get; set; } = new();
+
         public List<AdminEnvironmentOptions> Environments { get; set; } = new();
     }
 }

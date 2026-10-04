@@ -55,63 +55,10 @@ services:
     networks:
       - analytics
 
-  grafana:
-    image: grafana/grafana-oss:12.1.1
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      GF_SERVER_ROOT_URL: https://${ADMIN_DOMAIN:?}/grafana/
-      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
-      GF_AUTH_PROXY_ENABLED: "true"
-      GF_AUTH_PROXY_HEADER_NAME: X-WEBAUTH-USER
-      GF_AUTH_PROXY_HEADER_PROPERTY: username
-      GF_AUTH_PROXY_HEADERS: Role:X-WEBAUTH-ROLE
-      GF_AUTH_PROXY_AUTO_SIGN_UP: "true"
-      GF_AUTH_DISABLE_LOGIN_FORM: "true"
-      GF_AUTH_BASIC_ENABLED: "false"
-      GF_AUTH_SIGNOUT_REDIRECT_URL: https://${ADMIN_DOMAIN:?}/
-      GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_USERS_DEFAULT_THEME: system
-      GF_SECURITY_COOKIE_SECURE: "true"
-      GF_SECURITY_DISABLE_GRAVATAR: "true"
-      GF_ANALYTICS_REPORTING_ENABLED: "false"
-      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
-      GF_NEWS_NEWS_FEED_ENABLED: "false"
-      GF_PLUGINS_PREINSTALL_SYNC: grafana-clickhouse-datasource
-      GF_LOG_LEVEL: warn
-      TZ: UTC
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
-    depends_on:
-      clickhouse:
-        condition: service_healthy
-    networks:
-      analytics: {}
-      grafana:
-        aliases:
-          - lewdventure-grafana
-    deploy:
-      resources:
-        limits:
-          cpus: "1.0"
-          memory: 512M
-    logging:
-      driver: json-file
-      options:
-        max-size: 10m
-        max-file: "5"
-
 networks:
   analytics:
     external: true
     name: lewdventure-analytics
-  grafana:
-    external: true
-    name: lewdventure-grafana
 
 volumes:
   clickhouse-data: {}
-  grafana-data: {}

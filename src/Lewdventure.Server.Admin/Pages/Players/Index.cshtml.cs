@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Server.Admin.Analytics;
 using Server.Admin.Backend;
 using Server.Admin.Backend.Models;
 
@@ -6,9 +7,16 @@ namespace Server.Admin.Pages.Players
 {
     internal sealed class IndexModel : AdminPageModel
     {
-        public IndexModel(AdminAuditLog auditLog, AdminEnvironmentSelector environmentSelector, GameAdminClient gameAdminClient)
+        private readonly AnalyticsReportService _analyticsReportService;
+
+        public IndexModel(
+            AdminAuditLog auditLog,
+            AdminEnvironmentSelector environmentSelector,
+            GameAdminClient gameAdminClient,
+            AnalyticsReportService analyticsReportService)
             : base(auditLog, environmentSelector, gameAdminClient)
         {
+            _analyticsReportService = analyticsReportService;
         }
 
         public string UserId { get; private set; } = string.Empty;
@@ -18,6 +26,10 @@ namespace Server.Admin.Pages.Players
         public ExperimentPlayerModel? Assignment { get; private set; }
 
         public List<PlayerLedgerModel> Ledger { get; private set; } = new();
+
+        public List<EventRow> Events { get; private set; } = new();
+
+        public List<string> EventErrors { get; } = new();
 
         public async Task OnGetAsync(string? userId)
         {
@@ -34,6 +46,8 @@ namespace Server.Admin.Pages.Players
 
             if (ledger != null)
                 Ledger = ledger;
+
+            Events = await _analyticsReportService.LoadPlayerEventsAsync(CurrentEnvironment, UserId, EventErrors, HttpContext.RequestAborted);
         }
 
         public async Task<IActionResult> OnPostGrantAsync(string userId, string? rewards, string? reason)

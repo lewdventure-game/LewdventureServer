@@ -84,6 +84,57 @@
         }
         </tbody>
     </table>
+    @if (experiment.Status != "draft")
+    {
+        <h2>Результаты по группам</h2>
+        @foreach (var error in Model.StatsErrors)
+        {
+            <div class="alert alert-error">@error</div>
+        }
+        @if (Model.Stats.Count == 0 && Model.StatsErrors.Count == 0)
+        {
+            <p class="muted">Событий от участников пока нет.</p>
+        }
+        else if (0 < Model.Stats.Count)
+        {
+            <table class="table stats">
+                <thead>
+                <tr>
+                    <th>Группа</th>
+                    <th title="Игроков группы, от которых пришло хотя бы одно событие">Игроков</th>
+                    <th title="Сколько игроков вернулись на следующий день после первого входа">Удержание D1</th>
+                    <th title="Вернулись на 3-й день">D3</th>
+                    <th title="Вернулись на 7-й день">D7</th>
+                    <th>Событий на игрока</th>
+                    <th>Забегов начато</th>
+                    <th>Пройдено забегов</th>
+                    <th>Боёв</th>
+                    <th>Побед в боях</th>
+                    <th title="На каком этапе в среднем заканчивался забег">Средний этап</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var group in Model.Stats)
+                {
+                    <tr>
+                        <td><strong>@group.Group</strong></td>
+                        <td>@group.Users</td>
+                        <td>@group.RetentionD1%</td>
+                        <td>@group.RetentionD3%</td>
+                        <td>@group.RetentionD7%</td>
+                        <td>@group.EventsPerUser</td>
+                        <td>@group.RunsStarted</td>
+                        <td>@group.RunsCompleted (@group.RunCompletionRate%)</td>
+                        <td>@group.Battles</td>
+                        <td>@group.BattleWinRate%</td>
+                        <td>@group.AverageStageReached</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+            <p class="muted">Удержание считается от дня первого события игрока в группе; игроки, пришедшие меньше N дней назад, ещё не могли вернуться на день N, поэтому в начале эксперимента D3 и D7 занижены. Подробнее — <a href="/Analytics/Events?Filter.ExperimentId=@Uri.EscapeDataString(experiment.Id)&Filter.GroupBy=experiment&Filter.Metric=users">в конструкторе</a>.</p>
+        }
+    }
     <h2>Журнал</h2>
     <table class="table">
         <thead>

@@ -55,8 +55,8 @@
                 <query>GRANT INSERT ON analytics_prod.events</query>
             </grants>
         </ingest_prod>
-        <grafana>
-            <password from_env="CLICKHOUSE_GRAFANA_PASSWORD"/>
+        <panel>
+            <password from_env="CLICKHOUSE_PANEL_PASSWORD"/>
             <networks>
                 <ip>::/0</ip>
             </networks>
@@ -67,6 +67,6 @@
                 <query>GRANT SELECT ON analytics_stage.*</query>
                 <query>GRANT SELECT ON analytics_prod.*</query>
             </grants>
-        </grafana>
+        </panel>
     </users>
 </clickhouse>

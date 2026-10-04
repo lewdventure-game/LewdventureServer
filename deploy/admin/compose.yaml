@@ -21,6 +21,7 @@ services:
       edge:
         aliases:
           - lewdventure-admin
+      analytics: {}
     deploy:
       resources:
         limits:
@@ -36,6 +37,9 @@ networks:
   edge:
     external: true
     name: lewdventure-edge
+  analytics:
+    external: true
+    name: lewdventure-analytics
 
 volumes:
   admin-data: {}

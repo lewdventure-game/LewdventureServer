@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Server.Admin.Analytics;
 using Server.Admin.Backend;
 using Server.Admin.Backend.Models;
 
@@ -6,9 +7,16 @@ namespace Server.Admin.Pages.Experiments
 {
     internal sealed class DetailsModel : AdminPageModel
     {
-        public DetailsModel(AdminAuditLog auditLog, AdminEnvironmentSelector environmentSelector, GameAdminClient gameAdminClient)
+        private readonly AnalyticsReportService _analyticsReportService;
+
+        public DetailsModel(
+            AdminAuditLog auditLog,
+            AdminEnvironmentSelector environmentSelector,
+            GameAdminClient gameAdminClient,
+            AnalyticsReportService analyticsReportService)
             : base(auditLog, environmentSelector, gameAdminClient)
         {
+            _analyticsReportService = analyticsReportService;
         }
 
         public ExperimentModel? Experiment { get; private set; }
@@ -16,6 +24,10 @@ namespace Server.Admin.Pages.Experiments
         public List<ExperimentChangeModel> Changes { get; private set; } = new();
 
         public string MasterVersion { get; private set; } = string.Empty;
+
+        public List<ExperimentGroupStats> Stats { get; private set; } = new();
+
+        public List<string> StatsErrors { get; } = new();
 
         public async Task OnGetAsync(string? id)
         {
@@ -35,6 +47,9 @@ namespace Server.Admin.Pages.Experiments
 
             if (changes != null)
                 Changes = changes;
+
+            if (Experiment != null && Experiment.Status != "draft")
+                Stats = await _analyticsReportService.BuildExperimentStatsAsync(CurrentEnvironment, Experiment.Id, StatsErrors, HttpContext.RequestAborted);
         }
 
         public async Task<IActionResult> OnPostStartAsync(string id, string? reason)

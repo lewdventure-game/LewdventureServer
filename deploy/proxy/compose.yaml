@@ -18,7 +18,6 @@ services:
       - caddy-config:/config
     networks:
       - edge
-      - grafana
     logging:
       driver: json-file
       options:
@@ -29,9 +28,6 @@ networks:
   edge:
     external: true
     name: lewdventure-edge
-  grafana:
-    external: true
-    name: lewdventure-grafana
 
 volumes:
   caddy-data: {}

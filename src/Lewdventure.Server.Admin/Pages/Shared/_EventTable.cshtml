@@ -1,0 +1,25 @@
+@model List<Server.Admin.Analytics.EventRow>
+@if (Model.Count == 0)
+{
+    <p class="muted">Событий нет.</p>
+}
+else
+{
+    <table class="table compact events">
+        <thead><tr><th>Когда (UTC)</th><th>Событие</th><th>Игрок</th><th>Страна</th><th>Группа</th><th>Откуда</th><th>Свойства</th></tr></thead>
+        <tbody>
+        @foreach (var row in Model)
+        {
+            <tr>
+                <td class="nowrap">@row.Time.ToString("dd.MM HH:mm:ss")</td>
+                <td>@row.EventType</td>
+                <td><a href="/Players?userId=@Uri.EscapeDataString(row.UserId)" title="@row.UserId">@(row.UserId.Length <= 12 ? row.UserId : row.UserId.Substring(0, 12) + "…")</a></td>
+                <td>@row.Country</td>
+                <td>@row.Experiment</td>
+                <td>@(row.Source == "server" ? "сервер" : "клиент")</td>
+                <td><code class="props">@row.Properties</code></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
