@@ -39,7 +39,7 @@ Bearer-токен игрока, лимит игрока по частоте, т�
 
 Ответ `202`: `{accepted, rejected, dropped, stored, errors}`. `rejected` — не прошли проверку (первые 10 причин в `errors`), повторять их не нужно. `dropped` — очередь сервера переполнена, такие события можно отправить снова. `stored=false` — аналитика на окружении выключена, события не сохраняются.
 
-Клиенту стоит: копить события в очереди с сохранением на диск, слать пачкой раз в 15–30 секунд и при сворачивании, при 429/5xx/сети повторять с backoff, при 400 не повторять.
+Что и как делать клиенту — [client-analytics.md](client-analytics.md). Коротко: копить события в очереди с сохранением на диск, слать пачкой раз в 15–30 секунд и при сворачивании, при 429/5xx/сети повторять с backoff, при 400 не повторять.
 
 ## Что дописывает сервер
 
@@ -59,6 +59,7 @@ Bearer-токен игрока, лимит игрока по частоте, т�
 | `account_created` | создан аккаунт устройства | `client_version` |
 | `experiment_assigned` | игрок попал в группу | `experiment_id`, `group_id`, `new_player` |
 | `run_started` | старт забега | `run_id`, `story_level_id`, `stages` |
+| `battle_finished` | бой внутри забега | `run_id`, `story_level_id`, `stage_index`, `stage_id`, `event_id`, `outcome`, `steps`, `health_before` |
 | `run_finished` | забег закончен | `run_id`, `story_level_id`, `status` (`completed`, `failed`, `abandoned`), `stage_index`, `stages`, `experience_level`, `perks`, `duration_seconds` |
 
 ## Хранение

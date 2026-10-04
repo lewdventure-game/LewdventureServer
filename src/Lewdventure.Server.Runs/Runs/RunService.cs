@@ -402,6 +402,8 @@ namespace Server.Runs
                 BattleStepCount = script.Steps.Count,
             };
 
+            _runAnalytics.TrackBattleFinished(run, stage.StageId, storyEvent.Id, script.OutcomeType.ToString(), script.Steps.Count);
+
             if (script.OutcomeType != OutcomeType.TeamAWin)
             {
                 run.Status = RunDocument.FailedStatus;

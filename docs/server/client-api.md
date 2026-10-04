@@ -428,3 +428,4 @@
 - [Battle Core in Unity](battle-core-in-unity.md) — подключение DLL ядра
 - [Runs](runs.md) — серверное состояние забега
 - [Player State](player-state.md) — модель профиля и идемпотентность
+- [Client Analytics](client-analytics.md) — отправка событий аналитики и конфиги под A/B
