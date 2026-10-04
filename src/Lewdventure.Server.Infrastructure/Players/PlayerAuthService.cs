@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Server.Infrastructure.Analytics;
 using Server.Infrastructure.Experiments;
 using Server.Infrastructure.Mongo.Players;
 
@@ -13,6 +14,7 @@ namespace Server.Infrastructure.Players
         private readonly ExperimentAssignmentService _experimentAssignmentService;
         private readonly ILogger<PlayerAuthService> _logger;
         private readonly AuthOptions _options;
+        private readonly PlayerAnalytics _playerAnalytics;
         private readonly TimeProvider _timeProvider;
         private readonly TokenGenerator _tokenGenerator;
         private readonly UserRepository _userRepository;
@@ -21,6 +23,7 @@ namespace Server.Infrastructure.Players
             ExperimentAssignmentService experimentAssignmentService,
             ILogger<PlayerAuthService> logger,
             IOptions<AuthOptions> options,
+            PlayerAnalytics playerAnalytics,
             TimeProvider timeProvider,
             TokenGenerator tokenGenerator,
             UserRepository userRepository)
@@ -28,6 +31,7 @@ namespace Server.Infrastructure.Players
             _experimentAssignmentService = experimentAssignmentService;
             _logger = logger;
             _options = options.Value;
+            _playerAnalytics = playerAnalytics;
             _timeProvider = timeProvider;
             _tokenGenerator = tokenGenerator;
             _userRepository = userRepository;
@@ -53,6 +57,7 @@ namespace Server.Infrastructure.Players
 
                 await _userRepository.InsertAsync(user, cancellationToken);
                 _logger.LogInformation("[Auth] account created userId = {UserId}", user.Id);
+                _playerAnalytics.TrackAccountCreated(user.Id, country, clientVersion);
             }
 
             if (string.Equals(user.Status, UserDocument.ActiveStatus, StringComparison.Ordinal) == false)

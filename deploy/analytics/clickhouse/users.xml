@@ -1,0 +1,72 @@
+<clickhouse>
+    <profiles>
+        <ingest>
+            <max_memory_usage>536870912</max_memory_usage>
+        </ingest>
+        <reader>
+            <readonly>2</readonly>
+            <max_memory_usage>1073741824</max_memory_usage>
+            <max_execution_time>60</max_execution_time>
+            <max_result_rows>1000000</max_result_rows>
+            <result_overflow_mode>break</result_overflow_mode>
+        </reader>
+    </profiles>
+    <users>
+        <default remove="remove"/>
+        <admin>
+            <password from_env="CLICKHOUSE_ADMIN_PASSWORD"/>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+            <access_management>1</access_management>
+        </admin>
+        <ingest_dev>
+            <password from_env="CLICKHOUSE_INGEST_DEV_PASSWORD"/>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>ingest</profile>
+            <quota>default</quota>
+            <grants>
+                <query>GRANT INSERT ON analytics_dev.events</query>
+            </grants>
+        </ingest_dev>
+        <ingest_stage>
+            <password from_env="CLICKHOUSE_INGEST_STAGE_PASSWORD"/>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>ingest</profile>
+            <quota>default</quota>
+            <grants>
+                <query>GRANT INSERT ON analytics_stage.events</query>
+            </grants>
+        </ingest_stage>
+        <ingest_prod>
+            <password from_env="CLICKHOUSE_INGEST_PROD_PASSWORD"/>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>ingest</profile>
+            <quota>default</quota>
+            <grants>
+                <query>GRANT INSERT ON analytics_prod.events</query>
+            </grants>
+        </ingest_prod>
+        <grafana>
+            <password from_env="CLICKHOUSE_GRAFANA_PASSWORD"/>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>reader</profile>
+            <quota>default</quota>
+            <grants>
+                <query>GRANT SELECT ON analytics_dev.*</query>
+                <query>GRANT SELECT ON analytics_stage.*</query>
+                <query>GRANT SELECT ON analytics_prod.*</query>
+            </grants>
+        </grafana>
+    </users>
+</clickhouse>

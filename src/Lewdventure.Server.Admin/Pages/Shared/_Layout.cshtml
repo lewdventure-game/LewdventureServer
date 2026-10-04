@@ -23,6 +23,7 @@
             <a href="/Experiments" class="@(path.StartsWith("/Experiments") ? "active" : string.Empty)">Эксперименты</a>
             <a href="/Configs" class="@(path.StartsWith("/Configs") ? "active" : string.Empty)">Конфиги</a>
             <a href="/Players" class="@(path.StartsWith("/Players") ? "active" : string.Empty)">Игроки</a>
+            <a href="/grafana/" target="_blank" rel="noopener">Аналитика</a>
         </nav>
         <div class="envs">
             @foreach (var name in environments)

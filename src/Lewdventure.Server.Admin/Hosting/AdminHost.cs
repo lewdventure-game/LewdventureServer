@@ -126,6 +126,7 @@ namespace Server.Admin.Hosting
             application.UseAuthentication();
             application.UseAuthorization();
             application.MapGet("/health", () => Results.Text("ok")).AllowAnonymous();
+            new GrafanaAuthEndpoint().Map(application);
             application.MapRazorPages();
         }
     }

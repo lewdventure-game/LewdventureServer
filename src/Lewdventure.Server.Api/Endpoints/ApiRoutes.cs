@@ -12,6 +12,7 @@ namespace Server.Api.Endpoints
         public const string ConfigBundle = "/api/config/bundle";
         public const string AuthDevice = "/api/auth/device";
         public const string AuthRefresh = "/api/auth/refresh";
+        public const string AnalyticsEvents = "/api/analytics/events";
         public const string PlayerProfile = "/api/player/profile";
         public const string PlayerLoadout = "/api/player/loadout";
         public const string PlayerCharacteristics = "/api/player/characteristics";

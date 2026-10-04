@@ -39,6 +39,18 @@ namespace Server.Infrastructure.Mongo.Players
                 .FirstOrDefaultAsync(cancellationToken);
         }
 
+        public async Task<UserDocument?> GetAnalyticsProjectionAsync(string userId, CancellationToken cancellationToken)
+        {
+            var projection = Builders<UserDocument>.Projection
+                .Include(item => item.Experiment)
+                .Include(item => item.LastCountry);
+
+            return await Collection
+                .Find(Builders<UserDocument>.Filter.Eq(item => item.Id, userId))
+                .Project<UserDocument>(projection)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
         public async Task<bool> UpdateExperimentAsync(
             string userId,
             UserExperimentDocument? expected,

@@ -13,6 +13,7 @@ services:
       edge:
         aliases:
           - lewdventure-${DEPLOY_ENVIRONMENT:?}-api
+      analytics: {}
 
   mongo:
     environment:
@@ -38,3 +39,6 @@ networks:
   edge:
     external: true
     name: lewdventure-edge
+  analytics:
+    external: true
+    name: lewdventure-analytics

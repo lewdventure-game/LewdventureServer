@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Server.Battles;
 using Server.Bonuses;
+using Server.Infrastructure.Analytics;
 using Server.Infrastructure.Mongo.Runs;
 using Server.Infrastructure.Players;
 
@@ -20,6 +21,7 @@ namespace Server.Infrastructure.Mongo.Players
             services.AddSingleton<IMongoIndexContributor>(ResolveLedgerRepository);
             services.AddSingleton<IMongoIndexContributor>(ResolveIdempotencyRepository);
             services.AddSingleton<IMongoIndexContributor>(ResolveRunRepository);
+            services.AddSingleton<PlayerAnalytics>();
             services.AddSingleton<PlayerConfigVersionResolver>();
             services.AddSingleton<PlayerAuthService>();
             services.AddSingleton<PlayerProfileService>();

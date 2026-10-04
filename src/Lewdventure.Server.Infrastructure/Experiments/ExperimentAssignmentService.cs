@@ -1,3 +1,4 @@
+using Server.Infrastructure.Analytics;
 using Server.Infrastructure.Mongo.Players;
 
 namespace Server.Infrastructure.Experiments
@@ -7,17 +8,20 @@ namespace Server.Infrastructure.Experiments
         private readonly ExperimentGroupPicker _experimentGroupPicker;
         private readonly ExperimentRegistry _experimentRegistry;
         private readonly ILogger<ExperimentAssignmentService> _logger;
+        private readonly PlayerAnalytics _playerAnalytics;
         private readonly UserRepository _userRepository;
 
         public ExperimentAssignmentService(
             ExperimentGroupPicker experimentGroupPicker,
             ExperimentRegistry experimentRegistry,
             ILogger<ExperimentAssignmentService> logger,
+            PlayerAnalytics playerAnalytics,
             UserRepository userRepository)
         {
             _experimentGroupPicker = experimentGroupPicker;
             _experimentRegistry = experimentRegistry;
             _logger = logger;
+            _playerAnalytics = playerAnalytics;
             _userRepository = userRepository;
         }
 
@@ -55,6 +59,7 @@ namespace Server.Infrastructure.Experiments
             if (assignment != null)
             {
                 user.Experiment = assignment;
+                _playerAnalytics.TrackExperimentAssigned(user.Id, assignment, isNewPlayer);
                 _logger.LogInformation("[Experiment] assigned userId = {UserId} experiment = {ExperimentId} group = {GroupId} country = {Country} newPlayer = {NewPlayer}", user.Id, assignment.ExperimentId, assignment.GroupId, country, isNewPlayer);
             }
 

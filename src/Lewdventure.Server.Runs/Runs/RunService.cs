@@ -28,6 +28,7 @@ namespace Server.Runs
         private readonly PlayerProfileRepository _playerProfileRepository;
         private readonly PlayerProfileService _playerProfileService;
         private readonly PlayerRewardService _playerRewardService;
+        private readonly RunAnalytics _runAnalytics;
         private readonly RunEventKeys _runEventKeys;
         private readonly RunRandomFactory _runRandomFactory;
         private readonly RunRepository _runRepository;
@@ -48,6 +49,7 @@ namespace Server.Runs
             PlayerProfileRepository playerProfileRepository,
             PlayerProfileService playerProfileService,
             PlayerRewardService playerRewardService,
+            RunAnalytics runAnalytics,
             RunEventKeys runEventKeys,
             RunRandomFactory runRandomFactory,
             RunRepository runRepository,
@@ -67,6 +69,7 @@ namespace Server.Runs
             _playerProfileRepository = playerProfileRepository;
             _playerProfileService = playerProfileService;
             _playerRewardService = playerRewardService;
+            _runAnalytics = runAnalytics;
             _runEventKeys = runEventKeys;
             _runRandomFactory = runRandomFactory;
             _runRepository = runRepository;
@@ -131,6 +134,7 @@ namespace Server.Runs
             if (await SetCurrentRunAsync(profile, run.Id, now, cancellationToken) == false)
                 return Conflict();
 
+            _runAnalytics.TrackStarted(run);
             _logger.LogInformation("[Run] started userId = {UserId} runId = {RunId} level = {Level} stages = {Stages} config = {Config}", userId, run.Id, storyLevelId, run.Stages.Count, run.ConfigVersion);
 
             return new RunOperationResult(run, null, false, new List<string>());
@@ -202,6 +206,7 @@ namespace Server.Runs
                 return Conflict();
 
             await ClearCurrentRunAsync(userId, run.Id, cancellationToken);
+            _runAnalytics.TrackFinished(run);
             _logger.LogInformation("[Run] abandoned userId = {UserId} runId = {RunId} stage = {Stage}", userId, run.Id, run.StageIndex);
 
             return new RunOperationResult(run, null, false, new List<string>());
@@ -406,6 +411,7 @@ namespace Server.Runs
                     return Conflict();
 
                 await ClearCurrentRunAsync(userId, run.Id, cancellationToken);
+                _runAnalytics.TrackFinished(run);
                 _logger.LogInformation("[Run] failed userId = {UserId} runId = {RunId} stage = {Stage} outcome = {Outcome}", userId, run.Id, run.StageIndex, script.OutcomeType);
 
                 return new RunOperationResult(run, outcome, false, new List<string>());
@@ -462,6 +468,7 @@ namespace Server.Runs
 
                 if (await _playerProfileRepository.ReplaceAsync(profile, expectedRev, cancellationToken))
                 {
+                    _runAnalytics.TrackFinished(run);
                     _logger.LogInformation("[Run] completed userId = {UserId} runId = {RunId} level = {Level}", run.UserId, run.Id, run.StoryLevelId);
 
                     var outcome = new RunStepOutcome { RunCompleted = true, EventType = "completed" };

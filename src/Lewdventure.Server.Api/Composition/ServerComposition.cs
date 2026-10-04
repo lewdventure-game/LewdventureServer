@@ -41,6 +41,7 @@ namespace Server.Api.Composition
 
             new SecurityRegistrar(_configuration).Register(services);
             new AlertsRegistrar(_configuration).Register(services);
+            new AnalyticsRegistrar(_configuration).Register(services);
             new BattleServicesRegistrar().Register(services);
 
             services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JObjectJsonConverter()));

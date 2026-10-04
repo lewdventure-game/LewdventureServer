@@ -69,6 +69,7 @@ fi
 PREVIOUS="$(current_tag)"
 
 docker network inspect lewdventure-edge >/dev/null 2>&1 || docker network create lewdventure-edge >/dev/null
+docker network inspect lewdventure-analytics >/dev/null 2>&1 || docker network create lewdventure-analytics >/dev/null
 mkdir -p "$COMPOSE_DIR/transfer"
 
 export IMAGE_TAG="$TARGET"

@@ -6,6 +6,7 @@ namespace Server.Runs
     {
         public void Register(IServiceCollection services)
         {
+            services.AddSingleton<RunAnalytics>();
             services.AddSingleton<RunEventKeys>();
             services.AddSingleton<RunRandomFactory>();
             services.AddSingleton<RunSnapshotBuilder>();

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Server.Infrastructure.Analytics;
 using Server.Infrastructure.Mongo.Experiments;
 using Server.Infrastructure.Mongo.Players;
 using Server.Infrastructure.Players;
@@ -17,6 +18,8 @@ namespace Tests.Integration.Mongo
                 RefreshTokenDays = 90,
             }));
             services.AddSingleton(TimeProvider.System);
+            services.AddSingleton<AnalyticsRowFactory>();
+            services.AddSingleton<IAnalyticsSink, NullAnalyticsSink>();
 
             new PlayerStoreRegistrar().Register(services);
             new ExperimentStoreRegistrar().Register(services);

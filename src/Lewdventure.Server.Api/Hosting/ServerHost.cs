@@ -122,6 +122,7 @@ namespace Server.Api.Hosting
             new AuthEndpoints().Map(application);
             new PlayerEndpoints().Map(application);
             new RunEndpoints().Map(application);
+            new AnalyticsEndpoints().Map(application);
             new BattleEndpoints().Map(application);
             new HealthEndpoints(serverOptions).Map(application);
         }

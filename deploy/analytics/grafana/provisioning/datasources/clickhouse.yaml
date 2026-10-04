@@ -1,0 +1,16 @@
+apiVersion: 1
+
+datasources:
+  - name: ClickHouse
+    uid: clickhouse
+    type: grafana-clickhouse-datasource
+    isDefault: true
+    editable: false
+    jsonData:
+      host: lewdventure-clickhouse
+      port: 8123
+      protocol: http
+      username: grafana
+      defaultDatabase: analytics_dev
+    secureJsonData:
+      password: $CLICKHOUSE_GRAFANA_PASSWORD
