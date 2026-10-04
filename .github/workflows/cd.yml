@@ -87,16 +87,38 @@ jobs:
           sbom: true
           cache-from: type=gha,scope=lewdventure
 
+      - name: build and push admin
+        id: admin
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          target: admin
+          push: true
+          tags: ${{ steps.meta.outputs.registry }}/lewdventure-admin:${{ steps.meta.outputs.image_tag }}
+          build-args: |
+            SOURCE_REVISION=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
+            org.opencontainers.image.title=lewdventure-admin
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=lewdventure
+
       - name: summary
         env:
           IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
           API_DIGEST: ${{ steps.api.outputs.digest }}
           TOOL_DIGEST: ${{ steps.tool.outputs.digest }}
+          ADMIN_DIGEST: ${{ steps.admin.outputs.digest }}
         run: |
           {
             echo "### Images"
             echo "- \`lewdventure-server:$IMAGE_TAG\` \`$API_DIGEST\`"
             echo "- \`lewdventure-config-tool:$IMAGE_TAG\` \`$TOOL_DIGEST\`"
+            echo "- \`lewdventure-admin:$IMAGE_TAG\` \`$ADMIN_DIGEST\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-dev:
