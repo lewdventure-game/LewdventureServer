@@ -8,7 +8,7 @@
 | [configuration.md](configuration.md) | разработчик, эксплуатация | все ключи конфигурации и переменные окружения |
 | [vps-bootstrap.md](vps-bootstrap.md) | владелец | подготовка VPS, Caddy, GitHub Environments, первый деплой |
 | [admin-panel.md](admin-panel.md) | владелец, команда | веб-админка: роли, аккаунты, развёртывание, выкладка без push |
-| [analytics-stack.md](analytics-stack.md) | владелец | ClickHouse и Grafana: пользователи, вход через админку, обслуживание, перенос |
+| [analytics-stack.md](analytics-stack.md) | владелец | ClickHouse: пользователи, доступ админки, обслуживание, перенос |
 | [deploy-and-rollback.md](deploy-and-rollback.md) | разработчик, владелец | workflows, деплой, promote, откат, диагностика |
 | [config-publish.md](config-publish.md) | геймдизайнер, владелец | публикация конфигов из таблицы, перенос в prod, откат конфигов |
 | [secrets-rotation.md](secrets-rotation.md) | владелец | где лежат секреты и как их менять |

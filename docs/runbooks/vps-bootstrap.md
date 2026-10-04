@@ -119,7 +119,6 @@ sudo systemctl enable --now lewdventure-cloudflare-firewall.timer
 ```bash
 cd /opt/lewdventure/proxy
 docker network create lewdventure-edge
-docker network create lewdventure-grafana
 docker compose up -d
 ```
 

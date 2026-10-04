@@ -96,12 +96,6 @@
             </table>
         </section>
     </div>
-    <h2>События игрока</h2>
-    @foreach (var error in Model.EventErrors)
-    {
-        <div class="alert alert-error">@error</div>
-    }
-    <partial name="_EventTable" model="Model.Events" />
     <h2>Журнал выдач и трат</h2>
     <table class="table">
         <thead><tr><th>Когда</th><th>Действие</th><th>Источник</th><th>Изменения</th></tr></thead>
@@ -132,4 +126,13 @@
             </form>
         </section>
     }
+}
+@if (Model.UserId.Length != 0)
+{
+    <h2>События игрока</h2>
+    @foreach (var error in Model.EventErrors)
+    {
+        <div class="alert alert-error">@error</div>
+    }
+    <partial name="_EventTable" model="Model.Events" />
 }

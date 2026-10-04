@@ -2,7 +2,7 @@
 
 # Аналитика
 
-Своя площадка: клиент шлёт события на игровой сервер, сервер дописывает к ним контекст игрока и пачками пишет в ClickHouse; смотрим в Grafana (`https://admin.lewdventure.online/grafana/`, вход через админку). Формат событий повторяет Isekai (Amplitude HTTP v2): `event_type`, `time`, `event_properties`, `user_properties`, `session_id`, `insert_id`.
+Своя площадка: клиент шлёт события на игровой сервер, сервер дописывает к ним контекст игрока и пачками пишет в ClickHouse; смотрим в разделе «Аналитика» веб-админки (`https://admin.lewdventure.online/Analytics`). Формат событий повторяет Isekai (Amplitude HTTP v2): `event_type`, `time`, `event_properties`, `user_properties`, `session_id`, `insert_id`.
 
 ## Приём: `POST /api/analytics/events`
 
@@ -80,6 +80,6 @@ Bearer-токен игрока, лимит игрока по частоте, т�
 
 Без Mongo или с `Enabled=false` эндпоинт принимает события и отвечает `stored=false`.
 
-## Дашборд
+## Где смотреть
 
-Grafana, папка Lewdventure, «Lewdventure: обзор», переменная «Окружение»: DAU, новые аккаунты по странам, события по типам, итоги забегов, сравнение групп экспериментов (игроки, события на игрока, забеги, средний достигнутый этап), удержание D1/D3/D7 по группам, последние события. Дашборд можно править в UI, исходник — `deploy/analytics/grafana/dashboards/overview.json`.
+Веб-админка, раздел «Аналитика»: обзор с готовыми графиками и конструктор отчётов; сравнение групп — в карточке эксперимента, события игрока — в карточке игрока. Как пользоваться — [runbooks/admin-panel.md](../runbooks/admin-panel.md#аналитика).
