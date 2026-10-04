@@ -5,6 +5,7 @@ using System.Text;
 using Newtonsoft.Json;
 using Server.Battles;
 using Server.Logging;
+using Server.Shared;
 using UnityEngine;
 
 namespace Cheats.BattleParity
@@ -56,7 +57,7 @@ namespace Cheats.BattleParity
             var expectedVersion = File.ReadAllText(Path.Combine(kitDirectory, "config-version.txt")).Trim();
             var bundleJson = File.ReadAllText(Path.Combine(kitDirectory, "ConfigBundle.json"));
             var rollTrace = new BattleRollTrace();
-            var result = new BattleCoreFactory().CreateFromBundle(bundleJson, _coreLog, rollTrace);
+            var result = new SharedCoreFactory().CreateFromBundle(bundleJson, _coreLog, rollTrace);
 
             if (result.Succeeded == false)
             {
@@ -88,7 +89,7 @@ namespace Cheats.BattleParity
 
                 checkedCount += 1;
 
-                if (CheckCase(result.BattleCore, rollTrace, serializerSettings, kitDirectory, caseName) == false)
+                if (CheckCase(result.SharedCore.Battle, rollTrace, serializerSettings, kitDirectory, caseName) == false)
                     failed += 1;
             }
 

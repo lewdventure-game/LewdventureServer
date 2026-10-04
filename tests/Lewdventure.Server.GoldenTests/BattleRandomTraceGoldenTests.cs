@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using Server.Battles;
 using Server.GameConfigs;
 using Server.Services;
+using Server.Shared;
 using Tests.Golden.Infrastructure;
 
 namespace Tests.Golden
@@ -81,7 +82,7 @@ namespace Tests.Golden
                 domains.Add(new CoreConfigDomain(snapshot.Domains[i].Domain, snapshot.Domains[i].RowsJson));
 
             var clientTrace = new BattleRollTrace();
-            var result = new BattleCoreFactory().CreateFromDomains(domains, new SilentCoreLog(), clientTrace);
+            var result = new SharedCoreFactory().CreateFromDomains(domains, new SilentCoreLog(), clientTrace);
 
             Assert.That(result.Succeeded, Is.True, string.Join("; ", result.Errors));
 
@@ -89,7 +90,7 @@ namespace Tests.Golden
             var body = _host.RequestBuilder.BuildReplayBody(goldenCase.RequestText, Seed);
             var request = JsonConvert.DeserializeObject<BattleReplayData>(body, _serializerSettings)!;
 
-            result.BattleCore!.Replay(request);
+            result.SharedCore!.Battle.Replay(request);
 
             var expected = File.ReadAllText(Path.Combine(goldenCase.Directory, TraceFileName), _encoding);
 

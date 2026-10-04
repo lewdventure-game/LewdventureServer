@@ -1,4 +1,4 @@
-# Переносимое ядро боя в Unity
+# Общее ядро в Unity
 
 Клиент не считает бой сам и не повторяет формулы: он подключает те же сборки, что считают бой на сервере, и переигрывает бой по сиду. Один и тот же код даёт те же числа, поэтому расхождений между сервером и клиентом быть не может.
 
@@ -10,7 +10,7 @@
 | --- | --- |
 | `Lewdventure.Server.Contracts.dll` | модели протокола боя: `BattleReplayData`, `BattleSimulationData`, `UnitSnapshot`, `BattleStep`, `BattleCommand`, `CommandType`, `OutcomeType` |
 | `Lewdventure.Server.GameConfig.dll` | чтение конфигов: `IConfigDistributor` и мапперы персонажей, мобов, саммонов, экипировки, перков, статусов, скиллов, сюжета; enum'ы `PerkType`, `StatusType`, `BonusType`, `RarityType` |
-| `Lewdventure.Server.Battle.dll` | симулятор боя и публичный фасад `BattleCoreFactory` / `IBattleCore` |
+| `Lewdventure.Server.Battle.dll` | симулятор боя и публичный фасад `SharedCoreFactory` / `ISharedCore` / `IBattleCore` |
 
 Внешняя зависимость одна — `Newtonsoft.Json` (в Unity это пакет `com.unity.nuget.newtonsoft-json`). ASP.NET, Mongo, Google, контейнера внедрения зависимостей и логгера Microsoft в ядре нет.
 
@@ -22,20 +22,33 @@ bash deploy/scripts/build-unity-core.sh
 
 Результат ложится в `out/unity-core`: три DLL, `link.xml`, `UnityCoreLog.cs`, `README.md` и `VERSION.txt` (коммит, дата сборки, `protocolVersion`, версия Newtonsoft). DLL и `link.xml` — в `Assets/Plugins/BattleCore`, `UnityCoreLog.cs` — в `Assets/Scripts/Core/Common` (там же, где создаётся ядро: источник конфигов `IConfigSource` внутренний для сборки `Core`; файлы из `Plugins` попадают в отдельную сборку, которую asmdef'ы клиента не видят).
 
+## Устройство фасада
+
+Фабрика возвращает общее ядро `ISharedCore` (namespace `Server.Shared`) — то, что клиент и сервер делят между собой: версия конфигов, чтение конфигов и бой.
+
+| Член | Тип | Для чего |
+| --- | --- | --- |
+| `ConfigVersion` | `string` | версия снапшота конфигов, сверяется с `configVersion` забега |
+| `Configs` | `IConfigDistributor` | read-model всех листов: арты, редкости, перки, статусы, сюжет |
+| `Battle` | `IBattleCore` | бой: `Simulate`, `Replay`, `TryValidate`, `ComputeDigest`, `BuildCharacteristics` |
+
+`IBattleCore` (namespace `Server.Battles`) отвечает только за бой и расчёт характеристик и про конфиги не знает. Потребителям, которым нужны только таблицы (сюжет, перки, визуал), достаточно `ISharedCore.Configs`; бой берут из `ISharedCore.Battle`.
+
 ## Первый запуск: три строки
 
 ```csharp
 var coreLog = new UnityCoreLog();
-var result = new BattleCoreFactory().CreateFromBundle(bundleJson, coreLog);
+var result = new SharedCoreFactory().CreateFromBundle(bundleJson, coreLog);
 
 if (result.Succeeded == false)
 {
-    Debug.LogError($"[BattleCore] configs rejected: {string.Join("; ", result.Errors)}");
+    Debug.LogError($"[SharedCore] configs rejected: {string.Join("; ", result.Errors)}");
 
     return;
 }
 
-var battleCore = result.BattleCore;
+var sharedCore = result.SharedCore;
+var battleCore = sharedCore.Battle;
 ```
 
 `bundleJson` — это тело `GET /api/config/bundle`: фасад читает формат `{"Configs":[{"Name":"Constants","Content":"[...]"}]}` сам и игнорирует лишние поля вроде `Version`. Если конфиги приходят другим путём, есть `CreateFromDomains(IReadOnlyList<CoreConfigDomain>, ICoreLog)`, где `CoreConfigDomain` — имя листа плюс JSON строк.
@@ -107,7 +120,7 @@ for (int i = 0; i < script.Steps.Count; i++)
 
 ```csharp
 if (battleCore.TryValidate(simulationData, out var error) == false)
-    Debug.LogError($"[BattleCore] {error}");
+    Debug.LogError($"[SharedCore] {error}");
 ```
 
 ## Режим сида: сервер присылает вход, клиент считает бой
@@ -120,7 +133,7 @@ var script = battleCore.Replay(step.BattleInput);
 
 if (battleCore.ComputeDigest(script) != step.BattleDigest)
 {
-    Debug.LogError("[BattleCore] parity mismatch, показываем бой по серверному скрипту");
+    Debug.LogError("[SharedCore] parity mismatch, показываем бой по серверному скрипту");
 
     return;
 }
@@ -150,18 +163,18 @@ critLabel.text = characteristics.CriticalChance.ToString("P0");
 ## Конфиги для визуала
 
 ```csharp
-if (battleCore.Configs.Characters.TryGet(characterId, out var characterMapper))
+if (sharedCore.Configs.Characters.TryGet(characterId, out var characterMapper))
     portrait.Load(characterMapper.ArtName);
 
-if (battleCore.Configs.Enemies.TryGet(enemyId, out var enemyMapper))
+if (sharedCore.Configs.Enemies.TryGet(enemyId, out var enemyMapper))
     enemyView.Load(enemyMapper.SkinName);
 ```
 
-Через `battleCore.Configs` доступны все мапперы: персонажи, мобы, саммоны и их уровни, мастерство, экипировка, перки и группы перков, статусы, скиллы, сюжетные уровни, этапы и события, константы, бонусы, паттерны опыта. Enum'ы `PerkType`, `StatusType`, `BonusType`, `BonusOperatorType`, `RarityType` берутся оттуда же — их больше не нужно дублировать в клиенте вручную.
+Через `sharedCore.Configs` доступны все мапперы: персонажи, мобы, саммоны и их уровни, мастерство, экипировка, перки и группы перков, статусы, скиллы, сюжетные уровни, этапы и события, константы, бонусы, паттерны опыта. Enum'ы `PerkType`, `StatusType`, `BonusType`, `BonusOperatorType`, `RarityType` берутся оттуда же — их больше не нужно дублировать в клиенте вручную.
 
 ## Версия конфигов
 
-`battleCore.ConfigVersion` считается тем же алгоритмом, что версия снапшота на сервере: sha256 по именам листов и строкам. Если клиентский бандл собран из той же таблицы, версия совпадёт с той, что отдаёт `GET /api/config/status`. Разошлись версии — клиент играет на других данных, и это видно до боя, а не по странному урону.
+`sharedCore.ConfigVersion` считается тем же алгоритмом, что версия снапшота на сервере: sha256 по именам листов и строкам. Если клиентский бандл собран из той же таблицы, версия совпадёт с той, что отдаёт `GET /api/config/status`. Разошлись версии — клиент играет на других данных, и это видно до боя, а не по странному урону.
 
 ## IL2CPP
 
@@ -193,7 +206,7 @@ dotnet test tests/Lewdventure.Server.GoldenTests -c Release --filter ParityKitEx
 6. Отчёт пишется в `Application.persistentDataPath/parity-report.txt` (на Windows это `%USERPROFILE%/AppData/LocalLow/<Company>/<Product>/parity-report.txt`), поэтому результат прогона в собранном плеере можно забрать файлом, а не из консоли. Полный лог плеера лежит рядом, в `Player.log`.
 6. Повторить в сборке IL2CPP, а не только в редакторе: стриппинг и рантайм там другие.
 
-Трассу на клиенте снимает публичный `BattleRollTrace`: он передаётся в `CreateFromBundle` и пишет строки в том же формате, что эталонные `*.rolls.txt` — `{номер} {имя броска} {биты float в hex}`. Формат считает ядро, разойтись он не может.
+Трассу на клиенте снимает публичный `BattleRollTrace`: он передаётся в `SharedCoreFactory.CreateFromBundle` и пишет строки в том же формате, что эталонные `*.rolls.txt` — `{номер} {имя броска} {биты float в hex}`. Формат считает ядро, разойтись он не может.
 
 ### Результат прогона 27 сентября 2026
 
@@ -212,7 +225,7 @@ dotnet test tests/Lewdventure.Server.GoldenTests -c Release --filter ParityKitEx
 
 ## Чем гарантируется совпадение
 
-- Эталоны: 60 кейсов проигрываются через публичный фасад и сравниваются с ответом HTTP-эндпоинта байт в байт (`BattleCoreFacadeGoldenTests`), плюс 436 обычных эталонов боя.
+- Эталоны: 60 кейсов проигрываются через публичный фасад и сравниваются с ответом HTTP-эндпоинта байт в байт (`SharedCoreFacadeGoldenTests`), плюс 436 обычных эталонов боя.
 - Числовая политика: тесты запрещают в боевом коде `Pow`, `Sqrt`, тригонометрию, `FusedMultiplyAdd`, `double`, обращения ко времени, `Guid` и зависимость от порядка обхода словарей.
 - Обе сборки (`net10.0` и `netstandard2.1`) собираются в CI на каждом коммите.
 
@@ -234,7 +247,7 @@ dotnet test tests/Lewdventure.Server.GoldenTests -c Release --filter ParityKitEx
 - `activeSkillIds` в снапшоте юнита сервер не заполняет: скиллы приходят из конфигов персонажа, мобов, саммонов и экипировки. Клиентский выбор скиллов сервер бы всё равно не принял.
 - Повторную выдачу закрывает `requestId` с TTL, конкурентную запись — `rev` профиля, историю — append-only ledger.
 
-Поэтому ядро в клиенте — это проигрыватель и калькулятор для UI. Отдельный интерфейс с реализацией «через API» писать не нужно: состояние игрока и наград клиент получает обычными HTTP-запросами, а `IBattleCore` отвечает только за показ боя и характеристик.
+Поэтому ядро в клиенте — это проигрыватель и калькулятор для UI. Отдельный интерфейс с реализацией «через API» писать не нужно: состояние игрока и наград клиент получает обычными HTTP-запросами, а `ISharedCore` отвечает только за конфиги, показ боя и характеристик.
 
 ## Версия Newtonsoft
 
@@ -244,6 +257,21 @@ dotnet test tests/Lewdventure.Server.GoldenTests -c Release --filter ParityKitEx
 
 ## Границы
 
-- Реализации внутри ядра остались `internal`: клиент работает через `IBattleCore`, `IConfigDistributor` и модели протокола. Расширять бой нужно на сервере, а не в клиенте — иначе расчёты разойдутся.
+- Реализации внутри ядра остались `internal`: клиент работает через `ISharedCore`, `IBattleCore`, `IConfigDistributor` и модели протокола. Расширять бой нужно на сервере, а не в клиенте — иначе расчёты разойдутся.
 - Граф сервисов боя собирается одним конструктором (`BattleComposition`), и сервер, и клиент получают одинаковый порядок фаз хода. Своего контейнера внедрения зависимостей ядру не нужно.
 - Бой синхронный: ни `async`, ни потоков внутри нет, `Replay` можно звать из корутины или из фонового потока.
+
+## Переход с `BattleCoreFactory` (2026-10-04)
+
+До 2026-10-04 фасад назывался `BattleCoreFactory` / `BattleCoreResult`, а `IBattleCore` держал и конфиги, и бой. Теперь конфиги и бой разведены. Старых типов в DLL нет, клиенту нужно обновить код вместе с DLL:
+
+| Было | Стало |
+| --- | --- |
+| `Server.Battles.BattleCoreFactory` | `Server.Shared.SharedCoreFactory` |
+| `Server.Battles.BattleCoreResult`, `result.BattleCore` | `Server.Shared.SharedCoreResult`, `result.SharedCore` |
+| `Server.Battles.CoreConfigDomain` | `Server.Shared.CoreConfigDomain` |
+| `battleCore.ConfigVersion` | `sharedCore.ConfigVersion` |
+| `battleCore.Configs` | `sharedCore.Configs` |
+| `battleCore.Replay / Simulate / TryValidate / ComputeDigest / BuildCharacteristics` | `sharedCore.Battle.Replay / ...` |
+
+Wire-протокол, `protocolVersion`, дайджесты и версии конфигов не изменились: это правка только публичного C# API ядра.

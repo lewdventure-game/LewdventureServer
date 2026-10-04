@@ -316,11 +316,11 @@ Handoff для ИИ (клиент целиком): [`gdd/10-client-battle-ai.md`
 Ядро отдаёт публичный фасад, поэтому клиенту не нужно ни знать внутренние типы, ни собирать граф сервисов:
 
 ```csharp
-var result = new BattleCoreFactory().CreateFromBundle(bundleJson, new UnityCoreLog());
-var script = result.BattleCore.Replay(replayData);
+var result = new SharedCoreFactory().CreateFromBundle(bundleJson, new UnityCoreLog());
+var script = result.SharedCore.Battle.Replay(replayData);
 ```
 
-`BattleCoreFactory` принимает тело `GET /api/config/bundle` как есть или список `CoreConfigDomain`, строит конфиги теми же парсерами и валидаторами, что сервер, и возвращает `IBattleCore`: `Simulate`, `Replay`, `TryValidate`, `BuildCharacteristics` для экранов персонажа и `Configs` — полный read-model конфигов для визуала (арты, редкости, перки, статусы, сюжет). Логирование идёт через `ICoreLog` (в ядре есть `SilentCoreLog`), сериализация — через `BattleJsonSettingsFactory`, те же настройки, что у сервера. Версия конфигов считается тем же sha256, что версия снапшота, поэтому бандл из `GET /api/config/bundle` даёт ядру ровно ту версию, которую забег пинит в `configVersion`.
+`SharedCoreFactory` принимает тело `GET /api/config/bundle` как есть или список `CoreConfigDomain`, строит конфиги теми же парсерами и валидаторами, что сервер, и возвращает `ISharedCore`: `ConfigVersion`, `Configs` — полный read-model конфигов для визуала (арты, редкости, перки, статусы, сюжет) и `Battle` (`IBattleCore`: `Simulate`, `Replay`, `TryValidate`, `ComputeDigest`, `BuildCharacteristics` для экранов персонажа). Логирование идёт через `ICoreLog` (в ядре есть `SilentCoreLog`), сериализация — через `BattleJsonSettingsFactory`, те же настройки, что у сервера. Версия конфигов считается тем же sha256, что версия снапшота, поэтому бандл из `GET /api/config/bundle` даёт ядру ровно ту версию, которую забег пинит в `configVersion`.
 
 Граф сервисов боя собирает `BattleComposition` — один конструктор на 28 объектов, без контейнера внедрения зависимостей. Сервер регистрирует в DI его же, поэтому порядок фаз хода и состав сервисов у клиента и сервера не могут разойтись. Остаётся клиентская часть: адаптер `ICoreLog` на `Debug.Log` и `link.xml` для IL2CPP — подробности и примеры в [Battle Core in Unity](battle-core-in-unity.md).
 

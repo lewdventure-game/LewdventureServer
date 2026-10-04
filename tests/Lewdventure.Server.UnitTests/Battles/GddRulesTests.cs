@@ -2,6 +2,7 @@ using Newtonsoft.Json.Linq;
 using Server.Battles;
 using Server.GameConfigs;
 using Server.Logging;
+using Server.Shared;
 using Tests.Unit.Api;
 
 namespace Tests.Unit.Battles
@@ -293,11 +294,11 @@ namespace Tests.Unit.Battles
 
         private IBattleCore CreateCore(IReadOnlyList<CoreConfigDomain> domains)
         {
-            var result = new BattleCoreFactory().CreateFromDomains(domains, new SilentCoreLog());
+            var result = new SharedCoreFactory().CreateFromDomains(domains, new SilentCoreLog());
 
             Assert.That(result.Errors, Is.Empty);
 
-            return result.BattleCore!;
+            return result.SharedCore!.Battle;
         }
 
         private List<CoreConfigDomain> ReplaceDomain(IReadOnlyList<CoreConfigDomain> domains, string domain, Action<JArray> patch)

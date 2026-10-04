@@ -13,12 +13,12 @@
 | --- | --- |
 | `Lewdventure.Server.Contracts` | модели протокола: `BattleReplayData`, `UnitSnapshot`, `BattleStep`, `BattleCommand`, `CommandType`, `OutcomeType` и `BattleJsonSettingsFactory` |
 | `Lewdventure.Server.GameConfig` | чтение конфигов: `IConfigDistributor` с мапперами персонажей, мобов, саммонов, экипировки, перков, статусов, скиллов, сюжета; enum'ы `PerkType`, `StatusType`, `BonusType`, `RarityType`; `ICoreLog`, `SilentCoreLog` |
-| `Lewdventure.Server.Battle` | симулятор и точка входа `BattleCoreFactory` / `IBattleCore` |
+| `Lewdventure.Server.Battle` | симулятор и точка входа `SharedCoreFactory` / `ISharedCore` / `IBattleCore` |
 
 ## Создать ядро один раз при старте
 
 ```csharp
-var result = new BattleCoreFactory().CreateFromBundle(bundleJson, new UnityCoreLog());
+var result = new SharedCoreFactory().CreateFromBundle(bundleJson, new UnityCoreLog());
 
 if (result.Succeeded == false)
 {
@@ -27,12 +27,13 @@ if (result.Succeeded == false)
     return;
 }
 
-var battleCore = result.BattleCore;
+var sharedCore = result.SharedCore;
+var battleCore = sharedCore.Battle;
 ```
 
 `bundleJson` — содержимое `Assets/Configs/Core/Json/ConfigBundle.json` как есть; в клиенте его отдаёт `LocalConfigSource.Load()`. `UnityCoreLog` идёт в поставке, писать ничего не нужно; в релизной сборке можно передать `new SilentCoreLog()` из DLL, чтобы бой не сыпал отладкой в консоль. `result.Warnings` стоит логировать: там те же предупреждения, что видит геймдизайнер при публикации конфигов.
 
-Проверить, что данные те же, что у сервера: `battleCore.ConfigVersion` сравнить с `configVersion` из ответа сервера.
+Проверить, что данные те же, что у сервера: `sharedCore.ConfigVersion` сравнить с `configVersion` из ответа сервера.
 
 ## Проиграть бой
 
@@ -57,7 +58,7 @@ foreach (var battleStep in script.Steps)
 ```csharp
 var characteristics = battleCore.BuildCharacteristics(unitSnapshot, BattleSide.Attacking, false, storyLevelId, stageId);
 
-if (battleCore.Configs.Characters.TryGet(characterId, out var characterMapper))
+if (sharedCore.Configs.Characters.TryGet(characterId, out var characterMapper))
     portrait.Load(characterMapper.ArtName);
 ```
 

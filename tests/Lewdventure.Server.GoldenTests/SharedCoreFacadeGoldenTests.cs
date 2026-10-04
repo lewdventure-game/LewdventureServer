@@ -3,19 +3,20 @@ using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Server.Battles;
 using Server.GameConfigs;
+using Server.Shared;
 using Tests.Golden.Infrastructure;
 
 namespace Tests.Golden
 {
     [TestFixture]
     [Category("Golden")]
-    public sealed class BattleCoreFacadeGoldenTests
+    public sealed class SharedCoreFacadeGoldenTests
     {
         private const ulong Seed = 42;
 
         private GoldenTestHost _host = null!;
         private readonly List<CoreConfigDomain> _domains = new();
-        private IBattleCore _battleCore = null!;
+        private ISharedCore _sharedCore = null!;
         private JsonSerializerSettings _serializerSettings = null!;
         private string _fixtureVersion = string.Empty;
 
@@ -36,12 +37,12 @@ namespace Tests.Golden
 
             _fixtureVersion = snapshot.Version;
 
-            var result = new BattleCoreFactory().CreateFromDomains(domains, new SilentCoreLog());
+            var result = new SharedCoreFactory().CreateFromDomains(domains, new SilentCoreLog());
 
             Assert.That(result.Errors, Is.Empty);
             Assert.That(result.Succeeded, Is.True);
 
-            _battleCore = result.BattleCore!;
+            _sharedCore = result.SharedCore!;
         }
 
         [OneTimeTearDown]
@@ -53,15 +54,15 @@ namespace Tests.Golden
         [Test]
         public void ConfigVersion_MatchesServerSnapshotVersion()
         {
-            Assert.That(_battleCore.ConfigVersion, Is.EqualTo(_fixtureVersion));
+            Assert.That(_sharedCore.ConfigVersion, Is.EqualTo(_fixtureVersion));
         }
 
         [Test]
         public void Configs_ExposeReadModelForVisuals()
         {
-            Assert.That(_battleCore.Configs.Characters.Collection.Count, Is.GreaterThan(0));
-            Assert.That(_battleCore.Configs.Enemies.Collection.Count, Is.GreaterThan(0));
-            Assert.That(_battleCore.Configs.Skills.Collection.Count, Is.GreaterThan(0));
+            Assert.That(_sharedCore.Configs.Characters.Collection.Count, Is.GreaterThan(0));
+            Assert.That(_sharedCore.Configs.Enemies.Collection.Count, Is.GreaterThan(0));
+            Assert.That(_sharedCore.Configs.Skills.Collection.Count, Is.GreaterThan(0));
         }
 
         [Test]
@@ -73,7 +74,7 @@ namespace Tests.Golden
                 entries.Add(new { Name = _domains[i].Domain, Content = _domains[i].RowsJson });
 
             var bundleJson = JsonConvert.SerializeObject(new { Configs = entries });
-            var result = new BattleCoreFactory().CreateFromBundle(bundleJson, new SilentCoreLog());
+            var result = new SharedCoreFactory().CreateFromBundle(bundleJson, new SilentCoreLog());
 
             Assert.That(result.Errors, Is.Empty);
             Assert.That(result.Succeeded, Is.True);
@@ -83,7 +84,7 @@ namespace Tests.Golden
         [Test]
         public void CreateFromBundle_WithBrokenJson_ReportsError()
         {
-            var result = new BattleCoreFactory().CreateFromBundle("{", new SilentCoreLog());
+            var result = new SharedCoreFactory().CreateFromBundle("{", new SilentCoreLog());
 
             Assert.That(result.Succeeded, Is.False);
             Assert.That(result.Errors, Has.Some.Contains("Config bundle parse failed"));
@@ -100,7 +101,7 @@ namespace Tests.Golden
 
             var body = _host.RequestBuilder.BuildReplayBody(goldenCase.RequestText, Seed);
             var request = JsonConvert.DeserializeObject<BattleReplayData>(body, _serializerSettings)!;
-            var response = _battleCore.Replay(request);
+            var response = _sharedCore.Battle.Replay(request);
             var actual = JsonConvert.SerializeObject(response, _serializerSettings);
 
             Assert.That(actual, Is.EqualTo(expected.Body));

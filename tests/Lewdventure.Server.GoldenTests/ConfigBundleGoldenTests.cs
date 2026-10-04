@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
-using Server.Battles;
 using Server.GameConfigs;
 using Server.Logging;
+using Server.Shared;
 using Tests.Golden.Infrastructure;
 
 namespace Tests.Golden
@@ -50,7 +50,7 @@ namespace Tests.Golden
         public async Task Bundle_BuildsCoreWithTheSameVersion()
         {
             var response = await _host.Client.GetAsync(GoldenHttpClient.ConfigBundlePath, string.Empty);
-            var result = new BattleCoreFactory().CreateFromBundle(response.Body, new SilentCoreLog());
+            var result = new SharedCoreFactory().CreateFromBundle(response.Body, new SilentCoreLog());
 
             Assert.That(result.Errors, Is.Empty);
             Assert.That(result.Succeeded, Is.True);

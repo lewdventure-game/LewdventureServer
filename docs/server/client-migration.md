@@ -166,7 +166,7 @@
 
 В `Game/Stories/Services` 30 файлов, меняются три: `StoryFactory` (раскладка уровня уходит), `StoryProgressService` (становится отображением серверных чисел), `EventLifecycleService` (событие приходит из `step`). Остальные — движение персонажа, локации, нарратив, экраны, вьюхи — остаются: они не решают числа.
 
-Инсталлеры: `IBattleCore` биндится там, где доступен источник конфигов, — в `Core/Installers/ConfigInstaller.cs` (`IConfigSource` внутренний для сборки `Core`).
+Инсталлеры: `ISharedCore` биндится там, где доступен источник конфигов, — в `Core/Installers/ConfigInstaller.cs` (`IConfigSource` внутренний для сборки `Core`).
 
 ### Остаётся клиентским
 

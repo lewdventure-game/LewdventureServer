@@ -30,20 +30,20 @@
 Ядру нужен **бандл конфигов с сервера**: `GET /api/config/bundle` (под игровым токеном) отдаёт активный снапшот ровно в том виде, из которого сервер сам собирает бой. Локальный `Assets/Configs/Core/Json/ConfigBundle.json` для ядра не подходит — у него другие имена доменов, значения уже типизированы парсерами клиента и состав колонок свой, поэтому `ConfigVersion` такого ядра никогда не совпадёт с `configVersion` забега, а половина доменов не прочитается. Подробнее — «Бандл конфигов» ниже.
 
 ```csharp
-Container.Bind<Server.Battles.IBattleCore>().FromMethod(CreateBattleCore).AsSingle();
+Container.Bind<Server.Shared.ISharedCore>().FromMethod(CreateSharedCore).AsSingle();
 
-private Server.Battles.IBattleCore CreateBattleCore(InjectContext context)
+private Server.Shared.ISharedCore CreateSharedCore(InjectContext context)
 {
     var bundleJson = context.Container.Resolve<IServerConfigBundleCache>().Load();
-    var result = new Server.Battles.BattleCoreFactory().CreateFromBundle(bundleJson, new UnityCoreLog());
+    var result = new Server.Shared.SharedCoreFactory().CreateFromBundle(bundleJson, new UnityCoreLog());
 
     if (result.Succeeded == false)
-        throw new InvalidOperationException($"[Battle]: battle core not created: {string.Join("; ", result.Errors)}");
+        throw new InvalidOperationException($"[Battle]: shared core not created: {string.Join("; ", result.Errors)}");
 
     for (int i = 0; i < result.Warnings.Count; i++)
         UnityEngine.Debug.LogWarning($"[Battle]: {result.Warnings[i]}");
 
-    return result.BattleCore;
+    return result.SharedCore;
 }
 ```
 
@@ -52,7 +52,7 @@ private Server.Battles.IBattleCore CreateBattleCore(InjectContext context)
 - `FromMethod().AsSingle()` без `NonLazy()` — ядро собирается при первом обращении, когда конфиги уже загружены. С `NonLazy()` Zenject попытается создать его при инициализации контейнера, до загрузки бандла.
 - `result.Warnings` стоит логировать: там те же предупреждения, что видит геймдизайнер при публикации конфигов (незнакомый тип перка, опечатка в параметрах, отсутствующая колонка).
 - Если удобнее создавать ядро в `Game`, достаточно сделать `IConfigSource` публичным — тогда биндинг переезжает в `GameInstaller`.
-- Сборка ядра из бандла занимает десятки миллисекунд. Если не хочется даже такого фриза на первом бою, дёрните `battleCore.ConfigVersion` на загрузочном экране — ядро создастся там.
+- Сборка ядра из бандла занимает десятки миллисекунд. Если не хочется даже такого фриза на первом бою, дёрните `sharedCore.ConfigVersion` на загрузочном экране — ядро создастся там.
 - Бандл надо успеть скачать до создания ядра: загрузочный экран качает его сразу после входа, кладёт в кэш и только потом пускает в меню.
 
 ### Бандл конфигов
@@ -67,13 +67,13 @@ private Server.Battles.IBattleCore CreateBattleCore(InjectContext context)
 }
 ```
 
-`Content` — строка с сырыми строками листа; `BattleCoreFactory.CreateFromBundle` принимает это тело целиком, лишние поля игнорирует и считает `ConfigVersion` по тем же байтам, что сервер, поэтому версии совпадают по построению.
+`Content` — строка с сырыми строками листа; `SharedCoreFactory.CreateFromBundle` принимает это тело целиком, лишние поля игнорирует и считает `ConfigVersion` по тем же байтам, что сервер, поэтому версии совпадают по построению.
 
 Правила работы с ним:
 
 - в ответе есть `ETag`; присылайте его в `If-None-Match` — если версия не менялась, придёт `304` без тела;
 - сохраняйте тело на диск (`Application.persistentDataPath`) вместе с версией: при старте можно сразу собрать ядро из кэша и уже потом проверить `304`;
-- если `battleCore.ConfigVersion` не совпал с `run.configVersion` — скачайте бандл заново и пересоберите ядро; активный забег в этот момент начинать нельзя;
+- если `sharedCore.ConfigVersion` не совпал с `run.configVersion` — скачайте бандл заново и пересоберите ядро; активный забег в этот момент начинать нельзя;
 - `503` — конфиги на сервере ещё не загружены, повторить позже.
 
 ### Шаг 4. Перейти на модели из DLL
@@ -105,7 +105,7 @@ Enum'ы механик берутся оттуда же и свои удаляю
 ### Шаг 5. Проверить, что встало
 
 - В консоли при первом обращении не должно быть ошибок создания ядра.
-- `battleCore.ConfigVersion` сравнить с `configVersion` из ответа забега: не совпало — ядро собрано не из серверного бандла или бандл устарел, надо перекачать `GET /api/config/bundle` и пересобрать ядро.
+- `sharedCore.ConfigVersion` сравнить с `configVersion` из ответа забега: не совпало — ядро собрано не из серверного бандла или бандл устарел, надо перекачать `GET /api/config/bundle` и пересобрать ядро.
 - Пересобрать проект с IL2CPP хотя бы раз: именно там проявляется забытый `link.xml`.
 
 ### Обновление DLL
@@ -144,16 +144,18 @@ powershell -ExecutionPolicy Bypass -File Tools\update-battle-core.ps1
 
 ## 2. Как пользоваться ядром
 
-Всё, что нужно, доступно через `IBattleCore`, который вы забиндили на шаге 3:
+Всё, что нужно, доступно через `ISharedCore`, который вы забиндили на шаге 3:
 
-| Метод | Зачем |
+| Член | Зачем |
 | --- | --- |
-| `Replay(battleInput)` | посчитать бой и получить скрипт команд |
-| `ComputeDigest(script)` | контрольная сумма своего расчёта |
-| `TryValidate(data, out error)` | проверить входные данные боя |
-| `BuildCharacteristics(unit, side, isSummon, storyLevelId, stageId)` | 21 характеристика для UI, те же числа, что в бою |
+| `Battle.Replay(battleInput)` | посчитать бой и получить скрипт команд |
+| `Battle.ComputeDigest(script)` | контрольная сумма своего расчёта |
+| `Battle.TryValidate(data, out error)` | проверить входные данные боя |
+| `Battle.BuildCharacteristics(unit, side, isSummon, storyLevelId, stageId)` | 21 характеристика для UI, те же числа, что в бою |
 | `Configs` | все мапперы конфигов: персонажи, мобы, саммоны, экипировка, перки, статусы, скиллы, сюжет, константы |
 | `ConfigVersion` | версия бандла, сверяется с серверной |
+
+Сервисам, которым нужны только таблицы, достаточно `Configs`; бой и характеристики живут в `Battle` (`IBattleCore`).
 
 Сериализация только через `new BattleJsonSettingsFactory().Create()` — свои настройки для протокола писать нельзя, разойдутся с сервером.
 
@@ -251,7 +253,7 @@ Play(script);
 
 **Этап 4. Бой по сиду.** В запросы забега добавить `"battleDelivery": "seed"`, в `Game/Battles/Services/BattleService.cs` считать бой ядром из `step.battleInput`, сверять дайджест. `BattleSimulationDataBuilder` удаляется: состав боя собирает сервер. Вызовы `api/battle/simulate` и `api/battle/replay` убрать — они стали инструментом разработки и закрыты админ-ключом.
 
-**Этап 5. Убрать свой слой чтения конфигов (по желанию).** `battleCore.Configs` отдаёт все мапперы: персонажи, мобы, саммоны и их уровни, мастерство, экипировка, перки и группы перков, статусы, скиллы, сюжетные уровни, этапы и события, константы, бонусы, паттерны опыта. Клиентские мапперы и менеджеры конфигов после этого дублируют DLL. Шаг самый объёмный и самый механический — делать по одному домену за раз.
+**Этап 5. Убрать свой слой чтения конфигов (по желанию).** `sharedCore.Configs` отдаёт все мапперы: персонажи, мобы, саммоны и их уровни, мастерство, экипировка, перки и группы перков, статусы, скиллы, сюжетные уровни, этапы и события, константы, бонусы, паттерны опыта. Клиентские мапперы и менеджеры конфигов после этого дублируют DLL. Шаг самый объёмный и самый механический — делать по одному домену за раз.
 
 Порядок обязателен: 1 → 2 → 3 → 4; пятый в любой момент после четвёртого. Модели протокола переводятся на типы DLL на шаге встройки (раздел 1, шаг 4), отдельным этапом это не выносится.
 

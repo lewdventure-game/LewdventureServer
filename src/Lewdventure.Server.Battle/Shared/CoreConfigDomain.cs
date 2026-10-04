@@ -1,4 +1,4 @@
-namespace Server.Battles
+namespace Server.Shared
 {
     public sealed class CoreConfigDomain
     {

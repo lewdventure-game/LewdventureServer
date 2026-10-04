@@ -1,4 +1,3 @@
-using Server.GameConfigs;
 using Server.Services;
 
 namespace Server.Battles
@@ -6,21 +5,13 @@ namespace Server.Battles
     internal sealed class BattleCore : IBattleCore
     {
         private readonly BattleComposition _battleComposition;
-        private readonly IConfigDistributor _configDistributor;
-        private readonly string _configVersion;
 
-        public BattleCore(GameConfigSet gameConfigSet, ICoreLog coreLog, IBattleRollRecorder? battleRollRecorder)
+        public BattleCore(IConfigDistributor configDistributor, ICoreLog coreLog, IBattleRollRecorder? battleRollRecorder)
         {
-            _configDistributor = gameConfigSet.Distributor;
-            _configVersion = gameConfigSet.Version;
             _battleComposition = battleRollRecorder == null
-                ? new BattleComposition(_configDistributor, coreLog)
-                : new BattleComposition(_configDistributor, coreLog, new RecordingSeededRandomFactory(battleRollRecorder));
+                ? new BattleComposition(configDistributor, coreLog)
+                : new BattleComposition(configDistributor, coreLog, new RecordingSeededRandomFactory(battleRollRecorder));
         }
-
-        public string ConfigVersion => _configVersion;
-
-        public IConfigDistributor Configs => _configDistributor;
 
         public IBattleScriptResponse Simulate(IBattleSimulationData data)
         {

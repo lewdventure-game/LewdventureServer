@@ -1,21 +1,22 @@
 using Newtonsoft.Json.Linq;
+using Server.Battles;
 using Server.GameConfigs;
 
-namespace Server.Battles
+namespace Server.Shared
 {
-    public sealed class BattleCoreFactory
+    public sealed class SharedCoreFactory
     {
         private const string BundleConfigsProperty = "Configs";
         private const string BundleNameProperty = "Name";
         private const string BundleContentProperty = "Content";
         private const string SourceKind = "client";
 
-        public BattleCoreResult CreateFromDomains(IReadOnlyList<CoreConfigDomain> domains, ICoreLog coreLog)
+        public SharedCoreResult CreateFromDomains(IReadOnlyList<CoreConfigDomain> domains, ICoreLog coreLog)
         {
             return CreateFromDomains(domains, coreLog, null);
         }
 
-        public BattleCoreResult CreateFromDomains(IReadOnlyList<CoreConfigDomain> domains, ICoreLog coreLog, IBattleRollRecorder? battleRollRecorder)
+        public SharedCoreResult CreateFromDomains(IReadOnlyList<CoreConfigDomain> domains, ICoreLog coreLog, IBattleRollRecorder? battleRollRecorder)
         {
             var snapshotDomains = new List<ConfigSnapshotDomain>(domains.Count);
 
@@ -28,17 +29,20 @@ namespace Server.Battles
             var buildResult = composition.GameConfigSetBuilder.Build(snapshot, SourceKind);
 
             if (buildResult.Succeeded == false)
-                return new BattleCoreResult(null, version, buildResult.Errors, buildResult.Warnings);
+                return new SharedCoreResult(null, version, buildResult.Errors, buildResult.Warnings);
 
-            return new BattleCoreResult(new BattleCore(buildResult.ConfigSet!, coreLog, battleRollRecorder), version, buildResult.Errors, buildResult.Warnings);
+            var configSet = buildResult.ConfigSet!;
+            var battleCore = new BattleCore(configSet.Distributor, coreLog, battleRollRecorder);
+
+            return new SharedCoreResult(new SharedCore(configSet, battleCore), version, buildResult.Errors, buildResult.Warnings);
         }
 
-        public BattleCoreResult CreateFromBundle(string bundleJson, ICoreLog coreLog)
+        public SharedCoreResult CreateFromBundle(string bundleJson, ICoreLog coreLog)
         {
             return CreateFromBundle(bundleJson, coreLog, null);
         }
 
-        public BattleCoreResult CreateFromBundle(string bundleJson, ICoreLog coreLog, IBattleRollRecorder? battleRollRecorder)
+        public SharedCoreResult CreateFromBundle(string bundleJson, ICoreLog coreLog, IBattleRollRecorder? battleRollRecorder)
         {
             var domains = new List<CoreConfigDomain>();
             var errors = new List<string>();
@@ -46,7 +50,7 @@ namespace Server.Battles
             ReadBundle(bundleJson, domains, errors);
 
             if (0 < errors.Count)
-                return new BattleCoreResult(null, string.Empty, errors, new List<string>());
+                return new SharedCoreResult(null, string.Empty, errors, new List<string>());
 
             return CreateFromDomains(domains, coreLog, battleRollRecorder);
         }
