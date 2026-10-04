@@ -27,7 +27,8 @@
 ## 1. Система
 
 - Ubuntu 24.04 LTS, автообновления безопасности (`unattended-upgrades`).
-- Пользователь `deploy` без пароля, вход только по SSH-ключу, `PasswordAuthentication no`, `PermitRootLogin no`.
+- Пользователь `deploy` без пароля, вход только по SSH-ключу. Настройки SSH — отдельным файлом `/etc/ssh/sshd_config.d/00-lewdventure.conf` (он читается раньше `50-cloud-init.conf`, где облачный образ включает пароли): `PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `PermitRootLogin prohibit-password` (или `no`, если root не нужен), `X11Forwarding no`, `MaxAuthTries 3`, `LoginGraceTime 30`; проверка `sshd -t`, затем `systemctl reload ssh` и вход новым подключением, не закрывая текущее.
+- fail2ban для SSH: `apt install fail2ban`, `/etc/fail2ban/jail.d/lewdventure-sshd.local` — `[sshd] enabled = true, backend = systemd, maxretry = 5, findtime = 10m, bantime = 1h, bantime.increment = true, bantime.maxtime = 1w`.
 - Docker Engine и compose plugin из официального репозитория Docker, `deploy` в группе `docker`.
 - Пакеты для firewall: `sudo apt install ipset iptables curl`.
 - `ufw`: `ufw default deny incoming`, `ufw allow OpenSSH`, `ufw allow 80,443/tcp`, `ufw enable`. Ограничение 80/443 только для Cloudflare делает скрипт из раздела 5 (ufw не фильтрует порты, опубликованные Docker).
