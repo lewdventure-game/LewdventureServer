@@ -11,7 +11,6 @@ namespace Server.Api.Endpoints
 {
     internal sealed class AdminExperimentEndpoints
     {
-        private const string ActorPrefix = "admin:";
         private const int DefaultListLimit = 50;
         private const int MaxListLimit = 200;
 
@@ -219,7 +218,7 @@ namespace Server.Api.Endpoints
 
         private string ReadActor(HttpContext httpContext)
         {
-            return ActorPrefix + (httpContext.Connection.RemoteIpAddress == null ? "unknown" : httpContext.Connection.RemoteIpAddress.ToString());
+            return httpContext.RequestServices.GetRequiredService<AdminActorReader>().Read(httpContext);
         }
 
         private string ReadReason(ExperimentActionRequest? request)

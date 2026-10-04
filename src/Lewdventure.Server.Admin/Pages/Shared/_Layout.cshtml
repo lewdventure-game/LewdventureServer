@@ -1,0 +1,43 @@
+@{
+    var environment = ViewData[AdminPageModel.EnvironmentKey] as string ?? string.Empty;
+    var environments = ViewData[AdminPageModel.EnvironmentsKey] as List<string> ?? new List<string>();
+    var isAuthenticated = User.Identity != null && User.Identity.IsAuthenticated;
+    var path = Context.Request.Path.Value ?? "/";
+}
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@ViewData["Title"] · Lewdventure Admin</title>
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
+    <script src="~/js/admin.js" asp-append-version="true" defer></script>
+</head>
+<body class="@(environment == "prod" ? "env-prod" : string.Empty)">
+@if (isAuthenticated)
+{
+    <header class="topbar">
+        <a class="brand" href="/">Lewdventure Admin</a>
+        <nav class="nav">
+            <a href="/" class="@(path == "/" ? "active" : string.Empty)">Обзор</a>
+            <a href="/Experiments" class="@(path.StartsWith("/Experiments") ? "active" : string.Empty)">Эксперименты</a>
+            <a href="/Configs" class="@(path.StartsWith("/Configs") ? "active" : string.Empty)">Конфиги</a>
+            <a href="/Players" class="@(path.StartsWith("/Players") ? "active" : string.Empty)">Игроки</a>
+        </nav>
+        <div class="envs">
+            @foreach (var name in environments)
+            {
+                <a class="env @(name == environment ? "env-active" : string.Empty)" href="@(path)?env=@name">@name</a>
+            }
+        </div>
+        <form method="post" action="/Logout" class="logout">
+            <span class="user">@User.Identity!.Name · @(User.IsInRole("admin") ? "admin" : "tester")</span>
+            <button type="submit" class="link">Выйти</button>
+        </form>
+    </header>
+}
+<main class="content">
+    @RenderBody()
+</main>
+</body>
+</html>

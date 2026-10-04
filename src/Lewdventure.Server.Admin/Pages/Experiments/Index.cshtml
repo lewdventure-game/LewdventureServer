@@ -1,0 +1,40 @@
+@page
+@model Server.Admin.Pages.Experiments.IndexModel
+@{
+    ViewData["Title"] = "Эксперименты";
+}
+<div class="heading">
+    <h1>Эксперименты · @Model.CurrentEnvironment</h1>
+    @if (Model.IsAdmin)
+    {
+        <a class="button primary" href="/Experiments/Create">Новый эксперимент</a>
+    }
+</div>
+<partial name="_Messages" model="Model" />
+<table class="table">
+    <thead>
+    <tr><th>Id</th><th>Название</th><th>Статус</th><th>Группы</th><th>Участники</th><th>Старт</th></tr>
+    </thead>
+    <tbody>
+    @foreach (var experiment in Model.Experiments)
+    {
+        <tr>
+            <td><a href="/Experiments/Details?id=@experiment.Id">@experiment.Id</a></td>
+            <td>@experiment.Name</td>
+            <td><span class="badge badge-@experiment.Status">@experiment.Status</span></td>
+            <td>
+                @foreach (var group in experiment.Groups)
+                {
+                    <div>@group.Id · @group.Percent.ToString("0.##")% · <span class="badge badge-@group.Status">@group.Status</span></div>
+                }
+            </td>
+            <td>@Model.CountParticipants(experiment)</td>
+            <td>@(experiment.StartedAt == null ? "—" : experiment.StartedAt.Value.ToString("yyyy-MM-dd HH:mm"))</td>
+        </tr>
+    }
+    </tbody>
+</table>
+@if (Model.Experiments.Count == 0)
+{
+    <p class="muted">Экспериментов пока нет.</p>
+}

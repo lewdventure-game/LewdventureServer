@@ -10,7 +10,6 @@ namespace Server.Api.Endpoints
 {
     internal sealed class AdminConfigEndpoints
     {
-        private const string ActorPrefix = "admin:";
         private const int MaxListLimit = 100;
 
         public void Map(WebApplication application)
@@ -124,9 +123,7 @@ namespace Server.Api.Endpoints
 
         private string CreateActor(HttpContext httpContext)
         {
-            var remoteAddress = httpContext.Connection.RemoteIpAddress;
-
-            return ActorPrefix + (remoteAddress == null ? "unknown" : remoteAddress.ToString());
+            return httpContext.RequestServices.GetRequiredService<AdminActorReader>().Read(httpContext);
         }
     }
 }

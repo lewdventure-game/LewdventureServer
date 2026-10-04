@@ -1,0 +1,14 @@
+{$ADMIN_DOMAIN} {
+	import origin_tls
+	encode zstd gzip
+	request_body {
+		max_size 1MB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	reverse_proxy lewdventure-admin:8080 {
+		header_up X-Forwarded-For {client_ip}
+	}
+}

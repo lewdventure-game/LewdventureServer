@@ -1,0 +1,18 @@
+@page
+@model LoginModel
+@{
+    ViewData["Title"] = "Вход";
+}
+<div class="login">
+    <h1>Lewdventure Admin</h1>
+    @if (string.IsNullOrEmpty(Model.Error) == false)
+    {
+        <div class="alert alert-error">@Model.Error</div>
+    }
+    <form method="post" class="card form">
+        <input type="hidden" asp-for="ReturnUrl">
+        <label>Логин <input asp-for="Login" autocomplete="username" autofocus required></label>
+        <label>Пароль <input asp-for="Password" type="password" autocomplete="current-password" required></label>
+        <button type="submit" class="primary">Войти</button>
+    </form>
+</div>

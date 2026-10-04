@@ -73,7 +73,9 @@ mkdir -p "$COMPOSE_DIR/transfer"
 
 export IMAGE_TAG="$TARGET"
 
-compose pull api config-tool
+if [ "${LEWD_LOCAL_IMAGE:-0}" != "1" ]; then
+  compose pull api config-tool
+fi
 
 if compose up -d --remove-orphans --wait --wait-timeout 180 api; then
   record "$TARGET" ok

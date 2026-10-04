@@ -1,0 +1,46 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Обзор";
+}
+<h1>Обзор · @Model.CurrentEnvironment</h1>
+<partial name="_Messages" model="Model" />
+<div class="grid">
+    <section class="card">
+        <h2>Конфиги</h2>
+        @if (Model.Status != null)
+        {
+            <dl class="facts">
+                <dt>Мастер</dt><dd><code>@Model.Status.LoadedShortVersion</code></dd>
+                <dt>Источник</dt><dd>@Model.Status.Source</dd>
+                <dt>Загружен</dt><dd>@Model.Status.LoadedAt.ToString("yyyy-MM-dd HH:mm") UTC</dd>
+                <dt>Синхронизация</dt><dd>@(Model.Status.InSync ? "в порядке" : "активная версия в базе отличается")</dd>
+            </dl>
+        }
+        <a href="/Configs">Все снапшоты</a>
+    </section>
+    <section class="card">
+        <h2>Идущие эксперименты</h2>
+        @if (Model.Running.Count == 0)
+        {
+            <p class="muted">Сейчас все игроки на мастере.</p>
+        }
+        else
+        {
+            <ul class="plain">
+                @foreach (var experiment in Model.Running)
+                {
+                    <li><a href="/Experiments/Details?id=@experiment.Id">@experiment.Id</a> · @experiment.Name · групп: @experiment.Groups.Count</li>
+                }
+            </ul>
+        }
+        <a href="/Experiments">Все эксперименты</a>
+    </section>
+    <section class="card">
+        <h2>Игрок</h2>
+        <form method="get" action="/Players" class="inline">
+            <input name="userId" placeholder="usr_…" required>
+            <button type="submit">Найти</button>
+        </form>
+    </section>
+</div>

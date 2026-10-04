@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>Server.Admin</RootNamespace>
+    <AssemblyName>Lewdventure.Server.Admin</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lewdventure.Server.UnitTests" />
+  </ItemGroup>
+
+</Project>

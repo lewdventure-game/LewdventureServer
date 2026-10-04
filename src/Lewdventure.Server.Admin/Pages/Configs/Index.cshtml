@@ -1,0 +1,50 @@
+@page
+@model Server.Admin.Pages.Configs.IndexModel
+@{
+    ViewData["Title"] = "Конфиги";
+}
+<div class="heading">
+    <h1>Снапшоты конфигов · @Model.CurrentEnvironment</h1>
+    @if (Model.IsAdmin)
+    {
+        <form method="post" asp-page-handler="Reload" data-confirm="Перечитать активную версию из базы?">
+            <button type="submit">Перечитать активную</button>
+        </form>
+    }
+</div>
+<partial name="_Messages" model="Model" />
+@if (Model.Status != null)
+{
+    <div class="card">
+        <dl class="facts">
+            <dt>Мастер в памяти</dt><dd><code title="@Model.Status.LoadedVersion">@Model.Status.LoadedShortVersion</code> · @Model.Status.Source · @Model.Status.LoadedAt.ToString("yyyy-MM-dd HH:mm") UTC</dd>
+            <dt>Активная в базе</dt><dd><code>@Model.Shorten(Model.Status.ActiveVersion)</code> @(Model.Status.InSync ? string.Empty : "· не совпадает с памятью")</dd>
+        </dl>
+    </div>
+}
+<p class="muted">Снапшоты публикуются из Google-таблиц кнопкой в таблице. Здесь их можно смотреть, брать в эксперименты и делать мастером.</p>
+<table class="table">
+    <thead>
+    <tr><th>Версия</th><th>Создан</th><th>Кем</th><th>Источник</th><th></th></tr>
+    </thead>
+    <tbody>
+    @foreach (var snapshot in Model.Snapshots)
+    {
+        var isMaster = Model.Status != null && snapshot.Version == Model.Status.ActiveVersion;
+        <tr class="@(isMaster ? "highlight" : string.Empty)">
+            <td><code title="@snapshot.Version">@Model.Shorten(snapshot.Version)</code>@(isMaster ? " · мастер" : string.Empty)</td>
+            <td>@snapshot.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+            <td>@snapshot.CreatedBy</td>
+            <td>@snapshot.SourceKind</td>
+            <td>
+                @if (Model.IsAdmin && isMaster == false)
+                {
+                    <form method="post" asp-page-handler="Activate" asp-route-version="@snapshot.Version" data-confirm="Сделать @Model.Shorten(snapshot.Version) мастером для всех игроков @Model.CurrentEnvironment?">
+                        <button type="submit">Сделать мастером</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

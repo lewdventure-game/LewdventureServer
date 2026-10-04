@@ -1,0 +1,13 @@
+@model AdminPageModel
+@if (string.IsNullOrEmpty(Model.StatusMessage) == false)
+{
+    <div class="alert alert-ok">@Model.StatusMessage</div>
+}
+@if (string.IsNullOrEmpty(Model.ErrorMessage) == false)
+{
+    <div class="alert alert-error">@Model.ErrorMessage</div>
+}
+@foreach (var error in Model.LoadErrors)
+{
+    <div class="alert alert-error">@error</div>
+}

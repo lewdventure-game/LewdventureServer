@@ -1,0 +1,41 @@
+name: lewdventure-admin
+
+services:
+  admin:
+    image: ${IMAGE_REGISTRY:-ghcr.io/lewdventure-game}/lewdventure-admin:${IMAGE_TAG:?}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - admin-data:/app/data
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    env_file:
+      - .env
+    environment:
+      TZ: UTC
+    networks:
+      edge:
+        aliases:
+          - lewdventure-admin
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+
+networks:
+  edge:
+    external: true
+    name: lewdventure-edge
+
+volumes:
+  admin-data: {}

@@ -12,7 +12,6 @@ namespace Server.Api.Endpoints
 {
     internal sealed class AdminPlayerEndpoints
     {
-        private const string ActorPrefix = "admin:";
         private const int MaxLedgerLimit = 200;
 
         public void Map(WebApplication application)
@@ -77,7 +76,7 @@ namespace Server.Api.Endpoints
             if (string.Equals(confirm, userId, StringComparison.Ordinal) == false)
                 return Results.BadRequest(new { error = "confirm must repeat the userId." });
 
-            var actor = ActorPrefix + (httpContext.Connection.RemoteIpAddress == null ? "unknown" : httpContext.Connection.RemoteIpAddress.ToString());
+            var actor = httpContext.RequestServices.GetRequiredService<AdminActorReader>().Read(httpContext);
             var deletion = await playerDataService.DeleteAsync(userId, actor, httpContext.RequestAborted);
 
             if (deletion.HasData == false)
@@ -97,7 +96,8 @@ namespace Server.Api.Endpoints
             if (request == null || string.IsNullOrWhiteSpace(request.Rewards))
                 return Results.BadRequest(new { error = "rewards is required." });
 
-            var source = ActorPrefix + (string.IsNullOrWhiteSpace(request.Reason) ? "grant" : request.Reason);
+            var actor = httpContext.RequestServices.GetRequiredService<AdminActorReader>().Read(httpContext);
+            var source = actor + ":" + (string.IsNullOrWhiteSpace(request.Reason) ? "grant" : request.Reason);
             var result = await playerRewardService.GrantAsync(userId, request.Rewards, source, request.RequestId, configDistributor, httpContext.RequestAborted);
 
             if (result.Conflict)

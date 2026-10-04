@@ -1,0 +1,129 @@
+@page
+@model Server.Admin.Pages.Players.IndexModel
+@{
+    ViewData["Title"] = "Игроки";
+}
+<h1>Игрок · @Model.CurrentEnvironment</h1>
+<form method="get" class="inline card">
+    <input name="userId" value="@Model.UserId" placeholder="usr_…" required class="wide">
+    <button type="submit" class="primary">Найти</button>
+</form>
+<partial name="_Messages" model="Model" />
+@if (Model.Profile != null)
+{
+    var profile = Model.Profile;
+    <div class="grid">
+        <section class="card">
+            <h2>Эксперимент</h2>
+            @if (Model.Assignment == null || string.IsNullOrEmpty(Model.Assignment.ExperimentId))
+            {
+                <p>Не участвует, получает мастер.</p>
+            }
+            else
+            {
+                <dl class="facts">
+                    <dt>Эксперимент</dt><dd><a href="/Experiments/Details?id=@Model.Assignment.ExperimentId">@Model.Assignment.ExperimentId</a></dd>
+                    <dt>Группа</dt><dd>@Model.Assignment.GroupId @(Model.Assignment.IsActive ? string.Empty : "· группа уже не активна")</dd>
+                    <dt>Назначен</dt><dd>@Model.Assignment.AssignedAt?.ToString("yyyy-MM-dd HH:mm") · @Model.Assignment.Country</dd>
+                </dl>
+            }
+            @if (Model.Assignment != null)
+            {
+                <p>Версия конфигов сейчас: <code>@(string.IsNullOrEmpty(Model.Assignment.ConfigVersion) ? "мастер" : Model.Assignment.ConfigVersion)</code></p>
+            }
+        </section>
+        <section class="card">
+            <h2>Профиль</h2>
+            <dl class="facts">
+                <dt>Ревизия</dt><dd>@profile.Rev</dd>
+                <dt>Персонаж</dt><dd>@profile.Loadout.CharacterId</dd>
+                <dt>Пройдено уровней</dt><dd>@string.Join(", ", profile.Story.CompletedLevelIds)</dd>
+                <dt>Текущий забег</dt><dd>@(string.IsNullOrEmpty(profile.Story.CurrentRunId) ? "нет" : profile.Story.CurrentRunId)</dd>
+            </dl>
+            <h3>Ресурсы</h3>
+            <ul class="plain">
+                @foreach (var resource in profile.Resources)
+                {
+                    <li>@resource.Key: @resource.Value</li>
+                }
+            </ul>
+        </section>
+        <section class="card">
+            <h2>Выдать награду</h2>
+            <form method="post" asp-page-handler="Grant" asp-route-userId="@profile.UserId" class="form" data-confirm="Выдать награду игроку @profile.UserId?">
+                <label>Награды <input name="rewards" placeholder="resource:soft_money:500,character:2:1" required></label>
+                <label>Причина <input name="reason" placeholder="тест"></label>
+                <button type="submit" class="primary">Выдать</button>
+            </form>
+            <p class="muted">Формат как в конфигах: тип:id:количество через запятую.</p>
+        </section>
+    </div>
+    <div class="grid">
+        <section class="card">
+            <h2>Персонажи</h2>
+            <table class="table compact">
+                <thead><tr><th>Id</th><th>Копии</th><th>Промоут</th></tr></thead>
+                <tbody>
+                @foreach (var unit in profile.Characters)
+                {
+                    <tr><td>@unit.Id</td><td>@unit.Copies</td><td>@unit.PromoteLevel</td></tr>
+                }
+                </tbody>
+            </table>
+        </section>
+        <section class="card">
+            <h2>Саммоны</h2>
+            <table class="table compact">
+                <thead><tr><th>Id</th><th>Копии</th><th>Уровень</th><th>Мастерство</th></tr></thead>
+                <tbody>
+                @foreach (var unit in profile.Summons)
+                {
+                    <tr><td>@unit.Id</td><td>@unit.Copies</td><td>@unit.Level</td><td>@unit.MasteryLevel</td></tr>
+                }
+                </tbody>
+            </table>
+        </section>
+        <section class="card">
+            <h2>Снаряжение</h2>
+            <table class="table compact">
+                <thead><tr><th>Конфиг</th><th>Уровень</th><th>Слияние</th></tr></thead>
+                <tbody>
+                @foreach (var item in profile.Equipment)
+                {
+                    <tr><td title="@item.InstanceId">@item.ConfigId</td><td>@item.Level</td><td>@item.MergeNumber</td></tr>
+                }
+                </tbody>
+            </table>
+        </section>
+    </div>
+    <h2>Журнал выдач и трат</h2>
+    <table class="table">
+        <thead><tr><th>Когда</th><th>Действие</th><th>Источник</th><th>Изменения</th></tr></thead>
+        <tbody>
+        @foreach (var entry in Model.Ledger)
+        {
+            <tr>
+                <td>@entry.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <td>@entry.Action</td>
+                <td>@entry.Source</td>
+                <td>
+                    @foreach (var change in entry.Entries)
+                    {
+                        <div>@change.Type:@change.Key @(change.Amount < 0 ? string.Empty : "+")@change.Amount</div>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    @if (Model.IsAdmin)
+    {
+        <section class="card danger-zone">
+            <h2>Удалить аккаунт</h2>
+            <form method="post" asp-page-handler="Delete" asp-route-userId="@profile.UserId" class="inline" data-confirm="Удалить все данные игрока @profile.UserId без возможности восстановления?">
+                <input name="confirm" placeholder="повторите userId" required class="wide">
+                <button type="submit" class="danger">Удалить</button>
+            </form>
+        </section>
+    }
+}

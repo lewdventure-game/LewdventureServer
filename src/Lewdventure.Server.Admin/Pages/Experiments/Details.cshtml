@@ -1,0 +1,106 @@
+@page
+@model Server.Admin.Pages.Experiments.DetailsModel
+@{
+    ViewData["Title"] = Model.Experiment == null ? "Эксперимент" : Model.Experiment.Id;
+}
+<partial name="_Messages" model="Model" />
+@if (Model.Experiment != null)
+{
+    var experiment = Model.Experiment;
+    <div class="heading">
+        <h1>@experiment.Id <span class="badge badge-@experiment.Status">@experiment.Status</span></h1>
+        @if (Model.IsAdmin)
+        {
+            <div class="actions">
+                @if (experiment.Status == "draft")
+                {
+                    <form method="post" asp-page-handler="Start" asp-route-id="@experiment.Id" data-confirm="Запустить эксперимент @experiment.Id на @Model.CurrentEnvironment?">
+                        <input name="reason" placeholder="причина" class="narrow">
+                        <button type="submit" class="primary">Запустить</button>
+                    </form>
+                    <form method="post" asp-page-handler="Delete" asp-route-id="@experiment.Id" data-confirm="Удалить черновик @experiment.Id?">
+                        <button type="submit" class="danger">Удалить черновик</button>
+                    </form>
+                }
+                @if (experiment.Status == "running")
+                {
+                    <form method="post" asp-page-handler="Finish" asp-route-id="@experiment.Id" data-confirm="Закончить эксперимент? Все участники вернутся на мастер.">
+                        <input name="reason" placeholder="причина" class="narrow">
+                        <button type="submit" class="danger">Закончить</button>
+                    </form>
+                }
+            </div>
+        }
+    </div>
+    <p>@experiment.Name</p>
+    @if (string.IsNullOrEmpty(experiment.Description) == false)
+    {
+        <p class="muted">@experiment.Description</p>
+    }
+    <dl class="facts">
+        <dt>Создан</dt><dd>@experiment.CreatedAt.ToString("yyyy-MM-dd HH:mm") UTC</dd>
+        <dt>Старт</dt><dd>@(experiment.StartedAt == null ? "—" : experiment.StartedAt.Value.ToString("yyyy-MM-dd HH:mm") + " UTC")</dd>
+        <dt>Финиш</dt><dd>@(experiment.FinishedAt == null ? "—" : experiment.FinishedAt.Value.ToString("yyyy-MM-dd HH:mm") + " UTC")</dd>
+        <dt>Изменил</dt><dd>@experiment.UpdatedBy</dd>
+    </dl>
+    <h2>Группы</h2>
+    <table class="table">
+        <thead>
+        <tr><th>Группа</th><th>Снапшот</th><th>%</th><th>Фильтр</th><th>Статус</th><th>Участники</th><th></th></tr>
+        </thead>
+        <tbody>
+        @foreach (var group in experiment.Groups)
+        {
+            <tr>
+                <td>@group.Id<div class="muted">@group.Name</div></td>
+                <td><code title="@group.SnapshotVersion">@Model.Shorten(group.SnapshotVersion)</code>@(group.SnapshotVersion == Model.MasterVersion ? " · мастер" : string.Empty)</td>
+                <td>@group.Percent.ToString("0.##")</td>
+                <td>@(group.NewPlayersOnly ? "только новые" : "любые") · @(group.Countries.Count == 0 ? "все страны" : string.Join(", ", group.Countries))</td>
+                <td><span class="badge badge-@group.Status">@group.Status</span></td>
+                <td>@(group.Participants ?? 0)</td>
+                <td>
+                    @if (Model.IsAdmin && experiment.Status == "running")
+                    {
+                        <div class="actions">
+                            @if (group.Status == "recruiting")
+                            {
+                                <form method="post" asp-page-handler="Freeze" asp-route-id="@experiment.Id" asp-route-groupId="@group.Id" data-confirm="Остановить набор в группу @group.Id? Участники останутся на снапшоте.">
+                                    <button type="submit">Стоп набора</button>
+                                </form>
+                            }
+                            @if (group.Status != "removed")
+                            {
+                                <form method="post" asp-page-handler="Remove" asp-route-id="@experiment.Id" asp-route-groupId="@group.Id" data-confirm="Убрать группу @group.Id? Её игроки вернутся на мастер.">
+                                    <button type="submit" class="danger">Убрать</button>
+                                </form>
+                            }
+                            <form method="post" asp-page-handler="Rollout" asp-route-id="@experiment.Id" asp-route-groupId="@group.Id" data-confirm="Сделать снапшот группы @group.Id мастером для ВСЕХ игроков @Model.CurrentEnvironment и закончить эксперимент?">
+                                <button type="submit" class="primary">Раскатить на всех</button>
+                            </form>
+                        </div>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <h2>Журнал</h2>
+    <table class="table">
+        <thead>
+        <tr><th>Когда</th><th>Действие</th><th>Группа</th><th>Кто</th><th>Причина</th></tr>
+        </thead>
+        <tbody>
+        @foreach (var change in Model.Changes)
+        {
+            <tr>
+                <td>@change.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <td>@change.Action</td>
+                <td>@change.GroupId</td>
+                <td>@change.Actor</td>
+                <td>@change.Reason</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+<p><a href="/Experiments">← Все эксперименты</a></p>

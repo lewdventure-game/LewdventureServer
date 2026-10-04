@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Lewdventure.Server.Admin/Lewdventure.Server.Admin.csproj" />
     <Project Path="src/Lewdventure.Server.Api/Lewdventure.Server.Api.csproj" />
     <Project Path="src/Lewdventure.Server.Battle/Lewdventure.Server.Battle.csproj" />
     <Project Path="src/Lewdventure.Server.Contracts/Lewdventure.Server.Contracts.csproj" />

@@ -45,6 +45,7 @@ namespace Server.Api.Composition
 
             services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JObjectJsonConverter()));
 
+            services.AddSingleton<AdminActorReader>();
             services.AddSingleton<ClientCountryReader>();
             services.AddSingleton<ExperimentResponseFactory>();
             services.AddSingleton<PlayerResponseFactory>();

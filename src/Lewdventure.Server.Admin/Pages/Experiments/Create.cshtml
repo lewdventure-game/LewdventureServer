@@ -1,0 +1,43 @@
+@page
+@model Server.Admin.Pages.Experiments.CreateModel
+@{
+    ViewData["Title"] = "Новый эксперимент";
+}
+<h1>Новый эксперимент · @Model.CurrentEnvironment</h1>
+<partial name="_Messages" model="Model" />
+<p class="muted">Эксперимент создаётся черновиком. Проценты считаются от игроков, подходящих под фильтр группы; суммарно по любой стране группы всех идущих экспериментов не могут занять больше 100%. Остальные игроки получают мастер. Контрольная группа — группа со снапшотом мастера.</p>
+<form method="post" class="card form">
+    <div class="row">
+        <label>Id <input asp-for="ExperimentId" placeholder="balance-2026-10" pattern="[a-z0-9_\-]{1,40}" required></label>
+        <label>Название <input asp-for="Name" required></label>
+    </div>
+    <label>Описание <textarea asp-for="Description" rows="2"></textarea></label>
+    <table class="table groups">
+        <thead>
+        <tr><th>Id группы</th><th>Название</th><th>Снапшот</th><th>%</th><th>Только новые</th><th>Страны</th></tr>
+        </thead>
+        <tbody>
+        @for (int i = 0; i < Model.Groups.Count; i++)
+        {
+            <tr>
+                <td><input asp-for="Groups[i].Id" placeholder="@(i == 0 ? "control" : i == 1 ? "test" : string.Empty)"></td>
+                <td><input asp-for="Groups[i].Name"></td>
+                <td>
+                    <select asp-for="Groups[i].SnapshotVersion">
+                        <option value="">—</option>
+                        @foreach (var snapshot in Model.Snapshots)
+                        {
+                            <option value="@snapshot.Version" selected="@(snapshot.Version == Model.Groups[i].SnapshotVersion)">@Model.Describe(snapshot)</option>
+                        }
+                    </select>
+                </td>
+                <td><input asp-for="Groups[i].Percent" type="number" min="0" max="100" step="0.01" class="narrow"></td>
+                <td class="center"><input asp-for="Groups[i].NewPlayersOnly" type="checkbox"></td>
+                <td><input asp-for="Groups[i].Countries" placeholder="US, DE или пусто = все" class="narrow"></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <p class="muted">Пустые строки игнорируются.</p>
+    <button type="submit" class="primary">Создать черновик</button>
+</form>
