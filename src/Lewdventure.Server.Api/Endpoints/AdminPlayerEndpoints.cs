@@ -37,10 +37,13 @@ namespace Server.Api.Endpoints
         private async Task<IResult> GetProfileAsync(
             HttpContext httpContext,
             string userId,
-            [FromServices] PlayerProfileService playerProfileService,
+            [FromServices] PlayerProfileRepository playerProfileRepository,
             [FromServices] PlayerResponseFactory playerResponseFactory)
         {
-            var profile = await playerProfileService.GetOrCreateAsync(userId, httpContext.RequestAborted);
+            var profile = await playerProfileRepository.GetAsync(userId, httpContext.RequestAborted);
+
+            if (profile == null)
+                return Results.NotFound(new { error = $"Player {userId} has no profile." });
 
             return Results.Ok(playerResponseFactory.Create(profile));
         }

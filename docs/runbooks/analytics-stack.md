@@ -28,12 +28,12 @@ grafana ──lewdventure-analytics──> clickhouse
 
 ## Вход в Grafana
 
-Caddy на `/grafana*` спрашивает `GET /auth/grafana` у админки (`forward_auth`): нет сессии — редирект на вход админки, есть — заголовки `X-WEBAUTH-USER` (логин) и `X-WEBAUTH-ROLE` (`Admin` для admin, `Viewer` для tester). Grafana работает в режиме auth proxy, своей формы входа нет. Клиентские `X-WEBAUTH-*` Caddy вырезает. Ограничение: Grafana доверяет этим заголовкам от любого контейнера сети `lewdventure-edge`; при переезде на отдельный сервер — оставить её в сети только с прокси.
+Caddy на `/grafana*` спрашивает `GET /auth/grafana` у админки (`forward_auth`): нет сессии — редирект на вход админки, есть — заголовки `X-WEBAUTH-USER` (логин) и `X-WEBAUTH-ROLE` (`Admin` для admin, `Viewer` для tester). Grafana работает в режиме auth proxy, своей формы входа нет. Клиентские `X-WEBAUTH-*` Caddy вырезает. Grafana подключена только к сетям `lewdventure-analytics` (ClickHouse) и `lewdventure-grafana`, где кроме неё есть только Caddy, поэтому подставить заголовки входа другой контейнер не может.
 
 ## Развёртывание
 
 1. `cp -r deploy/analytics/. /opt/lewdventure/analytics/`, `.env` по `.env.example`, пароли — `openssl rand -hex 24`.
-2. `docker network create lewdventure-analytics` (если нет; `deploy.sh` тоже создаёт её).
+2. `docker network create lewdventure-analytics` (если нет; `deploy.sh` тоже создаёт её) и `docker network create lewdventure-grafana`; Caddy подключается к `lewdventure-grafana` через `deploy/proxy/compose.yaml`, после правки — `docker compose up -d` в `/opt/lewdventure/proxy`.
 3. `docker compose up -d` в `/opt/lewdventure/analytics`.
 4. В `.env` окружения — ключи `Analytics__*` из [server/analytics.md](../server/analytics.md#настройки), пароль `CLICKHOUSE_INGEST_<ENV>_PASSWORD`; затем деплой окружения.
 5. Сайт `admin.caddy` уже содержит `/grafana*`; после правки — `docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile` в `/opt/lewdventure/proxy`.

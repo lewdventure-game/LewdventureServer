@@ -90,7 +90,7 @@ services:
         condition: service_healthy
     networks:
       analytics: {}
-      edge:
+      grafana:
         aliases:
           - lewdventure-grafana
     deploy:
@@ -108,9 +108,9 @@ networks:
   analytics:
     external: true
     name: lewdventure-analytics
-  edge:
+  grafana:
     external: true
-    name: lewdventure-edge
+    name: lewdventure-grafana
 
 volumes:
   clickhouse-data: {}
