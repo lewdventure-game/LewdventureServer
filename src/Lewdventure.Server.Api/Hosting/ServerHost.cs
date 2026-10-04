@@ -94,6 +94,9 @@ namespace Server.Api.Hosting
             application.UseRateLimiter();
             application.UseAuthentication();
             application.UseAuthorization();
+
+            if (application.Services.GetRequiredService<IOptions<MongoOptions>>().Value.Enabled)
+                application.UseMiddleware<GameConfigSelectionMiddleware>();
         }
 
         private void ConfigureHttpLogging(IApplicationBuilder applicationBuilder)

@@ -20,6 +20,7 @@ namespace Server.Infrastructure.Mongo.Players
             services.AddSingleton<IMongoIndexContributor>(ResolveLedgerRepository);
             services.AddSingleton<IMongoIndexContributor>(ResolveIdempotencyRepository);
             services.AddSingleton<IMongoIndexContributor>(ResolveRunRepository);
+            services.AddSingleton<PlayerConfigVersionResolver>();
             services.AddSingleton<PlayerAuthService>();
             services.AddSingleton<PlayerProfileService>();
             services.AddSingleton<SummonProgressionRules>();

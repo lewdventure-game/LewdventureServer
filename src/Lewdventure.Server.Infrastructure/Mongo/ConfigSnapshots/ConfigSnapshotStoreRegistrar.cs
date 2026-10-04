@@ -11,6 +11,7 @@ namespace Server.Infrastructure.Mongo.ConfigSnapshots
             services.AddSingleton<IMongoIndexContributor>(ResolveSnapshotRepository);
             services.AddSingleton<IMongoIndexContributor>(ResolveActivationRepository);
             services.AddSingleton<ConfigPublishingService>();
+            services.AddSingleton<GameConfigSetCache>();
         }
 
         private ConfigSnapshotRepository ResolveSnapshotRepository(IServiceProvider serviceProvider)

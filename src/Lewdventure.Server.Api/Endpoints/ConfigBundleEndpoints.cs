@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using Server.Api.Http;
 using Server.Api.Security;
-using Server.GameConfigs;
+using Server.Infrastructure.GameConfigs;
 using Server.Infrastructure.Players;
 
 namespace Server.Api.Endpoints
@@ -30,9 +30,9 @@ namespace Server.Api.Endpoints
             HttpContext httpContext,
             [FromServices] ClientConfigBundleFactory clientConfigBundleFactory,
             [FromServices] EntityTagReader entityTagReader,
-            [FromServices] IGameConfigSetProvider gameConfigSetProvider)
+            [FromServices] GameConfigSelection gameConfigSelection)
         {
-            var bundle = clientConfigBundleFactory.Create(gameConfigSetProvider.Current);
+            var bundle = clientConfigBundleFactory.Create(gameConfigSelection.Current);
 
             httpContext.Response.Headers[HeaderNames.ETag] = bundle.EntityTag;
             httpContext.Response.Headers[HeaderNames.CacheControl] = "no-cache";

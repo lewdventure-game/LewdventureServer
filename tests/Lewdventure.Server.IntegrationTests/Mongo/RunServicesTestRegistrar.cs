@@ -1,7 +1,7 @@
 using Server.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Server.Battles;
-using Server.GameConfigs;
+using Server.Infrastructure.GameConfigs;
 using Server.Runs;
 using Server.Services;
 
@@ -21,6 +21,7 @@ namespace Tests.Integration.Mongo
             services.AddScoped(ResolveRewardParser);
             services.AddScoped(ResolveParameterParser);
             services.AddScoped(ResolveScriptDigest);
+            services.AddScoped<GameConfigSelection>();
             services.AddScoped(ResolveConfigDistributor);
         }
 
@@ -61,7 +62,7 @@ namespace Tests.Integration.Mongo
 
         private IConfigDistributor ResolveConfigDistributor(IServiceProvider serviceProvider)
         {
-            return serviceProvider.GetRequiredService<IGameConfigSetProvider>().Current.Distributor;
+            return serviceProvider.GetRequiredService<GameConfigSelection>().Current.Distributor;
         }
     }
 }

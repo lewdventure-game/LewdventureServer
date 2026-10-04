@@ -1,13 +1,16 @@
 using Newtonsoft.Json;
 using Server.GameConfigs;
+using Server.Infrastructure.Mongo.ConfigSnapshots;
 
 namespace Server.Api.Endpoints
 {
     internal sealed class ClientConfigBundleFactory
     {
-        private readonly ConfigSnapshotHasher _configSnapshotHasher;
+        private const int Capacity = GameConfigSetCache.Capacity + 1;
 
-        private ClientConfigBundle? _cached;
+        private readonly ConfigSnapshotHasher _configSnapshotHasher;
+        private readonly Dictionary<string, ClientConfigBundle> _bundles = new(StringComparer.Ordinal);
+        private readonly object _sync = new();
 
         public ClientConfigBundleFactory(ConfigSnapshotHasher configSnapshotHasher)
         {
@@ -16,14 +19,21 @@ namespace Server.Api.Endpoints
 
         public ClientConfigBundle Create(GameConfigSet configSet)
         {
-            var cached = Volatile.Read(ref _cached);
-
-            if (cached != null && string.Equals(cached.Version, configSet.Version, StringComparison.Ordinal))
-                return cached;
+            lock (_sync)
+            {
+                if (_bundles.TryGetValue(configSet.Version, out var cached))
+                    return cached;
+            }
 
             var bundle = Build(configSet);
 
-            Interlocked.Exchange(ref _cached, bundle);
+            lock (_sync)
+            {
+                if (Capacity <= _bundles.Count)
+                    _bundles.Clear();
+
+                _bundles[configSet.Version] = bundle;
+            }
 
             return bundle;
         }

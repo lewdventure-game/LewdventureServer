@@ -1,5 +1,6 @@
 using System.Globalization;
 using Server.Battles;
+using Server.Infrastructure.GameConfigs;
 using Server.Infrastructure.Mongo.Players;
 using Server.Infrastructure.Mongo.Runs;
 using Server.Infrastructure.Players;
@@ -22,7 +23,7 @@ namespace Server.Runs
         private readonly IBattleSimulatorService _battleSimulatorService;
         private readonly IUnitStateBuilder _unitStateBuilder;
         private readonly IConfigDistributor _configDistributor;
-        private readonly IGameConfigSetProvider _gameConfigSetProvider;
+        private readonly GameConfigSelection _gameConfigSelection;
         private readonly ILogger<RunService> _logger;
         private readonly PlayerProfileRepository _playerProfileRepository;
         private readonly PlayerProfileService _playerProfileService;
@@ -42,7 +43,7 @@ namespace Server.Runs
             IBattleSimulatorService battleSimulatorService,
             IUnitStateBuilder unitStateBuilder,
             IConfigDistributor configDistributor,
-            IGameConfigSetProvider gameConfigSetProvider,
+            GameConfigSelection gameConfigSelection,
             ILogger<RunService> logger,
             PlayerProfileRepository playerProfileRepository,
             PlayerProfileService playerProfileService,
@@ -61,7 +62,7 @@ namespace Server.Runs
             _battleSimulatorService = battleSimulatorService;
             _unitStateBuilder = unitStateBuilder;
             _configDistributor = configDistributor;
-            _gameConfigSetProvider = gameConfigSetProvider;
+            _gameConfigSelection = gameConfigSelection;
             _logger = logger;
             _playerProfileRepository = playerProfileRepository;
             _playerProfileService = playerProfileService;
@@ -114,7 +115,7 @@ namespace Server.Runs
                 Id = RunIdPrefix + Guid.NewGuid().ToString("N"),
                 UserId = userId,
                 StoryLevelId = storyLevelId,
-                ConfigVersion = _gameConfigSetProvider.Current.Version,
+                ConfigVersion = _gameConfigSelection.Current.Version,
                 Seed = seed,
                 RollIndex = roll.RollIndex,
                 Stages = roll.Stages,

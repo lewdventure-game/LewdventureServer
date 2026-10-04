@@ -11,6 +11,7 @@ using Server.Api.Security;
 using Server.Battles;
 using Server.Bonuses;
 using Server.GameConfigs;
+using Server.Infrastructure.GameConfigs;
 using Server.Infrastructure.Mongo.ConfigSnapshots;
 using Server.Infrastructure.Mongo.Players;
 using Server.Runs;
@@ -137,7 +138,7 @@ namespace Server.Api.Composition
 
         private IConfigDistributor ResolveConfigDistributor(IServiceProvider serviceProvider)
         {
-            return serviceProvider.GetRequiredService<IGameConfigSetProvider>().Current.Distributor;
+            return serviceProvider.GetRequiredService<GameConfigSelection>().Current.Distributor;
         }
 
         private ICoreLog ResolveGameConfigsCoreLog(IServiceProvider serviceProvider)
@@ -175,6 +176,7 @@ namespace Server.Api.Composition
                 .AddSingleton<ClientConfigBundleFactory>()
                 .AddSingleton<EntityTagReader>()
                 .AddSingleton<ConfigResponseFactory>()
+                .AddScoped<GameConfigSelection>()
                 .AddScoped(ResolveConfigDistributor);
         }
     }

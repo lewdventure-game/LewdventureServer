@@ -42,6 +42,20 @@ namespace Server.Infrastructure.Mongo.Runs
             return await Collection.Find(filter).SortByDescending(item => item.CreatedAt).FirstOrDefaultAsync(cancellationToken);
         }
 
+        public async Task<string> GetActiveConfigVersionAsync(string userId, CancellationToken cancellationToken)
+        {
+            var filter = Builders<RunDocument>.Filter.And(
+                Builders<RunDocument>.Filter.Eq(item => item.UserId, userId),
+                Builders<RunDocument>.Filter.Eq(item => item.Status, RunDocument.ActiveStatus));
+            var version = await Collection
+                .Find(filter)
+                .SortByDescending(item => item.CreatedAt)
+                .Project(item => item.ConfigVersion)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            return version ?? string.Empty;
+        }
+
         public async Task<List<RunDocument>> ListAsync(string userId, int limit, CancellationToken cancellationToken)
         {
             return await Collection
