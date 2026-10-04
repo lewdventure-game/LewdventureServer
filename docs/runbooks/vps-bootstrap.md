@@ -105,6 +105,7 @@ Firewall и список IP Cloudflare (создаёт `cloudflare.env`, кот�
 sudo /opt/lewdventure/proxy/cloudflare-firewall.sh /opt/lewdventure/proxy
 sudo cp deploy/proxy/systemd/lewdventure-cloudflare-firewall.* /etc/systemd/system/
 sudo systemctl daemon-reload
+sudo systemctl enable lewdventure-cloudflare-firewall.service
 sudo systemctl enable --now lewdventure-cloudflare-firewall.timer
 ```
 
@@ -112,7 +113,8 @@ sudo systemctl enable --now lewdventure-cloudflare-firewall.timer
 - скачивает актуальные диапазоны `https://www.cloudflare.com/ips-v4` и `ips-v6`;
 - на внешнем интерфейсе пропускает новые соединения на 80/443 только с этих адресов — в цепочках `DOCKER-USER` (порты, опубликованные Docker) и `INPUT`;
 - обновляет `cloudflare.env` и перезапускает Caddy, если диапазоны изменились;
-- идемпотентен, таймер повторяет его после загрузки и раз в сутки.
+- идемпотентен; служба применяет правила при загрузке сразу после Docker, таймер обновляет их раз в сутки;
+- если список Cloudflare скачать не удалось, применяет сохранённый в `cloudflare.env`, так что firewall не остаётся выключенным.
 
 Запуск прокси:
 

@@ -20,8 +20,21 @@ EXTERNAL_IF="${EXTERNAL_IF:-$(ip -4 route show default | awk '{print $5; exit}')
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
-curl -fsS --retry 3 https://www.cloudflare.com/ips-v4 -o "$WORK_DIR/v4"
-curl -fsS --retry 3 https://www.cloudflare.com/ips-v6 -o "$WORK_DIR/v6"
+download_ranges() {
+  curl -fsS --retry 5 --retry-all-errors --max-time 20 https://www.cloudflare.com/ips-v4 -o "$WORK_DIR/v4" \
+    && curl -fsS --retry 5 --retry-all-errors --max-time 20 https://www.cloudflare.com/ips-v6 -o "$WORK_DIR/v6"
+}
+
+use_cached_ranges() {
+  [ -f "$ENV_FILE" ] || { echo "cloudflare ranges download failed and $ENV_FILE is missing" >&2; exit 1; }
+
+  sed -n 's/^CLOUDFLARE_IPS=//p' "$ENV_FILE" | tr ' ' '\n' | grep -E '^[0-9.]+/[0-9]+$' > "$WORK_DIR/v4" || true
+  sed -n 's/^CLOUDFLARE_IPS=//p' "$ENV_FILE" | tr ' ' '\n' | grep -E '^[0-9a-f:]+/[0-9]+$' > "$WORK_DIR/v6" || true
+
+  echo "cloudflare ranges download failed, cached ranges from $ENV_FILE are used" >&2
+}
+
+download_ranges || use_cached_ranges
 
 grep -Eq '^[0-9.]+/[0-9]+$' "$WORK_DIR/v4" || { echo "unexpected ips-v4 content" >&2; exit 1; }
 grep -Eq '^[0-9a-f:]+/[0-9]+$' "$WORK_DIR/v6" || { echo "unexpected ips-v6 content" >&2; exit 1; }
