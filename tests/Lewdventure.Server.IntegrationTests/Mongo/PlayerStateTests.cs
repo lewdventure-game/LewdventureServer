@@ -211,7 +211,7 @@ namespace Tests.Integration.Mongo
             Assert.That(repeated.Profile!.Resources["soft_money"], Is.EqualTo(100));
             Assert.That(repeated.Profile.Rev, Is.EqualTo(first.Profile.Rev));
             Assert.That(ledger, Has.Count.EqualTo(1));
-            Assert.That(ledger[0].Entries, Has.Count.EqualTo(2));
+            Assert.That(ledger[0].Entries, Has.Count.EqualTo(5));
         }
 
         [Test]

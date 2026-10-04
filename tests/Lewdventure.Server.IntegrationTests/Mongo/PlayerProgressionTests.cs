@@ -55,7 +55,7 @@ namespace Tests.Integration.Mongo
 
             Assert.That(result.Succeeded, Is.True, string.Join("; ", result.Errors));
             Assert.That(result.Profile!.Summons[0].Level, Is.EqualTo(2));
-            Assert.That(result.Profile.Resources["summon_exp"], Is.EqualTo(90));
+            Assert.That(result.Profile.Resources["summon_lvl"], Is.EqualTo(98));
         }
 
         [Test]
@@ -68,7 +68,7 @@ namespace Tests.Integration.Mongo
 
             Assert.That(result.Succeeded, Is.True);
             Assert.That(result.Profile!.Summons[0].Level, Is.EqualTo(2));
-            Assert.That(result.Profile.Resources["summon_exp"], Is.EqualTo(90));
+            Assert.That(result.Profile.Resources["summon_lvl"], Is.EqualTo(98));
         }
 
         [Test]
@@ -80,7 +80,7 @@ namespace Tests.Integration.Mongo
             var result = await service.UpgradeSummonMasteryAsync(UserId, SummonId, "mastery-1", _configDistributor, CancellationToken.None);
 
             Assert.That(result.Succeeded, Is.True, string.Join("; ", result.Errors));
-            Assert.That(result.Profile!.Summons[0].MasteryLevel, Is.EqualTo(1));
+            Assert.That(result.Profile!.Summons[0].MasteryLevel, Is.EqualTo(2));
             Assert.That(result.Profile.Summons[0].Copies, Is.EqualTo(4));
         }
 
@@ -94,7 +94,7 @@ namespace Tests.Integration.Mongo
             var profile = await profileService.GetOrCreateAsync(UserId, CancellationToken.None);
             var expectedRev = profile.Rev;
 
-            profile.Resources["summon_exp"] = 0;
+            profile.Resources["summon_lvl"] = 0;
             profile.Rev = expectedRev + 1;
 
             Assert.That(await repository.ReplaceAsync(profile, expectedRev, CancellationToken.None), Is.True);
@@ -102,7 +102,7 @@ namespace Tests.Integration.Mongo
             var result = await service.UpgradeSummonLevelAsync(UserId, SummonId, "level-2", _configDistributor, CancellationToken.None);
 
             Assert.That(result.Succeeded, Is.False);
-            Assert.That(result.Errors, Has.Some.Contains("Not enough summon_exp"));
+            Assert.That(result.Errors, Has.Some.Contains("Not enough summon_lvl"));
         }
 
         [Test]
@@ -137,7 +137,7 @@ namespace Tests.Integration.Mongo
             var expectedRev = profile.Rev;
 
             profile.Summons.Add(new PlayerSummonDocument { ConfigId = SummonId, Level = 1, Copies = 5 });
-            profile.Resources["summon_exp"] = 100;
+            profile.Resources["summon_lvl"] = 100;
             profile.Rev = expectedRev + 1;
 
             Assert.That(await repository.ReplaceAsync(profile, expectedRev, CancellationToken.None), Is.True);
