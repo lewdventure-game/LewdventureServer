@@ -13,18 +13,18 @@ namespace Server.Entities
 
         public float[] DamageOnLevels { get; }
 
-        public float[] BreakoutMultipliers { get; }
-
-        public float AttackSpeed { get; }
-
         public int AttackCooldown { get; }
 
         public bool IsMelee { get; }
 
         public string[] SkillIds { get; }
 
+        public int[] MasteryForSkills { get; }
+
+        public int[] SkillUpgradeIds { get; }
+
         public int MasteryId { get; }
 
-        public int LevelUpgradePattern { get; }
+        public int LevelPatternId { get; }
     }
 }

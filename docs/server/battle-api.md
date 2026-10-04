@@ -72,7 +72,7 @@ Rewards in battle: `bonus` / `status` применяются в симуляци
 
 - Итоги считаются из **слоёв** (`CharacteristicBuckets` + `ICharacteristicCalculator`, формулы GDD 1/2/5/6/7), не через flat `+=` на finals.
 - Formula 2 multipliers с округлением: `КРИТ_МН`, `КОМБО_1/2_МН`, `КОНТР_МН`, `СПЕЛЛ_МН` (`MathF.Round` после replace).
-- Источники build: constants → character start/upgrades → training → equipment(level) → summon mastery/account → artifacts → aspects → perks/statuses/runtime.
+- Источники build: constants → training → equipment(level) → artifacts → aspects → account и run бонусы (`activeBonuses`) → perks/statuses/runtime. Бонусы мастерства саммонов в бою не считаются: с 2026-10-04 это разовые награды на аккаунт, они приходят через `activeBonuses`.
 - Промоуты персонажа бонусов в бою **не** дают: лист `Character_promotes` выдаёт награды на аккаунт в момент прокачки (в том числе `bonus:<id>`), и в бой они приезжают через `activeBonuses` снапшота. В билде юнита остаются константы, тренировки, снаряжение, мастерство саммонов, артефакты, аспекты, перки и статусы.
 - Equipment `equip_bonus_type_*`: **bonus id** или техническое имя `BonusType`; `equip_bonus_values_*`: уровни через `,` или `;` (берётся более «длинный» split; при равенстве — `,`).
 - `IBattleBonusService` применяет `operator` (`add` / `replace`) и battle `work_mode`: `end_of_battle`, `first_turns:N`, `every_turn`, `next_battles:N` (RemainingBattles, decrement на battle end), `if_equipped`.
@@ -128,7 +128,7 @@ Response тот же `BattleScriptResponse`; поле `seed` = переданн�
 
 ### Unit snapshot (thin)
 
-`id`, `level`, `masteryLevel`, `equipments[]` (`{id,level}`; alias `equipment` на сервере), legacy `equipmentIds` → level 1, `trainingLevel`, `artifactIds`, `aspectIds`, `activePerkIds`, `activeSkillIds`, `activeStatusIds`, `activeBonuses[]` (`{id,count,remainingBattles}`), `slotIndex`.
+`id`, `level`, `masteryLevel`, `equipments[]` (`{id,level}`; alias `equipment` на сервере), legacy `equipmentIds` → level 1, `trainingLevel`, `artifactIds`, `aspectIds`, `activePerkIds`, `activeSkillIds`, `activeStatusIds`, `activeBonuses[]` (`{id,count,remainingBattles}`), `slotIndex`, `currentHealth`, `skillLevels[]` (уровни скиллов саммона по порядку `Summons.skill_ids`, нет значения — 1).
 
 Клиент без инвентаря шлёт пустые `equipments` / `artifactIds` / `aspectIds` и `trainingLevel = 0`. Не выдумывать id. Перки/статусы/skill ids — из рантайма и загруженных конфигов. Сервер дополнительно инжектит `Characters.skill_ids`, `Enemies.skill_ids` и summon `skill_ids` (int/string → skill id), даже если `activeSkillIds` пустой.
 

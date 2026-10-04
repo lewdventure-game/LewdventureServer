@@ -135,22 +135,14 @@ namespace Server.Battles
             return DefaultMasteryMultiplier;
         }
 
-        public bool TryResolveMastery(int masteryId, int masteryLevel, int summonId, out IMasteryMapper masteryMapper)
+        private bool TryResolveMastery(int masteryId, int masteryLevel, int summonId, out ISummonMasteryMapper masteryMapper)
         {
-            if (_configDistributor.Masteries.TryGet(masteryId, masteryLevel, out masteryMapper))
+            if (_configDistributor.SummonMasteries.TryGet(masteryId, masteryLevel, out masteryMapper))
                 return true;
 
             _coreLog.Warning($"[Story][Battle]: Mastery missing, masteryId = {masteryId}, masteryLevel = {masteryLevel}, summonId = {summonId}; using multiplier {DefaultMasteryMultiplier}");
 
             return false;
-        }
-
-        public void ApplyBreakoutHook(IUnitSnapshot unitSnapshot, ISummonMapper summonMapper)
-        {
-            if (summonMapper.BreakoutMultipliers == null || summonMapper.BreakoutMultipliers.Length == 0)
-                return;
-
-            _coreLog.Error($"[Story][Battle]: breakout_multis loaded but formula unknown, summonId = {unitSnapshot.Id}, level = {unitSnapshot.Level}, valuesCount = {summonMapper.BreakoutMultipliers.Length}; hook no-op");
         }
 
         public UnitFlags ResolveSummonMeleeFlags(IUnitSnapshot unitSnapshot)

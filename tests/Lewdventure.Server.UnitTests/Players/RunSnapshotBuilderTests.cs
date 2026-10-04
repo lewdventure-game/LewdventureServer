@@ -64,7 +64,7 @@ namespace Tests.Unit.Players
             var profile = CreateProfile();
             var run = CreateRun();
 
-            profile.Characters[0].UpgradesApplied = 2;
+            profile.Characters[0].PromoteLevel = 3;
             run.Perks.Add(1);
             run.Bonuses.Add(new RunBonusDocument { BonusId = 3, Count = 2, RemainingBattles = 4 });
             run.CurrentHealth = 42f;

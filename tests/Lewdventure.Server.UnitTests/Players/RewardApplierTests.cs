@@ -46,8 +46,46 @@ namespace Tests.Unit.Players
 
             var character = profile.Characters[0];
 
-            Assert.That(character.UpgradesApplied, Is.EqualTo(1));
+            Assert.That(character.PromoteLevel, Is.EqualTo(2));
             Assert.That(character.UnlockedSceneIds, Does.Contain(101));
+        }
+
+        [Test]
+        public void Apply_FirstSummonCopy_GetsMasteryOneAndItsRewards()
+        {
+            var profile = CreateProfile();
+
+            _applier.Apply(profile, _parser.Parse("summon:1:1"), _configDistributor, DateTime.UtcNow);
+
+            var summon = profile.Summons[0];
+
+            Assert.That(summon.MasteryLevel, Is.EqualTo(1));
+            Assert.That(summon.Copies, Is.EqualTo(0));
+            Assert.That(summon.UnlockedSceneIds, Is.EqualTo(new[] { 101 }));
+            Assert.That(profile.Resources["harem_points"], Is.EqualTo(100));
+        }
+
+        [Test]
+        public void ApplySummonMasteryRewards_GrantsRewardsOfCurrentMasteryLevel()
+        {
+            var profile = CreateProfile();
+
+            _applier.Apply(profile, _parser.Parse("summon:1:1"), _configDistributor, DateTime.UtcNow);
+
+            var summon = profile.Summons[0];
+
+            Assert.That(_configDistributor.Summons.TryGet(1, out var summonMapper), Is.True);
+
+            summon.MasteryLevel = 3;
+            _applier.ApplySummonMasteryRewards(profile, summon, summonMapper!, _configDistributor, DateTime.UtcNow);
+
+            summon.MasteryLevel = 8;
+            _applier.ApplySummonMasteryRewards(profile, summon, summonMapper!, _configDistributor, DateTime.UtcNow);
+
+            Assert.That(summon.UnlockedSceneIds, Is.EqualTo(new[] { 101, 102 }));
+            Assert.That(profile.Resources["harem_points"], Is.EqualTo(300));
+            Assert.That(profile.Bonuses[0].BonusId, Is.EqualTo(1));
+            Assert.That(profile.Bonuses[0].Count, Is.EqualTo(1));
         }
 
         [Test]
@@ -59,7 +97,7 @@ namespace Tests.Unit.Players
 
             var summon = profile.Summons[0];
 
-            summon.MasteryLevel = _configDistributor.Masteries.GetMaxMasteryLevel(1);
+            summon.MasteryLevel = _configDistributor.SummonMasteries.GetMaxMasteryLevel(1);
 
             _applier.Apply(profile, _parser.Parse("summon:1:3"), _configDistributor, DateTime.UtcNow);
 
@@ -120,7 +158,9 @@ namespace Tests.Unit.Players
 
             Assert.That(profile.Characters, Has.Count.EqualTo(1));
             Assert.That(profile.Characters[0].Copies, Is.EqualTo(0));
-            Assert.That(profile.Characters[0].UpgradesApplied, Is.EqualTo(0));
+            Assert.That(profile.Characters[0].PromoteLevel, Is.EqualTo(1));
+            Assert.That(profile.Characters[0].UnlockedSceneIds, Is.EqualTo(new[] { 101 }));
+            Assert.That(profile.Resources["harem_points"], Is.EqualTo(100));
         }
 
         [Test]
@@ -132,12 +172,12 @@ namespace Tests.Unit.Players
 
             var character = profile.Characters[0];
 
-            Assert.That(character.UpgradesApplied, Is.EqualTo(8));
-            Assert.That(character.Copies, Is.EqualTo(1));
-            Assert.That(profile.Resources["harem_points"], Is.EqualTo(950));
+            Assert.That(character.PromoteLevel, Is.EqualTo(9));
+            Assert.That(character.Copies, Is.EqualTo(0));
+            Assert.That(profile.Resources["harem_points"], Is.EqualTo(1050));
             Assert.That(profile.Bonuses, Has.Count.EqualTo(1));
             Assert.That(profile.Bonuses[0].BonusId, Is.EqualTo(1));
-            Assert.That(profile.Bonuses[0].Count, Is.EqualTo(1));
+            Assert.That(profile.Bonuses[0].Count, Is.EqualTo(2));
         }
 
         [Test]
@@ -149,11 +189,11 @@ namespace Tests.Unit.Players
 
             var character = profile.Characters[0];
 
-            Assert.That(character.UpgradesApplied, Is.EqualTo(20));
+            Assert.That(character.PromoteLevel, Is.EqualTo(20));
             Assert.That(character.Copies, Is.EqualTo(0));
             Assert.That(profile.Resources["harem_points"], Is.EqualTo(2150));
             Assert.That(profile.Bonuses[0].Count, Is.EqualTo(13));
-            Assert.That(profile.Resources["hard_money"], Is.EqualTo(4500));
+            Assert.That(profile.Resources["hard_money"], Is.EqualTo(5000));
         }
 
         [Test]
@@ -210,10 +250,14 @@ namespace Tests.Unit.Players
 
             var entries = _applier.Apply(profile, _parser.Parse("resource:soft_money:10,character:1:1"), _configDistributor, DateTime.UtcNow);
 
-            Assert.That(entries, Has.Count.EqualTo(2));
+            Assert.That(entries, Has.Count.EqualTo(5));
             Assert.That(entries[0].Type, Is.EqualTo("resource"));
             Assert.That(entries[0].Key, Is.EqualTo("soft_money"));
             Assert.That(entries[1].Type, Is.EqualTo("character"));
+            Assert.That(entries[2].Type, Is.EqualTo("promote"));
+            Assert.That(entries[2].Key, Is.EqualTo("1:1"));
+            Assert.That(entries[3].Key, Is.EqualTo("harem_points"));
+            Assert.That(entries[4].Type, Is.EqualTo("scene"));
         }
 
         private PlayerProfileDocument CreateProfile()

@@ -85,7 +85,7 @@ namespace Server.Battles
 
         public void Execute(ISkillExecutionContext context)
         {
-            var skillLevel = context.Actor.SkillLevel;
+            var skillLevel = context.Actor.GetSkillLevel(Id);
             var commands = new List<BattleCommand>
             {
                 context.BattleCommandFactory.CastSkill(context.Actor.Id, context.Actor.SlotIndex, context.Target.Id, context.Target.SlotIndex, SkillKey),

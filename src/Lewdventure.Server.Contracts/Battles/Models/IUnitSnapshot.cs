@@ -31,5 +31,7 @@ namespace Server.Battles
         public int SlotIndex { get; set; }
 
         public float CurrentHealth { get; set; }
+
+        public List<int> SkillLevels { get; set; }
     }
 }

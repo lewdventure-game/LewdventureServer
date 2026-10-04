@@ -143,9 +143,21 @@ namespace Server.Battles
             if (isSummon && _configDistributor.Summons.TryGet(unitSnapshot.Id, out var summonMapper))
             {
                 var mapperSkillIds = summonMapper.SkillIds;
+                var masteryForSkills = summonMapper.MasteryForSkills;
 
                 for (int i = 0; i < mapperSkillIds.Length; i++)
+                {
+                    var requiredMastery = i < masteryForSkills.Length ? masteryForSkills[i] : 0;
+
+                    if (unitSnapshot.MasteryLevel < requiredMastery)
+                    {
+                        _coreLog.Debug($"[Story][Battle]: Summon skill locked by mastery, unitId = {unitSnapshot.Id}, skillId = {mapperSkillIds[i]}, mastery = {unitSnapshot.MasteryLevel}, required = {requiredMastery}");
+
+                        continue;
+                    }
+
                     AddUniqueSkillId(skillIds, mapperSkillIds[i]);
+                }
             }
 
             if (isSummon == false)

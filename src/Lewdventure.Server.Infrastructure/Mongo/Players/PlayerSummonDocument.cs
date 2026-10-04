@@ -8,9 +8,11 @@ namespace Server.Infrastructure.Mongo.Players
 
         public int Level { get; set; } = 1;
 
-        public int MasteryLevel { get; set; }
+        public int MasteryLevel { get; set; } = 1;
 
-        public long SkillExpSpent { get; set; }
+        public List<int> SkillLevels { get; set; } = new();
+
+        public List<int> UnlockedSceneIds { get; set; } = new();
 
         public DateTime UnlockedAt { get; set; }
     }

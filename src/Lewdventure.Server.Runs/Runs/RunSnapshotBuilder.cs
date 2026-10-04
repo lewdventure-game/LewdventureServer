@@ -90,7 +90,7 @@ namespace Server.Runs
             var unit = new UnitSnapshot
             {
                 Id = character.ConfigId,
-                Level = character.UpgradesApplied + 1,
+                Level = character.PromoteLevel,
                 SlotIndex = 0,
                 CurrentHealth = run.CurrentHealth,
             };
@@ -170,6 +170,7 @@ namespace Server.Runs
                     Level = summon.Level,
                     MasteryLevel = summon.MasteryLevel,
                     SlotIndex = i,
+                    SkillLevels = new List<int>(summon.SkillLevels),
                 });
             }
         }

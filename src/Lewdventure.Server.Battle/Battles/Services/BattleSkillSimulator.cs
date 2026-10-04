@@ -546,7 +546,7 @@ namespace Server.Battles
                 ownerTeam,
                 opponentTeam,
                 owner.GetSkillState(skill.Id),
-                owner.SkillLevel,
+                owner.GetSkillLevel(skill.Id),
                 currentTurn,
                 isInstantCheck);
         }

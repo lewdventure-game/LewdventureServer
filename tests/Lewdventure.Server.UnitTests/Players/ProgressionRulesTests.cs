@@ -37,13 +37,112 @@ namespace Tests.Unit.Players
         }
 
         [Test]
+        public void Summons_WithEmptySkillColumns_LoadWithoutSkills()
+        {
+            Assert.That(_configDistributor.Summons.TryGet(1, out var summon), Is.True);
+            Assert.That(summon!.SkillIds, Is.Empty);
+            Assert.That(summon.MasteryForSkills, Is.Empty);
+            Assert.That(summon.SkillUpgradeIds, Is.Empty);
+        }
+
+        [Test]
+        public void SummonLevelStep_UsesRowOfTargetLevel()
+        {
+            Assert.That(_configDistributor.Summons.TryGet(1, out var summon), Is.True);
+            Assert.That(_summonRules.TryResolveLevelStep(summon!, 1, _configDistributor, out var costs, out var error), Is.True, error);
+            Assert.That(costs, Has.Count.EqualTo(1));
+            Assert.That(costs[0].Key, Is.EqualTo("summon_lvl"));
+            Assert.That(costs[0].Amount, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void SummonLevelStep_BreakLevel_NeedsBothResources()
+        {
+            Assert.That(_configDistributor.Summons.TryGet(1, out var summon), Is.True);
+            Assert.That(_summonRules.TryResolveLevelStep(summon!, 25, _configDistributor, out var costs, out var error), Is.True, error);
+            Assert.That(costs, Has.Count.EqualTo(2));
+            Assert.That(costs[0].Key, Is.EqualTo("summon_lvl"));
+            Assert.That(costs[0].Amount, Is.EqualTo(50));
+            Assert.That(costs[1].Key, Is.EqualTo("summon_break"));
+            Assert.That(costs[1].Amount, Is.EqualTo(20));
+        }
+
+        [Test]
+        public void SummonLevelStep_AfterLastRow_IsRejected()
+        {
+            Assert.That(_configDistributor.Summons.TryGet(1, out var summon), Is.True);
+            Assert.That(_summonRules.TryResolveLevelStep(summon!, 100, _configDistributor, out _, out var error), Is.False);
+            Assert.That(error, Does.Contain("no level 101"));
+        }
+
+        [Test]
         public void SummonLevelRefund_SumsSpentExpAndAppliesCoefficient()
         {
             Assert.That(_configDistributor.Summons.TryGet(1, out var summon), Is.True);
             Assert.That(_summonRules.TryResolveLevelRefund(summon!, 5, 0.85f, _configDistributor, out var refunds, out var error), Is.True, error);
             Assert.That(refunds, Has.Count.EqualTo(1));
-            Assert.That(refunds[0].Key, Is.EqualTo("summon_exp"));
-            Assert.That(refunds[0].Amount, Is.EqualTo(44));
+            Assert.That(refunds[0].Key, Is.EqualTo("summon_lvl"));
+            Assert.That(refunds[0].Amount, Is.EqualTo(17));
+        }
+
+        [Test]
+        public void SummonLevelRefund_ReturnsEveryResourceByCoefficient()
+        {
+            Assert.That(_configDistributor.Summons.TryGet(1, out var summon), Is.True);
+            Assert.That(_summonRules.TryResolveLevelRefund(summon!, 26, 0.85f, _configDistributor, out var refunds, out var error), Is.True, error);
+            Assert.That(refunds, Has.Count.EqualTo(2));
+            Assert.That(refunds[0].Key, Is.EqualTo("summon_lvl"));
+            Assert.That(refunds[0].Amount, Is.EqualTo(553));
+            Assert.That(refunds[1].Key, Is.EqualTo("summon_break"));
+            Assert.That(refunds[1].Amount, Is.EqualTo(17));
+        }
+
+        [Test]
+        public void SummonMasteryStep_FromFirstLevel_CostsCopiesOfSecond()
+        {
+            Assert.That(_configDistributor.Summons.TryGet(1, out var summon), Is.True);
+            Assert.That(_summonRules.TryResolveMasteryStep(summon!, 1, _configDistributor, out var copies, out var error), Is.True, error);
+            Assert.That(copies, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void SummonSkillStep_FirstUpgrade_CostsSkillPoints()
+        {
+            var summon = CreateSkilledSummon();
+
+            Assert.That(_summonRules.TryResolveSkillIndex(summon, 7, out var skillIndex, out var indexError), Is.True, indexError);
+            Assert.That(_summonRules.TryResolveSkillStep(summon, skillIndex, 1, 1, 1, _configDistributor, out var costs, out var error), Is.True, error);
+            Assert.That(costs, Has.Count.EqualTo(1));
+            Assert.That(costs[0].Key, Is.EqualTo("summon_skill_points"));
+            Assert.That(costs[0].Amount, Is.EqualTo(10));
+        }
+
+        [Test]
+        public void SummonSkillStep_BelowLevelToUnlock_IsRejected()
+        {
+            var summon = CreateSkilledSummon();
+
+            Assert.That(_summonRules.TryResolveSkillStep(summon, 0, 4, 24, 1, _configDistributor, out _, out var error), Is.False);
+            Assert.That(error, Does.Contain("needs summon level 25"));
+            Assert.That(_summonRules.TryResolveSkillStep(summon, 0, 4, 25, 1, _configDistributor, out _, out var unlockedError), Is.True, unlockedError);
+        }
+
+        [Test]
+        public void SummonSkillStep_LockedByMastery_IsRejected()
+        {
+            var summon = CreateSkilledSummon();
+
+            Assert.That(_summonRules.TryResolveSkillStep(summon, 1, 1, 50, 4, _configDistributor, out _, out var error), Is.False);
+            Assert.That(error, Does.Contain("needs mastery 5"));
+        }
+
+        [Test]
+        public void SummonSkillStep_AfterLastRow_IsRejected()
+        {
+            var summon = CreateSkilledSummon();
+
+            Assert.That(_summonRules.TryResolveSkillStep(summon, 0, 10, 100, 20, _configDistributor, out _, out var error), Is.False);
+            Assert.That(error, Does.Contain("no level 11"));
         }
 
         [Test]
@@ -52,6 +151,21 @@ namespace Tests.Unit.Players
             Assert.That(_configDistributor.Summons.TryGet(1, out var summon), Is.True);
             Assert.That(_summonRules.TryResolveLevelRefund(summon!, 1, 0.85f, _configDistributor, out _, out var error), Is.False);
             Assert.That(error, Does.Contain("already at level 1"));
+        }
+
+        private SummonMapper CreateSkilledSummon()
+        {
+            return new SummonMapper
+            {
+                Id = 99,
+                Rarity = RarityType.Rare,
+                DamageOnLevels = new[] { 10f },
+                SkillIds = new[] { "7", "8" },
+                MasteryForSkills = new[] { 1, 5 },
+                SkillUpgradeIds = new[] { 1, 1 },
+                MasteryId = 1,
+                LevelPatternId = 1,
+            };
         }
 
         [Test]

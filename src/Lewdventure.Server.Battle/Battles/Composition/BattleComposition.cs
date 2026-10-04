@@ -69,7 +69,7 @@ namespace Server.Battles
             var statusSimulator = new BattleStatusSimulator(coreLog, bonusService, commandFactory, damageMath, perkSimulator, scriptBuilder, configDistributor, statusClassifier);
             var attackService = new BattleAttackService(constantsReader, teamQuery, coreLog, commandFactory, damageMath, perkSimulator, scriptBuilder, skillSimulator);
             var summonSimulator = new BattleSummonSimulator(constantsReader, teamQuery, coreLog, commandFactory, damageMath, perkSimulator, scriptBuilder, skillSimulator, configDistributor);
-            var bonusGranter = new UnitBonusGranter(coreLog, bonusService, _bonusWorkModeParser, configDistributor, bucketsFactory);
+            var bonusGranter = new UnitBonusGranter(coreLog, bonusService, _bonusWorkModeParser, configDistributor);
             var loadoutBinder = new UnitLoadoutBinder(coreLog, bonusService, configDistributor, _perkFactory, _skillFactory, statusParametersParser);
 
             _unitStateBuilder = new UnitStateBuilder(coreLog, bonusService, characteristicCalculator, configDistributor, bonusGranter, bucketsFactory, new SkillLevelResolver(), loadoutBinder);

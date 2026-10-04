@@ -10,6 +10,7 @@ namespace Server.Infrastructure.Players
         private const int MaxAttempts = 3;
         private const string SummonLevelAction = "summon-level";
         private const string SummonMasteryAction = "summon-mastery";
+        private const string SummonSkillLevelAction = "summon-skill-level";
         private const string EquipmentLevelAction = "equipment-level";
         private const string SummonLevelResetAction = "summon-level-reset";
         private const string EquipmentLevelResetAction = "equipment-level-reset";
@@ -32,6 +33,7 @@ namespace Server.Infrastructure.Players
         private readonly PlayerLedgerRepository _playerLedgerRepository;
         private readonly PlayerProfileRepository _playerProfileRepository;
         private readonly PlayerProfileService _playerProfileService;
+        private readonly RewardApplier _rewardApplier;
         private readonly SummonProgressionRules _summonProgressionRules;
         private readonly TimeProvider _timeProvider;
 
@@ -44,6 +46,7 @@ namespace Server.Infrastructure.Players
             PlayerLedgerRepository playerLedgerRepository,
             PlayerProfileRepository playerProfileRepository,
             PlayerProfileService playerProfileService,
+            RewardApplier rewardApplier,
             SummonProgressionRules summonProgressionRules,
             TimeProvider timeProvider)
         {
@@ -55,6 +58,7 @@ namespace Server.Infrastructure.Players
             _playerLedgerRepository = playerLedgerRepository;
             _playerProfileRepository = playerProfileRepository;
             _playerProfileService = playerProfileService;
+            _rewardApplier = rewardApplier;
             _summonProgressionRules = summonProgressionRules;
             _timeProvider = timeProvider;
         }
@@ -84,7 +88,7 @@ namespace Server.Infrastructure.Players
                     return Failed($"Summon {summonId} is not owned.");
                 }
 
-                if (_summonProgressionRules.TryResolveLevelStep(summonConfig, summon.Level, summon.MasteryLevel, configDistributor, out var costs, out var error) == false)
+                if (_summonProgressionRules.TryResolveLevelStep(summonConfig, summon.Level, configDistributor, out var costs, out var error) == false)
                 {
                     await ReleaseAsync(userId, requestId, cancellationToken);
 
@@ -159,7 +163,69 @@ namespace Server.Infrastructure.Players
                     new PlayerLedgerEntryDocument { Type = SpendEntry, Key = "summon:" + summonId + ":copies", Amount = -copies },
                     new PlayerLedgerEntryDocument { Type = ProgressEntry, Key = "summon:" + summonId + ":mastery", Amount = summon.MasteryLevel },
                 };
+
+                entries.AddRange(_rewardApplier.ApplySummonMasteryRewards(profile, summon, summonConfig, configDistributor, _timeProvider.GetUtcNow().UtcDateTime));
+
                 var saved = await SaveAsync(userId, profile, entries, SummonMasteryAction, requestId, cancellationToken);
+
+                if (saved)
+                    return new PlayerUpdateResult(profile, false, new List<string>());
+            }
+
+            await ReleaseAsync(userId, requestId, cancellationToken);
+
+            return Conflict();
+        }
+
+        public async Task<PlayerUpdateResult> UpgradeSummonSkillLevelAsync(
+            string userId,
+            int summonId,
+            int skillId,
+            string requestId,
+            IConfigDistributor configDistributor,
+            CancellationToken cancellationToken)
+        {
+            if (configDistributor.Summons.TryGet(summonId, out var summonConfig) == false)
+                return Failed($"Summon {summonId} is missing in configs.");
+
+            if (_summonProgressionRules.TryResolveSkillIndex(summonConfig, skillId, out var skillIndex, out var indexError) == false)
+                return Failed(indexError);
+
+            if (await IsAlreadyAppliedAsync(userId, requestId, SummonSkillLevelAction, cancellationToken))
+                return new PlayerUpdateResult(await _playerProfileService.GetOrCreateAsync(userId, cancellationToken), false, new List<string>());
+
+            for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+            {
+                var profile = await _playerProfileService.GetOrCreateAsync(userId, cancellationToken);
+                var summon = FindSummon(profile, summonId);
+
+                if (summon == null)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed($"Summon {summonId} is not owned.");
+                }
+
+                var currentSkillLevel = ReadSkillLevel(summon, skillIndex);
+
+                if (_summonProgressionRules.TryResolveSkillStep(summonConfig, skillIndex, currentSkillLevel, summon.Level, summon.MasteryLevel, configDistributor, out var costs, out var error) == false)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed(error);
+                }
+
+                if (TrySpend(profile, costs, out var entries, out var spendError) == false)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed(spendError);
+                }
+
+                WriteSkillLevel(summon, skillIndex, currentSkillLevel + 1);
+                entries.Add(new PlayerLedgerEntryDocument { Type = ProgressEntry, Key = "summon:" + summonId + ":skill:" + skillId, Amount = currentSkillLevel + 1 });
+
+                var saved = await SaveAsync(userId, profile, entries, SummonSkillLevelAction, requestId, cancellationToken);
 
                 if (saved)
                     return new PlayerUpdateResult(profile, false, new List<string>());
@@ -720,6 +786,22 @@ namespace Server.Infrastructure.Players
             }
 
             return null;
+        }
+
+        private int ReadSkillLevel(PlayerSummonDocument summon, int skillIndex)
+        {
+            if (skillIndex < summon.SkillLevels.Count && 0 < summon.SkillLevels[skillIndex])
+                return summon.SkillLevels[skillIndex];
+
+            return 1;
+        }
+
+        private void WriteSkillLevel(PlayerSummonDocument summon, int skillIndex, int skillLevel)
+        {
+            while (summon.SkillLevels.Count <= skillIndex)
+                summon.SkillLevels.Add(1);
+
+            summon.SkillLevels[skillIndex] = skillLevel;
         }
 
         private PlayerSummonDocument? FindSummon(PlayerProfileDocument profile, int summonId)

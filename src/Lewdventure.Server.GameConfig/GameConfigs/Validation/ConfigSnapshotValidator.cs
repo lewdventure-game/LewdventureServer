@@ -30,7 +30,7 @@ namespace Server.GameConfigs
             [ConfigDomainNames.Statuses] = typeof(StatusMapper),
             [ConfigDomainNames.Summons] = typeof(SummonMapper),
             [ConfigDomainNames.SummonLevels] = typeof(SummonLevelMapper),
-            [ConfigDomainNames.Mastery] = typeof(MasteryMapper),
+            [ConfigDomainNames.SummonMasteries] = typeof(SummonMasteryMapper),
             [ConfigDomainNames.Enemies] = typeof(EnemyMapper),
             [ConfigDomainNames.Equipments] = typeof(EquipmentMapper),
             [ConfigDomainNames.EquipmentPromotes] = typeof(EquipmentPromoteMapper),
@@ -41,6 +41,7 @@ namespace Server.GameConfigs
             [ConfigDomainNames.Perks] = typeof(PerkMapper),
             [ConfigDomainNames.PerkGroups] = typeof(PerkGroupMapper),
             [ConfigDomainNames.Skills] = typeof(SkillMapper),
+            [ConfigDomainNames.SkillPromotes] = typeof(SkillPromoteMapper),
         };
 
         public ConfigSnapshotValidator(

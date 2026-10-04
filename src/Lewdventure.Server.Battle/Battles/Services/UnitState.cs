@@ -17,6 +17,7 @@ namespace Server.Battles
         private readonly List<EquippedEntityRef> _equippedEntities = new();
         private readonly List<string> _equipmentSkillKeys = new();
         private readonly List<SkillRuntimeState> _skillStates = new();
+        private readonly Dictionary<int, int> _skillLevelsBySkillId = new();
         private int _skillLevel;
         private int _nextAttackTurn;
 
@@ -45,8 +46,6 @@ namespace Server.Battles
         public IReadOnlyList<EquippedEntityRef> EquippedEntities => _equippedEntities;
 
         public IReadOnlyList<string> EquipmentSkillKeys => _equipmentSkillKeys;
-
-        public int SkillLevel => _skillLevel;
 
         public UnitState(
             int id,
@@ -93,6 +92,19 @@ namespace Server.Battles
         public void SetSkillLevel(int skillLevel)
         {
             _skillLevel = skillLevel < 0 ? 0 : skillLevel;
+        }
+
+        public void SetSkillLevel(int skillId, int skillLevel)
+        {
+            _skillLevelsBySkillId[skillId] = skillLevel < 0 ? 0 : skillLevel;
+        }
+
+        public int GetSkillLevel(int skillId)
+        {
+            if (_skillLevelsBySkillId.TryGetValue(skillId, out var skillLevel))
+                return skillLevel;
+
+            return _skillLevel;
         }
 
         public SkillRuntimeState GetSkillState(int skillId)

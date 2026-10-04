@@ -75,7 +75,7 @@ namespace Server.GameConfigs
             var tempStatuses = ParseDomain<StatusMapper>(snapshot, ConfigDomainNames.Statuses, errors);
             var tempSummons = ParseDomain<SummonMapper>(snapshot, ConfigDomainNames.Summons, errors);
             var tempSummonLevels = ParseDomain<SummonLevelMapper>(snapshot, ConfigDomainNames.SummonLevels, errors);
-            var tempMasteries = ParseDomain<MasteryMapper>(snapshot, ConfigDomainNames.Mastery, errors);
+            var tempSummonMasteries = ParseDomain<SummonMasteryMapper>(snapshot, ConfigDomainNames.SummonMasteries, errors);
             var tempEnemies = ParseDomain<EnemyMapper>(snapshot, ConfigDomainNames.Enemies, errors);
             var tempEquipments = ParseDomain<EquipmentMapper>(snapshot, ConfigDomainNames.Equipments, errors);
             var tempEquipmentPromotes = ParseDomain<EquipmentPromoteMapper>(snapshot, ConfigDomainNames.EquipmentPromotes, errors);
@@ -86,6 +86,7 @@ namespace Server.GameConfigs
             var tempPerks = ParseDomain<PerkMapper>(snapshot, ConfigDomainNames.Perks, errors);
             var tempPerkGroups = ParseDomain<PerkGroupMapper>(snapshot, ConfigDomainNames.PerkGroups, errors);
             var tempSkills = ParseDomain<SkillMapper>(snapshot, ConfigDomainNames.Skills, errors);
+            var tempSkillPromotes = ParseDomain<SkillPromoteMapper>(snapshot, ConfigDomainNames.SkillPromotes, errors);
 
             var distributor = new ConfigDistributor();
 
@@ -96,7 +97,7 @@ namespace Server.GameConfigs
             AddList(distributor.Statuses, tempStatuses, ConfigDomainNames.Statuses);
             AddList(distributor.Summons, tempSummons, ConfigDomainNames.Summons);
             AddList(distributor.SummonLevels, tempSummonLevels, ConfigDomainNames.SummonLevels);
-            AddList(distributor.Masteries, tempMasteries, ConfigDomainNames.Mastery);
+            AddList(distributor.SummonMasteries, tempSummonMasteries, ConfigDomainNames.SummonMasteries);
             AddList(distributor.Enemies, tempEnemies, ConfigDomainNames.Enemies);
             AddList(distributor.Equipments, tempEquipments, ConfigDomainNames.Equipments);
             AddList(distributor.EquipmentPromotes, tempEquipmentPromotes, ConfigDomainNames.EquipmentPromotes);
@@ -107,6 +108,7 @@ namespace Server.GameConfigs
             AddList(distributor.Perks, tempPerks, ConfigDomainNames.Perks);
             AddList(distributor.PerkGroups, tempPerkGroups, ConfigDomainNames.PerkGroups);
             AddList(distributor.Skills, tempSkills, ConfigDomainNames.Skills);
+            AddList(distributor.SkillPromotes, tempSkillPromotes, ConfigDomainNames.SkillPromotes);
 
             if (distributor.CharacterPromotes.Collection.Count == 0)
                 _coreLog.Information("[Config] Character_promotes empty; sheet id not wired");

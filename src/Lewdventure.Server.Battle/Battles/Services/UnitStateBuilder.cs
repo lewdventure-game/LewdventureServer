@@ -1,3 +1,4 @@
+using System.Globalization;
 using Server.Common;
 using Server.Configs;
 using Server.Entities;
@@ -110,9 +111,6 @@ namespace Server.Battles
                 _battleBonusService.Rebuild(unitState, 0, new List<BattleCommand>(), false);
             }
 
-            if (isSummon && _configDistributor.Summons.TryGet(unitSnapshot.Id, out var summonMapperForBreakout))
-                _unitBucketsFactory.ApplyBreakoutHook(unitSnapshot, summonMapperForBreakout);
-
             _unitLoadoutBinder.SeedActiveStatuses(unitState, unitSnapshot, isSummon);
             _unitLoadoutBinder.ApplyEquippedPerks(unitState);
             ApplySnapshotHealth(unitState, unitSnapshot);
@@ -122,29 +120,55 @@ namespace Server.Battles
             return unitState;
         }
 
-        public void GrantSummonAccountBonuses(IUnitState mainUnit, IUnitSnapshot summonSnapshot)
-        {
-            _unitBonusGranter.GrantSummonAccountBonuses(mainUnit, summonSnapshot);
-        }
-
         private void ApplySkillLevel(UnitState unitState, IUnitSnapshot unitSnapshot, bool isSummon, BattleSide battleSide)
         {
-            if (isSummon || battleSide != BattleSide.Attacking)
+            if (isSummon)
+            {
+                ApplySummonSkillLevels(unitState, unitSnapshot);
+
+                return;
+            }
+
+            if (battleSide != BattleSide.Attacking)
                 return;
 
             if (_configDistributor.Characters.TryGet(unitSnapshot.Id, out var characterMapper) == false)
                 return;
 
-            var promoteLevel = unitSnapshot.Level - 1;
+            var promoteLevel = unitSnapshot.Level;
 
-            if (promoteLevel < 0)
-                promoteLevel = 0;
+            if (promoteLevel < 1)
+                promoteLevel = 1;
 
             var skillLevel = _skillLevelResolver.Resolve(characterMapper.PromoteToSkillLevels, promoteLevel);
 
             unitState.SetSkillLevel(skillLevel);
 
             _coreLog.Debug($"[Story][Battle]: Skill level resolved, unitId = {unitState.Id}, promoteLevel = {promoteLevel}, skillLevel = {skillLevel}");
+        }
+
+        private void ApplySummonSkillLevels(UnitState unitState, IUnitSnapshot unitSnapshot)
+        {
+            if (_configDistributor.Summons.TryGet(unitSnapshot.Id, out var summonMapper) == false)
+                return;
+
+            var skillIds = summonMapper.SkillIds;
+            var snapshotLevels = unitSnapshot.SkillLevels;
+
+            for (int i = 0; i < skillIds.Length; i++)
+            {
+                if (int.TryParse(skillIds[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out var skillId) == false)
+                    continue;
+
+                var skillLevel = i < snapshotLevels.Count ? snapshotLevels[i] : 1;
+
+                if (skillLevel < 1)
+                    skillLevel = 1;
+
+                unitState.SetSkillLevel(skillId, skillLevel - 1);
+
+                _coreLog.Debug($"[Story][Battle]: Summon skill level, unitId = {unitState.Id}, skillId = {skillId}, level = {skillLevel}");
+            }
         }
 
         private void ApplySnapshotHealth(IUnitState unitState, IUnitSnapshot unitSnapshot)

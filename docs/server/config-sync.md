@@ -142,9 +142,10 @@ DI: runtime доступ к конфигам **только** через `IConfi
 | Character_promotes | `Character_promotes` | `id` = набор промоутов (ссылка из `Characters.promote_id`), `promote_level`, `frame_id`, `copies_to_upgrade`, награды тремя колонками `reward_types` / `reward_ids` / `reward_values` через `;` |
 | Bonuses | `Bonuses` | dictionary by id; `work_mode` — сырая строка на mapper, parse через `BonusWorkModeParser` |
 | Statuses | `Statuses` | |
-| Summons | `Summons` | `breakout_multis`, `bonus_mastery_levels`, `bonus_types`, `is_melee` |
-| Summon_levels | `SummonLevels` | load-only для боя |
-| Mastery | `Masteries` | composite key id+level |
+| Summons | `Summons` | `id`, `art_name`, `is_melee`, `rarity`, `dmg_on_lvls`, `attack_cooldown`, `mastery_id`, `level_pattern_id`, `skill_ids`, `mastery_for_skills`, `skill_upgrade_ids` (три последних — параллельные списки через `;`) |
+| Summon_levels | `SummonLevels` | `id`, `pattern_id`, `level` (уровень, на который переходит саммон), `resource_types/ids/values` |
+| Summon_masteries | `SummonMasteries` | composite key `id`+`mastery_level`; `copies_to_upgrade`, `dmg_multiplier`, `reward_types/ids/values`, `frame_id`. До 2026-10-04 лист назывался `Mastery` |
+| Skill_promotes | `SkillPromotes` | `id`, `pattern_id`, `level` (уровень, на который переходит скилл), `resource_types/ids/values`, `level_to_unlock` (уровень саммона) |
 | Enemies | `Enemies` | flat client columns **or** packed `other_characteristics` (`key:value;...`); packed overrides flat when non-empty; dual combo keys + legacy `combo_multiplier` |
 | Equipments | `Equipments` | может быть пусто; `equip_bonus_type_*` = bonus **id** или имя `BonusType`; `equip_bonus_values_*` по уровню через `,` или `;`; `is_melee`; `skill_id` → inject known energy/skill into character build (unknown skipped) |
 | Trainings | `Trainings` | stub: sheet id не wired, manager empty после sync |

@@ -14,9 +14,6 @@ namespace Server.Entities
         [JsonProperty("level")]
         public int Level { get; init; }
 
-        [JsonProperty("mastery_requirement")]
-        public int MasteryRequirement { get; init; }
-
         [JsonProperty("resource_types")]
         [JsonConverter(typeof(DelimitedStringArrayConverter), ';')]
         public string[] ResourceTypes { get; init; } = Array.Empty<string>();

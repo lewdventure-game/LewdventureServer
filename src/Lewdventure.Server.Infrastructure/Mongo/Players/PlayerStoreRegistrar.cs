@@ -42,6 +42,7 @@ namespace Server.Infrastructure.Mongo.Players
                 serviceProvider.GetRequiredService<PlayerLedgerRepository>(),
                 serviceProvider.GetRequiredService<PlayerProfileRepository>(),
                 serviceProvider.GetRequiredService<PlayerProfileService>(),
+                serviceProvider.GetRequiredService<RewardApplier>(),
                 serviceProvider.GetRequiredService<SummonProgressionRules>(),
                 serviceProvider.GetRequiredService<TimeProvider>());
         }

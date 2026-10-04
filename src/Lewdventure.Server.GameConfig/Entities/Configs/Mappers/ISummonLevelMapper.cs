@@ -10,8 +10,6 @@ namespace Server.Entities
 
         public int Level { get; }
 
-        public int MasteryRequirement { get; }
-
         public string[] ResourceTypes { get; }
 
         public string[] ResourceIds { get; }

@@ -55,7 +55,7 @@
 | Сервер | Клиент сейчас |
 | --- | --- |
 | `profile.story.completedLevelIds` | `IPlayerData.CompletedStoryLevelIds` |
-| `profile.characters[].upgradesApplied` | `IPlayerData.CharacterLevel` |
+| `profile.characters[].promoteLevel` (с 1) | `IPlayerData.CharacterLevel` |
 | `profile.equipment` + `profile.loadout.equipment` | `EquippedEquipmentIds`, `EquippedEquipmentLevels` |
 | `profile.resources` | локальные счётчики ресурсов |
 | `profile.flags` | `HasStartPerkChoiceReward`, `RunCount` и подобные флаги |

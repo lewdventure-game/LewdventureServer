@@ -35,13 +35,13 @@ namespace Server.Services
 
         public IExperienceLevelPatternMapperManager ExperienceLevelPatterns { get; } = new ExperienceLevelPatternMapperManager();
 
-        public IMasteryMapperManager Masteries { get; } = new MasteryMapperManager();
-
         public IPerkGroupMapperManager PerkGroups { get; } = new PerkGroupMapperManager();
 
         public IPerkMapperManager Perks { get; } = new PerkMapperManager();
 
         public ISkillMapperManager Skills { get; } = new SkillMapperManager();
+
+        public ISkillPromoteMapperManager SkillPromotes { get; } = new SkillPromoteMapperManager();
 
         public IStatusMapperManager Statuses { get; } = new StatusMapperManager();
 
@@ -52,6 +52,8 @@ namespace Server.Services
         public IStoryStageMapperManager StoryStages { get; } = new StoryStageMapperManager();
 
         public ISummonLevelMapperManager SummonLevels { get; } = new SummonLevelMapperManager();
+
+        public ISummonMasteryMapperManager SummonMasteries { get; } = new SummonMasteryMapperManager();
 
         public ISummonMapperManager Summons { get; } = new SummonMapperManager();
 

@@ -111,19 +111,19 @@ namespace Tests.Unit.Battles
         public void SkillLevel_FollowsPromoteToSkillLevels()
         {
             var resolver = new SkillLevelResolver();
-            var promoteToSkillLevels = new[] { 0, 1, 3, 5 };
+            var promoteToSkillLevels = new[] { 1, 2, 4, 6 };
 
-            Assert.That(resolver.Resolve(promoteToSkillLevels, 0), Is.EqualTo(0));
-            Assert.That(resolver.Resolve(promoteToSkillLevels, 1), Is.EqualTo(1));
+            Assert.That(resolver.Resolve(promoteToSkillLevels, 1), Is.EqualTo(0));
             Assert.That(resolver.Resolve(promoteToSkillLevels, 2), Is.EqualTo(1));
-            Assert.That(resolver.Resolve(promoteToSkillLevels, 3), Is.EqualTo(2));
+            Assert.That(resolver.Resolve(promoteToSkillLevels, 3), Is.EqualTo(1));
+            Assert.That(resolver.Resolve(promoteToSkillLevels, 4), Is.EqualTo(2));
             Assert.That(resolver.Resolve(promoteToSkillLevels, 9), Is.EqualTo(3));
         }
 
         [Test]
         public void SkillLevel_PicksArgumentsOfThatLevel()
         {
-            var battleCore = CreateCore(WithSkill(EnergyTriggers, EnergyActions, promoteToSkillLevels: "0;1"));
+            var battleCore = CreateCore(WithSkill(EnergyTriggers, EnergyActions, promoteToSkillLevels: "1;2"));
             var baseSnapshot = CreateUnitSnapshot();
             var promotedSnapshot = CreateUnitSnapshot();
 
@@ -137,7 +137,127 @@ namespace Tests.Unit.Battles
             Assert.That(FindSkillDamage(promotedScript, MathF.Round(characteristics.Damage * 1.2f, MidpointRounding.AwayFromZero)), Is.Not.Null);
         }
 
-        private List<CoreConfigDomain> WithSkill(string triggers, string actions, string promoteToSkillLevels = "0")
+        [Test]
+        public void SummonSkill_UsesItsOwnLevel()
+        {
+            var battleCore = CreateCore(WithSummonSkill("1"));
+            var baseSummon = CreateSummonSnapshot(1, 1);
+            var upgradedSummon = CreateSummonSnapshot(1, 2);
+            var summonDamage = battleCore.BuildCharacteristics(baseSummon, BattleSide.Attacking, true, StoryLevelId, 0).Damage;
+            var baseScript = battleCore.Replay(CreateReplayData(CreateUnitSnapshot(), baseSummon));
+            var upgradedScript = battleCore.Replay(CreateReplayData(CreateUnitSnapshot(), upgradedSummon));
+
+            Assert.That(FindPhaseDamage(baseScript, BattlePhaseType.SummonSkill, MathF.Round(summonDamage * 0.5f, MidpointRounding.AwayFromZero)), Is.Not.Null, "скилл саммона первого уровня");
+            Assert.That(FindPhaseDamage(upgradedScript, BattlePhaseType.SummonSkill, MathF.Round(summonDamage * 0.9f, MidpointRounding.AwayFromZero)), Is.Not.Null, "скилл саммона второго уровня");
+        }
+
+        [Test]
+        public void SummonSkill_LockedByMastery_DoesNotActivate()
+        {
+            var battleCore = CreateCore(WithSummonSkill("3"));
+            var lockedScript = battleCore.Replay(CreateReplayData(CreateUnitSnapshot(), CreateSummonSnapshot(2, 1)));
+            var unlockedScript = battleCore.Replay(CreateReplayData(CreateUnitSnapshot(), CreateSummonSnapshot(3, 1)));
+
+            Assert.That(CountPhaseCommands(lockedScript, BattlePhaseType.SummonSkill, CommandType.CastSkill), Is.EqualTo(0), "скилл открылся до нужного мастерства");
+            Assert.That(CountPhaseCommands(unlockedScript, BattlePhaseType.SummonSkill, CommandType.CastSkill), Is.GreaterThan(0), "скилл не открылся на нужном мастерстве");
+        }
+
+        private List<CoreConfigDomain> WithSummonSkill(string masteryForSkill)
+        {
+            var patched = ReplaceDomain(_domains, "Skills", rows =>
+            {
+                rows.Add(new JObject
+                {
+                    ["id"] = "50",
+                    ["triggers"] = "on_cooldown:[cooldown:{1:1},is_start_availiable:{1:1}]",
+                    ["actions"] = "damage:[damage:{0.5:0.9},target:{1:1},is_spell_amp:{0:0},timing:{0.1:0.1}]",
+                });
+            });
+
+            patched = ReplaceDomain(patched, "Characters", rows =>
+            {
+                var row = (JObject)rows[0];
+
+                row["skill_ids"] = string.Empty;
+            });
+
+            return ReplaceDomain(patched, "Summons", rows =>
+            {
+                var row = (JObject)rows[0];
+
+                row["skill_ids"] = "50";
+                row["mastery_for_skills"] = masteryForSkill;
+                row["skill_upgrade_ids"] = "1";
+            });
+        }
+
+        private UnitSnapshot CreateSummonSnapshot(int masteryLevel, int skillLevel)
+        {
+            return new UnitSnapshot
+            {
+                Id = 1,
+                Level = 1,
+                MasteryLevel = masteryLevel,
+                SlotIndex = 1,
+                SkillLevels = new List<int> { skillLevel },
+            };
+        }
+
+        private BattleReplayData CreateReplayData(UnitSnapshot unitSnapshot, UnitSnapshot summonSnapshot)
+        {
+            var replayData = CreateReplayData(unitSnapshot);
+
+            replayData.TeamA.Summons.Add(summonSnapshot);
+
+            return replayData;
+        }
+
+        private BattleCommand? FindPhaseDamage(IBattleScriptResponse script, BattlePhaseType phase, float expectedDamage)
+        {
+            for (int i = 0; i < script.Steps.Count; i++)
+            {
+                if (script.Steps[i].Phase != phase)
+                    continue;
+
+                var commands = script.Steps[i].Commands;
+
+                for (int commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    var command = commands[commandIndex];
+
+                    if (command.CommandType != CommandType.ShowDamage)
+                        continue;
+
+                    if (MathF.Abs(command.Parameters["damage"]!.Value<float>() - expectedDamage) <= 0.001f)
+                        return command;
+                }
+            }
+
+            return null;
+        }
+
+        private int CountPhaseCommands(IBattleScriptResponse script, BattlePhaseType phase, CommandType commandType)
+        {
+            var count = 0;
+
+            for (int i = 0; i < script.Steps.Count; i++)
+            {
+                if (script.Steps[i].Phase != phase)
+                    continue;
+
+                var commands = script.Steps[i].Commands;
+
+                for (int commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    if (commands[commandIndex].CommandType == commandType)
+                        count += 1;
+                }
+            }
+
+            return count;
+        }
+
+        private List<CoreConfigDomain> WithSkill(string triggers, string actions, string promoteToSkillLevels = "1")
         {
             var patched = ReplaceDomain(_domains, "Skills", rows =>
             {

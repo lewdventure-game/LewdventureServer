@@ -15,7 +15,5 @@ namespace Server.Battles
         public void GrantAspectBonuses(UnitState unitState, IUnitSnapshot unitSnapshot);
 
         public void GrantSnapshotRunBonuses(IUnitState unitState, IUnitSnapshot unitSnapshot);
-
-        public void GrantSummonAccountBonuses(IUnitState mainUnit, IUnitSnapshot summonSnapshot);
     }
 }

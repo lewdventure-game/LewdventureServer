@@ -9,7 +9,7 @@ namespace Server.GameConfigs
         public const string Statuses = "Statuses";
         public const string Summons = "Summons";
         public const string SummonLevels = "Summon_levels";
-        public const string Mastery = "Mastery";
+        public const string SummonMasteries = "Summon_masteries";
         public const string Enemies = "Enemies";
         public const string Equipments = "Equipments";
         public const string EquipmentPromotes = "Equipment_promotes";
@@ -20,6 +20,7 @@ namespace Server.GameConfigs
         public const string Perks = "Perks";
         public const string PerkGroups = "Perk_groups";
         public const string Skills = "Skills";
+        public const string SkillPromotes = "Skill_promotes";
 
         private readonly string[] _ordered =
         {
@@ -30,7 +31,7 @@ namespace Server.GameConfigs
             Statuses,
             Summons,
             SummonLevels,
-            Mastery,
+            SummonMasteries,
             Enemies,
             Equipments,
             EquipmentPromotes,
@@ -41,6 +42,7 @@ namespace Server.GameConfigs
             Perks,
             PerkGroups,
             Skills,
+            SkillPromotes,
         };
 
         private readonly string[] _optional =

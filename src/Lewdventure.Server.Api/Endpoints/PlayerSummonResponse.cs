@@ -9,5 +9,9 @@ namespace Server.Api.Endpoints
         public int Level { get; set; }
 
         public int MasteryLevel { get; set; }
+
+        public List<int> SkillLevels { get; set; } = new();
+
+        public List<int> UnlockedScenes { get; set; } = new();
     }
 }

@@ -33,7 +33,7 @@ namespace Server.Api.Endpoints
                 {
                     Id = character.ConfigId,
                     Copies = character.Copies,
-                    UpgradesApplied = character.UpgradesApplied,
+                    PromoteLevel = character.PromoteLevel,
                     UnlockedScenes = new List<int>(character.UnlockedSceneIds),
                 });
             }
@@ -48,6 +48,8 @@ namespace Server.Api.Endpoints
                     Copies = summon.Copies,
                     Level = summon.Level,
                     MasteryLevel = summon.MasteryLevel,
+                    SkillLevels = new List<int>(summon.SkillLevels),
+                    UnlockedScenes = new List<int>(summon.UnlockedSceneIds),
                 });
             }
 

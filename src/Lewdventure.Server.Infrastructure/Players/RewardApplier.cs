@@ -24,7 +24,6 @@ namespace Server.Infrastructure.Players
         private const string BonusEntry = "bonus";
         private const string PromoteEntry = "promote";
         private const string SceneEntry = "scene";
-        private const int NoSceneOwner = 0;
 
         private readonly IBattleRewardParser _battleRewardParser;
         private readonly IBonusWorkModeParser _bonusWorkModeParser;
@@ -60,8 +59,24 @@ namespace Server.Infrastructure.Players
         {
             var entries = new List<PlayerLedgerEntryDocument>();
 
+            var noOwner = new SceneOwner(SceneOwnerKind.None, 0);
+
             for (int i = 0; i < rewards.Count; i++)
-                ApplyReward(profile, rewards[i], NoSceneOwner, configDistributor, now, entries);
+                ApplyReward(profile, rewards[i], noOwner, configDistributor, now, entries);
+
+            return entries;
+        }
+
+        public List<PlayerLedgerEntryDocument> ApplySummonMasteryRewards(
+            PlayerProfileDocument profile,
+            PlayerSummonDocument summon,
+            ISummonMapper summonMapper,
+            IConfigDistributor configDistributor,
+            DateTime now)
+        {
+            var entries = new List<PlayerLedgerEntryDocument>();
+
+            ApplySummonMasteryLevelRewards(profile, summon, summonMapper, configDistributor, now, entries);
 
             return entries;
         }
@@ -69,7 +84,7 @@ namespace Server.Infrastructure.Players
         private void ApplyReward(
             PlayerProfileDocument profile,
             in BattleReward reward,
-            int sceneOwnerId,
+            in SceneOwner sceneOwner,
             IConfigDistributor configDistributor,
             DateTime now,
             List<PlayerLedgerEntryDocument> entries)
@@ -134,7 +149,7 @@ namespace Server.Infrastructure.Players
 
             if (reward.Type == BattleRewardType.Story)
             {
-                AddStoryScene(profile, reward.Id, sceneOwnerId, entries);
+                AddStoryScene(profile, reward.Id, sceneOwner, entries);
 
                 return;
             }
@@ -142,7 +157,7 @@ namespace Server.Infrastructure.Players
             _logger.LogDebug("[Player] reward type {Type} is run scoped and does not change the profile", reward.Type);
         }
 
-        private void AddStoryScene(PlayerProfileDocument profile, int sceneId, int sceneOwnerId, List<PlayerLedgerEntryDocument> entries)
+        private void AddStoryScene(PlayerProfileDocument profile, int sceneId, in SceneOwner sceneOwner, List<PlayerLedgerEntryDocument> entries)
         {
             if (sceneId <= 0)
             {
@@ -151,33 +166,45 @@ namespace Server.Infrastructure.Players
                 return;
             }
 
-            if (sceneOwnerId <= 0)
+            var unlockedSceneIds = FindSceneList(profile, sceneOwner);
+
+            if (unlockedSceneIds == null)
             {
-                _logger.LogWarning("[Player] story scene {SceneId} has no character context and is not unlocked", sceneId);
+                _logger.LogWarning("[Player] story scene {SceneId} has no owned {Kind} {OwnerId} context and is not unlocked", sceneId, sceneOwner.Kind, sceneOwner.Id);
 
                 return;
             }
 
-            var character = FindCharacter(profile, sceneOwnerId);
-
-            if (character == null)
+            if (unlockedSceneIds.Contains(sceneId))
             {
-                _logger.LogWarning("[Player] story scene {SceneId} owner {CharacterId} is not owned", sceneId, sceneOwnerId);
+                _logger.LogDebug("[Player] story scene {SceneId} is already unlocked for {Kind} {OwnerId}", sceneId, sceneOwner.Kind, sceneOwner.Id);
 
                 return;
             }
 
-            if (character.UnlockedSceneIds.Contains(sceneId))
-            {
-                _logger.LogDebug("[Player] story scene {SceneId} is already unlocked for character {CharacterId}", sceneId, sceneOwnerId);
+            unlockedSceneIds.Add(sceneId);
+            entries.Add(CreateEntry(SceneEntry, $"{sceneOwner.Kind}:{sceneOwner.Id}:{sceneId}", 1));
 
-                return;
+            _logger.LogInformation("[Player] story scene {SceneId} unlocked for {Kind} {OwnerId}", sceneId, sceneOwner.Kind, sceneOwner.Id);
+        }
+
+        private List<int>? FindSceneList(PlayerProfileDocument profile, in SceneOwner sceneOwner)
+        {
+            if (sceneOwner.Kind == SceneOwnerKind.Character)
+            {
+                var character = FindCharacter(profile, sceneOwner.Id);
+
+                return character == null ? null : character.UnlockedSceneIds;
             }
 
-            character.UnlockedSceneIds.Add(sceneId);
-            entries.Add(CreateEntry(SceneEntry, $"{sceneOwnerId}:{sceneId}", 1));
+            if (sceneOwner.Kind == SceneOwnerKind.Summon)
+            {
+                var summon = FindSummon(profile, sceneOwner.Id);
 
-            _logger.LogInformation("[Player] story scene {SceneId} unlocked for character {CharacterId}", sceneId, sceneOwnerId);
+                return summon == null ? null : summon.UnlockedSceneIds;
+            }
+
+            return null;
         }
 
         private void AddBonus(
@@ -296,7 +323,7 @@ namespace Server.Infrastructure.Players
 
             var maxPromoteLevel = configDistributor.CharacterPromotes.GetMaxPromoteLevel(mapper.PromoteId);
 
-            if (0 < maxPromoteLevel && maxPromoteLevel <= character.UpgradesApplied && 0 < character.Copies)
+            if (0 < maxPromoteLevel && maxPromoteLevel <= character.PromoteLevel && 0 < character.Copies)
             {
                 var overflow = character.Copies;
 
@@ -331,12 +358,12 @@ namespace Server.Infrastructure.Players
 
             while (true)
             {
-                var nextLevel = character.UpgradesApplied + 1;
+                var nextLevel = character.PromoteLevel + 1;
 
                 if (promotes.TryGet(mapper.PromoteId, nextLevel, out var promote) == false)
                     return;
 
-                if (promote.CopiesToUpgrade <= 0)
+                if (promote.CopiesToUpgrade < 0)
                 {
                     _logger.LogWarning(
                         "[Player] promote {PromoteId} level {Level} has copies_to_upgrade {Copies}, promotion stopped",
@@ -351,7 +378,7 @@ namespace Server.Infrastructure.Players
                     return;
 
                 character.Copies -= promote.CopiesToUpgrade;
-                character.UpgradesApplied = nextLevel;
+                character.PromoteLevel = nextLevel;
                 entries.Add(CreateEntry(PromoteEntry, $"{mapper.Id}:{nextLevel}", promote.CopiesToUpgrade));
 
                 _logger.LogInformation(
@@ -360,47 +387,74 @@ namespace Server.Infrastructure.Players
                     nextLevel,
                     promote.CopiesToUpgrade);
 
-                ApplyPromoteRewards(profile, promote, mapper.Id, configDistributor, now, entries);
+                ApplyLevelRewards(
+                    profile,
+                    promote.RewardTypes,
+                    promote.RewardIds,
+                    promote.RewardValues,
+                    $"promote {mapper.PromoteId} level {nextLevel}",
+                    new SceneOwner(SceneOwnerKind.Character, mapper.Id),
+                    configDistributor,
+                    now,
+                    entries);
             }
         }
 
-        private void ApplyPromoteRewards(
+        private void ApplySummonMasteryLevelRewards(
             PlayerProfileDocument profile,
-            ICharacterPromoteMapper promote,
-            int sceneOwnerId,
+            PlayerSummonDocument summon,
+            ISummonMapper summonMapper,
             IConfigDistributor configDistributor,
             DateTime now,
             List<PlayerLedgerEntryDocument> entries)
         {
-            var rewards = BuildPromoteRewards(promote);
+            if (configDistributor.SummonMasteries.TryGet(summonMapper.MasteryId, summon.MasteryLevel, out var mastery) == false)
+            {
+                _logger.LogWarning(
+                    "[Player] summon {SummonId} mastery {MasteryId} level {Level} is missing in configs, rewards skipped",
+                    summonMapper.Id,
+                    summonMapper.MasteryId,
+                    summon.MasteryLevel);
 
-            if (rewards.Count == 0)
                 return;
+            }
 
-            for (int i = 0; i < rewards.Count; i++)
-                ApplyReward(profile, rewards[i], sceneOwnerId, configDistributor, now, entries);
+            ApplyLevelRewards(
+                profile,
+                mastery.RewardTypes,
+                mastery.RewardIds,
+                mastery.RewardValues,
+                $"summon mastery {summonMapper.MasteryId} level {summon.MasteryLevel}",
+                new SceneOwner(SceneOwnerKind.Summon, summonMapper.Id),
+                configDistributor,
+                now,
+                entries);
         }
 
-        private IReadOnlyList<BattleReward> BuildPromoteRewards(ICharacterPromoteMapper promote)
+        private void ApplyLevelRewards(
+            PlayerProfileDocument profile,
+            string[] types,
+            string[] ids,
+            int[] values,
+            string sourceName,
+            in SceneOwner sceneOwner,
+            IConfigDistributor configDistributor,
+            DateTime now,
+            List<PlayerLedgerEntryDocument> entries)
         {
-            var types = promote.RewardTypes;
-            var ids = promote.RewardIds;
-            var values = promote.RewardValues;
-
             if (types.Length == 0)
-                return Array.Empty<BattleReward>();
+                return;
 
             if (types.Length != ids.Length || types.Length != values.Length)
             {
                 _logger.LogWarning(
-                    "[Player] promote {PromoteId} level {Level} has {Types} types, {Ids} ids and {Values} values, rewards skipped",
-                    promote.Id,
-                    promote.PromoteLevel,
+                    "[Player] {Source} has {Types} types, {Ids} ids and {Values} values, rewards skipped",
+                    sourceName,
                     types.Length,
                     ids.Length,
                     values.Length);
 
-                return Array.Empty<BattleReward>();
+                return;
             }
 
             var builder = new System.Text.StringBuilder();
@@ -417,7 +471,10 @@ namespace Server.Infrastructure.Players
                 builder.Append(values[i]);
             }
 
-            return _battleRewardParser.Parse(builder.ToString());
+            var rewards = _battleRewardParser.Parse(builder.ToString());
+
+            for (int i = 0; i < rewards.Count; i++)
+                ApplyReward(profile, rewards[i], sceneOwner, configDistributor, now, entries);
         }
 
         private void AddSummon(
@@ -437,9 +494,11 @@ namespace Server.Infrastructure.Players
 
             var summon = FindSummon(profile, summonId);
 
+            var isNew = summon == null;
+
             if (summon == null)
             {
-                summon = new PlayerSummonDocument { ConfigId = summonId, Level = 1, UnlockedAt = now };
+                summon = new PlayerSummonDocument { ConfigId = summonId, Level = 1, MasteryLevel = 1, UnlockedAt = now };
                 profile.Summons.Add(summon);
                 summon.Copies += count - 1;
             }
@@ -449,6 +508,10 @@ namespace Server.Infrastructure.Players
             }
 
             entries.Add(CreateEntry(SummonEntry, summonId.ToString(), count));
+
+            if (isNew)
+                ApplySummonMasteryLevelRewards(profile, summon, summonMapper, configDistributor, now, entries);
+
             ApplySummonCopiesOverflow(profile, summon, summonMapper, configDistributor, entries);
         }
 
@@ -462,7 +525,7 @@ namespace Server.Infrastructure.Players
             if (summon.Copies <= 0)
                 return;
 
-            var maxMasteryLevel = configDistributor.Masteries.GetMaxMasteryLevel(summonMapper.MasteryId);
+            var maxMasteryLevel = configDistributor.SummonMasteries.GetMaxMasteryLevel(summonMapper.MasteryId);
 
             if (maxMasteryLevel <= 0 || summon.MasteryLevel < maxMasteryLevel)
                 return;

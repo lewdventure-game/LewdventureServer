@@ -15,20 +15,17 @@ namespace Server.Battles
         private readonly IBattleBonusService _battleBonusService;
         private readonly IBonusWorkModeParser _bonusWorkModeParser;
         private readonly IConfigDistributor _configDistributor;
-        private readonly IUnitBucketsFactory _unitBucketsFactory;
 
         public UnitBonusGranter(
             ICoreLog coreLog,
             IBattleBonusService battleBonusService,
             IBonusWorkModeParser bonusWorkModeParser,
-            IConfigDistributor configDistributor,
-            IUnitBucketsFactory unitBucketsFactory)
+            IConfigDistributor configDistributor)
         {
             _coreLog = coreLog;
             _battleBonusService = battleBonusService;
             _bonusWorkModeParser = bonusWorkModeParser;
             _configDistributor = configDistributor;
-            _unitBucketsFactory = unitBucketsFactory;
         }
 
         public void GrantTrainingBonuses(UnitState unitState, int trainingLevel)
@@ -121,30 +118,6 @@ namespace Server.Battles
 
             for (int i = 0; i < bonusIds.Length; i++)
                 GrantBuildBonus(unitState, bonusIds[i], $"{sourcePrefix}:{i}");
-        }
-
-        public void GrantSummonAccountBonuses(IUnitState mainUnit, IUnitSnapshot summonSnapshot)
-        {
-            if (_configDistributor.Summons.TryGet(summonSnapshot.Id, out var summonMapper) == false)
-            {
-                _coreLog.Error($"[Story][Battle]: Summon account bonuses skipped; missing summon id = {summonSnapshot.Id}");
-
-                throw new InvalidOperationException($"[Story][Battle]: Summon missing id = {summonSnapshot.Id}");
-            }
-
-            var masteryLevel = summonSnapshot.MasteryLevel;
-
-            if (0 < masteryLevel)
-            {
-                if (_unitBucketsFactory.TryResolveMastery(summonMapper.MasteryId, masteryLevel, summonSnapshot.Id, out var masteryMapper) && 0 < masteryMapper.BonusId)
-                {
-                    var sourceKey = $"build:summon-mastery:{summonSnapshot.Id}:{masteryLevel}";
-
-                    GrantBuildBonus(mainUnit, masteryMapper.BonusId, sourceKey);
-
-                    _coreLog.Debug($"[Story][Battle]: Summon mastery bonus grant, mainId = {mainUnit.Id}, summonId = {summonSnapshot.Id}, masteryLevel = {masteryLevel}, bonusId = {masteryMapper.BonusId}");
-                }
-            }
         }
 
         public void GrantEquipmentBonuses(UnitState unitState, IUnitSnapshot unitSnapshot)

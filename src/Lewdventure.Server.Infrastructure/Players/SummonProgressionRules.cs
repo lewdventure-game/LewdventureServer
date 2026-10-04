@@ -10,7 +10,6 @@ namespace Server.Infrastructure.Players
         public bool TryResolveLevelStep(
             ISummonMapper summon,
             int currentLevel,
-            int currentMasteryLevel,
             IConfigDistributor configDistributor,
             out List<ResourceCost> costs,
             out string error)
@@ -18,42 +17,21 @@ namespace Server.Infrastructure.Players
             costs = new List<ResourceCost>();
             error = string.Empty;
 
-            if (configDistributor.SummonLevels.TryGet(summon.LevelUpgradePattern, currentLevel, out var step) == false)
+            var targetLevel = currentLevel + 1;
+
+            if (configDistributor.SummonLevels.TryGet(summon.LevelPatternId, targetLevel, out var step) == false)
             {
-                error = $"Summon {summon.Id} has no level {currentLevel + 1} in pattern {summon.LevelUpgradePattern}.";
+                error = $"Summon {summon.Id} has no level {targetLevel} in pattern {summon.LevelPatternId}.";
 
                 return false;
             }
 
-            if (currentMasteryLevel < step.MasteryRequirement)
-            {
-                error = $"Summon {summon.Id} needs mastery {step.MasteryRequirement} for level {currentLevel + 1}.";
-
+            if (TryCollectCosts(step.ResourceTypes, step.ResourceIds, step.ResourceValues, costs, out error) == false)
                 return false;
-            }
-
-            for (int i = 0; i < step.ResourceIds.Length; i++)
-            {
-                var type = step.ResourceTypes.Length <= i ? ResourceType : step.ResourceTypes[i];
-
-                if (string.Equals(type, ResourceType, StringComparison.OrdinalIgnoreCase) == false)
-                {
-                    error = $"Summon level cost type {type} is not supported.";
-
-                    return false;
-                }
-
-                var value = step.ResourceValues.Length <= i ? 0 : step.ResourceValues[i];
-
-                if (value <= 0)
-                    continue;
-
-                costs.Add(new ResourceCost(step.ResourceIds[i], value));
-            }
 
             if (costs.Count == 0)
             {
-                error = $"Summon {summon.Id} level {currentLevel + 1} has no cost configured.";
+                error = $"Summon {summon.Id} level {targetLevel} has no cost configured.";
 
                 return false;
             }
@@ -80,34 +58,26 @@ namespace Server.Infrastructure.Players
             }
 
             var spent = new Dictionary<string, long>(StringComparer.Ordinal);
+            var stepCosts = new List<ResourceCost>();
 
-            for (int level = 1; level < currentLevel; level++)
+            for (int level = 2; level <= currentLevel; level++)
             {
-                if (configDistributor.SummonLevels.TryGet(summon.LevelUpgradePattern, level, out var step) == false)
+                if (configDistributor.SummonLevels.TryGet(summon.LevelPatternId, level, out var step) == false)
                 {
-                    error = $"Summon {summon.Id} has no level {level + 1} in pattern {summon.LevelUpgradePattern}.";
+                    error = $"Summon {summon.Id} has no level {level} in pattern {summon.LevelPatternId}.";
 
                     return false;
                 }
 
-                for (int i = 0; i < step.ResourceIds.Length; i++)
+                stepCosts.Clear();
+
+                if (TryCollectCosts(step.ResourceTypes, step.ResourceIds, step.ResourceValues, stepCosts, out error) == false)
+                    return false;
+
+                for (int i = 0; i < stepCosts.Count; i++)
                 {
-                    var type = step.ResourceTypes.Length <= i ? ResourceType : step.ResourceTypes[i];
-
-                    if (string.Equals(type, ResourceType, StringComparison.OrdinalIgnoreCase) == false)
-                    {
-                        error = $"Summon level cost type {type} is not supported.";
-
-                        return false;
-                    }
-
-                    var value = step.ResourceValues.Length <= i ? 0 : step.ResourceValues[i];
-
-                    if (value <= 0)
-                        continue;
-
-                    spent.TryGetValue(step.ResourceIds[i], out var current);
-                    spent[step.ResourceIds[i]] = current + value;
+                    spent.TryGetValue(stepCosts[i].Key, out var current);
+                    spent[stepCosts[i].Key] = current + stepCosts[i].Amount;
                 }
             }
 
@@ -134,21 +104,133 @@ namespace Server.Infrastructure.Players
             copies = 0;
             error = string.Empty;
 
-            if (configDistributor.Masteries.TryGet(summon.MasteryId, currentMasteryLevel + 1, out var mastery) == false)
+            var targetLevel = currentMasteryLevel + 1;
+
+            if (configDistributor.SummonMasteries.TryGet(summon.MasteryId, targetLevel, out var mastery) == false)
             {
-                error = $"Summon {summon.Id} has no mastery level {currentMasteryLevel + 1}.";
+                error = $"Summon {summon.Id} has no mastery level {targetLevel}.";
 
                 return false;
             }
 
             if (mastery.CopiesToUpgrade <= 0)
             {
-                error = $"Mastery {summon.MasteryId} level {currentMasteryLevel + 1} has no copy cost.";
+                error = $"Summon mastery {summon.MasteryId} level {targetLevel} has no copy cost.";
 
                 return false;
             }
 
             copies = mastery.CopiesToUpgrade;
+
+            return true;
+        }
+
+        public bool TryResolveSkillIndex(ISummonMapper summon, int skillId, out int skillIndex, out string error)
+        {
+            error = string.Empty;
+
+            var skillKey = skillId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var skillIds = summon.SkillIds;
+
+            for (int i = 0; i < skillIds.Length; i++)
+            {
+                if (string.Equals(skillIds[i].Trim(), skillKey, StringComparison.Ordinal) == false)
+                    continue;
+
+                skillIndex = i;
+
+                return true;
+            }
+
+            skillIndex = -1;
+            error = $"Summon {summon.Id} has no skill {skillId}.";
+
+            return false;
+        }
+
+        public bool TryResolveSkillStep(
+            ISummonMapper summon,
+            int skillIndex,
+            int currentSkillLevel,
+            int summonLevel,
+            int masteryLevel,
+            IConfigDistributor configDistributor,
+            out List<ResourceCost> costs,
+            out string error)
+        {
+            costs = new List<ResourceCost>();
+            error = string.Empty;
+
+            var skillId = summon.SkillIds[skillIndex];
+            var requiredMastery = skillIndex < summon.MasteryForSkills.Length ? summon.MasteryForSkills[skillIndex] : 0;
+
+            if (masteryLevel < requiredMastery)
+            {
+                error = $"Summon {summon.Id} skill {skillId} needs mastery {requiredMastery}, has {masteryLevel}.";
+
+                return false;
+            }
+
+            var patternId = skillIndex < summon.SkillUpgradeIds.Length ? summon.SkillUpgradeIds[skillIndex] : 0;
+
+            if (patternId <= 0)
+            {
+                error = $"Summon {summon.Id} skill {skillId} has no skill_upgrade_ids pattern.";
+
+                return false;
+            }
+
+            var targetLevel = currentSkillLevel + 1;
+
+            if (configDistributor.SkillPromotes.TryGet(patternId, targetLevel, out var step) == false)
+            {
+                error = $"Summon {summon.Id} skill {skillId} has no level {targetLevel} in pattern {patternId}.";
+
+                return false;
+            }
+
+            if (summonLevel < step.LevelToUnlock)
+            {
+                error = $"Summon {summon.Id} skill {skillId} level {targetLevel} needs summon level {step.LevelToUnlock}, has {summonLevel}.";
+
+                return false;
+            }
+
+            if (TryCollectCosts(step.ResourceTypes, step.ResourceIds, step.ResourceValues, costs, out error) == false)
+                return false;
+
+            if (costs.Count == 0)
+            {
+                error = $"Summon {summon.Id} skill {skillId} level {targetLevel} has no cost configured.";
+
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool TryCollectCosts(string[] types, string[] ids, int[] values, List<ResourceCost> costs, out string error)
+        {
+            error = string.Empty;
+
+            for (int i = 0; i < ids.Length; i++)
+            {
+                var type = types.Length <= i ? ResourceType : types[i];
+
+                if (string.Equals(type, ResourceType, StringComparison.OrdinalIgnoreCase) == false)
+                {
+                    error = $"Cost type {type} is not supported, only {ResourceType}.";
+
+                    return false;
+                }
+
+                var value = values.Length <= i ? 0 : values[i];
+
+                if (value <= 0)
+                    continue;
+
+                costs.Add(new ResourceCost(ids[i], value));
+            }
 
             return true;
         }

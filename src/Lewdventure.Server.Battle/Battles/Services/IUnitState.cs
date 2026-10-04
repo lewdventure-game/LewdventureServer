@@ -28,7 +28,7 @@ namespace Server.Battles
 
         public IReadOnlyList<string> EquipmentSkillKeys { get; }
 
-        public int SkillLevel { get; }
+        public int GetSkillLevel(int skillId);
 
         public SkillRuntimeState GetSkillState(int skillId);
 

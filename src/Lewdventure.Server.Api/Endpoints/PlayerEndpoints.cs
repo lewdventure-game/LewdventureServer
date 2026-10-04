@@ -62,6 +62,14 @@ namespace Server.Api.Endpoints
                 .Produces<PlayerProfileResponse>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status400BadRequest);
 
+            application.MapPost(ApiRoutes.PlayerSummonSkillLevel, UpgradeSummonSkillLevelAsync)
+                .RequireAuthorization(SecurityNames.PlayerPolicy)
+                .RequireRateLimiting(SecurityNames.PlayerRateLimitPolicy)
+                .WithMetadata(new GameConfigRequiredMetadata())
+                .Accepts<PlayerSummonSkillRequest>("application/json")
+                .Produces<PlayerProfileResponse>(StatusCodes.Status200OK)
+                .Produces(StatusCodes.Status400BadRequest);
+
             application.MapPost(ApiRoutes.PlayerSummonLevelReset, ResetSummonLevelAsync)
                 .RequireAuthorization(SecurityNames.PlayerPolicy)
                 .RequireRateLimiting(SecurityNames.PlayerRateLimitPolicy)
@@ -301,6 +309,30 @@ namespace Server.Api.Endpoints
 
             var progressionService = httpContext.RequestServices.GetRequiredService<PlayerProgressionService>();
             var result = await progressionService.ResetSummonLevelAsync(userId, request.SummonId, request.RequestId, configDistributor, httpContext.RequestAborted);
+
+            return CreateProgressionResult(result, playerResponseFactory);
+        }
+
+        private async Task<IResult> UpgradeSummonSkillLevelAsync(
+            HttpContext httpContext,
+            [FromBody] PlayerSummonSkillRequest? request,
+            [FromServices] IConfigDistributor configDistributor,
+            [FromServices] PlayerIdentityReader playerIdentityReader,
+            [FromServices] PlayerResponseFactory playerResponseFactory)
+        {
+            if (_isMongoEnabled == false)
+                return Results.Problem(detail: StorageRequiredMessage, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+            var userId = playerIdentityReader.Read(httpContext.User);
+
+            if (string.IsNullOrEmpty(userId))
+                return Results.Unauthorized();
+
+            if (request == null || request.SummonId <= 0 || request.SkillId <= 0)
+                return Results.BadRequest(new { error = "summonId and skillId are required." });
+
+            var progressionService = httpContext.RequestServices.GetRequiredService<PlayerProgressionService>();
+            var result = await progressionService.UpgradeSummonSkillLevelAsync(userId, request.SummonId, request.SkillId, request.RequestId, configDistributor, httpContext.RequestAborted);
 
             return CreateProgressionResult(result, playerResponseFactory);
         }

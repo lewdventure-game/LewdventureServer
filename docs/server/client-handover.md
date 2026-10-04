@@ -173,6 +173,7 @@ powershell -ExecutionPolicy Bypass -File Tools\update-battle-core.ps1
 | `POST /api/player/equipment/level` | прокачка уровня экипировки |
 | `POST /api/player/summon/level` | прокачка уровня саммона |
 | `POST /api/player/summon/mastery` | прокачка мастерства саммона |
+| `POST /api/player/summon/skill/level` | прокачка скилла саммона |
 | `POST /api/player/reset` | стереть свой прогресс, аккаунт остаётся, стартовый набор выдаётся заново |
 | `DELETE /api/player/account` | удалить аккаунт и данные |
 | `GET /api/run/current` | текущий забег или `404` |

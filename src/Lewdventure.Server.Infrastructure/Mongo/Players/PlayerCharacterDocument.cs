@@ -6,7 +6,7 @@ namespace Server.Infrastructure.Mongo.Players
 
         public int Copies { get; set; }
 
-        public int UpgradesApplied { get; set; }
+        public int PromoteLevel { get; set; }
 
         public List<int> UnlockedSceneIds { get; set; } = new();
 

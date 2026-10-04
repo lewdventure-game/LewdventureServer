@@ -53,9 +53,9 @@
 {
   "userId": "usr_…",
   "rev": 12,
-  "resources": { "soft_money": 1500, "summon_exp": 40 },
-  "characters": [ { "id": 1, "copies": 3, "upgradesApplied": 2, "unlockedScenes": [101, 102] } ],
-  "summons": [ { "id": 1, "copies": 4, "level": 3, "masteryLevel": 1 } ],
+  "resources": { "soft_money": 1500, "summon_lvl": 40 },
+  "characters": [ { "id": 1, "copies": 3, "promoteLevel": 2, "unlockedScenes": [101, 102] } ],
+  "summons": [ { "id": 1, "copies": 4, "level": 3, "masteryLevel": 1, "skillLevels": [2, 1], "unlockedScenes": [101] } ],
   "equipment": [ { "instanceId": "eq_…", "configId": 5, "level": 2, "mergeNumber": 0 } ],
   "bonuses": [ { "id": 1, "count": 2 } ],
   "loadout": { "characterId": 1, "equipment": { "weapon": "eq_…" }, "summons": [1, 2] },
@@ -104,7 +104,7 @@
 { "summonId": 1, "requestId": "…" }
 ```
 
-Уровень саммона падает до первого, на аккаунт возвращается часть потраченного `summon_exp` (коэффициент `summon_level_reset_coeff`), сама операция стоит ресурс из константы `summon_level_reset_resource`. Ответ — профиль.
+Уровень саммона падает до первого, на аккаунт возвращается часть каждого потраченного ресурса (`summon_lvl`, `summon_break`; коэффициент `summon_level_reset_coeff`), сама операция стоит ресурс из константы `summon_level_reset_resource`. Мастерство и уровни скиллов не меняются. Ответ — профиль.
 
 ### `POST /api/player/equipment/level/reset`
 
@@ -140,7 +140,19 @@
 { "summonId": 1, "requestId": "…" }
 ```
 
-Все три отвечают профилем. Стоимость и лимиты берутся из конфигов (`Summon_levels`, `Mastery`, уровни экипировки); при недостатке ресурсов — `400` с текстом.
+Списывает копии и выдаёт награды нового уровня мастерства из `Summon_masteries` (ресурсы, бонусы на аккаунт, сцены саммона).
+
+### `POST /api/player/summon/skill/level`
+
+```json
+{ "summonId": 1, "skillId": 5, "requestId": "…" }
+```
+
+`skillId` — id скилла из `Summons.skill_ids`. Скилл должен быть открыт по `mastery_for_skills`, уровень саммона — не ниже `level_to_unlock` следующего уровня в `Skill_promotes`.
+
+Все четыре отвечают профилем. Стоимость и лимиты берутся из конфигов (`Summon_levels`, `Summon_masteries`, `Skill_promotes`, уровни экипировки); при недостатке ресурсов или невыполненном условии — `400` с текстом.
+
+Поля профиля: `characters[].promoteLevel` — уровень прокачки персонажа (с 1, при получении сразу 1), `summons[].skillLevels` — уровни скиллов саммона по порядку `Summons.skill_ids` (значения может не быть — тогда 1), `summons[].unlockedScenes` — сцены, открытые мастерством саммона.
 
 ## Сброс прогресса и удаление аккаунта
 
@@ -301,7 +313,7 @@
 { "teamA": { "mainUnits": [ … ], "summons": [ … ] }, "teamB": { … }, "storyLevelId": 1, "stageId": 10, "seed": 42 }
 ```
 
-`UnitSnapshot`: `id`, `level`, `masteryLevel`, `equipments` (`id`, `level`), `equipmentIds`, `trainingLevel`, `artifactIds`, `aspectIds`, `activePerkIds`, `perkUsages` (`perkId`, `usedCount`), `activeSkillIds`, `activeStatusIds`, `activeBonuses` (`id`, `count`, `remainingBattles`), `slotIndex`, `currentHealth`.
+`UnitSnapshot`: `id`, `level`, `masteryLevel`, `equipments` (`id`, `level`), `equipmentIds`, `trainingLevel`, `artifactIds`, `aspectIds`, `activePerkIds`, `perkUsages` (`perkId`, `usedCount`), `activeSkillIds`, `activeStatusIds`, `activeBonuses` (`id`, `count`, `remainingBattles`), `slotIndex`, `currentHealth`, `skillLevels` (уровни скиллов саммона по порядку `Summons.skill_ids`).
 
 `BattleScriptResponse` кроме `steps` несёт `perkUsages` (`perkId`, `usedCount`, `remainingUses`) — расход перков с лимитом использований (сейчас воскрешение). Для проигрывания боя поле не нужно, забег использует его сам.
 
@@ -327,8 +339,8 @@
 
 | | снапшот сервера | клиентский `ConfigBundle.json` |
 | --- | --- | --- |
-| листов | 17 | 16, нет `Character_promotes` |
-| имена | `Story_stages`, `Perk_groups`, `Mastery`, `Exp_levels_patterns`, `Summon_levels` | `StoryStages`, `PerkGroups`, `Masteries`, `ExperienceLevelPatterns`, `SummonLevels` |
+| листов | 19 | 16, нет `Character_promotes` |
+| имена | `Story_stages`, `Perk_groups`, `Summon_masteries`, `Exp_levels_patterns`, `Summon_levels` | `StoryStages`, `PerkGroups`, `Masteries`, `ExperienceLevelPatterns`, `SummonLevels` |
 | значения | сырые строки листа: `"id":"1"`, `"skill_ids":"1;2"` | уже разобранные парсерами клиента: `"id":1`, `"skill_ids":[1,2]` |
 | колонки | текущие | местами устаревшие |
 
@@ -401,7 +413,7 @@
 | Бонусы | активные в забеге — `run.bonuses`; вне забега отдельной сущности нет, они уже учтены в характеристиках; описания — `Configs.Bonuses` |
 | Статусы | конфиги `Configs.Statuses`; в бою приходят командами `ApplyStatus` / `TickStatus` / `RemoveStatus` |
 | Экипировка | профиль (`equipment`, `loadout`), прокачка уровня — `POST /api/player/equipment/level`; трансформации нет |
-| Саммоны | профиль (`summons`), прокачка — `/summon/level` и `/summon/mastery`; описания — `Configs.Summons`, `Configs.SummonLevels`, `Configs.Masteries` |
+| Саммоны | профиль (`summons`), прокачка — `/summon/level`, `/summon/mastery`, `/summon/skill/level`; описания — `Configs.Summons`, `Configs.SummonLevels`, `Configs.SummonMasteries`, `Configs.SkillPromotes` |
 | Сюжет | `Configs.StoryLevels` / `StoryStages` / `StoryEvents` для текстов и визуала, прохождение — `/api/run/*` |
 | Награды | `step.appliedRewards` и `profileRev`, ресурсы — в профиле |
 | Опыт и уровни | `run.experience`, `run.experienceLevel`, `step.experienceGained`, `step.levelUps` |

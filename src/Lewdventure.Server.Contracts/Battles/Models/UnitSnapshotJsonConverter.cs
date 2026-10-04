@@ -120,6 +120,7 @@ namespace Server.Battles
             unitSnapshot.ActiveSkillIds ??= [];
             unitSnapshot.ActiveStatusIds ??= [];
             unitSnapshot.ActiveBonuses ??= [];
+            unitSnapshot.SkillLevels ??= [];
         }
     }
 }

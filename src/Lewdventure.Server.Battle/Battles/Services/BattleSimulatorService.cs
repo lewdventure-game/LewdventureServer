@@ -304,15 +304,12 @@ namespace Server.Battles
                 summonStates.Add(_unitStateBuilder.Build(summon, battleSide, true, storyLevelId, stageId));
             }
 
-            ApplyTeamSummonBonuses(mainUnitStates, summons, summonStates);
+            RegisterTeamSummons(mainUnitStates, summonStates);
 
             return new TeamSimulationState(mainUnitStates, summonStates, battleSide);
         }
 
-        private void ApplyTeamSummonBonuses(
-            List<IUnitState> mainUnitStates,
-            List<IUnitSnapshot> summonSnapshots,
-            List<IUnitState> summonStates)
+        private void RegisterTeamSummons(List<IUnitState> mainUnitStates, List<IUnitState> summonStates)
         {
             if (summonStates.Count == 0)
                 return;
@@ -324,10 +321,7 @@ namespace Server.Battles
                 var mainUnit = mainUnitStates[i];
 
                 for (int j = 0; j < summonStates.Count; j++)
-                {
                     mainUnit.RegisterEquippedEntity("summons", summonStates[j].Id);
-                    _unitStateBuilder.GrantSummonAccountBonuses(mainUnit, summonSnapshots[j]);
-                }
 
                 _battleBonusService.Rebuild(mainUnit, 0, rebuildCommands, false);
 

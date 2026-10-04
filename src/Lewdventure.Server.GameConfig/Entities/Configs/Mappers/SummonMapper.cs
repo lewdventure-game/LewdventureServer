@@ -19,14 +19,6 @@ namespace Server.Entities
         [JsonConverter(typeof(DelimitedFloatArrayConverter), ';')]
         public float[] DamageOnLevels { get; init; } = Array.Empty<float>();
 
-        [JsonProperty("breakout_multis")]
-        [JsonConverter(typeof(DelimitedFloatArrayConverter), ';')]
-        public float[] BreakoutMultipliers { get; init; } = Array.Empty<float>();
-
-        [OptionalColumn("устаревшая колонка, бой использует attack_cooldown")]
-        [JsonProperty("attack_speed")]
-        public float AttackSpeed { get; init; }
-
         [JsonProperty("attack_cooldown")]
         public int AttackCooldown { get; init; }
 
@@ -37,10 +29,18 @@ namespace Server.Entities
         [JsonConverter(typeof(DelimitedStringArrayConverter), ';')]
         public string[] SkillIds { get; init; } = Array.Empty<string>();
 
+        [JsonProperty("mastery_for_skills")]
+        [JsonConverter(typeof(DelimitedIntArrayConverter), ';')]
+        public int[] MasteryForSkills { get; init; } = Array.Empty<int>();
+
+        [JsonProperty("skill_upgrade_ids")]
+        [JsonConverter(typeof(DelimitedIntArrayConverter), ';')]
+        public int[] SkillUpgradeIds { get; init; } = Array.Empty<int>();
+
         [JsonProperty("mastery_id")]
         public int MasteryId { get; init; }
 
-        [JsonProperty("level_upgrade_pattern")]
-        public int LevelUpgradePattern { get; init; }
+        [JsonProperty("level_pattern_id")]
+        public int LevelPatternId { get; init; }
     }
 }

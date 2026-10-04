@@ -47,7 +47,7 @@ Seed RNG для `/api/battle/simulate` генерирует только сер�
 | Field | Type | Description |
 | --- | --- | --- |
 | `id` | `int` | ID сущности в конфиге (character / enemy / summon) |
-| `level` | `int` | Уровень сущности (character upgrade tier / summon level / enemy level) |
+| `level` | `int` | Уровень сущности: персонаж — уровень прокачки с 1 (`promote_to_skill_levels`), саммон — уровень (`dmg_on_lvls`), моб — не используется |
 | `masteryLevel` | `int` | Уровень мастерства саммона; для non-summons = `0` |
 | `equipments` | `EquipmentSnapshot[]` | Экипировка с уровнем. Клиент шлёт это имя. Alias `equipment` принимается сервером |
 | `equipmentIds` | `int[]` | Legacy: только id; сервер трактует как `equipments` с `level = 1` |
@@ -58,6 +58,7 @@ Seed RNG для `/api/battle/simulate` генерирует только сер�
 | `perkUsages` | `{ perkId, usedCount }[]` | Израсходованные использования перков с лимитом (сейчас только `resurrection`). Пусто — перк приходит «полным» |
 | `activeSkillIds` | `string[]` | Активные скиллы (ключи из конфига) |
 | `activeStatusIds` | `int[]` | Стартовые статусы (id из Statuses) |
+| `skillLevels` | `int[]` | Только саммон: уровни скиллов по порядку `Summons.skill_ids` (с 1; нет значения — 1). Скилл берёт значения с номером уровня; скилл ниже `mastery_for_skills` в бой не попадает |
 | `activeBonuses` | `{ id, count, remainingBattles }[]` | Бонусы персонажа A: сперва постоянные бонусы аккаунта из профиля (`remainingBattles = 0`), затем run-bonuses забега. Саммоны/враги — `[]`. `remainingBattles`: `0` = не сжигать по боям (`permanent` / `end_of_game` / `first_turns` / `every_turn`); `> 0` = осталось боёв (`end_of_battle` / `next_battles` / fork `RewardLenght`) |
 | `slotIndex` | `int` | Позиция в команде (2 моба / слоты саммонов) |
 
