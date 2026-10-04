@@ -55,7 +55,7 @@ git bundle create server.bundle master
 scp server.bundle root@<vps>:/opt/lewdventure/build/
 ssh root@<vps>
 cd /opt/lewdventure/build
-git -C repo fetch ../server.bundle master:refs/heads/incoming && git -C repo checkout -f incoming
+git -C repo fetch ../server.bundle master && git -C repo checkout --detach FETCH_HEAD
 cd repo && TAG=sha-$(git rev-parse --short=12 HEAD) && R=ghcr.io/lewdventure-game
 docker build -f deploy/docker/Dockerfile --target api -t $R/lewdventure-server:$TAG .
 docker build -f deploy/docker/Dockerfile --target config-tool -t $R/lewdventure-config-tool:$TAG .
