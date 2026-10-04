@@ -13,5 +13,6 @@ GDD: [../gdd/README.md](../gdd/README.md).
 | [player-state.md](player-state.md) | аккаунт устройства, токены, профиль игрока, хранение и идемпотентность |
 | [runs.md](runs.md) | серверное состояние забега, события, детерминизм, режим авторитета |
 | [experiments.md](experiments.md) | A/B-эксперименты на снапшотах конфигов: группы, назначение игроков, admin API |
+| [analytics.md](analytics.md) | аналитика: формат событий для клиента, серверные события, хранение в ClickHouse, дашборд |
 
 Канон protocol: [`.ai-factory/specs/battle-simulation.md`](../../.ai-factory/specs/battle-simulation.md).

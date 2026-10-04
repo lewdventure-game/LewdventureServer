@@ -2,7 +2,7 @@
 
 Branch: feature/config-versions-and-experiments
 Created: 2026-10-04
-Status: фазы 1, 2 и 5 (веб-админка) готовы и выкачены на dev; дальше фаза 3 — приём аналитики в формате Isekai
+Status: фазы 1, 2, 3 и 5 готовы и выкачены на dev (аналитика пишет в ClickHouse, Grafana за входом админки); дальше фаза 4 — клиент Unity: сервис отправки событий и триггеры
 
 ## Settings
 
