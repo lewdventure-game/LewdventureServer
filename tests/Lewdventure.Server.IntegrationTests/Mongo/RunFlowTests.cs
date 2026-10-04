@@ -116,7 +116,7 @@ namespace Tests.Integration.Mongo
                     continue;
                 }
 
-                var step = await runService.AdvanceAsync(UserId, run.Id, "run-request", CancellationToken.None);
+                var step = await runService.AdvanceAsync(UserId, run.Id, "run-request-" + guard, CancellationToken.None);
 
                 Assert.That(step.Succeeded, Is.True, string.Join("; ", step.Errors));
 
