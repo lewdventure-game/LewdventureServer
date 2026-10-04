@@ -2,7 +2,7 @@
 
 Branch: feature/config-versions-and-experiments
 Created: 2026-10-04
-Status: фазы 1, 2, 3 и 5 готовы и выкачены на dev (аналитика пишет в ClickHouse, Grafana за входом админки); дальше фаза 4 — клиент Unity: сервис отправки событий и триггеры
+Status: серверная часть всех фаз готова и на dev; фаза 4 (клиент) передана документацией docs/server/client-analytics.md — клиент делает клиентская команда, за неё код и DLL не пишем
 
 ## Settings
 
