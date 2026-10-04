@@ -10,5 +10,7 @@ namespace Server.Infrastructure.Mongo
         public const string PlayerRuns = "player_runs";
         public const string PlayerLedger = "player_ledger";
         public const string Idempotency = "idempotency";
+        public const string Experiments = "experiments";
+        public const string ExperimentChanges = "experiment_changes";
     }
 }

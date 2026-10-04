@@ -13,6 +13,7 @@ using Server.Bonuses;
 using Server.GameConfigs;
 using Server.Infrastructure.GameConfigs;
 using Server.Infrastructure.Mongo.ConfigSnapshots;
+using Server.Infrastructure.Mongo.Experiments;
 using Server.Infrastructure.Mongo.Players;
 using Server.Runs;
 using Server.Skills;
@@ -44,6 +45,8 @@ namespace Server.Api.Composition
 
             services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JObjectJsonConverter()));
 
+            services.AddSingleton<ClientCountryReader>();
+            services.AddSingleton<ExperimentResponseFactory>();
             services.AddSingleton<PlayerResponseFactory>();
             services.AddSingleton<RunResponseFactory>();
             services.AddSingleton(new BattleJsonSettingsFactory().Create());
@@ -124,8 +127,10 @@ namespace Server.Api.Composition
             new MongoServicesRegistrar().Register(services);
             new ConfigSnapshotStoreRegistrar().Register(services);
             new PlayerStoreRegistrar().Register(services);
+            new ExperimentStoreRegistrar().Register(services);
             new RunServicesRegistrar().Register(services);
 
+            services.AddHostedService<ExperimentRegistryWatcher>();
             services.AddHealthChecks().AddCheck<MongoHealthCheck>("mongo", tags: new[] { HealthTags.Ready });
 
             var gameConfigOptions = new GameConfigOptions();

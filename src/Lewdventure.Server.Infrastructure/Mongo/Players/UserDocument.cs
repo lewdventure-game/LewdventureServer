@@ -21,5 +21,13 @@ namespace Server.Infrastructure.Mongo.Players
         public List<UserDeviceDocument> Devices { get; set; } = new();
 
         public List<UserIdentityDocument> Identities { get; set; } = new();
+
+        public string Country { get; set; } = string.Empty;
+
+        public string LastCountry { get; set; } = string.Empty;
+
+        public UserExperimentDocument? Experiment { get; set; }
+
+        public List<string> ExperimentsSeen { get; set; } = new();
     }
 }

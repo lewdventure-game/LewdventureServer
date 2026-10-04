@@ -45,6 +45,7 @@ ASPNETCORE_ENVIRONMENT=Local GameConfig__Source=File GameConfig__FilePath=tests/
 | `GET /health/ready` | готовность: конфиги и Mongo |
 | `/admin/config/*` | управление снапшотами (ops-порт, `X-Admin-Key`) |
 | `/admin/player/*` | профиль, журнал выдач и ручное начисление наград (ops-порт, `X-Admin-Key`) |
+| `/admin/experiments/*` | A/B-эксперименты на снапшотах конфигов (ops-порт, `X-Admin-Key`), см. [experiments](docs/server/experiments.md) |
 
 ## Окружения
 

@@ -5,6 +5,7 @@ using Server.Api.Health;
 using Server.Api.Http;
 using Server.Api.Options;
 using Server.Api.Security;
+using Server.Infrastructure.Experiments;
 using Server.Infrastructure.Mongo;
 
 namespace Server.Api.Hosting
@@ -49,6 +50,7 @@ namespace Server.Api.Hosting
             try
             {
                 await services.GetRequiredService<MongoStartupInitializer>().InitializeAsync(CancellationToken.None);
+                await services.GetRequiredService<ExperimentRegistryLoader>().ReloadAsync(CancellationToken.None);
             }
             catch (Exception exception) when (exception is TimeoutException || exception is MongoDB.Driver.MongoException)
             {
@@ -116,6 +118,7 @@ namespace Server.Api.Hosting
             new ConfigBundleEndpoints().Map(application);
             new AdminConfigEndpoints().Map(application);
             new AdminPlayerEndpoints().Map(application);
+            new AdminExperimentEndpoints().Map(application);
             new AuthEndpoints().Map(application);
             new PlayerEndpoints().Map(application);
             new RunEndpoints().Map(application);

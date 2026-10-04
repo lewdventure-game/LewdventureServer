@@ -52,7 +52,7 @@ Google Sheets
 | --- | --- | --- |
 | `GameConfigSelection` | scoped, Infrastructure | версия на запрос; scoped `IConfigDistributor` берётся из неё, без выбора — мастер на момент первого обращения, и до конца запроса она не меняется |
 | `GameConfigSelectionMiddleware` | Api, после авторизации, только с Mongo | для эндпоинтов с `GameConfigRequiredMetadata` и опознанного игрока спрашивает версию у `PlayerConfigVersionResolver` и выбирает её |
-| `PlayerConfigVersionResolver` | Infrastructure | версия активного забега игрока (`player_runs.configVersion`), иначе пусто, то есть мастер; сюда же встанут группы экспериментов |
+| `PlayerConfigVersionResolver` | Infrastructure | версия активного забега игрока (`player_runs.configVersion`), иначе снапшот активной группы эксперимента ([experiments](experiments.md)), иначе пусто, то есть мастер |
 | `GameConfigSetCache` | singleton, Infrastructure | собранные версии: мастер из провайдера, остальные — до 8 штук с вытеснением давно не используемых; прежний мастер после активации остаётся в кэше без пересборки; недостающая версия грузится из `config_snapshots` и собирается один раз |
 
 Если закреплённая версия не загрузилась (снапшот не найден или не собирается), запрос идёт на мастере, в лог пишется warning `[Config][Snapshot] pinned version unavailable`, в Discord — алерт с ключом `config-pinned-missing:<version>`; повторная попытка загрузки — не раньше чем через 60 секунд. Так игрок не застревает в забеге, хотя правила для него меняются.

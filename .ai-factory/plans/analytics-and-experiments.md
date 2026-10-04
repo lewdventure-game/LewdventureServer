@@ -2,7 +2,7 @@
 
 Branch: feature/config-versions-and-experiments
 Created: 2026-10-04
-Status: фаза 1 готова (ветка feature/config-versions-and-experiments, не закоммичено), дальше — формат событий от владельца и фаза 2
+Status: фазы 1 и 2 готовы (в master, не запушено); дальше фаза 3 — приём аналитики в формате Isekai
 
 ## Settings
 
@@ -13,7 +13,10 @@ Status: фаза 1 готова (ветка feature/config-versions-and-experime
 
 ## Решения владельца
 
-- Аналитика — своя площадка сразу, на текущем VPS, отдельным compose-проектом; позже переезд на свой VPS без изменений клиента.
+- Аналитика — своя площадка сразу, на текущем VPS (владелец расширяет его до 8 ГБ RAM), отдельным compose-проектом; перед продом переезд на свой VPS должен проходить без изменений кода и клиента.
+- A/B-назначение живёт в игровом сервере; на отдельный сервер при переезде уходят ClickHouse, Grafana и веб-админка.
+- Бэкапы, R2 и прочая подготовка prod — перед продом, сейчас идёт демо.
+- Лог-теги `[Experiment]` и `[Analytics]` согласованы.
 - Админка A/B — сначала admin API на ops-порту, потом веб-страница за Cloudflare Access.
 - Порядок фаз — на усмотрение исполнителя: начинаем с фазы 1.
 
@@ -36,10 +39,9 @@ Status: фаза 1 готова (ветка feature/config-versions-and-experime
 
 ## Фаза 0. Инфраструктура
 
-- Бэкап prod: включить `lewdventure-backup@prod.timer`, обязательная выгрузка в R2 (`LEWD_BACKUP_UPLOAD_COMMAND`), один проверочный restore на stage.
-- Caddy: `header_up X-Country {http.request.header.CF-IPCountry}` в `api_upstream`; сервер доверяет заголовку только при включённом `ReverseProxy` (как и `X-Forwarded-For`).
+- Отложено до подготовки prod: бэкап prod (`lewdventure-backup@prod.timer`), выгрузка в R2 (`LEWD_BACKUP_UPLOAD_COMMAND`), проверочный restore.
+- Сделано в фазе 2: Caddy пробрасывает входящие заголовки как есть, сервер читает `CF-IPCountry` напрямую (`ClientCountryReader`); прямой заход на origin закрыт firewall, подделать заголовок можно только локально. В Cloudflare должна быть включена IP Geolocation (по умолчанию включена).
 - `users.country` (ISO-3166 alpha-2, `XX` если неизвестно) пишется при создании аккаунта и обновляется на `auth/device`/`refresh` в `users.lastCountry`. Для фильтров эксперимента используется страна на момент назначения.
-- Шаги на VPS делает владелец по runbook, код и runbook — в репозитории.
 
 ## Фаза 1. Несколько версий конфигов одновременно
 
@@ -106,7 +108,7 @@ Status: фаза 1 готова (ветка feature/config-versions-and-experime
 | `POST /admin/experiments/{id}/rollout` | `{groupId}`: активировать снапшот группы как мастер и закончить эксперимент |
 | `GET /admin/player/{userId}` | дополняется назначением |
 
-Те же команды в ConfigTool (`experiment list|create|start|freeze|remove|finish|rollout`), чтобы управлять без curl.
+Команды ConfigTool для экспериментов не делаем: управление через admin API, затем веб-админка (фаза 5).
 
 ### Сценарии-тесты
 

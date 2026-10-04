@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Server.Infrastructure.Mongo.Experiments;
 using Server.Infrastructure.Mongo.Players;
 using Server.Infrastructure.Players;
 
@@ -18,6 +19,7 @@ namespace Tests.Integration.Mongo
             services.AddSingleton(TimeProvider.System);
 
             new PlayerStoreRegistrar().Register(services);
+            new ExperimentStoreRegistrar().Register(services);
             new ConfigServicesRegistrar().Register(services);
         }
     }

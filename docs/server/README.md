@@ -12,5 +12,6 @@ GDD: [../gdd/README.md](../gdd/README.md).
 | [config-sync.md](config-sync.md) | снапшоты конфигов, публикация, ConfigTool, Google Sheets, managers, источник правды |
 | [player-state.md](player-state.md) | аккаунт устройства, токены, профиль игрока, хранение и идемпотентность |
 | [runs.md](runs.md) | серверное состояние забега, события, детерминизм, режим авторитета |
+| [experiments.md](experiments.md) | A/B-эксперименты на снапшотах конфигов: группы, назначение игроков, admin API |
 
 Канон protocol: [`.ai-factory/specs/battle-simulation.md`](../../.ai-factory/specs/battle-simulation.md).

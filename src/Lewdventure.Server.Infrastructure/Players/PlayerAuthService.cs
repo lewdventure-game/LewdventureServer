@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Server.Infrastructure.Experiments;
 using Server.Infrastructure.Mongo.Players;
 
 namespace Server.Infrastructure.Players
@@ -9,6 +10,7 @@ namespace Server.Infrastructure.Players
         private const string BannedError = "Account is banned.";
         private const string UnknownSessionError = "Refresh token is not valid.";
 
+        private readonly ExperimentAssignmentService _experimentAssignmentService;
         private readonly ILogger<PlayerAuthService> _logger;
         private readonly AuthOptions _options;
         private readonly TimeProvider _timeProvider;
@@ -16,12 +18,14 @@ namespace Server.Infrastructure.Players
         private readonly UserRepository _userRepository;
 
         public PlayerAuthService(
+            ExperimentAssignmentService experimentAssignmentService,
             ILogger<PlayerAuthService> logger,
             IOptions<AuthOptions> options,
             TimeProvider timeProvider,
             TokenGenerator tokenGenerator,
             UserRepository userRepository)
         {
+            _experimentAssignmentService = experimentAssignmentService;
             _logger = logger;
             _options = options.Value;
             _timeProvider = timeProvider;
@@ -29,11 +33,12 @@ namespace Server.Infrastructure.Players
             _userRepository = userRepository;
         }
 
-        public async Task<AuthSessionResult> AuthenticateDeviceAsync(string deviceId, string clientVersion, CancellationToken cancellationToken)
+        public async Task<AuthSessionResult> AuthenticateDeviceAsync(string deviceId, string clientVersion, string country, CancellationToken cancellationToken)
         {
             var now = _timeProvider.GetUtcNow().UtcDateTime;
             var deviceIdHash = _tokenGenerator.Hash(deviceId);
             var user = await _userRepository.FindByDeviceAsync(deviceIdHash, cancellationToken);
+            var isNewPlayer = user == null;
 
             if (user == null)
             {
@@ -42,6 +47,8 @@ namespace Server.Infrastructure.Players
                     Id = UserIdPrefix + Guid.NewGuid().ToString("N"),
                     CreatedAt = now,
                     UpdatedAt = now,
+                    Country = country,
+                    LastCountry = country,
                 };
 
                 await _userRepository.InsertAsync(user, cancellationToken);
@@ -55,10 +62,12 @@ namespace Server.Infrastructure.Players
                 return new AuthSessionResult(false, string.Empty, string.Empty, DateTime.MinValue, BannedError);
             }
 
-            return await IssueSessionAsync(user.Id, deviceIdHash, clientVersion, now, cancellationToken);
+            await _experimentAssignmentService.AssignAsync(user, isNewPlayer, country, now, cancellationToken);
+
+            return await IssueSessionAsync(user.Id, deviceIdHash, clientVersion, country, now, cancellationToken);
         }
 
-        public async Task<AuthSessionResult> RefreshAsync(string userId, string refreshToken, CancellationToken cancellationToken)
+        public async Task<AuthSessionResult> RefreshAsync(string userId, string refreshToken, string country, CancellationToken cancellationToken)
         {
             var now = _timeProvider.GetUtcNow().UtcDateTime;
             var user = await _userRepository.GetAsync(userId, cancellationToken);
@@ -86,10 +95,12 @@ namespace Server.Infrastructure.Players
                 return new AuthSessionResult(false, string.Empty, string.Empty, DateTime.MinValue, UnknownSessionError);
             }
 
-            return await IssueSessionAsync(user.Id, device.DeviceIdHash, device.ClientVersion, now, cancellationToken);
+            await _experimentAssignmentService.AssignAsync(user, false, country, now, cancellationToken);
+
+            return await IssueSessionAsync(user.Id, device.DeviceIdHash, device.ClientVersion, country, now, cancellationToken);
         }
 
-        private async Task<AuthSessionResult> IssueSessionAsync(string userId, string deviceIdHash, string clientVersion, DateTime now, CancellationToken cancellationToken)
+        private async Task<AuthSessionResult> IssueSessionAsync(string userId, string deviceIdHash, string clientVersion, string country, DateTime now, CancellationToken cancellationToken)
         {
             var refreshToken = _tokenGenerator.CreateToken();
             var device = new UserDeviceDocument
@@ -102,7 +113,7 @@ namespace Server.Infrastructure.Players
                 ClientVersion = clientVersion,
             };
 
-            await _userRepository.UpsertDeviceAsync(userId, device, now, cancellationToken);
+            await _userRepository.UpsertDeviceAsync(userId, device, country, now, cancellationToken);
 
             return new AuthSessionResult(true, userId, refreshToken, device.RefreshExpiresAt, string.Empty);
         }

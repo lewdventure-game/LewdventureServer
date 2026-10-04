@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Server.Api.Http;
 using Server.Api.Security;
 using Server.Infrastructure.Mongo;
 using Server.Infrastructure.Players;
@@ -39,7 +40,8 @@ namespace Server.Api.Endpoints
         private async Task<IResult> AuthenticateDeviceAsync(
             HttpContext httpContext,
             [FromBody] DeviceAuthRequest? request,
-            [FromServices] AccessTokenIssuer accessTokenIssuer)
+            [FromServices] AccessTokenIssuer accessTokenIssuer,
+            [FromServices] ClientCountryReader clientCountryReader)
         {
             if (request == null || string.IsNullOrWhiteSpace(request.DeviceId))
                 return Results.BadRequest(new { error = "deviceId is required." });
@@ -51,7 +53,7 @@ namespace Server.Api.Endpoints
                 return Results.Problem(detail: StorageRequiredMessage, statusCode: StatusCodes.Status503ServiceUnavailable);
 
             var authService = httpContext.RequestServices.GetRequiredService<PlayerAuthService>();
-            var session = await authService.AuthenticateDeviceAsync(request.DeviceId, request.ClientVersion, httpContext.RequestAborted);
+            var session = await authService.AuthenticateDeviceAsync(request.DeviceId, request.ClientVersion, clientCountryReader.Read(httpContext.Request), httpContext.RequestAborted);
 
             if (session.Succeeded == false)
                 return Results.Json(new { error = session.Error }, statusCode: StatusCodes.Status403Forbidden);
@@ -62,7 +64,8 @@ namespace Server.Api.Endpoints
         private async Task<IResult> RefreshAsync(
             HttpContext httpContext,
             [FromBody] RefreshAuthRequest? request,
-            [FromServices] AccessTokenIssuer accessTokenIssuer)
+            [FromServices] AccessTokenIssuer accessTokenIssuer,
+            [FromServices] ClientCountryReader clientCountryReader)
         {
             if (request == null || string.IsNullOrWhiteSpace(request.UserId) || string.IsNullOrWhiteSpace(request.RefreshToken))
                 return Results.BadRequest(new { error = "userId and refreshToken are required." });
@@ -71,7 +74,7 @@ namespace Server.Api.Endpoints
                 return Results.Problem(detail: StorageRequiredMessage, statusCode: StatusCodes.Status503ServiceUnavailable);
 
             var authService = httpContext.RequestServices.GetRequiredService<PlayerAuthService>();
-            var session = await authService.RefreshAsync(request.UserId, request.RefreshToken, httpContext.RequestAborted);
+            var session = await authService.RefreshAsync(request.UserId, request.RefreshToken, clientCountryReader.Read(httpContext.Request), httpContext.RequestAborted);
 
             if (session.Succeeded == false)
                 return Results.Json(new { error = session.Error }, statusCode: StatusCodes.Status401Unauthorized);

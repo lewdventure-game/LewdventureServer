@@ -46,8 +46,8 @@ namespace Tests.Integration.Mongo
         {
             var authService = _environment.Services.GetRequiredService<PlayerAuthService>();
 
-            var first = await authService.AuthenticateDeviceAsync("device-a", "1.0.0", CancellationToken.None);
-            var second = await authService.AuthenticateDeviceAsync("device-a", "1.0.0", CancellationToken.None);
+            var first = await authService.AuthenticateDeviceAsync("device-a", "1.0.0", "XX", CancellationToken.None);
+            var second = await authService.AuthenticateDeviceAsync("device-a", "1.0.0", "XX", CancellationToken.None);
 
             Assert.That(first.Succeeded, Is.True, first.Error);
             Assert.That(second.Succeeded, Is.True, second.Error);
@@ -60,11 +60,11 @@ namespace Tests.Integration.Mongo
         public async Task Refresh_RotatesTokenAndRejectsOldOne()
         {
             var authService = _environment.Services.GetRequiredService<PlayerAuthService>();
-            var session = await authService.AuthenticateDeviceAsync("device-b", "1.0.0", CancellationToken.None);
+            var session = await authService.AuthenticateDeviceAsync("device-b", "1.0.0", "XX", CancellationToken.None);
 
-            var refreshed = await authService.RefreshAsync(session.UserId, session.RefreshToken, CancellationToken.None);
-            var reused = await authService.RefreshAsync(session.UserId, session.RefreshToken, CancellationToken.None);
-            var chained = await authService.RefreshAsync(session.UserId, refreshed.RefreshToken, CancellationToken.None);
+            var refreshed = await authService.RefreshAsync(session.UserId, session.RefreshToken, "XX", CancellationToken.None);
+            var reused = await authService.RefreshAsync(session.UserId, session.RefreshToken, "XX", CancellationToken.None);
+            var chained = await authService.RefreshAsync(session.UserId, refreshed.RefreshToken, "XX", CancellationToken.None);
 
             Assert.That(refreshed.Succeeded, Is.True, refreshed.Error);
             Assert.That(reused.Succeeded, Is.False);
@@ -111,7 +111,7 @@ namespace Tests.Integration.Mongo
             var profileService = _environment.Services.GetRequiredService<PlayerProfileService>();
             var dataService = _environment.Services.GetRequiredService<PlayerDataService>();
             var userRepository = _environment.Services.GetRequiredService<UserRepository>();
-            var session = await authService.AuthenticateDeviceAsync("device-reset", "test", CancellationToken.None);
+            var session = await authService.AuthenticateDeviceAsync("device-reset", "test", "XX", CancellationToken.None);
             var userId = session.UserId;
 
             var profile = await profileService.GetOrCreateAsync(userId, CancellationToken.None);
@@ -138,7 +138,7 @@ namespace Tests.Integration.Mongo
             var profileService = _environment.Services.GetRequiredService<PlayerProfileService>();
             var dataService = _environment.Services.GetRequiredService<PlayerDataService>();
             var userRepository = _environment.Services.GetRequiredService<UserRepository>();
-            var session = await authService.AuthenticateDeviceAsync("device-delete", "test", CancellationToken.None);
+            var session = await authService.AuthenticateDeviceAsync("device-delete", "test", "XX", CancellationToken.None);
             var userId = session.UserId;
 
             await profileService.GetOrCreateAsync(userId, CancellationToken.None);
