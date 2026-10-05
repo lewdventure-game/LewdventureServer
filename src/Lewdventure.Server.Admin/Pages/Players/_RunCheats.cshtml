@@ -1,0 +1,156 @@
+@model Server.Admin.Pages.Players.IndexModel
+@{
+    var userId = Model.UserId;
+    var run = Model.Run;
+}
+<section class="card">
+    <h2>Забег</h2>
+    @if (run == null)
+    {
+        <p class="muted">Активного забега нет. Начните забег в игре, затем обновите страницу.</p>
+    }
+    else
+    {
+        <dl class="facts">
+            <dt>Забег</dt><dd><code>@run.RunId</code> · уровень @run.StoryLevelId</dd>
+            <dt>Этап</dt><dd>@run.StageNumber из @run.Stages.Count</dd>
+            <dt>Здоровье</dt><dd>@run.CurrentHealth</dd>
+            <dt>Опыт</dt><dd>@run.Experience, уровень прохождения @run.ExperienceLevel@(run.PendingLevelUps == 0 ? string.Empty : ", ждёт выбора перков: " + run.PendingLevelUps)</dd>
+            <dt>Ожидает выбора</dt><dd>@(run.PendingChoice.Length == 0 ? "нет" : run.PendingChoice == "fork" ? "развилка" : "перки")</dd>
+            <dt>Конфиги</dt><dd><code>@run.ConfigVersion</code></dd>
+        </dl>
+        <table class="table compact">
+            <thead><tr><th>Этап</th><th>Событие</th><th></th><th>Поставить событие</th></tr></thead>
+            <tbody>
+            @foreach (var stage in run.Stages)
+            {
+                <tr class="@(stage.IsCurrent ? "highlight" : string.Empty)">
+                    <td>@stage.Number@(stage.IsBoss ? " · босс" : string.Empty)@(stage.Resolved ? " · пройден" : string.Empty)@(stage.IsCurrent ? " · текущий" : string.Empty)</td>
+                    <td>@Model.DescribeItem(Model.Catalog.Events, stage.EventId)</td>
+                    <td>
+                        @if (stage.IsCurrent == false)
+                        {
+                            <form method="post" asp-page-handler="Run" asp-route-userId="@userId" class="inline">
+                                <input type="hidden" name="runAction" value="stage"><input type="hidden" name="stage" value="@stage.Number">
+                                <button type="submit">Перейти сюда</button>
+                            </form>
+                        }
+                    </td>
+                    <td>
+                        @if (run.StageNumber <= stage.Number)
+                        {
+                            <form method="post" asp-page-handler="Run" asp-route-userId="@userId" class="inline">
+                                <input type="hidden" name="runAction" value="event"><input type="hidden" name="stage" value="@stage.Number">
+                                <select name="id">
+                                    <optgroup label="Варианты этого этапа">
+                                        @foreach (var eventId in stage.CandidateEventIds)
+                                        {
+                                            <option value="@eventId" selected="@(eventId == stage.EventId)">@Model.DescribeItem(Model.Catalog.Events, eventId)</option>
+                                        }
+                                    </optgroup>
+                                    <optgroup label="Все события">
+                                        @foreach (var item in Model.Catalog.Events)
+                                        {
+                                            <option value="@item.Id">@item.Id · @item.Name · @item.Details</option>
+                                        }
+                                    </optgroup>
+                                </select>
+                                <button type="submit">OK</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p class="muted">«Перейти сюда» на пройденный бой повторяет тот же бой: seed боя зависит от забега и номера этапа.</p>
+        <div class="grid">
+            <div>
+                <h3>Здоровье</h3>
+                <form method="post" asp-page-handler="Run" asp-route-userId="@userId" class="inline">
+                    <input type="hidden" name="runAction" value="health">
+                    <input type="number" name="value" value="@((int)run.CurrentHealth)" min="1" class="narrow">
+                    <button type="submit">Установить</button>
+                </form>
+            </div>
+            <div>
+                <h3>Перки</h3>
+                <ul class="plain">
+                    @foreach (var perkId in run.Perks)
+                    {
+                        <li>
+                            <form method="post" asp-page-handler="Run" asp-route-userId="@userId" class="inline">
+                                @Model.DescribeItem(Model.Catalog.Perks, perkId)
+                                <input type="hidden" name="runAction" value="remove-perk"><input type="hidden" name="id" value="@perkId">
+                                <button type="submit" class="link">убрать</button>
+                            </form>
+                        </li>
+                    }
+                </ul>
+                <form method="post" asp-page-handler="Run" asp-route-userId="@userId" class="inline">
+                    <input type="hidden" name="runAction" value="perk">
+                    <select name="id">
+                        @foreach (var item in Model.Catalog.Perks)
+                        {
+                            <option value="@item.Id">@item.Id · @item.Name · @item.Details</option>
+                        }
+                    </select>
+                    <button type="submit">Добавить перк</button>
+                </form>
+            </div>
+            <div>
+                <h3>Бонусы забега</h3>
+                <ul class="plain">
+                    @foreach (var bonus in run.Bonuses)
+                    {
+                        <li>@Model.DescribeItem(Model.Catalog.RunBonuses, bonus.BonusId) × @bonus.Count · @(bonus.RemainingBattles == 0 ? "до конца забега" : "ещё боёв: " + bonus.RemainingBattles)</li>
+                    }
+                </ul>
+                <form method="post" asp-page-handler="Run" asp-route-userId="@userId" class="inline">
+                    <input type="hidden" name="runAction" value="bonus">
+                    <select name="id">
+                        @foreach (var item in Model.Catalog.RunBonuses)
+                        {
+                            <option value="@item.Id">@item.Id · @item.Name · @item.Details</option>
+                        }
+                    </select>
+                    <input type="number" name="count" value="1" min="1" title="сколько раз" class="narrow">
+                    <input type="number" name="battles" value="0" min="0" title="на сколько боёв, 0 — до конца забега" class="narrow">
+                    <button type="submit">Добавить бонус</button>
+                </form>
+                <p class="muted">Количество × бонус, на N боёв или 0 — до конца забега. «Лёгкий бой»: например, бонус на здоровье или урон × 20.</p>
+            </div>
+            <div>
+                <h3>Статусы на следующий бой</h3>
+                <ul class="plain">
+                    @foreach (var statusId in run.Statuses)
+                    {
+                        <li>@Model.DescribeItem(Model.Catalog.Statuses, statusId)</li>
+                    }
+                </ul>
+                <form method="post" asp-page-handler="Run" asp-route-userId="@userId" class="inline">
+                    <input type="hidden" name="runAction" value="status">
+                    <select name="id">
+                        @foreach (var item in Model.Catalog.Statuses)
+                        {
+                            <option value="@item.Id">@item.Id · @item.Name · @item.Details</option>
+                        }
+                    </select>
+                    <button type="submit">Добавить статус</button>
+                </form>
+            </div>
+        </div>
+        <div class="actions">
+            <form method="post" asp-page-handler="Run" asp-route-userId="@userId" data-confirm="Убрать все перки забега?">
+                <input type="hidden" name="runAction" value="clear-perks"><button type="submit">Очистить перки</button>
+            </form>
+            <form method="post" asp-page-handler="Run" asp-route-userId="@userId" data-confirm="Убрать все бонусы забега?">
+                <input type="hidden" name="runAction" value="clear-bonuses"><button type="submit">Очистить бонусы</button>
+            </form>
+            <form method="post" asp-page-handler="Run" asp-route-userId="@userId" data-confirm="Убрать статусы следующего боя?">
+                <input type="hidden" name="runAction" value="clear-statuses"><button type="submit">Очистить статусы</button>
+            </form>
+        </div>
+        <p class="muted">Клиент увидит изменения после перезахода в забег (запрос текущего забега).</p>
+    }
+</section>

@@ -136,6 +136,21 @@ namespace Server.Infrastructure.Qa
             }, cancellationToken);
         }
 
+        public async Task<PlayerUpdateResult> SetCompletedLevelsAsync(
+            string userId,
+            IReadOnlyList<int> levelIds,
+            string actor,
+            IConfigDistributor configDistributor,
+            CancellationToken cancellationToken)
+        {
+            return await EditAsync(userId, actor, "story", (profile, now, entries) =>
+            {
+                _cheatProfileEditor.SetCompletedLevels(profile, levelIds, configDistributor, entries, out var error);
+
+                return error;
+            }, cancellationToken);
+        }
+
         public async Task<PlayerUpdateResult> MaxOutAsync(string userId, string actor, IConfigDistributor configDistributor, CancellationToken cancellationToken)
         {
             return await EditAsync(userId, actor, "max", (profile, now, entries) =>

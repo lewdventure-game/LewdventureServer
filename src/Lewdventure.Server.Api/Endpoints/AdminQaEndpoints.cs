@@ -6,6 +6,7 @@ using Server.Api.Security;
 using Server.GameConfigs;
 using Server.Infrastructure.Mongo;
 using Server.Infrastructure.Mongo.Players;
+using Server.Infrastructure.Mongo.Runs;
 using Server.Infrastructure.Players;
 using Server.Infrastructure.Qa;
 using Server.Runs;
@@ -43,6 +44,11 @@ namespace Server.Api.Endpoints
             if (_isCheatsEnabled == false)
                 return;
 
+            group.MapGet("/templates", ListTemplatesAsync);
+            group.MapPost("/templates", SaveTemplateAsync);
+            group.MapDelete("/templates/{templateId}", DeleteTemplateAsync);
+            group.MapGet("/players/{userId}/run", GetRunAsync);
+
             var cheats = group.MapGroup("/players/{userId}/cheats");
 
             cheats.MapPost("/preset", GrantPresetAsync).WithMetadata(new GameConfigRequiredMetadata());
@@ -52,6 +58,10 @@ namespace Server.Api.Endpoints
             cheats.MapPost("/summon/{summonId:int}", SetSummonAsync).WithMetadata(new GameConfigRequiredMetadata());
             cheats.MapPost("/equipment/{instanceId}", SetEquipmentAsync).WithMetadata(new GameConfigRequiredMetadata());
             cheats.MapPost("/max", MaxOutAsync).WithMetadata(new GameConfigRequiredMetadata());
+            cheats.MapPost("/story", SetStoryAsync).WithMetadata(new GameConfigRequiredMetadata());
+            cheats.MapPost("/run", ChangeRunAsync);
+            cheats.MapPost("/template", ApplyTemplateAsync);
+            cheats.MapPost("/copy", CopyProfileAsync);
             cheats.MapPost("/reset", ResetAsync);
             cheats.MapPost("/run/abandon", AbandonRunAsync);
         }
@@ -245,6 +255,169 @@ namespace Server.Api.Endpoints
             var result = await cheatService.MaxOutAsync(userId, ReadActor(httpContext), configDistributor, httpContext.RequestAborted);
 
             return ToResult(result, playerResponseFactory);
+        }
+
+        private async Task<IResult> SetStoryAsync(
+            HttpContext httpContext,
+            string userId,
+            [FromBody] CheatStoryRequest? request,
+            [FromServices] CheatService cheatService,
+            [FromServices] IConfigDistributor configDistributor,
+            [FromServices] PlayerResponseFactory playerResponseFactory)
+        {
+            var levelIds = request == null ? new List<int>() : request.CompletedLevelIds;
+            var result = await cheatService.SetCompletedLevelsAsync(userId, levelIds, ReadActor(httpContext), configDistributor, httpContext.RequestAborted);
+
+            return ToResult(result, playerResponseFactory);
+        }
+
+        private async Task<IResult> GetRunAsync(
+            HttpContext httpContext,
+            string userId,
+            [FromServices] QaResponseFactory qaResponseFactory,
+            [FromServices] RunCheatService runCheatService,
+            [FromServices] RunRepository runRepository)
+        {
+            var run = await runRepository.GetActiveAsync(userId, httpContext.RequestAborted);
+
+            if (run == null)
+                return Results.NotFound(new { error = "Player has no active run." });
+
+            var configSet = await runCheatService.ResolveConfigsAsync(run, httpContext.RequestAborted);
+
+            return Results.Ok(qaResponseFactory.CreateRun(run, configSet.Distributor));
+        }
+
+        private async Task<IResult> ChangeRunAsync(
+            HttpContext httpContext,
+            string userId,
+            [FromBody] CheatRunRequest? request,
+            [FromServices] QaResponseFactory qaResponseFactory,
+            [FromServices] RunCheatService runCheatService)
+        {
+            if (request == null)
+                return Results.BadRequest(new { error = "action is required." });
+
+            var command = new RunCheatCommand
+            {
+                Action = request.Action.Trim(),
+                Stage = request.Stage,
+                Id = request.Id,
+                Value = request.Value,
+                Count = request.Count,
+                Battles = request.Battles,
+            };
+            var result = await runCheatService.ApplyAsync(userId, command, ReadActor(httpContext), httpContext.RequestAborted);
+
+            if (result.Conflict)
+                return Results.Json(new { error = "Run was changed by another request, try again." }, statusCode: StatusCodes.Status409Conflict);
+
+            if (result.Succeeded == false)
+                return Results.BadRequest(new { errors = result.Errors });
+
+            var configSet = await runCheatService.ResolveConfigsAsync(result.Run!, httpContext.RequestAborted);
+
+            return Results.Ok(qaResponseFactory.CreateRun(result.Run!, configSet.Distributor));
+        }
+
+        private async Task<IResult> ListTemplatesAsync(
+            HttpContext httpContext,
+            [FromServices] QaResponseFactory qaResponseFactory,
+            [FromServices] QaTemplateService qaTemplateService)
+        {
+            var templates = await qaTemplateService.ListAsync(httpContext.RequestAborted);
+            var response = new List<QaTemplateResponse>(templates.Count);
+
+            for (int i = 0; i < templates.Count; i++)
+                response.Add(qaResponseFactory.CreateTemplate(templates[i]));
+
+            return Results.Ok(response);
+        }
+
+        private async Task<IResult> SaveTemplateAsync(
+            HttpContext httpContext,
+            [FromBody] QaTemplateSaveRequest? request,
+            [FromServices] IGameConfigSetProvider gameConfigSetProvider,
+            [FromServices] QaTemplateService qaTemplateService)
+        {
+            if (request == null)
+                return Results.BadRequest(new { error = "templateId, name and userId are required." });
+
+            var error = await qaTemplateService.SaveAsync(
+                request.UserId.Trim(),
+                request.TemplateId,
+                request.Name,
+                request.Description,
+                gameConfigSetProvider.Current.Version,
+                ReadActor(httpContext),
+                httpContext.RequestAborted);
+
+            if (error.Length != 0)
+                return Results.BadRequest(new { error });
+
+            return Results.Ok(new { templateId = request.TemplateId });
+        }
+
+        private async Task<IResult> DeleteTemplateAsync(HttpContext httpContext, string templateId, [FromServices] QaTemplateService qaTemplateService)
+        {
+            if (await qaTemplateService.DeleteAsync(templateId, ReadActor(httpContext), httpContext.RequestAborted) == false)
+                return Results.NotFound(new { error = $"Template {templateId} is not found." });
+
+            return Results.Ok(new { templateId });
+        }
+
+        private async Task<IResult> ApplyTemplateAsync(
+            HttpContext httpContext,
+            string userId,
+            [FromBody] CheatTemplateApplyRequest? request,
+            [FromServices] PlayerResponseFactory playerResponseFactory,
+            [FromServices] QaTemplateService qaTemplateService,
+            [FromServices] RunService runService)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.TemplateId))
+                return Results.BadRequest(new { error = "templateId is required." });
+
+            var abandonError = await AbandonActiveRunAsync(userId, runService, httpContext.RequestAborted);
+
+            if (abandonError.Length != 0)
+                return Results.BadRequest(new { error = abandonError });
+
+            var result = await qaTemplateService.ApplyTemplateAsync(request.TemplateId.Trim(), userId, ReadActor(httpContext), httpContext.RequestAborted);
+
+            return ToResult(result, playerResponseFactory);
+        }
+
+        private async Task<IResult> CopyProfileAsync(
+            HttpContext httpContext,
+            string userId,
+            [FromBody] CheatCopyRequest? request,
+            [FromServices] PlayerResponseFactory playerResponseFactory,
+            [FromServices] QaTemplateService qaTemplateService,
+            [FromServices] RunService runService)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.SourceUserId))
+                return Results.BadRequest(new { error = "sourceUserId is required." });
+
+            var abandonError = await AbandonActiveRunAsync(userId, runService, httpContext.RequestAborted);
+
+            if (abandonError.Length != 0)
+                return Results.BadRequest(new { error = abandonError });
+
+            var result = await qaTemplateService.CopyProfileAsync(request.SourceUserId.Trim(), userId, ReadActor(httpContext), httpContext.RequestAborted);
+
+            return ToResult(result, playerResponseFactory);
+        }
+
+        private async Task<string> AbandonActiveRunAsync(string userId, RunService runService, CancellationToken cancellationToken)
+        {
+            var current = await runService.GetCurrentAsync(userId, cancellationToken);
+
+            if (current.Run == null)
+                return string.Empty;
+
+            var result = await runService.AbandonAsync(userId, current.Run.Id, cancellationToken);
+
+            return result.Succeeded ? string.Empty : "Active run could not be abandoned, try again.";
         }
 
         private async Task<IResult> ResetAsync(HttpContext httpContext, string userId, [FromServices] PlayerDataService playerDataService)

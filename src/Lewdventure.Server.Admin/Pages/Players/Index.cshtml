@@ -54,6 +54,36 @@
             </tbody>
         </table>
     }
+    @if (Model.CheatsEnabled)
+    {
+        <h2>Шаблоны прогресса</h2>
+        @if (Model.Templates.Count == 0)
+        {
+            <p class="muted">Пока нет. Откройте игрока с нужным прогрессом и сохраните его как шаблон.</p>
+        }
+        else
+        {
+            <table class="table">
+                <thead><tr><th>Название</th><th>Ключ</th><th>Что внутри</th><th>Кто и когда</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var template in Model.Templates)
+                {
+                    <tr>
+                        <td>@template.Name<div class="muted">@template.Description</div></td>
+                        <td><code>@template.Id</code></td>
+                        <td>@template.Summary</td>
+                        <td>@template.CreatedBy · @template.UpdatedAt.ToString("yyyy-MM-dd HH:mm")<div class="muted">из @template.SourceUserId</div></td>
+                        <td>
+                            <form method="post" asp-page-handler="DeleteTemplate" asp-route-templateId="@template.Id" data-confirm="Удалить шаблон @template.Name?">
+                                <button type="submit" class="link">удалить</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    }
 }
 @if (Model.UserId.Length != 0 && Model.Account != null)
 {
@@ -244,6 +274,8 @@
                 </form>
             </div>
         </section>
+        <partial name="_ProgressCheats" model="Model" />
+        <partial name="_RunCheats" model="Model" />
     }
     <div class="grid">
         <section class="card">

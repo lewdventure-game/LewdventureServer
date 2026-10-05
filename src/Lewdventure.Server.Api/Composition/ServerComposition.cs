@@ -138,6 +138,7 @@ namespace Server.Api.Composition
             new RunServicesRegistrar().Register(services);
 
             services.AddSingleton<CheatCatalogFactory>();
+            services.AddSingleton<QaResponseFactory>();
             services.AddHostedService<ExperimentRegistryWatcher>();
             services.AddHealthChecks().AddCheck<MongoHealthCheck>("mongo", tags: new[] { HealthTags.Ready });
 

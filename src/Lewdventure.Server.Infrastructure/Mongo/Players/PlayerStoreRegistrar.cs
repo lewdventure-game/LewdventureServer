@@ -3,6 +3,7 @@ using Server.Battles;
 using Server.Bonuses;
 using Server.Infrastructure.Analytics;
 using Server.Infrastructure.Mongo.Runs;
+using Server.Infrastructure.Mongo.Qa;
 using Server.Infrastructure.Players;
 using Server.Infrastructure.Qa;
 
@@ -39,6 +40,8 @@ namespace Server.Infrastructure.Mongo.Players
             services.AddSingleton<CheatProfileEditor>();
             services.AddSingleton<CheatService>();
             services.AddSingleton<QaAccountService>();
+            services.AddSingleton<QaTemplateRepository>();
+            services.AddSingleton<QaTemplateService>();
         }
 
         private ResourceKeyCollector CreateResourceKeyCollector(IServiceProvider serviceProvider)

@@ -139,6 +139,53 @@ namespace Tests.Integration.Mongo
             Assert.That(byAlias, Is.Empty);
         }
 
+        [Test]
+        [Order(7)]
+        public async Task Template_SaveAndApply_CreatesTargetProfile()
+        {
+            var templates = _environment.Services.GetRequiredService<QaTemplateService>();
+
+            var saveError = await templates.SaveAsync(UserId, "QA-Mid", "Середина", "тест", "test", Actor, CancellationToken.None);
+            var applied = await templates.ApplyTemplateAsync("qa-mid", OtherUserId, Actor, CancellationToken.None);
+            var list = await templates.ListAsync(CancellationToken.None);
+
+            Assert.That(saveError, Is.Empty);
+            Assert.That(list, Has.Count.EqualTo(1));
+            Assert.That(list[0].Profile.Story.CurrentRunId, Is.Empty);
+            Assert.That(applied.Succeeded, Is.True, string.Join("; ", applied.Errors));
+            Assert.That(applied.Profile!.Id, Is.EqualTo(OtherUserId));
+            Assert.That(applied.Profile.Resources["soft_money"], Is.EqualTo(12345));
+            Assert.That(applied.Profile.Rev, Is.EqualTo(1));
+        }
+
+        [Test]
+        [Order(8)]
+        public async Task Copy_FromPlayer_ReplacesProfileAndRaisesRev()
+        {
+            var cheats = _environment.Services.GetRequiredService<CheatService>();
+            var templates = _environment.Services.GetRequiredService<QaTemplateService>();
+
+            await cheats.SetResourceAsync(OtherUserId, "soft_money", 1, Actor, CancellationToken.None);
+
+            var copied = await templates.CopyProfileAsync(UserId, OtherUserId, Actor, CancellationToken.None);
+            var same = await templates.CopyProfileAsync(UserId, UserId, Actor, CancellationToken.None);
+
+            Assert.That(copied.Succeeded, Is.True, string.Join("; ", copied.Errors));
+            Assert.That(copied.Profile!.Resources["soft_money"], Is.EqualTo(12345));
+            Assert.That(copied.Profile.Rev, Is.EqualTo(3));
+            Assert.That(same.Succeeded, Is.False);
+        }
+
+        [Test]
+        [Order(9)]
+        public async Task Template_Delete_RemovesIt()
+        {
+            var templates = _environment.Services.GetRequiredService<QaTemplateService>();
+
+            Assert.That(await templates.DeleteAsync("qa-mid", Actor, CancellationToken.None), Is.True);
+            Assert.That(await templates.ListAsync(CancellationToken.None), Is.Empty);
+        }
+
         private bool ContainsAction(List<PlayerLedgerDocument> ledger, string action)
         {
             for (int i = 0; i < ledger.Count; i++)

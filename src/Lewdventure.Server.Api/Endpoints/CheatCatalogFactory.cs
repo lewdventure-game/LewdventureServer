@@ -36,7 +36,10 @@ namespace Server.Api.Endpoints
             AddCharacters(configDistributor, response.Characters);
             AddSummons(configDistributor, response.Summons);
             AddEquipment(configDistributor, response.Equipment);
-            AddBonuses(configDistributor, response.Bonuses);
+            AddBonuses(configDistributor, response.Bonuses, response.RunBonuses);
+            AddPerks(configDistributor, response.Perks);
+            AddStatuses(configDistributor, response.Statuses);
+            AddEvents(configDistributor, response.Events);
             AddStoryLevels(configDistributor, response.StoryLevels);
 
             return response;
@@ -97,18 +100,72 @@ namespace Server.Api.Endpoints
             }
         }
 
-        private void AddBonuses(IConfigDistributor configDistributor, List<CheatCatalogItem> items)
+        private void AddBonuses(IConfigDistributor configDistributor, List<CheatCatalogItem> accountItems, List<CheatCatalogItem> runItems)
         {
             foreach (var bonus in configDistributor.Bonuses.Values)
             {
-                if (_bonusWorkModeParser.TryParse(bonus.WorkModeParameters, out var workMode) == false || _rewardApplier.IsAccountScoped(workMode) == false)
-                    continue;
-
-                items.Add(new CheatCatalogItem
+                var item = new CheatCatalogItem
                 {
                     Id = bonus.Id,
                     Name = bonus.BonusType.ToString(),
                     Details = bonus.OperatorType + " " + bonus.BonusValue.ToString(CultureInfo.InvariantCulture) + " " + bonus.WorkModeParameters,
+                };
+
+                runItems.Add(item);
+
+                if (_bonusWorkModeParser.TryParse(bonus.WorkModeParameters, out var workMode) && _rewardApplier.IsAccountScoped(workMode))
+                    accountItems.Add(item);
+            }
+
+            accountItems.Sort(CompareById);
+            runItems.Sort(CompareById);
+        }
+
+        private void AddPerks(IConfigDistributor configDistributor, List<CheatCatalogItem> items)
+        {
+            var perks = configDistributor.Perks.Collection;
+
+            for (int i = 0; i < perks.Count; i++)
+            {
+                items.Add(new CheatCatalogItem
+                {
+                    Id = perks[i].Id,
+                    Name = perks[i].PerkType.ToString(),
+                    Details = perks[i].Rarity + " " + perks[i].PerkParameters,
+                });
+            }
+
+            items.Sort(CompareById);
+        }
+
+        private void AddStatuses(IConfigDistributor configDistributor, List<CheatCatalogItem> items)
+        {
+            var statuses = configDistributor.Statuses.Collection;
+
+            for (int i = 0; i < statuses.Count; i++)
+            {
+                items.Add(new CheatCatalogItem
+                {
+                    Id = statuses[i].Id,
+                    Name = statuses[i].StatusType.ToString(),
+                    Details = statuses[i].Parameters,
+                });
+            }
+
+            items.Sort(CompareById);
+        }
+
+        private void AddEvents(IConfigDistributor configDistributor, List<CheatCatalogItem> items)
+        {
+            var events = configDistributor.StoryEvents.Collection;
+
+            for (int i = 0; i < events.Count; i++)
+            {
+                items.Add(new CheatCatalogItem
+                {
+                    Id = events[i].Id,
+                    Name = events[i].EventType.ToString(),
+                    Details = events[i].EventArtPreset,
                 });
             }
 

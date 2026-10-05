@@ -37,6 +37,10 @@ namespace Server.Admin.Pages.Players
 
         public List<QaAccountModel> QaAccounts { get; private set; } = new();
 
+        public List<QaTemplateModel> Templates { get; private set; } = new();
+
+        public QaRunModel? Run { get; private set; }
+
         public List<QaMatchModel> Matches { get; private set; } = new();
 
         public List<PlayerLedgerModel> Ledger { get; private set; } = new();
@@ -74,6 +78,14 @@ namespace Server.Admin.Pages.Players
                     LoadErrors.Add("Никого не нашли. Ищите по userId, псевдониму тестового аккаунта или deviceId.");
             }
 
+            if (CheatsEnabled)
+            {
+                var templates = await LoadAsync<List<QaTemplateModel>>("/admin/qa/templates");
+
+                if (templates != null)
+                    Templates = templates;
+            }
+
             if (UserId.Length == 0)
             {
                 var accounts = await LoadAsync<List<QaAccountModel>>("/admin/qa/players");
@@ -94,6 +106,9 @@ namespace Server.Admin.Pages.Players
 
             if (catalog != null)
                 Catalog = catalog;
+
+            if (CheatsEnabled)
+                Run = await LoadOptionalAsync<QaRunModel>("/admin/qa/players/" + Escape(UserId) + "/run");
 
             if (ledger != null)
                 Ledger = ledger;
@@ -116,6 +131,16 @@ namespace Server.Admin.Pages.Players
         public string DescribeEquipment(int id)
         {
             return Describe(Catalog.Equipment, id);
+        }
+
+        public string DescribeItem(List<CheatCatalogItemModel> items, int id)
+        {
+            var item = Find(items, id);
+
+            if (item == null)
+                return id.ToString();
+
+            return item.Details.Length == 0 ? id + " · " + item.Name : id + " · " + item.Name + " · " + item.Details;
         }
 
         public int FindMaxLevel(List<CheatCatalogItemModel> items, int id)
@@ -258,6 +283,103 @@ namespace Server.Admin.Pages.Players
             var result = await ExecuteAsync<object>(HttpMethod.Delete, "/admin/player/" + Escape(userId) + "?confirm=" + Escape(confirm ?? string.Empty), null, "player.delete", userId, "Данные игрока удалены.");
 
             return result.IsSuccess ? RedirectToPage() : RedirectToPage(new { userId });
+        }
+
+        public async Task<IActionResult> OnPostStoryAsync(string userId, List<int>? levelIds)
+        {
+            var body = new { completedLevelIds = levelIds ?? new List<int>() };
+
+            await ExecuteCheatAsync(userId, "/story", body, "cheat.story", string.Join(",", body.completedLevelIds), "Пройденные уровни сохранены.");
+
+            return RedirectToPage(new { userId });
+        }
+
+        public async Task<IActionResult> OnPostRunAsync(string userId, string? runAction, int stage, int id, int value, int count, int battles)
+        {
+            var body = new { action = runAction ?? string.Empty, stage, id, value = (float)value, count, battles };
+
+            await ExecuteCheatAsync(userId, "/run", body, "cheat.run", $"{runAction} stage {stage} id {id} value {value} count {count} battles {battles}", "Забег изменён.");
+
+            return RedirectToPage(new { userId });
+        }
+
+        public async Task<IActionResult> OnPostSaveTemplateAsync(string userId, string? templateId, string? name, string? description)
+        {
+            var body = new
+            {
+                templateId = templateId ?? string.Empty,
+                name = name ?? string.Empty,
+                description = description ?? string.Empty,
+                userId,
+            };
+
+            await ExecuteAsync<object>(HttpMethod.Post, "/admin/qa/templates", body, "qa.template.save", body.templateId + " from " + userId, "Шаблон сохранён.");
+
+            return RedirectToPage(new { userId });
+        }
+
+        public async Task<IActionResult> OnPostApplyTemplateAsync(string userId, string? templateId)
+        {
+            var template = templateId ?? string.Empty;
+
+            await ExecuteCheatAsync(userId, "/template", new { templateId = template }, "cheat.template", template, "Шаблон применён: прогресс игрока заменён.");
+
+            return RedirectToPage(new { userId });
+        }
+
+        public async Task<IActionResult> OnPostCopyAsync(string userId, string? source)
+        {
+            var sourceUserId = await ResolveUserIdAsync(source);
+
+            if (sourceUserId.Length == 0)
+                return RedirectToPage(new { userId });
+
+            await ExecuteCheatAsync(userId, "/copy", new { sourceUserId }, "cheat.copy", "from " + sourceUserId, "Прогресс скопирован у " + sourceUserId + ".");
+
+            return RedirectToPage(new { userId });
+        }
+
+        public async Task<IActionResult> OnPostDeleteTemplateAsync(string? templateId, string? userId)
+        {
+            var template = templateId ?? string.Empty;
+
+            await ExecuteAsync<object>(HttpMethod.Delete, "/admin/qa/templates/" + Escape(template), null, "qa.template.delete", template, "Шаблон удалён.");
+
+            return string.IsNullOrEmpty(userId) ? RedirectToPage() : RedirectToPage(new { userId });
+        }
+
+        private async Task<string> ResolveUserIdAsync(string? query)
+        {
+            var value = query == null ? string.Empty : query.Trim();
+
+            if (value.StartsWith(UserIdPrefix, StringComparison.Ordinal))
+                return value;
+
+            if (value.Length == 0)
+            {
+                ErrorMessage = "Укажите, у кого взять прогресс: userId, псевдоним или deviceId.";
+
+                return string.Empty;
+            }
+
+            var result = await GameAdminClient.GetAsync<List<QaMatchModel>>(CurrentEnvironment, "/admin/qa/find?query=" + Escape(value), LoginName, HttpContext.RequestAborted);
+
+            if (result.IsSuccess && result.Data != null && result.Data.Count == 1)
+                return result.Data[0].UserId;
+
+            ErrorMessage = result.IsSuccess ? $"По «{value}» нашлось {(result.Data == null ? 0 : result.Data.Count)} игроков, нужен ровно один." : string.Join("; ", result.Errors);
+
+            return string.Empty;
+        }
+
+        private async Task<T?> LoadOptionalAsync<T>(string path)
+        {
+            var result = await GameAdminClient.GetAsync<T>(CurrentEnvironment, path, LoginName, HttpContext.RequestAborted);
+
+            if (result.IsSuccess == false && result.StatusCode != 404)
+                LoadErrors.AddRange(result.Errors);
+
+            return result.Data;
         }
 
         private async Task ExecuteCheatAsync(string userId, string path, object body, string action, string details, string successMessage)

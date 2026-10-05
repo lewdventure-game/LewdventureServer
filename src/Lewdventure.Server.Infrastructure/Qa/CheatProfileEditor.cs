@@ -16,6 +16,7 @@ namespace Server.Infrastructure.Qa
         private const string MasteryEntry = "mastery";
         private const string SkillEntry = "skill";
         private const string EquipmentLevelEntry = "equipment_level";
+        private const string StoryEntry = "story_level";
         private const int MaxKeyLength = 64;
 
         private readonly ProgressionLimits _progressionLimits;
@@ -242,6 +243,52 @@ namespace Server.Infrastructure.Qa
                 equipment.Level = level;
             }
 
+            error = string.Empty;
+
+            return true;
+        }
+
+        public bool SetCompletedLevels(
+            PlayerProfileDocument profile,
+            IReadOnlyList<int> levelIds,
+            IConfigDistributor configDistributor,
+            List<PlayerLedgerEntryDocument> entries,
+            out string error)
+        {
+            var completed = new List<int>();
+
+            for (int i = 0; i < levelIds.Count; i++)
+            {
+                var levelId = levelIds[i];
+
+                if (configDistributor.StoryLevels.TryGet(levelId, out _) == false)
+                {
+                    error = $"Story level {levelId} is missing in configs.";
+
+                    return false;
+                }
+
+                if (completed.Contains(levelId) == false)
+                    completed.Add(levelId);
+            }
+
+            completed.Sort();
+
+            var current = profile.Story.CompletedLevelIds;
+
+            for (int i = 0; i < current.Count; i++)
+            {
+                if (completed.Contains(current[i]) == false)
+                    entries.Add(CreateEntry(StoryEntry, current[i].ToString(), -1));
+            }
+
+            for (int i = 0; i < completed.Count; i++)
+            {
+                if (current.Contains(completed[i]) == false)
+                    entries.Add(CreateEntry(StoryEntry, completed[i].ToString(), 1));
+            }
+
+            profile.Story.CompletedLevelIds = completed;
             error = string.Empty;
 
             return true;

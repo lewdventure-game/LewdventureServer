@@ -1,0 +1,57 @@
+@model Server.Admin.Pages.Players.IndexModel
+@{
+    var profile = Model.Profile!;
+    var userId = profile.UserId;
+}
+<div class="grid">
+    <section class="card">
+        <h2>Сюжет</h2>
+        <form method="post" asp-page-handler="Story" asp-route-userId="@userId" class="form">
+            <div class="inline">
+                @foreach (var levelId in Model.Catalog.StoryLevels)
+                {
+                    <label class="inline"><input type="checkbox" name="levelIds" value="@levelId" checked="@profile.Story.CompletedLevelIds.Contains(levelId)"> уровень @levelId</label>
+                }
+            </div>
+            <button type="submit">Сохранить пройденные</button>
+        </form>
+        <p class="muted">Отмеченные уровни считаются пройденными: от них зависят триггеры доступа следующих уровней.</p>
+    </section>
+    <section class="card">
+        <h2>Шаблоны прогресса</h2>
+        @if (Model.Templates.Count != 0)
+        {
+            <form method="post" asp-page-handler="ApplyTemplate" asp-route-userId="@userId" class="inline" data-confirm="Заменить весь прогресс игрока @userId шаблоном? Активный забег будет прерван.">
+                <select name="templateId" required>
+                    @foreach (var template in Model.Templates)
+                    {
+                        <option value="@template.Id">@template.Name (@template.Id)</option>
+                    }
+                </select>
+                <button type="submit" class="primary">Применить</button>
+            </form>
+        }
+        else
+        {
+            <p class="muted">Шаблонов пока нет.</p>
+        }
+        <details>
+            <summary>Сохранить прогресс этого игрока как шаблон</summary>
+            <form method="post" asp-page-handler="SaveTemplate" asp-route-userId="@userId" class="form">
+                <label>Ключ <input name="templateId" placeholder="mid-game" required pattern="[a-zA-Z0-9_\-]{2,32}"></label>
+                <label>Название <input name="name" placeholder="Середина: уровни 1–2, саммоны 20 уровня" required maxlength="80"></label>
+                <label>Описание <input name="description" maxlength="500"></label>
+                <button type="submit">Сохранить шаблон</button>
+            </form>
+            <p class="muted">Шаблон с тем же ключом перезаписывается.</p>
+        </details>
+        <details>
+            <summary>Взять прогресс у другого игрока</summary>
+            <form method="post" asp-page-handler="Copy" asp-route-userId="@userId" class="inline" data-confirm="Заменить весь прогресс игрока @userId прогрессом другого игрока? Активный забег будет прерван.">
+                <input name="source" placeholder="userId, псевдоним или deviceId" required class="wide">
+                <button type="submit">Скопировать сюда</button>
+            </form>
+        </details>
+        <p class="muted">Шаблон и копия заменяют профиль целиком: ресурсы, персонажей, саммонов, снаряжение, лоадаут, сюжет, флаги. Аккаунт, A/B-группа и журнал остаются.</p>
+    </section>
+</div>
