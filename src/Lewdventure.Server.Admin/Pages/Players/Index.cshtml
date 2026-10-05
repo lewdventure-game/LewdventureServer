@@ -129,6 +129,33 @@
             @if (Model.Assignment != null)
             {
                 <p>Версия конфигов сейчас: <code>@(string.IsNullOrEmpty(Model.Assignment.ConfigVersion) ? "мастер" : Model.Assignment.ConfigVersion)</code></p>
+                @if (Model.Assignment.Forced)
+                {
+                    <p><span class="badge">выбрано вручную</span> @Model.Assignment.ForcedBy</p>
+                }
+            }
+            @if (Model.CheatsEnabled && Model.Account != null && Model.Account.IsQa)
+            {
+                <form method="post" asp-page-handler="Experiment" asp-route-userId="@profile.UserId" class="inline">
+                    <select name="target">
+                        <option value="">мастер, без эксперимента</option>
+                        @foreach (var experiment in Model.RunningExperiments)
+                        {
+                            <optgroup label="@experiment.Id · @experiment.Name">
+                                @foreach (var group in experiment.Groups)
+                                {
+                                    @if (Model.IsActiveGroup(group))
+                                    {
+                                        var selected = Model.Assignment != null && Model.Assignment.ExperimentId == experiment.Id && Model.Assignment.GroupId == group.Id;
+                                        <option value="@experiment.Id|@group.Id" selected="@selected">@group.Id · @group.Name</option>
+                                    }
+                                }
+                            </optgroup>
+                        }
+                    </select>
+                    <button type="submit">Включить</button>
+                </form>
+                <p class="muted">Тестовый аккаунт попадает в выбранную группу без процентов и фильтров и не считается в участниках. Новая версия конфигов действует со следующего забега: активный забег доигрывается на своей.</p>
             }
         </section>
         <section class="card">

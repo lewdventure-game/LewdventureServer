@@ -15,5 +15,9 @@ namespace Server.Admin.Backend.Models
         public bool IsActive { get; set; }
 
         public string ConfigVersion { get; set; } = string.Empty;
+
+        public bool Forced { get; set; }
+
+        public string ForcedBy { get; set; } = string.Empty;
     }
 }

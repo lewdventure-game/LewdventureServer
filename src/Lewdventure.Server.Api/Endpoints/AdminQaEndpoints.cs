@@ -81,6 +81,7 @@ namespace Server.Api.Endpoints
             cheats.MapPost("/template", ApplyTemplateAsync);
             cheats.MapPost("/copy", CopyProfileAsync);
             cheats.MapPost("/import", ImportProfileAsync);
+            cheats.MapPost("/experiment", ForceExperimentAsync);
             cheats.MapPost("/reset", ResetAsync);
             cheats.MapPost("/run/abandon", AbandonRunAsync);
         }
@@ -565,6 +566,28 @@ namespace Server.Api.Endpoints
                 return DefaultListLimit;
 
             return MaxListLimit < limit.Value ? MaxListLimit : limit.Value;
+        }
+
+        private async Task<IResult> ForceExperimentAsync(
+            HttpContext httpContext,
+            string userId,
+            [FromBody] CheatExperimentRequest? request,
+            [FromServices] QaAccountService qaAccountService)
+        {
+            var result = await qaAccountService.ForceExperimentAsync(
+                userId,
+                request == null ? string.Empty : request.ExperimentId,
+                request == null ? string.Empty : request.GroupId,
+                ReadActor(httpContext),
+                httpContext.RequestAborted);
+
+            if (result.NotFound)
+                return Results.NotFound(new { error = $"User {userId} is not found." });
+
+            if (result.Succeeded == false)
+                return Results.BadRequest(new { error = result.Error });
+
+            return Results.Ok(new { userId });
         }
 
         private async Task<string> AbandonActiveRunAsync(string userId, RunService runService, CancellationToken cancellationToken)

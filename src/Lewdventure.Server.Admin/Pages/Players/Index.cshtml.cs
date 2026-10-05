@@ -12,6 +12,9 @@ namespace Server.Admin.Pages.Players
     {
         private const string UserIdPrefix = "usr_";
         private const string ErrorsFilter = "errors";
+        private const string RunningStatus = "running";
+        private const string RemovedStatus = "removed";
+        private const char TargetSeparator = '|';
         private const int RequestLimit = 50;
         private const long MaxImportBytes = 5 * 1024 * 1024;
 
@@ -50,6 +53,8 @@ namespace Server.Admin.Pages.Players
         public QaRunModel? Run { get; private set; }
 
         public List<RequestTraceModel> Requests { get; private set; } = new();
+
+        public List<ExperimentModel> RunningExperiments { get; } = new();
 
         public bool ErrorsOnly { get; private set; }
 
@@ -124,6 +129,9 @@ namespace Server.Admin.Pages.Players
             if (CheatsEnabled)
                 Run = await LoadOptionalAsync<QaRunModel>("/admin/qa/players/" + Escape(UserId) + "/run");
 
+            if (CheatsEnabled && Account != null && Account.IsQa)
+                await LoadRunningExperimentsAsync();
+
             if (Status.DiagnosticsEnabled)
             {
                 var traces = await LoadAsync<List<RequestTraceModel>>($"/admin/qa/players/{Escape(UserId)}/requests?limit={RequestLimit}&errorsOnly={(ErrorsOnly ? "true" : "false")}");
@@ -153,6 +161,11 @@ namespace Server.Admin.Pages.Players
         public string DescribeEquipment(int id)
         {
             return Describe(Catalog.Equipment, id);
+        }
+
+        public bool IsActiveGroup(ExperimentGroupModel group)
+        {
+            return string.Equals(group.Status, RemovedStatus, StringComparison.Ordinal) == false;
         }
 
         public string DescribeItem(List<CheatCatalogItemModel> items, int id)
@@ -360,6 +373,19 @@ namespace Server.Admin.Pages.Players
             return result.IsSuccess ? RedirectToPage() : RedirectToPage(new { userId });
         }
 
+        public async Task<IActionResult> OnPostExperimentAsync(string userId, string? target)
+        {
+            var value = target ?? string.Empty;
+            var separator = value.IndexOf(TargetSeparator);
+            var experimentId = separator < 0 ? string.Empty : value.Substring(0, separator);
+            var groupId = separator < 0 ? string.Empty : value.Substring(separator + 1);
+            var message = experimentId.Length == 0 ? "Аккаунт переведён на мастер-конфиги." : $"Аккаунт включён в группу {groupId} эксперимента {experimentId}.";
+
+            await ExecuteCheatAsync(userId, "/experiment", new { experimentId, groupId }, "cheat.experiment", value.Length == 0 ? "master" : value, message);
+
+            return RedirectToPage(new { userId });
+        }
+
         public async Task<IActionResult> OnPostStoryAsync(string userId, List<int>? levelIds)
         {
             var body = new { completedLevelIds = levelIds ?? new List<int>() };
@@ -445,6 +471,20 @@ namespace Server.Admin.Pages.Players
             ErrorMessage = result.IsSuccess ? $"По «{value}» нашлось {(result.Data == null ? 0 : result.Data.Count)} игроков, нужен ровно один." : string.Join("; ", result.Errors);
 
             return string.Empty;
+        }
+
+        private async Task LoadRunningExperimentsAsync()
+        {
+            var experiments = await LoadAsync<List<ExperimentModel>>("/admin/experiments?limit=50");
+
+            if (experiments == null)
+                return;
+
+            for (int i = 0; i < experiments.Count; i++)
+            {
+                if (string.Equals(experiments[i].Status, RunningStatus, StringComparison.Ordinal))
+                    RunningExperiments.Add(experiments[i]);
+            }
         }
 
         private async Task<T?> LoadOptionalAsync<T>(string path)

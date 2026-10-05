@@ -193,6 +193,8 @@ namespace Server.Api.Endpoints
                 response.GroupId = assignment.GroupId;
                 response.AssignedAt = assignment.AssignedAt;
                 response.Country = assignment.Country;
+                response.Forced = assignment.Forced;
+                response.ForcedBy = assignment.ForcedBy;
                 response.IsActive = experimentRegistry.TryGetActiveGroup(assignment.ExperimentId, assignment.GroupId, out _);
             }
 

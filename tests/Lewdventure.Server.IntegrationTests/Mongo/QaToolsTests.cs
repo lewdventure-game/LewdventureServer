@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Server.GameConfigs;
+using Server.Infrastructure.Experiments;
 using Server.Infrastructure.Mongo;
+using Server.Infrastructure.Mongo.Experiments;
 using Server.Infrastructure.Mongo.Players;
 using Server.Infrastructure.Mongo.Qa;
 using Server.Infrastructure.Players;
@@ -231,6 +233,69 @@ namespace Tests.Integration.Mongo
             Assert.That(imported.Succeeded, Is.True, string.Join("; ", imported.Errors));
             Assert.That(imported.Profile!.Id, Is.EqualTo(OtherUserId));
             Assert.That(imported.Profile.Resources["soft_money"], Is.EqualTo(4242));
+        }
+
+        [Test]
+        [Order(12)]
+        public async Task ForceExperiment_QaAccountGetsGroupConfigAndIsNotCounted()
+        {
+            var service = _environment.Services.GetRequiredService<QaAccountService>();
+            var registry = _environment.Services.GetRequiredService<ExperimentRegistry>();
+            var users = _environment.Services.GetRequiredService<UserRepository>();
+
+            registry.Replace(new List<ExperimentDocument>
+            {
+                new()
+                {
+                    Id = "exp-qa",
+                    Status = ExperimentDocument.RunningStatus,
+                    Groups = new List<ExperimentGroupDocument>
+                    {
+                        new() { Id = "test", SnapshotVersion = "sha256:qa-group", Status = ExperimentGroupDocument.FrozenStatus },
+                        new() { Id = "gone", SnapshotVersion = "sha256:gone", Status = ExperimentGroupDocument.RemovedStatus },
+                    },
+                },
+            });
+
+            var notQa = await service.ForceExperimentAsync(OtherUserId, "exp-qa", "test", Actor, CancellationToken.None);
+
+            await service.MarkAsync(UserId, "qa-tools", Actor, CancellationToken.None);
+
+            var removedGroup = await service.ForceExperimentAsync(UserId, "exp-qa", "gone", Actor, CancellationToken.None);
+            var forced = await service.ForceExperimentAsync(UserId, "exp-qa", "test", Actor, CancellationToken.None);
+            var assignment = await users.GetExperimentAsync(UserId, CancellationToken.None);
+            var version = await _environment.Services.GetRequiredService<PlayerConfigVersionResolver>().ResolveAsync(UserId, CancellationToken.None);
+            var participants = await users.CountInGroupAsync("exp-qa", "test", CancellationToken.None);
+
+            Assert.That(notQa.Succeeded, Is.False);
+            Assert.That(removedGroup.Succeeded, Is.False);
+            Assert.That(forced.Succeeded, Is.True, forced.Error);
+            Assert.That(assignment!.Forced, Is.True);
+            Assert.That(assignment.ForcedBy, Is.EqualTo(Actor));
+            Assert.That(version, Is.EqualTo("sha256:qa-group"));
+            Assert.That(participants, Is.EqualTo(0));
+        }
+
+        [Test]
+        [Order(13)]
+        public async Task ForceExperiment_MasterAndUnmark_ClearAssignment()
+        {
+            var service = _environment.Services.GetRequiredService<QaAccountService>();
+            var users = _environment.Services.GetRequiredService<UserRepository>();
+
+            var master = await service.ForceExperimentAsync(UserId, string.Empty, string.Empty, Actor, CancellationToken.None);
+            var afterMaster = await users.GetExperimentAsync(UserId, CancellationToken.None);
+
+            await service.ForceExperimentAsync(UserId, "exp-qa", "test", Actor, CancellationToken.None);
+            await service.UnmarkAsync(UserId, Actor, CancellationToken.None);
+
+            var afterUnmark = await users.GetExperimentAsync(UserId, CancellationToken.None);
+
+            _environment.Services.GetRequiredService<ExperimentRegistry>().Replace(new List<ExperimentDocument>());
+
+            Assert.That(master.Succeeded, Is.True, master.Error);
+            Assert.That(afterMaster, Is.Null);
+            Assert.That(afterUnmark, Is.Null);
         }
 
         private bool ContainsAction(List<PlayerLedgerDocument> ledger, string action)

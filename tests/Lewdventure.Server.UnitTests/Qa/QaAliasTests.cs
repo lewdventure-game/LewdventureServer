@@ -7,7 +7,7 @@ namespace Tests.Unit.Qa
     [TestFixture]
     public sealed class QaAliasTests
     {
-        private readonly QaAccountService _service = new(NullLogger<QaAccountService>.Instance, TimeProvider.System, new TokenGenerator(), null!);
+        private readonly QaAccountService _service = new(null!, NullLogger<QaAccountService>.Instance, TimeProvider.System, new TokenGenerator(), null!);
 
         [TestCase(" QA-Masha-1 ", "qa-masha-1")]
         [TestCase("tester_2", "tester_2")]

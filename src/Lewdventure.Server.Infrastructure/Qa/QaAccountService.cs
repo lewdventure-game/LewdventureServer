@@ -1,4 +1,5 @@
 using MongoDB.Driver;
+using Server.Infrastructure.Experiments;
 using Server.Infrastructure.Mongo.Players;
 
 namespace Server.Infrastructure.Qa
@@ -11,17 +12,20 @@ namespace Server.Infrastructure.Qa
         private const int MaxQueryLength = 128;
         private const int ListLimit = 500;
 
+        private readonly ExperimentRegistry _experimentRegistry;
         private readonly ILogger<QaAccountService> _logger;
         private readonly TimeProvider _timeProvider;
         private readonly TokenGenerator _tokenGenerator;
         private readonly UserRepository _userRepository;
 
         public QaAccountService(
+            ExperimentRegistry experimentRegistry,
             ILogger<QaAccountService> logger,
             TimeProvider timeProvider,
             TokenGenerator tokenGenerator,
             UserRepository userRepository)
         {
+            _experimentRegistry = experimentRegistry;
             _logger = logger;
             _timeProvider = timeProvider;
             _tokenGenerator = tokenGenerator;
@@ -93,6 +97,50 @@ namespace Server.Infrastructure.Qa
                 _logger.LogInformation("[Qa] account unmarked userId = {UserId} actor = {Actor}", userId, actor);
 
             return updated;
+        }
+
+        public async Task<QaMarkResult> ForceExperimentAsync(string userId, string? experimentId, string? groupId, string actor, CancellationToken cancellationToken)
+        {
+            var user = await _userRepository.GetAsync(userId, cancellationToken);
+
+            if (user == null)
+                return new QaMarkResult(true, string.Empty);
+
+            if (user.Qa == null)
+                return new QaMarkResult(false, "Only a QA account can be put into a group: mark it as QA first.");
+
+            var experiment = experimentId == null ? string.Empty : experimentId.Trim();
+            var group = groupId == null ? string.Empty : groupId.Trim();
+            UserExperimentDocument? assignment = null;
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+            if (experiment.Length != 0)
+            {
+                if (_experimentRegistry.TryGetActiveGroup(experiment, group, out _) == false)
+                    return new QaMarkResult(false, $"Group {group} of experiment {experiment} is not running.");
+
+                assignment = new UserExperimentDocument
+                {
+                    ExperimentId = experiment,
+                    GroupId = group,
+                    AssignedAt = now,
+                    Country = user.LastCountry,
+                    Forced = true,
+                    ForcedBy = actor,
+                };
+            }
+
+            if (await _userRepository.SetQaExperimentAsync(userId, assignment, now, cancellationToken) == false)
+                return new QaMarkResult(false, "Account is not QA anymore.");
+
+            _logger.LogInformation(
+                "[Qa] experiment forced userId = {UserId} experiment = {ExperimentId} group = {GroupId} actor = {Actor}",
+                userId,
+                assignment == null ? "master" : assignment.ExperimentId,
+                assignment == null ? string.Empty : assignment.GroupId,
+                actor);
+
+            return new QaMarkResult(false, string.Empty);
         }
 
         public async Task<List<UserDocument>> ListAsync(CancellationToken cancellationToken)

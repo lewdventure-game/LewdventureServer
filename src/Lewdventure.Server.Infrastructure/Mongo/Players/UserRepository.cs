@@ -81,7 +81,8 @@ namespace Server.Infrastructure.Mongo.Players
         {
             var filter = Builders<UserDocument>.Filter.And(
                 Builders<UserDocument>.Filter.Eq("experiment.experimentId", experimentId),
-                Builders<UserDocument>.Filter.Eq("experiment.groupId", groupId));
+                Builders<UserDocument>.Filter.Eq("experiment.groupId", groupId),
+                Builders<UserDocument>.Filter.Eq(item => item.Qa, null));
 
             return await Collection.CountDocumentsAsync(filter, cancellationToken: cancellationToken);
         }
@@ -135,6 +136,28 @@ namespace Server.Infrastructure.Mongo.Players
                 .Unset(item => item.Qa)
                 .Set(item => item.UpdatedAt, now);
             var result = await Collection.UpdateOneAsync(Builders<UserDocument>.Filter.Eq(item => item.Id, userId), update, cancellationToken: cancellationToken);
+
+            if (result.MatchedCount == 0)
+                return false;
+
+            var forcedFilter = Builders<UserDocument>.Filter.And(
+                Builders<UserDocument>.Filter.Eq(item => item.Id, userId),
+                Builders<UserDocument>.Filter.Eq("experiment.forced", true));
+
+            await Collection.UpdateOneAsync(forcedFilter, Builders<UserDocument>.Update.Set(item => item.Experiment, null), cancellationToken: cancellationToken);
+
+            return true;
+        }
+
+        public async Task<bool> SetQaExperimentAsync(string userId, UserExperimentDocument? assignment, DateTime now, CancellationToken cancellationToken)
+        {
+            var filter = Builders<UserDocument>.Filter.And(
+                Builders<UserDocument>.Filter.Eq(item => item.Id, userId),
+                Builders<UserDocument>.Filter.Ne(item => item.Qa, null));
+            var update = Builders<UserDocument>.Update
+                .Set(item => item.Experiment, assignment)
+                .Set(item => item.UpdatedAt, now);
+            var result = await Collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
 
             return 0 < result.MatchedCount;
         }
