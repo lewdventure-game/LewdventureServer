@@ -239,6 +239,9 @@ namespace Server.Battles
             if (string.Equals(name, "on_cooldown", StringComparison.OrdinalIgnoreCase))
                 return SkillTriggerType.OnCooldown;
 
+            if (string.Equals(name, "as_bonus_logic", StringComparison.OrdinalIgnoreCase))
+                return SkillTriggerType.AsBonusLogic;
+
             return SkillTriggerType.Unknown;
         }
 

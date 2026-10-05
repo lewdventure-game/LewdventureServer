@@ -162,6 +162,86 @@ namespace Tests.Unit.Battles
             Assert.That(CountPhaseCommands(unlockedScript, BattlePhaseType.SummonSkill, CommandType.CastSkill), Is.GreaterThan(0), "скилл не открылся на нужном мастерстве");
         }
 
+        [Test]
+        public void PassiveBonusSkill_ChangesCharacteristicsWithoutCasting()
+        {
+            var baseCore = CreateCore(WithSkill("energy_needed:[energy:{100000}]", EnergyActions));
+            var passiveCore = CreateCore(WithSkill("as_bonus_logic:[]", "set_bonus:[bonus_id:{1},target:{0},timing:{0}]"));
+            var baseHealth = baseCore.BuildCharacteristics(CreateUnitSnapshot(), BattleSide.Attacking, false, StoryLevelId, 0).MaxHealth;
+            var passiveHealth = passiveCore.BuildCharacteristics(CreateUnitSnapshot(), BattleSide.Attacking, false, StoryLevelId, 0).MaxHealth;
+            var script = passiveCore.Replay(CreateReplayData(CreateUnitSnapshot()));
+
+            Assert.That(passiveHealth, Is.EqualTo(MathF.Round(baseHealth * 1.15f, MidpointRounding.AwayFromZero)), "бонус пассивного скилла не попал в характеристики");
+            Assert.That(FindCommand(script, CommandType.CastSkill), Is.Null, "пассивный скилл кастуется в бою");
+        }
+
+        [Test]
+        public void PassiveBonusSkill_UsesBonusOfSkillLevel()
+        {
+            var passiveCore = CreateCore(WithSkill("as_bonus_logic:[]", "set_bonus:[bonus_id:{1:7},target:{0:0},timing:{0:0}]", promoteToSkillLevels: "1;2"));
+            var baseSnapshot = CreateUnitSnapshot();
+            var promotedSnapshot = CreateUnitSnapshot();
+
+            promotedSnapshot.Level = 2;
+
+            var baseCharacteristics = passiveCore.BuildCharacteristics(baseSnapshot, BattleSide.Attacking, false, StoryLevelId, 0);
+            var promotedCharacteristics = passiveCore.BuildCharacteristics(promotedSnapshot, BattleSide.Attacking, false, StoryLevelId, 0);
+
+            Assert.That(promotedCharacteristics.MaxHealth, Is.LessThan(baseCharacteristics.MaxHealth), "на втором уровне должен действовать бонус 7, а не 1");
+            Assert.That(promotedCharacteristics.Damage, Is.LessThan(baseCharacteristics.Damage), "бонус 7 снижает урон");
+        }
+
+        [Test]
+        public void SummonSpellAmplifiedSkill_UsesSideSpellMultiplier()
+        {
+            var domains = WithSummonSkill("1");
+
+            domains = ReplaceDomain(domains, "Skills", rows =>
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    var row = (JObject)rows[i];
+
+                    if ((string?)row["id"] == "50")
+                        row["actions"] = "damage:[damage:{0.5:0.9},target:{1:1},is_spell_amp:{1:1},timing:{0.1:0.1}]";
+                }
+            });
+            domains = ReplaceDomain(domains, "Constants", rows =>
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    var row = (JObject)rows[i];
+
+                    if ((string?)row["constant_name"] == "spell_multiplier_base")
+                        row["constant_value"] = "1";
+                }
+            });
+            domains = ReplaceDomain(domains, "Bonuses", rows =>
+            {
+                rows.Add(new JObject
+                {
+                    ["id"] = "50",
+                    ["operator"] = "add",
+                    ["bonus_type"] = "spell_multiplier_local",
+                    ["bonus_value"] = "1",
+                    ["work_modes"] = "permanent",
+                });
+            });
+
+            var battleCore = CreateCore(domains);
+            var summon = CreateSummonSnapshot(1, 1);
+            var mainUnit = CreateUnitSnapshot();
+
+            mainUnit.ActiveBonuses.Add(new BonusGrantSnapshot { Id = 50, Count = 1 });
+
+            var summonDamage = battleCore.BuildCharacteristics(summon, BattleSide.Attacking, true, StoryLevelId, 0).Damage;
+            var mainSpell = battleCore.BuildCharacteristics(mainUnit, BattleSide.Attacking, false, StoryLevelId, 0).SkillMultiplier;
+            var script = battleCore.Replay(CreateReplayData(mainUnit, summon));
+
+            Assert.That(mainSpell, Is.EqualTo(2f));
+            Assert.That(FindPhaseDamage(script, BattlePhaseType.SummonSkill, MathF.Round(summonDamage * 0.5f * mainSpell, MidpointRounding.AwayFromZero)), Is.Not.Null, "скилл саммона взял не СПЕЛЛ_МН стороны");
+        }
+
         private List<CoreConfigDomain> WithSummonSkill(string masteryForSkill)
         {
             var patched = ReplaceDomain(_domains, "Skills", rows =>

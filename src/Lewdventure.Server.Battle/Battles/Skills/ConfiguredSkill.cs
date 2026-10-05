@@ -4,6 +4,7 @@ namespace Server.Battles
     {
         private const string TimingParameter = "timing";
         private const string TargetParameter = "target";
+        private const string BonusParameter = "bonus_id";
 
         private readonly SkillDefinition _definition;
         private readonly string _skillKey;
@@ -43,6 +44,8 @@ namespace Server.Battles
         public bool RequiresEnergy => _definition.HasTrigger(SkillTriggerType.EnergyNeeded);
 
         public bool AllowsInstantActivation => ResolveInstantActivation();
+
+        public bool IsPassiveBonus => _definition.HasTrigger(SkillTriggerType.AsBonusLogic);
 
         public bool CanActivate(SkillActivationContext context)
         {
@@ -116,6 +119,44 @@ namespace Server.Battles
             _coreLog.Information($"[Story][Battle]: Skill executed, skillId = {Id}, skillKey = {SkillKey}, actorId = {context.Actor.Id}, level = {skillLevel}, actions = {actions.Count}");
         }
 
+        public void CollectPassiveBonusIds(int skillLevel, List<int> bonusIds)
+        {
+            if (IsPassiveBonus == false)
+                return;
+
+            var actions = _definition.Actions;
+
+            for (int i = 0; i < actions.Count; i++)
+            {
+                var action = actions[i];
+
+                if (action.ActionType != SkillActionType.SetBonus)
+                {
+                    _coreLog.Warning($"[Config]: Skill {Id} with as_bonus_logic ignores action {action.ActionType}, only set_bonus works without activation");
+
+                    continue;
+                }
+
+                var targetType = ReadTargetType(action.Component, skillLevel, SkillTargetType.Ally);
+
+                if (targetType != SkillTargetType.Ally)
+                {
+                    _coreLog.Warning($"[Config]: Skill {Id} with as_bonus_logic has set_bonus target {targetType}, only 0 (owner) is supported");
+
+                    continue;
+                }
+
+                if (_skillArgumentReader.TryReadInt(action.Component, BonusParameter, skillLevel, out var bonusId) == false || bonusId <= 0)
+                {
+                    _coreLog.Warning($"[Config]: Skill {Id} with as_bonus_logic has no readable bonus_id at level {skillLevel}");
+
+                    continue;
+                }
+
+                bonusIds.Add(bonusId);
+            }
+        }
+
         private void ExecuteAction(ISkillExecutionContext context, SkillActionDefinition action, int skillLevel, List<BattleCommand> commands)
         {
             if (_skillActionRegistry.TryResolve(action.ActionType, out var executor) == false)
@@ -125,7 +166,7 @@ namespace Server.Battles
                 return;
             }
 
-            var targetType = ReadTargetType(action.Component, skillLevel);
+            var targetType = ReadTargetType(action.Component, skillLevel, SkillTargetType.EnemyFirstSlot);
 
             _skillTargetResolver.Resolve(targetType, context.Actor, context.Attacker, context.Defender, _targetsBuffer);
 
@@ -169,10 +210,10 @@ namespace Server.Battles
             return timing;
         }
 
-        private SkillTargetType ReadTargetType(SkillComponent component, int skillLevel)
+        private SkillTargetType ReadTargetType(SkillComponent component, int skillLevel, SkillTargetType fallback)
         {
             if (_skillArgumentReader.TryReadInt(component, TargetParameter, skillLevel, out var rawTarget) == false)
-                return SkillTargetType.EnemyFirstSlot;
+                return fallback;
 
             if (rawTarget == (int)SkillTargetType.Ally)
                 return SkillTargetType.Ally;

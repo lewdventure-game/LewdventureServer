@@ -12,6 +12,6 @@ namespace Server.Stories
 
         public string EventParameters { get; }
 
-        public int RewardExperienceValue { get; }
+        public int LevelExperience { get; }
     }
 }

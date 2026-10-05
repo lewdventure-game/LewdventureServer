@@ -101,7 +101,13 @@ namespace Server.Battles
             _unitLoadoutBinder.RegisterSnapshotEquippedEntities(unitState, unitSnapshot, isSummon, battleSide);
             ApplySkillLevel(unitState, unitSnapshot, isSummon, battleSide);
 
-            if (isSummon == false && battleSide == BattleSide.Attacking)
+            var hasPassiveBonuses = GrantPassiveSkillBonuses(unitState);
+            var isAttackingMain = isSummon == false && battleSide == BattleSide.Attacking;
+
+            if (hasPassiveBonuses && isAttackingMain == false)
+                _battleBonusService.Rebuild(unitState, 0, new List<BattleCommand>(), false);
+
+            if (isAttackingMain)
             {
                 _unitBonusGranter.GrantTrainingBonuses(unitState, unitSnapshot.TrainingLevel);
                 _unitBonusGranter.GrantEquipmentBonuses(unitState, unitSnapshot);
@@ -145,6 +151,34 @@ namespace Server.Battles
             unitState.SetSkillLevel(skillLevel);
 
             _coreLog.Debug($"[Story][Battle]: Skill level resolved, unitId = {unitState.Id}, promoteLevel = {promoteLevel}, skillLevel = {skillLevel}");
+        }
+
+        private bool GrantPassiveSkillBonuses(UnitState unitState)
+        {
+            var skills = unitState.Skills;
+            var bonusIds = new List<int>();
+            var granted = false;
+
+            for (int i = 0; i < skills.Count; i++)
+            {
+                var skill = skills[i];
+
+                if (skill.IsPassiveBonus == false)
+                    continue;
+
+                bonusIds.Clear();
+                skill.CollectPassiveBonusIds(unitState.GetSkillLevel(skill.Id), bonusIds);
+
+                for (int bonusIndex = 0; bonusIndex < bonusIds.Count; bonusIndex++)
+                {
+                    _unitBonusGranter.GrantBuildBonus(unitState, bonusIds[bonusIndex], $"skill:{skill.Id}:{bonusIds[bonusIndex]}");
+                    granted = true;
+
+                    _coreLog.Debug($"[Story][Battle]: Passive skill bonus, unitId = {unitState.Id}, skillId = {skill.Id}, bonusId = {bonusIds[bonusIndex]}");
+                }
+            }
+
+            return granted;
         }
 
         private void ApplySummonSkillLevels(UnitState unitState, IUnitSnapshot unitSnapshot)

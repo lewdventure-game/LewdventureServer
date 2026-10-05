@@ -128,6 +128,7 @@ namespace Server.Battles
                 new EnergyNeededTriggerEvaluator(coreLog, skillArgumentReader),
                 new AllyHealthLowerTriggerEvaluator(coreLog, skillArgumentReader),
                 new OnCooldownTriggerEvaluator(coreLog, skillArgumentReader),
+                new AsBonusLogicTriggerEvaluator(),
             };
         }
 

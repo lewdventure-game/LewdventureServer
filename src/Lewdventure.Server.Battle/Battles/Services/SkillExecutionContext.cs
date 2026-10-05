@@ -196,7 +196,15 @@ namespace Server.Battles
 
         private float ResolveSpellMultiplier()
         {
-            return _actor.CharacteristicState.SkillMultiplier;
+            if ((_actor.Flags & UnitFlags.Summon) == 0)
+                return _actor.CharacteristicState.SkillMultiplier;
+
+            var allyIndex = FindAllyMainIndex();
+
+            if (allyIndex < 0)
+                return _actor.CharacteristicState.SkillMultiplier;
+
+            return _attacker.MainUnits[allyIndex].CharacteristicState.SkillMultiplier;
         }
 
         public void Heal(IUnitState unit, float amount, List<BattleCommand> commands)

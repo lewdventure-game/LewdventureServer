@@ -103,7 +103,7 @@ namespace Server.Battles
                 buckets.SkillMultiplierPerk,
                 buckets.SkillMultiplierGlobal,
                 "spellMultiplier");
-            var energyGain = ApplyFormula2(
+            var energyGain = ApplyFormula3(
                 buckets.EnergyBase,
                 buckets.EnergyLocal,
                 buckets.EnergyPerk,
@@ -367,7 +367,7 @@ namespace Server.Battles
 
         private float ApplyFormula3(float baseValue, float local, float perk, float global, string fieldName)
         {
-            var value = (1f + baseValue + local) * (1f + perk) * (1f + global);
+            var value = (baseValue + local) * (1f + perk) * (1f + global);
 
             if (value < 0f)
                 value = 0f;
@@ -386,16 +386,6 @@ namespace Server.Battles
                 rounded = 0f;
 
             _coreLog.Debug($"[Story][Battle]: Formula7, base = {healingBoostBase}, local = {local}, perk = {perk}, global = {global}, raw = {value}, result = {rounded}");
-
-            return rounded;
-        }
-
-        private float RoundMultiplier(float value, string fieldName)
-        {
-            var rounded = RoundMathematical(value);
-
-            if (rounded != value)
-                _coreLog.Debug($"[Story][Battle]: Multiplier round, field = {fieldName}, raw = {value}, rounded = {rounded}");
 
             return rounded;
         }

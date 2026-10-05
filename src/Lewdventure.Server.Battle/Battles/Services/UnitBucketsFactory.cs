@@ -59,18 +59,18 @@ namespace Server.Battles
             {
                 HealthBase = enemyMapper.Health * stageMultiplier,
                 DamageBase = enemyMapper.Damage * stageMultiplier,
-                AttackMultiplierBase = ToFormula3Start(1f),
+                AttackMultiplierBase = 1f,
                 ArmorBase = enemyMapper.Defence,
                 DefenceCoefficient = _battleConstantsReader.Get(ConstantKeys.DefenceCoefficientKey),
-                EvasionBase = ToFormula3Start(enemyMapper.Evasion),
-                CriticalChanceBase = ToFormula3Start(enemyMapper.CriticalChance),
-                CriticalMultiplierBase = ToFormula3Start(enemyMapper.CriticalMultiplier),
-                Combo1ChanceBase = ToFormula3Start(enemyMapper.Combo1Chance),
-                Combo2ChanceBase = ToFormula3Start(enemyMapper.Combo2Chance),
-                ComboMultiplierBase = ToFormula3Start(ResolveEnemyComboMultiplier(enemyMapper)),
-                CounterChanceBase = ToFormula3Start(enemyMapper.CounterChance),
-                CounterMultiplierBase = ToFormula3Start(enemyMapper.CounterMultiplier),
-                SkillMultiplierBase = ToFormula3Start(enemyMapper.SpellMultiplier),
+                EvasionBase = enemyMapper.Evasion,
+                CriticalChanceBase = enemyMapper.CriticalChance,
+                CriticalMultiplierBase = enemyMapper.CriticalMultiplier,
+                Combo1ChanceBase = enemyMapper.Combo1Chance,
+                Combo2ChanceBase = enemyMapper.Combo2Chance,
+                ComboMultiplierBase = ResolveEnemyComboMultiplier(enemyMapper),
+                CounterChanceBase = enemyMapper.CounterChance,
+                CounterMultiplierBase = enemyMapper.CounterMultiplier,
+                SkillMultiplierBase = enemyMapper.SpellMultiplier,
                 EnergyBase = enemyMapper.Energy,
                 EnergyMaxBase = enemyMapper.MaxEnergy,
                 VampyrismBase = enemyMapper.Vampyrism,
@@ -201,17 +201,17 @@ namespace Server.Battles
         {
             buckets.HealthBase = _battleConstantsReader.Get(ConstantKeys.HealthBaseKey);
             buckets.DamageBase = _battleConstantsReader.Get(ConstantKeys.DamageBaseKey);
-            buckets.AttackMultiplierBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.AttackMultiplierBaseKey));
+            buckets.AttackMultiplierBase = _battleConstantsReader.Get(ConstantKeys.AttackMultiplierBaseKey);
             buckets.ArmorBase = _battleConstantsReader.Get(ConstantKeys.DefenceBaseKey);
-            buckets.EvasionBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.EvasionBaseKey));
-            buckets.CriticalChanceBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.CriticalChanceBaseKey));
-            buckets.CriticalMultiplierBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.CriticalMultiplierBaseKey));
-            buckets.Combo1ChanceBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.ComboOneChanceBaseKey));
-            buckets.Combo2ChanceBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.ComboTwoChanceBaseKey));
-            buckets.ComboMultiplierBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.ComboMultiplierBaseKey));
-            buckets.CounterChanceBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.CounterChanceBaseKey));
-            buckets.CounterMultiplierBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.CounterMultiplierBaseKey));
-            buckets.SkillMultiplierBase = ToFormula3Start(_battleConstantsReader.Get(ConstantKeys.SkillMultiplierBaseKey));
+            buckets.EvasionBase = _battleConstantsReader.Get(ConstantKeys.EvasionBaseKey);
+            buckets.CriticalChanceBase = _battleConstantsReader.Get(ConstantKeys.CriticalChanceBaseKey);
+            buckets.CriticalMultiplierBase = _battleConstantsReader.Get(ConstantKeys.CriticalMultiplierBaseKey);
+            buckets.Combo1ChanceBase = _battleConstantsReader.Get(ConstantKeys.ComboOneChanceBaseKey);
+            buckets.Combo2ChanceBase = _battleConstantsReader.Get(ConstantKeys.ComboTwoChanceBaseKey);
+            buckets.ComboMultiplierBase = _battleConstantsReader.Get(ConstantKeys.ComboMultiplierBaseKey);
+            buckets.CounterChanceBase = _battleConstantsReader.Get(ConstantKeys.CounterChanceBaseKey);
+            buckets.CounterMultiplierBase = _battleConstantsReader.Get(ConstantKeys.CounterMultiplierBaseKey);
+            buckets.SkillMultiplierBase = _battleConstantsReader.Get(ConstantKeys.SkillMultiplierBaseKey);
             buckets.EnergyBase = _battleConstantsReader.Get(ConstantKeys.EnergyBaseKey);
             buckets.EnergyMaxBase = _battleConstantsReader.Get(ConstantKeys.EnergyMaxBaseKey);
             buckets.DefenceCoefficient = _battleConstantsReader.Get(ConstantKeys.DefenceCoefficientKey);
@@ -256,11 +256,6 @@ namespace Server.Battles
             }
 
             return storyLevel.EnemyStatsMultiplier;
-        }
-
-        private float ToFormula3Start(float finalValue)
-        {
-            return finalValue - 1f;
         }
 
     }

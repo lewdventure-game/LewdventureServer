@@ -31,7 +31,7 @@ namespace Server.Battles
             var multiplier = damageRatio;
 
             if (_skillArgumentReader.ReadFlag(context.Component, SpellAmplifierParameter, context.SkillLevel))
-                multiplier *= executionContext.Actor.CharacteristicState.SkillMultiplier;
+                multiplier *= executionContext.SpellMultiplier;
 
             executionContext.DealFixedDamage(context.Target, multiplier, context.Commands);
         }

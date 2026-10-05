@@ -24,6 +24,8 @@ namespace Server.Battles
 
         public virtual bool AllowsInstantActivation => false;
 
+        public bool IsPassiveBonus => false;
+
         protected BaseSkill(ISkillMapper mapper, ParserUtils parserUtils)
         {
             _id = mapper.Id;
@@ -40,6 +42,10 @@ namespace Server.Battles
         }
 
         public virtual void NotifyActivated(SkillActivationContext context)
+        {
+        }
+
+        public void CollectPassiveBonusIds(int skillLevel, List<int> bonusIds)
         {
         }
 

@@ -6,5 +6,6 @@ namespace Server.Battles
         EnergyNeeded = 1,
         AllyHealthLower = 2,
         OnCooldown = 3,
+        AsBonusLogic = 4,
     }
 }

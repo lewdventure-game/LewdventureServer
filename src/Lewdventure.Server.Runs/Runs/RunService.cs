@@ -245,7 +245,7 @@ namespace Server.Runs
                 StageId = stage.StageId,
                 LocKey = ReadString(parameters, RunEventKeys.LocKey),
             };
-            var experience = storyEvent.RewardExperienceValue;
+            var experience = storyEvent.LevelExperience;
 
             var grant = await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, outcome, cancellationToken);
 
@@ -331,7 +331,7 @@ namespace Server.Runs
                 StageId = stage.StageId,
                 LocKey = ReadString(parameters, _runEventKeys.ForkLocKey(branch)),
             };
-            var experience = storyEvent.RewardExperienceValue;
+            var experience = storyEvent.LevelExperience;
 
             var grant = await ApplyRewardsAsync(userId, run, rewards, rewardLength, outcome, cancellationToken);
 
@@ -443,7 +443,7 @@ namespace Server.Runs
                 return new RunOperationResult(run, outcome, false, new List<string>());
             }
 
-            var experience = storyEvent.RewardExperienceValue;
+            var experience = storyEvent.LevelExperience;
 
             var grant = await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, outcome, cancellationToken);
 

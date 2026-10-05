@@ -14,10 +14,14 @@ namespace Server.Battles
 
         public bool AllowsInstantActivation { get; }
 
+        public bool IsPassiveBonus { get; }
+
         public bool CanActivate(SkillActivationContext context);
 
         public void NotifyActivated(SkillActivationContext context);
 
         public void Execute(ISkillExecutionContext context);
+
+        public void CollectPassiveBonusIds(int skillLevel, List<int> bonusIds);
     }
 }

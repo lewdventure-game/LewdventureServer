@@ -57,7 +57,34 @@ namespace Server.GameConfigs
 
                 ValidateColumn(id, TriggersProperty, triggers, true, errors, warnings);
                 ValidateColumn(id, ActionsProperty, actions, false, errors, warnings);
+                ValidatePassiveBonus(id, triggers, actions, warnings);
             }
+        }
+
+        private void ValidatePassiveBonus(string id, string triggers, string actions, List<string> warnings)
+        {
+            var compactTriggers = RemoveWhitespace(triggers);
+
+            if (compactTriggers.Contains("as_bonus_logic:[", StringComparison.Ordinal) == false)
+                return;
+
+            var compactActions = RemoveWhitespace(actions);
+
+            if (compactActions.Contains("damage:[", StringComparison.Ordinal) || compactActions.Contains("set_status:[", StringComparison.Ordinal))
+                warnings.Add($"Лист Skills, скилл {id}: с условием as_bonus_logic работает только set_bonus, остальные действия игнорируются.");
+        }
+
+        private string RemoveWhitespace(string value)
+        {
+            var builder = new System.Text.StringBuilder(value.Length);
+
+            for (int i = 0; i < value.Length; i++)
+            {
+                if (char.IsWhiteSpace(value[i]) == false)
+                    builder.Append(value[i]);
+            }
+
+            return builder.ToString();
         }
 
         private void ValidateColumn(string id, string column, string raw, bool isTrigger, List<string> errors, List<string> warnings)
@@ -111,7 +138,8 @@ namespace Server.GameConfigs
         {
             if (body.Trim().Length == 0)
             {
-                errors.Add($"Лист Skills, скилл {id}: у {componentName} не заданы параметры.");
+                if (0 < definition.ParameterNames.Count)
+                    errors.Add($"Лист Skills, скилл {id}: у {componentName} не заданы параметры.");
 
                 return;
             }

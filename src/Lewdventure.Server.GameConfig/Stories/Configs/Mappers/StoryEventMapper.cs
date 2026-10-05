@@ -5,8 +5,6 @@ namespace Server.Stories
 {
     internal sealed class StoryEventMapper : IStoryEventMapper
     {
-        private int _rewardExperienceValue;
-
         [JsonProperty("id")]
         public int Id { get; init; }
 
@@ -19,20 +17,7 @@ namespace Server.Stories
         [JsonProperty("event_parameters")]
         public string EventParameters { get; init; } = string.Empty;
 
-        [OptionalColumn("колонка переименована из level_exp, в старых снапшотах её нет")]
-        [JsonProperty("reward_xp_value")]
-        private int RewardExperienceRaw
-        {
-            set { _rewardExperienceValue = value; }
-        }
-
-        [OptionalColumn("колонка переименована в reward_xp_value, читается для совместимости со старыми снапшотами")]
         [JsonProperty("level_exp")]
-        private int LegacyRewardExperienceRaw
-        {
-            set { _rewardExperienceValue = value; }
-        }
-
-        public int RewardExperienceValue => _rewardExperienceValue;
+        public int LevelExperience { get; init; }
     }
 }

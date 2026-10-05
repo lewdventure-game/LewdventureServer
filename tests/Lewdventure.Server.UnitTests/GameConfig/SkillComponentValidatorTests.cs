@@ -21,6 +21,32 @@ namespace Tests.Unit.GameConfig
         }
 
         [Test]
+        public void PassiveBonusRow_HasNoComplaints()
+        {
+            Validate("as_bonus_logic:[]", "set_bonus:[bonus_id:{14:15},target:{0:0},timing:{0:0}]", out var errors, out var warnings);
+
+            Assert.That(errors, Is.Empty);
+            Assert.That(warnings, Is.Empty);
+        }
+
+        [Test]
+        public void PassiveBonusRow_WithDamage_IsWarned()
+        {
+            Validate("as_bonus_logic:[]", Actions, out var errors, out var warnings);
+
+            Assert.That(errors, Is.Empty);
+            Assert.That(warnings, Has.Some.Contains("as_bonus_logic"));
+        }
+
+        [Test]
+        public void PassiveBonusRow_WithoutCommas_IsReported()
+        {
+            Validate("as_bonus_logic:[]", "set_bonus:[\nbonus_id:{14:14:15}\ntarget:{0:0:0}\ntiming:{0:0:0}]", out var errors, out var warnings);
+
+            Assert.That(errors.Count + warnings.Count, Is.GreaterThan(0));
+        }
+
+        [Test]
         public void LegacyRow_IsNotTouched()
         {
             var domain = new ConfigSnapshotDomain("Skills", "sheet", "A1:E2", "[{\"id\":\"1\",\"type\":\"fireball\",\"parameters\":\"damage_ratio:[1]\"}]");

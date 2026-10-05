@@ -100,7 +100,7 @@ Ops-порт (9090) никогда не публикуется наружу: н�
 Найдены валидатором при снятии фикстуры, логика не менялась:
 
 - Bonuses: колонка в таблице называется `work_modes`, маппер читает `work_mode` — у всех бонусов режим `Unknown` (всегда активен).
-- Диапазоны листов отрезают колонки: Characters `skill_ids`; Summons часть полей; Story_levels trigger и multipliers; Story_events `reward_xp_value`; Perks `desc_loc`; Perk_groups `choice_count`.
+- Диапазоны листов отрезают колонки: Characters `skill_ids`; Summons часть полей; Story_levels trigger и multipliers; Story_events `level_exp`; Perks `desc_loc`; Perk_groups `choice_count`.
 - Enemies: плоских колонок нет, используется только упакованная `other_characteristics`.
 - Equipments: ожидаемых колонок нет.
 
