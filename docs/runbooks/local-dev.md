@@ -56,6 +56,14 @@ LEWD_IT_ENABLED=1 dotnet test tests/Lewdventure.Server.IntegrationTests -c Relea
 dotnet format whitespace LewdventureServer.slnx --verify-no-changes
 ```
 
+Интеграционным тестам нужен Docker (Testcontainers). Без локального Docker их гоняют на VPS: залить локальный `master` в `/opt/lewdventure/build/repo` через `git bundle`, как в [admin-panel.md](admin-panel.md#выкладка-из-локального-master-без-push), и запустить в SDK-контейнере:
+
+```bash
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v /opt/lewdventure/build/repo:/src:ro   --network host -e LEWD_IT_ENABLED=1 -e TESTCONTAINERS_HOST_OVERRIDE=localhost   mcr.microsoft.com/dotnet/sdk:10.0   bash -c "cp -r /src /work && cd /work && dotnet test tests/Lewdventure.Server.IntegrationTests -c Release"
+```
+
+`TESTCONTAINERS_HOST_OVERRIDE=localhost` нужен, иначе тесты видят Mongo по адресу моста `172.17.0.1` и отказываются работать с «удалённой» базой. Образ Mongo в тестах закреплён на `mongo:8.0.15`, как в compose: свежие сборки 8.0 не стартуют на ядре Linux 6.19+ (SERVER-121912).
+
 Пакеты — через `Directory.Packages.props`; после добавления или обновления пакета выполнить `dotnet restore LewdventureServer.slnx --force-evaluate` и закоммитить изменившиеся `packages.lock.json` (CI восстанавливает в `--locked-mode`).
 
 ## Полезное
