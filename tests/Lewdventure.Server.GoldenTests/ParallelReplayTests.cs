@@ -16,6 +16,9 @@ namespace Tests.Golden
         {
             using var host = new GoldenTestHost();
 
+            if (host.Settings.IsUpdateMode)
+                Assert.Ignore("[Golden] update mode");
+
             var cases = host.Catalog.LoadAll();
             var seeds = host.Settings.Seeds;
             var mismatches = new ConcurrentQueue<string>();
