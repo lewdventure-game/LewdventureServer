@@ -38,6 +38,12 @@ jobs:
         run: dotnet test tests/Lewdventure.Server.GoldenTests -c Release --no-build --logger "trx;LogFileName=golden.trx" --results-directory TestResults
       - name: config tool smoke
         run: dotnet run -c Release --no-build --project tools/Lewdventure.Server.ConfigTool -- hash --file tests/Lewdventure.Server.GoldenTests/Golden/Fixtures/config-snapshot.v1.json
+      - name: config tool smoke with mongo services
+        env:
+          DOTNET_ENVIRONMENT: Development
+          Mongo__Enabled: "true"
+          Mongo__ConnectionString: mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=1000
+        run: dotnet run -c Release --no-build --project tools/Lewdventure.Server.ConfigTool -- hash --file tests/Lewdventure.Server.GoldenTests/Golden/Fixtures/config-snapshot.v1.json
 
       - name: upload test results
         if: failure()

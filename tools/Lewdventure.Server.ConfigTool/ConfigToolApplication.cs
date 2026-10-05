@@ -105,6 +105,7 @@ namespace Server.ConfigTool
 
         private void RegisterServices(HostApplicationBuilder builder)
         {
+            builder.Services.AddSingleton(TimeProvider.System);
             builder.Services.AddSingleton<CoreLogCategories>();
             builder.Services.AddSingleton<CoreLogFactory>();
             builder.Services.AddSingleton<ICoreLog>(ResolveCoreLog);
