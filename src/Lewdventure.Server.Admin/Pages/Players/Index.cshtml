@@ -17,6 +17,14 @@
     }
 </form>
 <partial name="_Messages" model="Model" />
+@if (Model.UserId.Length != 0 && Model.Account == null && Model.Profile == null)
+{
+    <div class="alert alert-error">Аккаунт @Model.UserId не найден на окружении @Model.CurrentEnvironment: он удалён или живёт на другом окружении. События в аналитике хранятся отдельно и после удаления аккаунта остаются — они ниже.</div>
+}
+else if (Model.UserId.Length != 0 && Model.Profile == null)
+{
+    <div class="alert alert-error">У игрока ещё нет профиля: он не открывал игру после входа или прогресс сброшен. Профиль появится при следующем входе в игру.</div>
+}
 @if (Model.UserId.Length == 0)
 {
     @if (1 < Model.Matches.Count)

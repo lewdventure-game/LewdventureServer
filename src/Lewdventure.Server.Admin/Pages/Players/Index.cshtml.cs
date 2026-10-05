@@ -119,9 +119,9 @@ namespace Server.Admin.Pages.Players
             var ledger = await LoadAsync<List<PlayerLedgerModel>>(path + "/ledger?limit=50");
             var catalog = await LoadAsync<CheatCatalogModel>("/admin/qa/catalog");
 
-            Profile = await LoadAsync<PlayerProfileModel>(path);
+            Profile = await LoadOptionalAsync<PlayerProfileModel>(path);
             Assignment = await LoadAsync<ExperimentPlayerModel>("/admin/experiments/player/" + Escape(UserId));
-            Account = await LoadAsync<QaAccountModel>("/admin/qa/players/" + Escape(UserId));
+            Account = await LoadOptionalAsync<QaAccountModel>("/admin/qa/players/" + Escape(UserId));
 
             if (catalog != null)
                 Catalog = catalog;
