@@ -1,0 +1,49 @@
+@model List<Server.Admin.Backend.Models.RequestTraceModel>
+@if (Model.Count == 0)
+{
+    <p class="muted">Запросов нет.</p>
+}
+else
+{
+    <table class="table compact">
+        <thead><tr><th>Когда</th><th>Статус</th><th>Запрос</th><th>мс</th><th>Correlation</th><th>Подробности</th></tr></thead>
+        <tbody>
+        @foreach (var trace in Model)
+        {
+            <tr class="@(400 <= trace.StatusCode ? "highlight" : string.Empty)">
+                <td class="nowrap">@trace.CreatedAt.ToString("MM-dd HH:mm:ss")</td>
+                <td>@trace.StatusCode</td>
+                <td>@trace.Method @trace.Path</td>
+                <td>@trace.DurationMs</td>
+                <td><a href="/Errors?correlationId=@trace.CorrelationId"><code>@trace.CorrelationId</code></a></td>
+                <td>
+                    @if (trace.RequestBody.Length != 0 || trace.ResponseBody.Length != 0 || trace.Error.Length != 0)
+                    {
+                        <details>
+                            <summary>открыть</summary>
+                            @if (trace.Error.Length != 0)
+                            {
+                                <div class="alert alert-error">@trace.Error</div>
+                            }
+                            @if (trace.RequestBody.Length != 0)
+                            {
+                                <div class="muted">Запрос</div>
+                                <pre class="props">@trace.RequestBody</pre>
+                            }
+                            @if (trace.ResponseBody.Length != 0)
+                            {
+                                <div class="muted">Ответ</div>
+                                <pre class="props">@trace.ResponseBody</pre>
+                            }
+                            @if (trace.ClientVersion.Length != 0)
+                            {
+                                <div class="muted">Клиент @trace.ClientVersion</div>
+                            }
+                        </details>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

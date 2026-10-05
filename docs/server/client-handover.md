@@ -278,3 +278,4 @@ Play(script);
 
 - [Client API](client-api.md) — полные модели запросов и ответов, значения всех enum'ов, таблица команд боя с параметрами.
 - [Client Migration](client-migration.md) — план миграции клиента подробно
+- [Client QA](client-qa.md) — что показать тестировщикам: `userId`, `X-Correlation-Id` в окне ошибки, заголовок `X-Client-Version`

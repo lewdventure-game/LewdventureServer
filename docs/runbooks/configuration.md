@@ -120,6 +120,13 @@ openssl rand -base64 48
 | --- | --- | --- |
 | `Cheats:Enabled` | `false` | читы QA в `/admin/qa/players/{userId}/cheats/*`; включено в Local, Development и Staging, в Production запрещено валидатором — сервер не стартует. Без флага эндпоинты читов не регистрируются. Подробно — [qa-tools.md](../server/qa-tools.md) |
 
+## QaDiagnostics
+
+| Ключ | По умолчанию | Описание |
+| --- | --- | --- |
+| `QaDiagnostics:Enabled` | `false` | трасса запросов игроков и копия ошибок сервера в Mongo на 7 дней для админки; включено в Local, Development и Staging, в Production запрещено валидатором. Подробно — [qa-tools.md](../server/qa-tools.md#логи-и-баг-репорты) |
+| `QaDiagnostics:MaxBodyBytes` | `4096` | сколько байт тела запроса и ответа сохранять, 256–65536 |
+
 ## ConfigPublisher
 
 | Ключ | По умолчанию | Описание |

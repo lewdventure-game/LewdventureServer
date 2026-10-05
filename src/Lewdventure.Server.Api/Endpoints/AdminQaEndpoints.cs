@@ -1,11 +1,14 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Server.Api.Hosting;
 using Server.Api.Http;
 using Server.Api.Options;
 using Server.Api.Security;
 using Server.GameConfigs;
 using Server.Infrastructure.Mongo;
 using Server.Infrastructure.Mongo.Players;
+using Server.Infrastructure.Mongo.Qa;
 using Server.Infrastructure.Mongo.Runs;
 using Server.Infrastructure.Players;
 using Server.Infrastructure.Qa;
@@ -16,7 +19,17 @@ namespace Server.Api.Endpoints
 {
     internal sealed class AdminQaEndpoints
     {
+        private const int DefaultListLimit = 100;
+        private const int MaxListLimit = 500;
+        private const int ReportLedgerLimit = 50;
+        private const int ReportRequestLimit = 100;
+        private const int ReportErrorLimit = 50;
+        private const int ReportRunLimit = 5;
+
+        private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
+
         private bool _isCheatsEnabled;
+        private bool _isDiagnosticsEnabled;
 
         public void Map(WebApplication application)
         {
@@ -27,6 +40,7 @@ namespace Server.Api.Endpoints
                 return;
 
             _isCheatsEnabled = application.Services.GetRequiredService<IOptions<CheatOptions>>().Value.Enabled;
+            _isDiagnosticsEnabled = application.Services.GetRequiredService<IOptions<QaDiagnosticsOptions>>().Value.Enabled;
 
             var group = application.MapGroup(ApiRoutes.AdminQa)
                 .WithMetadata(new OpsPortOnlyMetadata())
@@ -40,6 +54,10 @@ namespace Server.Api.Endpoints
             group.MapGet("/players/{userId}", GetAccountAsync);
             group.MapPost("/players/{userId}/mark", MarkAsync);
             group.MapDelete("/players/{userId}/mark", UnmarkAsync);
+            group.MapGet("/players/{userId}/requests", ListPlayerRequestsAsync);
+            group.MapGet("/players/{userId}/report", GetBugReportAsync);
+            group.MapGet("/requests", ListRequestsAsync);
+            group.MapGet("/errors", ListErrorsAsync);
 
             if (_isCheatsEnabled == false)
                 return;
@@ -62,6 +80,7 @@ namespace Server.Api.Endpoints
             cheats.MapPost("/run", ChangeRunAsync);
             cheats.MapPost("/template", ApplyTemplateAsync);
             cheats.MapPost("/copy", CopyProfileAsync);
+            cheats.MapPost("/import", ImportProfileAsync);
             cheats.MapPost("/reset", ResetAsync);
             cheats.MapPost("/run/abandon", AbandonRunAsync);
         }
@@ -71,6 +90,7 @@ namespace Server.Api.Endpoints
             return Results.Ok(new QaStatusResponse
             {
                 CheatsEnabled = _isCheatsEnabled,
+                DiagnosticsEnabled = _isDiagnosticsEnabled,
                 Environment = hostEnvironment.EnvironmentName,
             });
         }
@@ -406,6 +426,145 @@ namespace Server.Api.Endpoints
             var result = await qaTemplateService.CopyProfileAsync(request.SourceUserId.Trim(), userId, ReadActor(httpContext), httpContext.RequestAborted);
 
             return ToResult(result, playerResponseFactory);
+        }
+
+        private async Task<IResult> ListPlayerRequestsAsync(
+            HttpContext httpContext,
+            string userId,
+            [FromQuery] bool? errorsOnly,
+            [FromQuery] int? limit,
+            [FromServices] QaDiagnosticsRepository qaDiagnosticsRepository)
+        {
+            var traces = await qaDiagnosticsRepository.ListTracesAsync(userId, string.Empty, errorsOnly == true, ReadLimit(limit), httpContext.RequestAborted);
+
+            return Results.Ok(traces);
+        }
+
+        private async Task<IResult> ListRequestsAsync(
+            HttpContext httpContext,
+            [FromQuery] string? correlationId,
+            [FromQuery] int? limit,
+            [FromServices] QaDiagnosticsRepository qaDiagnosticsRepository)
+        {
+            if (string.IsNullOrWhiteSpace(correlationId))
+                return Results.BadRequest(new { error = "correlationId is required." });
+
+            var traces = await qaDiagnosticsRepository.ListTracesAsync(string.Empty, correlationId.Trim(), false, ReadLimit(limit), httpContext.RequestAborted);
+
+            return Results.Ok(traces);
+        }
+
+        private async Task<IResult> ListErrorsAsync(
+            HttpContext httpContext,
+            [FromQuery] string? userId,
+            [FromQuery] string? correlationId,
+            [FromQuery] int? limit,
+            [FromServices] QaDiagnosticsRepository qaDiagnosticsRepository)
+        {
+            var errors = await qaDiagnosticsRepository.ListErrorsAsync(
+                userId == null ? string.Empty : userId.Trim(),
+                correlationId == null ? string.Empty : correlationId.Trim(),
+                ReadLimit(limit),
+                httpContext.RequestAborted);
+
+            return Results.Ok(errors);
+        }
+
+        private async Task<IResult> GetBugReportAsync(
+            HttpContext httpContext,
+            string userId,
+            [FromServices] BuildInfo buildInfo,
+            [FromServices] IGameConfigSetProvider gameConfigSetProvider,
+            [FromServices] IHostEnvironment hostEnvironment,
+            [FromServices] PlayerLedgerRepository playerLedgerRepository,
+            [FromServices] PlayerProfileRepository playerProfileRepository,
+            [FromServices] QaDiagnosticsRepository qaDiagnosticsRepository,
+            [FromServices] QaResponseFactory qaResponseFactory,
+            [FromServices] RunCheatService runCheatService,
+            [FromServices] RunRepository runRepository,
+            [FromServices] TimeProvider timeProvider,
+            [FromServices] UserRepository userRepository)
+        {
+            var cancellationToken = httpContext.RequestAborted;
+            var user = await userRepository.GetAsync(userId, cancellationToken);
+
+            if (user == null)
+                return Results.NotFound(new { error = $"User {userId} is not found." });
+
+            var report = new QaBugReportResponse
+            {
+                GeneratedAt = timeProvider.GetUtcNow().UtcDateTime,
+                GeneratedBy = ReadActor(httpContext),
+                Environment = hostEnvironment.EnvironmentName,
+                ServerVersion = buildInfo.Version,
+                MasterConfigVersion = gameConfigSetProvider.Current.Version,
+                Account = CreateAccount(user),
+                ExperimentId = user.Experiment == null ? string.Empty : user.Experiment.ExperimentId,
+                GroupId = user.Experiment == null ? string.Empty : user.Experiment.GroupId,
+                Profile = await playerProfileRepository.GetAsync(userId, cancellationToken),
+                Ledger = await playerLedgerRepository.ListAsync(userId, ReportLedgerLimit, cancellationToken),
+                Requests = await qaDiagnosticsRepository.ListTracesAsync(userId, string.Empty, false, ReportRequestLimit, cancellationToken),
+                Errors = await qaDiagnosticsRepository.ListErrorsAsync(userId, string.Empty, ReportErrorLimit, cancellationToken),
+            };
+            var runs = await runRepository.ListAsync(userId, ReportRunLimit, cancellationToken);
+
+            for (int i = 0; i < runs.Count; i++)
+            {
+                var configSet = await runCheatService.ResolveConfigsAsync(runs[i], cancellationToken);
+                var run = qaResponseFactory.CreateRun(runs[i], configSet.Distributor);
+
+                if (string.Equals(runs[i].Status, RunDocument.ActiveStatus, StringComparison.Ordinal))
+                    report.ActiveRun = run;
+                else
+                    report.RecentRuns.Add(run);
+            }
+
+            return Results.Ok(report);
+        }
+
+        private async Task<IResult> ImportProfileAsync(
+            HttpContext httpContext,
+            string userId,
+            [FromBody] JsonElement body,
+            [FromServices] PlayerResponseFactory playerResponseFactory,
+            [FromServices] QaTemplateService qaTemplateService,
+            [FromServices] RunService runService)
+        {
+            var source = body.ValueKind == JsonValueKind.Object && body.TryGetProperty("profile", out var nested) ? nested : body;
+
+            if (source.ValueKind != JsonValueKind.Object)
+                return Results.BadRequest(new { error = "Body must be a bug report or a profile object." });
+
+            PlayerProfileDocument? profile;
+
+            try
+            {
+                profile = source.Deserialize<PlayerProfileDocument>(_jsonOptions);
+            }
+            catch (JsonException exception)
+            {
+                return Results.BadRequest(new { error = "Profile is not readable: " + exception.Message });
+            }
+
+            if (profile == null)
+                return Results.BadRequest(new { error = "Profile is empty." });
+
+            var abandonError = await AbandonActiveRunAsync(userId, runService, httpContext.RequestAborted);
+
+            if (abandonError.Length != 0)
+                return Results.BadRequest(new { error = abandonError });
+
+            var result = await qaTemplateService.ImportProfileAsync(profile, userId, ReadActor(httpContext), httpContext.RequestAborted);
+
+            return ToResult(result, playerResponseFactory);
+        }
+
+        private int ReadLimit(int? limit)
+        {
+            if (limit == null || limit.Value <= 0)
+                return DefaultListLimit;
+
+            return MaxListLimit < limit.Value ? MaxListLimit : limit.Value;
         }
 
         private async Task<string> AbandonActiveRunAsync(string userId, RunService runService, CancellationToken cancellationToken)

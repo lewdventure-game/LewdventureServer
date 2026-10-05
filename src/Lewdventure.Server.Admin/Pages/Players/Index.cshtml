@@ -414,6 +414,34 @@
             <p class="muted">0 убирает флаг.</p>
         </section>
     }
+    @if (Model.Status.DiagnosticsEnabled)
+    {
+        <div class="heading">
+            <h2>Запросы игрока</h2>
+            <div class="actions">
+                <a class="button @(Model.ErrorsOnly ? string.Empty : "primary")" href="/Players?userId=@userId">все</a>
+                <a class="button @(Model.ErrorsOnly ? "primary" : string.Empty)" href="/Players?userId=@userId&requests=errors">только ошибки</a>
+                <a class="button" href="/Errors?userId=@userId">ошибки сервера</a>
+            </div>
+        </div>
+        <partial name="_RequestTable" model="Model.Requests" />
+        <p class="muted">Последние 50 запросов игрока за 7 дней. Тело запроса и ответа обрезается до 4 КБ, ответ хранится только у ошибок.</p>
+    }
+    <section class="card">
+        <h2>Баг-репорт</h2>
+        <div class="actions">
+            <a class="button primary" href="/Players?handler=Report&userId=@userId">Скачать баг-репорт</a>
+        </div>
+        <p class="muted">Один JSON: аккаунт, профиль, забеги, журнал, запросы, ошибки сервера, события аналитики, версии сервера и конфигов. Приложите к задаче.</p>
+        @if (Model.CheatsEnabled)
+        {
+            <form method="post" asp-page-handler="Import" asp-route-userId="@userId" enctype="multipart/form-data" class="inline" data-confirm="Заменить прогресс игрока @userId профилем из баг-репорта? Активный забег будет прерван.">
+                <input type="file" name="file" accept=".json,application/json" required>
+                <button type="submit">Загрузить профиль из баг-репорта</button>
+            </form>
+            <p class="muted">Поднимает профиль из баг-репорта на этом аккаунте, чтобы воспроизвести баг. Можно загрузить и репорт с другого окружения.</p>
+        }
+    </section>
     <h2>Журнал выдач и трат</h2>
     <table class="table">
         <thead><tr><th>Когда</th><th>Действие</th><th>Источник</th><th>Изменения</th></tr></thead>

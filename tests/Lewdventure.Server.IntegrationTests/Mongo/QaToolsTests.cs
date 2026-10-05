@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Server.GameConfigs;
 using Server.Infrastructure.Mongo;
 using Server.Infrastructure.Mongo.Players;
+using Server.Infrastructure.Mongo.Qa;
 using Server.Infrastructure.Players;
 using Server.Infrastructure.Qa;
 using Server.Services;
@@ -184,6 +185,52 @@ namespace Tests.Integration.Mongo
 
             Assert.That(await templates.DeleteAsync("qa-mid", Actor, CancellationToken.None), Is.True);
             Assert.That(await templates.ListAsync(CancellationToken.None), Is.Empty);
+        }
+
+        [Test]
+        [Order(10)]
+        public async Task Diagnostics_TracesAndErrors_AreFilteredByUserAndCorrelation()
+        {
+            var repository = _environment.Services.GetRequiredService<QaDiagnosticsRepository>();
+            var now = DateTime.UtcNow;
+
+            await repository.InsertTracesAsync(new List<RequestTraceDocument>
+            {
+                new() { Id = "t1", CreatedAt = now, UserId = UserId, CorrelationId = "c1", Path = "/api/run/advance", StatusCode = 400 },
+                new() { Id = "t2", CreatedAt = now.AddSeconds(1), UserId = UserId, CorrelationId = "c2", Path = "/api/player/profile", StatusCode = 200 },
+                new() { Id = "t3", CreatedAt = now, UserId = OtherUserId, CorrelationId = "c3", Path = "/api/player/profile", StatusCode = 500 },
+            }, CancellationToken.None);
+            await repository.InsertErrorsAsync(new List<ServerErrorDocument>
+            {
+                new() { Id = "e1", CreatedAt = now, UserId = UserId, CorrelationId = "c1", Level = "Warning", Message = "bad" },
+            }, CancellationToken.None);
+
+            var all = await repository.ListTracesAsync(UserId, string.Empty, false, 10, CancellationToken.None);
+            var errorsOnly = await repository.ListTracesAsync(UserId, string.Empty, true, 10, CancellationToken.None);
+            var byCorrelation = await repository.ListTracesAsync(string.Empty, "c1", false, 10, CancellationToken.None);
+            var errors = await repository.ListErrorsAsync(string.Empty, "c1", 10, CancellationToken.None);
+
+            Assert.That(all, Has.Count.EqualTo(2));
+            Assert.That(all[0].Id, Is.EqualTo("t2"));
+            Assert.That(errorsOnly, Has.Count.EqualTo(1));
+            Assert.That(byCorrelation[0].Id, Is.EqualTo("t1"));
+            Assert.That(errors[0].Message, Is.EqualTo("bad"));
+        }
+
+        [Test]
+        [Order(11)]
+        public async Task Import_Profile_ReplacesTargetProfile()
+        {
+            var templates = _environment.Services.GetRequiredService<QaTemplateService>();
+            var source = await _environment.Services.GetRequiredService<PlayerProfileRepository>().GetAsync(UserId, CancellationToken.None);
+
+            source!.Resources["soft_money"] = 4242;
+
+            var imported = await templates.ImportProfileAsync(source, OtherUserId, Actor, CancellationToken.None);
+
+            Assert.That(imported.Succeeded, Is.True, string.Join("; ", imported.Errors));
+            Assert.That(imported.Profile!.Id, Is.EqualTo(OtherUserId));
+            Assert.That(imported.Profile.Resources["soft_money"], Is.EqualTo(4242));
         }
 
         private bool ContainsAction(List<PlayerLedgerDocument> ledger, string action)

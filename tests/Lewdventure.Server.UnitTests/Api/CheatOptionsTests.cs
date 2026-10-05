@@ -36,7 +36,7 @@ namespace Tests.Unit.Api
         [TestCase("Development", true)]
         [TestCase("Staging", true)]
         [TestCase("Production", false)]
-        public void AppSettings_CheatsPerEnvironment(string environmentName, bool expectedEnabled)
+        public void AppSettings_CheatsAndDiagnosticsPerEnvironment(string environmentName, bool expectedEnabled)
         {
             var directory = Path.GetDirectoryName(new ApiDirectoryLocator().FindFixture())!;
             var apiDirectory = Path.GetFullPath(Path.Combine(directory, "..", "..", "..", "..", "src", "Lewdventure.Server.Api"));
@@ -47,9 +47,13 @@ namespace Tests.Unit.Api
                 .Build();
             var options = new CheatOptions();
 
+            var diagnostics = new QaDiagnosticsOptions();
+
             configuration.GetSection(CheatOptions.SectionName).Bind(options);
+            configuration.GetSection(QaDiagnosticsOptions.SectionName).Bind(diagnostics);
 
             Assert.That(options.Enabled, Is.EqualTo(expectedEnabled));
+            Assert.That(diagnostics.Enabled, Is.EqualTo(expectedEnabled));
         }
     }
 }

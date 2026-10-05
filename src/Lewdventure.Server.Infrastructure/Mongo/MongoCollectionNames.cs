@@ -13,5 +13,7 @@ namespace Server.Infrastructure.Mongo
         public const string Experiments = "experiments";
         public const string ExperimentChanges = "experiment_changes";
         public const string QaTemplates = "qa_templates";
+        public const string QaRequestTraces = "qa_request_traces";
+        public const string QaServerErrors = "qa_server_errors";
     }
 }

@@ -1,0 +1,63 @@
+@page
+@model Server.Admin.Pages.Errors.IndexModel
+@{
+    ViewData["Title"] = "Ошибки";
+}
+<h1>Ошибки сервера · @Model.CurrentEnvironment</h1>
+<form method="get" class="inline card">
+    <input name="correlationId" value="@Model.CorrelationId" placeholder="correlationId из клиента или запроса" class="wide">
+    <input name="userId" value="@Model.UserId" placeholder="usr_…" class="wide">
+    <button type="submit" class="primary">Найти</button>
+    <a href="/Errors">Сбросить</a>
+</form>
+<partial name="_Messages" model="Model" />
+@if (Model.Status.DiagnosticsEnabled == false)
+{
+    <div class="alert alert-error">На этом окружении сбор ошибок и запросов выключен (QaDiagnostics:Enabled).</div>
+}
+<p class="muted">Предупреждения и ошибки сервера за последние 7 дней, новые сверху. Время — UTC.</p>
+@if (Model.CorrelationId.Length != 0)
+{
+    <h2>Запросы с этим correlationId</h2>
+    <partial name="_RequestTable" model="Model.Requests" />
+}
+<h2>Ошибки и предупреждения</h2>
+@if (Model.Errors.Count == 0)
+{
+    <p class="muted">Ничего не найдено.</p>
+}
+else
+{
+    <table class="table compact">
+        <thead><tr><th>Когда</th><th>Уровень</th><th>Сообщение</th><th>Игрок</th><th>Correlation</th></tr></thead>
+        <tbody>
+        @foreach (var error in Model.Errors)
+        {
+            <tr class="@(error.Level == "Error" || error.Level == "Critical" ? "highlight" : string.Empty)">
+                <td class="nowrap">@error.CreatedAt.ToString("MM-dd HH:mm:ss")</td>
+                <td>@error.Level</td>
+                <td>
+                    @error.Message
+                    <div class="muted">@error.Category @error.Path</div>
+                    @if (error.Exception.Length != 0)
+                    {
+                        <details><summary>исключение</summary><pre class="props">@error.Exception</pre></details>
+                    }
+                </td>
+                <td>
+                    @if (error.UserId.Length != 0)
+                    {
+                        <a href="/Players?userId=@error.UserId">@error.UserId</a>
+                    }
+                </td>
+                <td>
+                    @if (error.CorrelationId.Length != 0)
+                    {
+                        <a href="/Errors?correlationId=@error.CorrelationId"><code>@error.CorrelationId</code></a>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

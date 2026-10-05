@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Server.Api.Composition;
+using Server.Api.Diagnostics;
 using Server.Api.Endpoints;
 using Server.Api.Health;
 using Server.Api.Http;
@@ -95,10 +96,20 @@ namespace Server.Api.Hosting
             application.UseMiddleware<OpsPortGuardMiddleware>();
             application.UseRateLimiter();
             application.UseAuthentication();
+
+            if (IsQaDiagnosticsEnabled(application.Services))
+                application.UseMiddleware<RequestTraceMiddleware>();
+
             application.UseAuthorization();
 
             if (application.Services.GetRequiredService<IOptions<MongoOptions>>().Value.Enabled)
                 application.UseMiddleware<GameConfigSelectionMiddleware>();
+        }
+
+        private bool IsQaDiagnosticsEnabled(IServiceProvider services)
+        {
+            return services.GetRequiredService<IOptions<QaDiagnosticsOptions>>().Value.Enabled
+                && services.GetRequiredService<IOptions<MongoOptions>>().Value.Enabled;
         }
 
         private void ConfigureHttpLogging(IApplicationBuilder applicationBuilder)

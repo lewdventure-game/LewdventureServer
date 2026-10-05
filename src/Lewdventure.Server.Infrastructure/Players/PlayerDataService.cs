@@ -1,4 +1,5 @@
 using Server.Infrastructure.Mongo.Players;
+using Server.Infrastructure.Mongo.Qa;
 using Server.Infrastructure.Mongo.Runs;
 
 namespace Server.Infrastructure.Players
@@ -11,6 +12,7 @@ namespace Server.Infrastructure.Players
         private readonly ILogger<PlayerDataService> _logger;
         private readonly PlayerLedgerRepository _playerLedgerRepository;
         private readonly PlayerProfileRepository _playerProfileRepository;
+        private readonly QaDiagnosticsRepository _qaDiagnosticsRepository;
         private readonly RunRepository _runRepository;
         private readonly UserRepository _userRepository;
 
@@ -19,6 +21,7 @@ namespace Server.Infrastructure.Players
             ILogger<PlayerDataService> logger,
             PlayerLedgerRepository playerLedgerRepository,
             PlayerProfileRepository playerProfileRepository,
+            QaDiagnosticsRepository qaDiagnosticsRepository,
             RunRepository runRepository,
             UserRepository userRepository)
         {
@@ -26,6 +29,7 @@ namespace Server.Infrastructure.Players
             _logger = logger;
             _playerLedgerRepository = playerLedgerRepository;
             _playerProfileRepository = playerProfileRepository;
+            _qaDiagnosticsRepository = qaDiagnosticsRepository;
             _runRepository = runRepository;
             _userRepository = userRepository;
         }
@@ -69,6 +73,8 @@ namespace Server.Infrastructure.Players
             var idempotency = await _idempotencyRepository.DeleteByUserAsync(userId, cancellationToken);
             var profiles = await _playerProfileRepository.DeleteAsync(userId, cancellationToken);
             var users = await _userRepository.DeleteAsync(userId, cancellationToken);
+
+            await _qaDiagnosticsRepository.DeleteByUserAsync(userId, cancellationToken);
 
             _logger.LogWarning(
                 "[Player] data deleted userId = {UserId} actor = {Actor} profile = {Profiles} runs = {Runs} ledger = {Ledger} idempotency = {Idempotency} user = {Users}",

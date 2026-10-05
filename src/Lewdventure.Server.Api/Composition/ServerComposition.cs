@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.Extensions.Options;
 using Server.Logging;
+using Server.Api.Diagnostics;
 using Server.Api.Endpoints;
 using Server.Api.Health;
 using Server.Api.Hosting;
@@ -76,6 +77,13 @@ namespace Server.Api.Composition
                 .ValidateOnStart();
 
             services.AddSingleton<IValidateOptions<CheatOptions>, CheatOptionsValidator>();
+
+            services.AddOptions<QaDiagnosticsOptions>()
+                .Bind(_configuration.GetSection(QaDiagnosticsOptions.SectionName))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
+            services.AddSingleton<IValidateOptions<QaDiagnosticsOptions>, QaDiagnosticsOptionsValidator>();
             services.AddSingleton<IValidateOptions<ServerOptions>, ServerOptionsValidator>();
             services.AddSingleton<IValidateOptions<ConfigSheetsOptions>, ConfigSheetsOptionsValidator>();
             services.AddSingleton<IValidateOptions<GameConfigOptions>, GameConfigOptionsValidator>();
@@ -140,6 +148,17 @@ namespace Server.Api.Composition
             services.AddSingleton<CheatCatalogFactory>();
             services.AddSingleton<QaResponseFactory>();
             services.AddHostedService<ExperimentRegistryWatcher>();
+
+            var qaDiagnosticsOptions = new QaDiagnosticsOptions();
+
+            _configuration.GetSection(QaDiagnosticsOptions.SectionName).Bind(qaDiagnosticsOptions);
+
+            if (qaDiagnosticsOptions.Enabled)
+            {
+                services.AddHttpContextAccessor();
+                services.AddSingleton<ILoggerProvider, QaErrorLoggerProvider>();
+                services.AddHostedService<QaDiagnosticsWriterService>();
+            }
             services.AddHealthChecks().AddCheck<MongoHealthCheck>("mongo", tags: new[] { HealthTags.Ready });
 
             var gameConfigOptions = new GameConfigOptions();

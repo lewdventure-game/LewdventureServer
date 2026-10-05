@@ -1,3 +1,6 @@
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Mvc;
 using Server.Admin.Analytics;
 using Server.Admin.Backend;
@@ -8,8 +11,13 @@ namespace Server.Admin.Pages.Players
     internal sealed class IndexModel : AdminPageModel
     {
         private const string UserIdPrefix = "usr_";
+        private const string ErrorsFilter = "errors";
+        private const int RequestLimit = 50;
+        private const long MaxImportBytes = 5 * 1024 * 1024;
 
         private readonly AnalyticsReportService _analyticsReportService;
+        private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
+        private readonly JsonSerializerOptions _indentedOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
         public IndexModel(
             AdminAuditLog auditLog,
@@ -41,6 +49,10 @@ namespace Server.Admin.Pages.Players
 
         public QaRunModel? Run { get; private set; }
 
+        public List<RequestTraceModel> Requests { get; private set; } = new();
+
+        public bool ErrorsOnly { get; private set; }
+
         public List<QaMatchModel> Matches { get; private set; } = new();
 
         public List<PlayerLedgerModel> Ledger { get; private set; } = new();
@@ -51,8 +63,10 @@ namespace Server.Admin.Pages.Players
 
         public bool CheatsEnabled => Status.CheatsEnabled;
 
-        public async Task<IActionResult> OnGetAsync(string? userId, string? query)
+        public async Task<IActionResult> OnGetAsync(string? userId, string? query, string? requests)
         {
+            ErrorsOnly = string.Equals(requests, ErrorsFilter, StringComparison.Ordinal);
+
             var status = await LoadAsync<QaStatusModel>("/admin/qa/status");
 
             if (status != null)
@@ -110,6 +124,14 @@ namespace Server.Admin.Pages.Players
             if (CheatsEnabled)
                 Run = await LoadOptionalAsync<QaRunModel>("/admin/qa/players/" + Escape(UserId) + "/run");
 
+            if (Status.DiagnosticsEnabled)
+            {
+                var traces = await LoadAsync<List<RequestTraceModel>>($"/admin/qa/players/{Escape(UserId)}/requests?limit={RequestLimit}&errorsOnly={(ErrorsOnly ? "true" : "false")}");
+
+                if (traces != null)
+                    Requests = traces;
+            }
+
             if (ledger != null)
                 Ledger = ledger;
 
@@ -155,6 +177,59 @@ namespace Server.Admin.Pages.Players
             var item = Find(Catalog.Summons, summonId);
 
             return item == null ? 0 : item.MaxMastery;
+        }
+
+        public async Task<IActionResult> OnGetReportAsync(string userId)
+        {
+            var result = await GameAdminClient.GetAsync<JsonObject>(CurrentEnvironment, "/admin/qa/players/" + Escape(userId) + "/report", LoginName, HttpContext.RequestAborted);
+
+            if (result.IsSuccess == false || result.Data == null)
+            {
+                ErrorMessage = string.Join("; ", result.Errors);
+
+                return RedirectToPage(new { userId });
+            }
+
+            var eventErrors = new List<string>();
+            var events = await _analyticsReportService.LoadPlayerEventsAsync(CurrentEnvironment, userId, eventErrors, HttpContext.RequestAborted);
+            var report = result.Data;
+
+            report["analyticsEvents"] = JsonSerializer.SerializeToNode(events, _jsonOptions);
+            report["analyticsErrors"] = JsonSerializer.SerializeToNode(eventErrors, _jsonOptions);
+
+            var bytes = Encoding.UTF8.GetBytes(report.ToJsonString(_indentedOptions));
+            var fileName = $"bug-report-{CurrentEnvironment}-{userId}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json";
+
+            return File(bytes, "application/json", fileName);
+        }
+
+        public async Task<IActionResult> OnPostImportAsync(string userId, IFormFile? file)
+        {
+            if (file == null || file.Length == 0 || MaxImportBytes < file.Length)
+            {
+                ErrorMessage = "Выберите файл баг-репорта до 5 МБ.";
+
+                return RedirectToPage(new { userId });
+            }
+
+            JsonNode? body;
+
+            try
+            {
+                using var stream = file.OpenReadStream();
+
+                body = await JsonNode.ParseAsync(stream, cancellationToken: HttpContext.RequestAborted);
+            }
+            catch (JsonException exception)
+            {
+                ErrorMessage = "Файл не похож на JSON: " + exception.Message;
+
+                return RedirectToPage(new { userId });
+            }
+
+            await ExecuteCheatAsync(userId, "/import", body ?? new JsonObject(), "cheat.import", file.FileName, "Профиль из баг-репорта загружен.");
+
+            return RedirectToPage(new { userId });
         }
 
         public async Task<IActionResult> OnPostGrantAsync(string userId, string? rewards, string? reason)

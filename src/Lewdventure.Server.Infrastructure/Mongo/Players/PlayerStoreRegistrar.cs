@@ -42,6 +42,14 @@ namespace Server.Infrastructure.Mongo.Players
             services.AddSingleton<QaAccountService>();
             services.AddSingleton<QaTemplateRepository>();
             services.AddSingleton<QaTemplateService>();
+            services.AddSingleton<QaDiagnosticsQueue>();
+            services.AddSingleton<QaDiagnosticsRepository>();
+            services.AddSingleton<IMongoIndexContributor>(ResolveQaDiagnosticsRepository);
+        }
+
+        private QaDiagnosticsRepository ResolveQaDiagnosticsRepository(IServiceProvider serviceProvider)
+        {
+            return serviceProvider.GetRequiredService<QaDiagnosticsRepository>();
         }
 
         private ResourceKeyCollector CreateResourceKeyCollector(IServiceProvider serviceProvider)

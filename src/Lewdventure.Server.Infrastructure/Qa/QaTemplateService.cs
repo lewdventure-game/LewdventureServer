@@ -15,6 +15,7 @@ namespace Server.Infrastructure.Qa
         private const string CheatAction = "cheat";
         private const string TemplateEntry = "template";
         private const string CopyEntry = "copy";
+        private const string ImportEntry = "import";
 
         private readonly ILogger<QaTemplateService> _logger;
         private readonly PlayerLedgerRepository _playerLedgerRepository;
@@ -136,6 +137,11 @@ namespace Server.Infrastructure.Qa
                 return Failed($"Player {sourceUserId} has no profile.");
 
             return await ReplaceProfileAsync(targetUserId, source, CopyEntry, sourceUserId, actor, cancellationToken);
+        }
+
+        public async Task<PlayerUpdateResult> ImportProfileAsync(PlayerProfileDocument profile, string targetUserId, string actor, CancellationToken cancellationToken)
+        {
+            return await ReplaceProfileAsync(targetUserId, profile, ImportEntry, "bug-report", actor, cancellationToken);
         }
 
         private async Task<PlayerUpdateResult> ReplaceProfileAsync(
