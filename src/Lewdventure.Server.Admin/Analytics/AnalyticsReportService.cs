@@ -28,10 +28,10 @@ namespace Server.Admin.Analytics
             _timeProvider = timeProvider;
         }
 
-        public async Task<AnalyticsReport> BuildEventReportAsync(string environment, AnalyticsFilter filter, CancellationToken cancellationToken)
+        public async Task<AnalyticsReport> BuildEventReportAsync(string environment, AnalyticsFilter filter, IReadOnlyList<string> excludedUserIds, CancellationToken cancellationToken)
         {
             var report = new AnalyticsReport();
-            var query = Prepare(environment, filter, report.Errors);
+            var query = Prepare(environment, filter, excludedUserIds, report.Errors);
 
             if (query == null)
                 return report;
@@ -74,10 +74,10 @@ namespace Server.Admin.Analytics
             return report;
         }
 
-        public async Task<OverviewReport> BuildOverviewAsync(string environment, AnalyticsFilter filter, CancellationToken cancellationToken)
+        public async Task<OverviewReport> BuildOverviewAsync(string environment, AnalyticsFilter filter, IReadOnlyList<string> excludedUserIds, CancellationToken cancellationToken)
         {
             var report = new OverviewReport();
-            var query = Prepare(environment, new AnalyticsFilter { From = filter.From, To = filter.To }, report.Errors);
+            var query = Prepare(environment, new AnalyticsFilter { From = filter.From, To = filter.To }, excludedUserIds, report.Errors);
 
             if (query == null)
                 return report;
@@ -112,7 +112,7 @@ namespace Server.Admin.Analytics
             return report;
         }
 
-        public async Task<List<ExperimentGroupStats>> BuildExperimentStatsAsync(string environment, string experimentId, List<string> errors, CancellationToken cancellationToken)
+        public async Task<List<ExperimentGroupStats>> BuildExperimentStatsAsync(string environment, string experimentId, IReadOnlyList<string> excludedUserIds, List<string> errors, CancellationToken cancellationToken)
         {
             var stats = new List<ExperimentGroupStats>();
             var table = ResolveTable(environment, errors);
@@ -121,13 +121,14 @@ namespace Server.Admin.Analytics
                 return stats;
 
             var parameters = new Dictionary<string, string>(StringComparer.Ordinal) { ["experiment"] = experimentId };
+            var exclusion = _analyticsQueryBuilder.BuildExclusion(excludedUserIds, parameters);
             var activity = await RunAsync(
-                $"SELECT group_id AS g, uniqExact(user_id) AS users, round(count() / uniqExact(user_id), 1) AS epu, countIf(event_type = 'run_started') AS runs_started, countIf(event_type = 'run_finished' AND JSONExtractString(event_properties, 'status') = '{CompletedStatus}') AS runs_completed, countIf(event_type = 'battle_finished') AS battles, countIf(event_type = 'battle_finished' AND JSONExtractString(event_properties, 'outcome') = '{WinOutcome}') AS battles_won, round(avgIf(JSONExtractInt(event_properties, 'stage_index'), event_type = 'run_finished'), 2) AS avg_stage FROM {table} WHERE experiment_id = {{experiment:String}} GROUP BY g ORDER BY g",
+                $"SELECT group_id AS g, uniqExact(user_id) AS users, round(count() / uniqExact(user_id), 1) AS epu, countIf(event_type = 'run_started') AS runs_started, countIf(event_type = 'run_finished' AND JSONExtractString(event_properties, 'status') = '{CompletedStatus}') AS runs_completed, countIf(event_type = 'battle_finished') AS battles, countIf(event_type = 'battle_finished' AND JSONExtractString(event_properties, 'outcome') = '{WinOutcome}') AS battles_won, round(avgIf(JSONExtractInt(event_properties, 'stage_index'), event_type = 'run_finished'), 2) AS avg_stage FROM {table} WHERE experiment_id = {{experiment:String}}{exclusion} GROUP BY g ORDER BY g",
                 parameters,
                 errors,
                 cancellationToken);
             var retention = await RunAsync(
-                $"SELECT f.grp AS g, round(100 * uniqExactIf(f.user_id, a.d = f.d0 + 1) / uniqExact(f.user_id), 1) AS d1, round(100 * uniqExactIf(f.user_id, a.d = f.d0 + 3) / uniqExact(f.user_id), 1) AS d3, round(100 * uniqExactIf(f.user_id, a.d = f.d0 + 7) / uniqExact(f.user_id), 1) AS d7 FROM (SELECT user_id, argMin(group_id, event_time) AS grp, toDate(min(event_time)) AS d0 FROM {table} WHERE experiment_id = {{experiment:String}} GROUP BY user_id) AS f INNER JOIN (SELECT DISTINCT user_id, toDate(event_time) AS d FROM {table}) AS a ON a.user_id = f.user_id GROUP BY g",
+                $"SELECT f.grp AS g, round(100 * uniqExactIf(f.user_id, a.d = f.d0 + 1) / uniqExact(f.user_id), 1) AS d1, round(100 * uniqExactIf(f.user_id, a.d = f.d0 + 3) / uniqExact(f.user_id), 1) AS d3, round(100 * uniqExactIf(f.user_id, a.d = f.d0 + 7) / uniqExact(f.user_id), 1) AS d7 FROM (SELECT user_id, argMin(group_id, event_time) AS grp, toDate(min(event_time)) AS d0 FROM {table} WHERE experiment_id = {{experiment:String}}{exclusion} GROUP BY user_id) AS f INNER JOIN (SELECT DISTINCT user_id, toDate(event_time) AS d FROM {table}) AS a ON a.user_id = f.user_id GROUP BY g",
                 parameters,
                 errors,
                 cancellationToken);
@@ -175,14 +176,14 @@ namespace Server.Admin.Analytics
             return events;
         }
 
-        private AnalyticsQuery? Prepare(string environment, AnalyticsFilter filter, List<string> errors)
+        private AnalyticsQuery? Prepare(string environment, AnalyticsFilter filter, IReadOnlyList<string> excludedUserIds, List<string> errors)
         {
             var table = ResolveTable(environment, errors);
 
             if (table.Length == 0)
                 return null;
 
-            return _analyticsQueryBuilder.Build(table.Substring(0, table.Length - ".events".Length), filter, _timeProvider.GetUtcNow().UtcDateTime, errors);
+            return _analyticsQueryBuilder.Build(table.Substring(0, table.Length - ".events".Length), filter, excludedUserIds, _timeProvider.GetUtcNow().UtcDateTime, errors);
         }
 
         private string ResolveTable(string environment, List<string> errors)

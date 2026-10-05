@@ -81,6 +81,49 @@ namespace Server.Infrastructure.Players
             return entries;
         }
 
+        public List<PlayerLedgerEntryDocument> ApplyCharacterPromoteRewards(
+            PlayerProfileDocument profile,
+            ICharacterMapper characterMapper,
+            int promoteLevel,
+            IConfigDistributor configDistributor,
+            DateTime now)
+        {
+            var entries = new List<PlayerLedgerEntryDocument>();
+
+            if (configDistributor.CharacterPromotes.TryGet(characterMapper.PromoteId, promoteLevel, out var promote) == false)
+                return entries;
+
+            ApplyLevelRewards(
+                profile,
+                promote.RewardTypes,
+                promote.RewardIds,
+                promote.RewardValues,
+                $"promote {characterMapper.PromoteId} level {promoteLevel}",
+                new SceneOwner(SceneOwnerKind.Character, characterMapper.Id),
+                configDistributor,
+                now,
+                entries);
+
+            return entries;
+        }
+
+        public bool IsAccountScoped(BonusWorkMode workMode)
+        {
+            var parts = workMode.Parts;
+
+            for (int i = 0; i < parts.Count; i++)
+            {
+                var kind = parts[i].Kind;
+
+                if (kind == BonusWorkModeKind.Permanent || kind == BonusWorkModeKind.IfEquipped)
+                    continue;
+
+                return false;
+            }
+
+            return 0 < parts.Count;
+        }
+
         private void ApplyReward(
             PlayerProfileDocument profile,
             in BattleReward reward,
@@ -265,23 +308,6 @@ namespace Server.Infrastructure.Players
             });
 
             entries.Add(CreateEntry(BonusEntry, bonusId.ToString(), count));
-        }
-
-        private bool IsAccountScoped(BonusWorkMode workMode)
-        {
-            var parts = workMode.Parts;
-
-            for (int i = 0; i < parts.Count; i++)
-            {
-                var kind = parts[i].Kind;
-
-                if (kind == BonusWorkModeKind.Permanent || kind == BonusWorkModeKind.IfEquipped)
-                    continue;
-
-                return false;
-            }
-
-            return 0 < parts.Count;
         }
 
         private void AddResource(PlayerProfileDocument profile, string key, long amount, List<PlayerLedgerEntryDocument> entries)

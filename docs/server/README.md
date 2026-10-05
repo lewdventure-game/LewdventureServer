@@ -14,6 +14,7 @@ GDD: [../gdd/README.md](../gdd/README.md).
 | [runs.md](runs.md) | серверное состояние забега, события, детерминизм, режим авторитета |
 | [experiments.md](experiments.md) | A/B-эксперименты на снапшотах конфигов: группы, назначение игроков, admin API |
 | [client-analytics.md](client-analytics.md) | для клиентской команды: какие события слать, как реализовать очередь, каталог событий, что важно для A/B |
+| [qa-tools.md](qa-tools.md) | инструменты QA: тестовые аккаунты, поиск игрока, читы, сброс прогресса, admin API |
 | [analytics.md](analytics.md) | аналитика: формат событий для клиента, серверные события, хранение в ClickHouse, дашборд |
 
 Канон protocol: [`.ai-factory/specs/battle-simulation.md`](../../.ai-factory/specs/battle-simulation.md).

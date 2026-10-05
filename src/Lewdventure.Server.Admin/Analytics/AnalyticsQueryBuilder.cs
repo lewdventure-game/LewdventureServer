@@ -12,7 +12,7 @@ namespace Server.Admin.Analytics
         private const string TimeFormat = "yyyy-MM-dd HH:mm:ss";
         private const string MasterGroup = "if(experiment_id = '', '" + AnalyticsFilterValues.MasterLabel + "', concat(experiment_id, '/', group_id))";
 
-        public AnalyticsQuery Build(string database, AnalyticsFilter filter, DateTime now, List<string> errors)
+        public AnalyticsQuery Build(string database, AnalyticsFilter filter, IReadOnlyList<string> excludedUserIds, DateTime now, List<string> errors)
         {
             var query = new AnalyticsQuery { Table = database + ".events" };
 
@@ -29,6 +29,7 @@ namespace Server.Admin.Analytics
             AddEquals(where, query, "country", "country", filter.Country.ToUpperInvariant());
             AddEquals(where, query, "source", "source", filter.Source);
             AddEquals(where, query, "group_id", "group_id", filter.GroupId);
+            where.Append(BuildExclusion(excludedUserIds, query.Parameters));
 
             if (string.Equals(filter.ExperimentId, AnalyticsFilterValues.MasterLabel, StringComparison.Ordinal))
                 where.Append(" AND experiment_id = ''");
@@ -48,6 +49,26 @@ namespace Server.Admin.Analytics
             query.BucketExpression = query.IsHourly ? "toStartOfHour(event_time)" : "toStartOfDay(event_time)";
 
             return query;
+        }
+
+        public string BuildExclusion(IReadOnlyList<string> excludedUserIds, Dictionary<string, string> parameters)
+        {
+            if (excludedUserIds.Count == 0)
+                return string.Empty;
+
+            var value = new StringBuilder("[");
+
+            for (int i = 0; i < excludedUserIds.Count; i++)
+            {
+                if (0 < i)
+                    value.Append(',');
+
+                value.Append('\'').Append(excludedUserIds[i].Replace("\\", "\\\\").Replace("'", "\\'")).Append('\'');
+            }
+
+            parameters["excluded_users"] = value.Append(']').ToString();
+
+            return " AND user_id NOT IN {excluded_users:Array(String)}";
         }
 
         public bool IsValidDatabase(string database)

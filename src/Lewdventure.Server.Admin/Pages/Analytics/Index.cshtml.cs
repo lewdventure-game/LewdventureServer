@@ -31,6 +31,10 @@ namespace Server.Admin.Pages.Analytics
 
         public int Days { get; private set; }
 
+        public bool IncludeQa { get; private set; }
+
+        public string QaSuffix => IncludeQa ? "&qa=true" : string.Empty;
+
         public OverviewReport Report { get; private set; } = new();
 
         public SvgChart ActivePlayersChart { get; private set; } = new();
@@ -41,7 +45,7 @@ namespace Server.Admin.Pages.Analytics
 
         public SvgChart WinRateChart { get; private set; } = new();
 
-        public async Task OnGetAsync(int? days, string? from, string? to)
+        public async Task OnGetAsync(int? days, string? from, string? to, bool qa)
         {
             var today = _timeProvider.GetUtcNow().UtcDateTime.Date;
 
@@ -57,7 +61,11 @@ namespace Server.Admin.Pages.Analytics
                 Filter.To = to ?? string.Empty;
             }
 
-            Report = await _analyticsReportService.BuildOverviewAsync(CurrentEnvironment, Filter, HttpContext.RequestAborted);
+            IncludeQa = qa;
+
+            var excludedUserIds = IncludeQa ? new List<string>() : await LoadQaUserIdsAsync();
+
+            Report = await _analyticsReportService.BuildOverviewAsync(CurrentEnvironment, Filter, excludedUserIds, HttpContext.RequestAborted);
             ActivePlayersChart = _svgChartBuilder.Build(Report.ActivePlayersSeries, false);
             NewPlayersChart = _svgChartBuilder.Build(Report.NewPlayersSeries, false);
             RunsChart = _svgChartBuilder.Build(Report.RunsSeries, false);

@@ -114,6 +114,12 @@ openssl rand -base64 48
 | `Admin:ApiKey` | пусто | ключ, не короче 32 символов (8 в Local) |
 | `Admin:HeaderName` | `X-Admin-Key` | заголовок ключа |
 
+## Cheats
+
+| Ключ | По умолчанию | Описание |
+| --- | --- | --- |
+| `Cheats:Enabled` | `false` | читы QA в `/admin/qa/players/{userId}/cheats/*`; включено в Local, Development и Staging, в Production запрещено валидатором — сервер не стартует. Без флага эндпоинты читов не регистрируются. Подробно — [qa-tools.md](../server/qa-tools.md) |
+
 ## ConfigPublisher
 
 | Ключ | По умолчанию | Описание |

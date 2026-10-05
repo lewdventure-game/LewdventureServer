@@ -9,12 +9,13 @@
 </div>
 <form method="get" class="card inline period">
     <span class="muted">Период:</span>
-    <a class="button @(Model.Days == 1 ? "primary" : string.Empty)" href="?days=1">Сегодня</a>
-    <a class="button @(Model.Days == 7 ? "primary" : string.Empty)" href="?days=7">7 дней</a>
-    <a class="button @(Model.Days == 30 ? "primary" : string.Empty)" href="?days=30">30 дней</a>
-    <a class="button @(Model.Days == 90 ? "primary" : string.Empty)" href="?days=90">90 дней</a>
+    <a class="button @(Model.Days == 1 ? "primary" : string.Empty)" href="?days=1@Model.QaSuffix">Сегодня</a>
+    <a class="button @(Model.Days == 7 ? "primary" : string.Empty)" href="?days=7@Model.QaSuffix">7 дней</a>
+    <a class="button @(Model.Days == 30 ? "primary" : string.Empty)" href="?days=30@Model.QaSuffix">30 дней</a>
+    <a class="button @(Model.Days == 90 ? "primary" : string.Empty)" href="?days=90@Model.QaSuffix">90 дней</a>
     <label class="inline">с <input type="date" name="from" value="@Model.Filter.From"></label>
     <label class="inline">по <input type="date" name="to" value="@Model.Filter.To"></label>
+    <label class="inline"><input type="checkbox" name="qa" value="true" checked="@Model.IncludeQa"> тестовые аккаунты</label>
     <button type="submit">Показать</button>
 </form>
 @foreach (var error in Model.Report.Errors)

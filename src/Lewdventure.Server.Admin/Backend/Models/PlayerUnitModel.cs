@@ -11,5 +11,7 @@ namespace Server.Admin.Backend.Models
         public int PromoteLevel { get; set; }
 
         public int MasteryLevel { get; set; }
+
+        public List<int> SkillLevels { get; set; } = new();
     }
 }

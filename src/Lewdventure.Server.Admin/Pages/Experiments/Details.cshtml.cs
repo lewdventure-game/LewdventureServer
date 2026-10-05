@@ -49,7 +49,7 @@ namespace Server.Admin.Pages.Experiments
                 Changes = changes;
 
             if (Experiment != null && Experiment.Status != "draft")
-                Stats = await _analyticsReportService.BuildExperimentStatsAsync(CurrentEnvironment, Experiment.Id, StatsErrors, HttpContext.RequestAborted);
+                Stats = await _analyticsReportService.BuildExperimentStatsAsync(CurrentEnvironment, Experiment.Id, await LoadQaUserIdsAsync(), StatsErrors, HttpContext.RequestAborted);
         }
 
         public async Task<IActionResult> OnPostStartAsync(string id, string? reason)

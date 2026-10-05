@@ -27,7 +27,7 @@ namespace Server.Infrastructure.Experiments
 
         public async Task AssignAsync(UserDocument user, bool isNewPlayer, string country, DateTime now, CancellationToken cancellationToken)
         {
-            if (IsInActiveGroup(user))
+            if (user.Qa != null || IsInActiveGroup(user))
                 return;
 
             var candidates = new List<ExperimentCandidate>();

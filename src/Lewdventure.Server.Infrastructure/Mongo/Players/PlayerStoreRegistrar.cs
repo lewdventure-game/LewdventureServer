@@ -4,6 +4,7 @@ using Server.Bonuses;
 using Server.Infrastructure.Analytics;
 using Server.Infrastructure.Mongo.Runs;
 using Server.Infrastructure.Players;
+using Server.Infrastructure.Qa;
 
 namespace Server.Infrastructure.Mongo.Players
 {
@@ -32,6 +33,17 @@ namespace Server.Infrastructure.Mongo.Players
             services.AddSingleton<PlayerDataService>();
             services.AddSingleton(CreateRewardApplier);
             services.AddSingleton(CreateRewardService);
+            services.AddSingleton<ProgressionLimits>();
+            services.AddSingleton(CreateResourceKeyCollector);
+            services.AddSingleton<CheatPresetBuilder>();
+            services.AddSingleton<CheatProfileEditor>();
+            services.AddSingleton<CheatService>();
+            services.AddSingleton<QaAccountService>();
+        }
+
+        private ResourceKeyCollector CreateResourceKeyCollector(IServiceProvider serviceProvider)
+        {
+            return new ResourceKeyCollector(CreateRewardParser(serviceProvider));
         }
 
         private PlayerProgressionService CreateProgressionService(IServiceProvider serviceProvider)

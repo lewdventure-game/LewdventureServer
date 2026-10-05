@@ -71,6 +71,11 @@ namespace Server.Api.Composition
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
+            services.AddOptions<CheatOptions>()
+                .Bind(_configuration.GetSection(CheatOptions.SectionName))
+                .ValidateOnStart();
+
+            services.AddSingleton<IValidateOptions<CheatOptions>, CheatOptionsValidator>();
             services.AddSingleton<IValidateOptions<ServerOptions>, ServerOptionsValidator>();
             services.AddSingleton<IValidateOptions<ConfigSheetsOptions>, ConfigSheetsOptionsValidator>();
             services.AddSingleton<IValidateOptions<GameConfigOptions>, GameConfigOptionsValidator>();
@@ -132,6 +137,7 @@ namespace Server.Api.Composition
             new ExperimentStoreRegistrar().Register(services);
             new RunServicesRegistrar().Register(services);
 
+            services.AddSingleton<CheatCatalogFactory>();
             services.AddHostedService<ExperimentRegistryWatcher>();
             services.AddHealthChecks().AddCheck<MongoHealthCheck>("mongo", tags: new[] { HealthTags.Ready });
 

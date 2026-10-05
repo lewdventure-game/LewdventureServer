@@ -22,12 +22,15 @@ namespace Server.Infrastructure.Mongo.Players
             var identityModel = new CreateIndexModel<BsonDocument>(identityKeys, new CreateIndexOptions { Name = "identities_1", Unique = true, Sparse = true });
             var experimentKeys = Builders<BsonDocument>.IndexKeys.Ascending("experiment.experimentId").Ascending("experiment.groupId");
             var experimentModel = new CreateIndexModel<BsonDocument>(experimentKeys, new CreateIndexOptions { Name = "experiment_1", Sparse = true });
+            var qaKeys = Builders<BsonDocument>.IndexKeys.Ascending("qa.alias");
+            var qaModel = new CreateIndexModel<BsonDocument>(qaKeys, new CreateIndexOptions { Name = "qa.alias_1", Unique = true, Sparse = true });
 
             return new[]
             {
                 new MongoIndexDefinition(MongoCollectionNames.Users, deviceModel),
                 new MongoIndexDefinition(MongoCollectionNames.Users, identityModel),
                 new MongoIndexDefinition(MongoCollectionNames.Users, experimentModel),
+                new MongoIndexDefinition(MongoCollectionNames.Users, qaModel),
             };
         }
 
@@ -93,6 +96,47 @@ namespace Server.Infrastructure.Mongo.Players
             var filter = Builders<UserDocument>.Filter.ElemMatch(item => item.Devices, device => device.DeviceIdHash == deviceIdHash);
 
             return await Collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+        }
+
+        public async Task<UserDocument?> FindByQaAliasAsync(string alias, CancellationToken cancellationToken)
+        {
+            return await Collection.Find(Builders<UserDocument>.Filter.Eq("qa.alias", alias)).FirstOrDefaultAsync(cancellationToken);
+        }
+
+        public async Task<List<UserDocument>> ListQaAsync(int limit, CancellationToken cancellationToken)
+        {
+            var projection = Builders<UserDocument>.Projection
+                .Include(item => item.Qa)
+                .Include(item => item.CreatedAt)
+                .Include(item => item.UpdatedAt);
+
+            return await Collection
+                .Find(Builders<UserDocument>.Filter.Ne(item => item.Qa, null))
+                .Project<UserDocument>(projection)
+                .SortBy(item => item.Qa!.Alias)
+                .Limit(limit)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<bool> MarkQaAsync(string userId, UserQaDocument qa, DateTime now, CancellationToken cancellationToken)
+        {
+            var update = Builders<UserDocument>.Update
+                .Set(item => item.Qa, qa)
+                .Set(item => item.Experiment, null)
+                .Set(item => item.UpdatedAt, now);
+            var result = await Collection.UpdateOneAsync(Builders<UserDocument>.Filter.Eq(item => item.Id, userId), update, cancellationToken: cancellationToken);
+
+            return 0 < result.MatchedCount;
+        }
+
+        public async Task<bool> UnmarkQaAsync(string userId, DateTime now, CancellationToken cancellationToken)
+        {
+            var update = Builders<UserDocument>.Update
+                .Unset(item => item.Qa)
+                .Set(item => item.UpdatedAt, now);
+            var result = await Collection.UpdateOneAsync(Builders<UserDocument>.Filter.Eq(item => item.Id, userId), update, cancellationToken: cancellationToken);
+
+            return 0 < result.MatchedCount;
         }
 
         public async Task<long> DeleteAsync(string userId, CancellationToken cancellationToken)

@@ -85,6 +85,7 @@
             <label>Свойство <input name="Filter.PropertyKey" value="@f.PropertyKey" list="property-keys" placeholder="например outcome"></label>
             <label>равно <input name="Filter.PropertyValue" value="@f.PropertyValue" placeholder="например TeamAWin"></label>
         </div>
+        <label class="inline"><input type="checkbox" name="Filter.IncludeQa" value="true" checked="@f.IncludeQa"> Показать тестовые аккаунты</label>
     </details>
     <datalist id="property-keys">
         @foreach (var key in Model.Report.PropertyKeys)

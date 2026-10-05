@@ -5,13 +5,82 @@
 }
 <h1>Игрок · @Model.CurrentEnvironment</h1>
 <form method="get" class="inline card">
-    <input name="userId" value="@Model.UserId" placeholder="usr_…" required class="wide">
+    <input name="query" value="@(Model.UserId.Length == 0 ? Model.Query : Model.UserId)" placeholder="userId, псевдоним тестового аккаунта или deviceId" required class="wide">
     <button type="submit" class="primary">Найти</button>
+    @if (Model.CheatsEnabled)
+    {
+        <span class="badge badge-recruiting">читы включены</span>
+    }
+    else
+    {
+        <span class="badge">читы выключены</span>
+    }
 </form>
 <partial name="_Messages" model="Model" />
+@if (Model.UserId.Length == 0)
+{
+    @if (1 < Model.Matches.Count)
+    {
+        <h2>Найдено несколько игроков</h2>
+        <table class="table">
+            <thead><tr><th>userId</th><th>Псевдоним</th><th>Нашли по</th></tr></thead>
+            <tbody>
+            @foreach (var match in Model.Matches)
+            {
+                <tr><td><a href="/Players?userId=@match.UserId">@match.UserId</a></td><td>@match.Alias</td><td>@match.MatchedBy</td></tr>
+            }
+            </tbody>
+        </table>
+    }
+    <h2>Тестовые аккаунты</h2>
+    @if (Model.QaAccounts.Count == 0)
+    {
+        <p class="muted">Пока нет. Найдите игрока по userId или deviceId и нажмите «Пометить как тестовый».</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead><tr><th>Псевдоним</th><th>userId</th><th>Пометил</th><th>Когда</th></tr></thead>
+            <tbody>
+            @foreach (var account in Model.QaAccounts)
+            {
+                <tr>
+                    <td><a href="/Players?userId=@account.UserId">@account.Alias</a></td>
+                    <td><code>@account.UserId</code></td>
+                    <td>@account.MarkedBy</td>
+                    <td>@account.MarkedAt?.ToString("yyyy-MM-dd HH:mm")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+}
+@if (Model.UserId.Length != 0 && Model.Account != null)
+{
+    var account = Model.Account;
+    <section class="card">
+        <h2>Тестовый аккаунт</h2>
+        @if (account.IsQa)
+        {
+            <p>Псевдоним <strong>@account.Alias</strong>, пометил @account.MarkedBy @account.MarkedAt?.ToString("yyyy-MM-dd HH:mm"). Не попадает в A/B и по умолчанию скрыт в аналитике.</p>
+            <form method="post" asp-page-handler="Unmark" asp-route-userId="@account.UserId" class="inline">
+                <button type="submit">Снять метку</button>
+            </form>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="Mark" asp-route-userId="@account.UserId" class="inline" data-confirm="Пометить аккаунт как тестовый? Он выйдет из эксперимента и получит мастер-конфиги.">
+                <input name="alias" placeholder="псевдоним, например qa-masha-1" required pattern="[a-zA-Z0-9_\-]{2,32}" class="wide">
+                <button type="submit" class="primary">Пометить как тестовый</button>
+            </form>
+            <p class="muted">Латиница, цифры, «-» и «_», 2–32 символа. По псевдониму потом можно искать.</p>
+        }
+    </section>
+}
 @if (Model.Profile != null)
 {
     var profile = Model.Profile;
+    var userId = profile.UserId;
     <div class="grid">
         <section class="card">
             <h2>Эксперимент</h2>
@@ -41,61 +110,278 @@
                 <dt>Текущий забег</dt><dd>@(string.IsNullOrEmpty(profile.Story.CurrentRunId) ? "нет" : profile.Story.CurrentRunId)</dd>
             </dl>
             <h3>Ресурсы</h3>
-            <ul class="plain">
-                @foreach (var resource in profile.Resources)
-                {
-                    <li>@resource.Key: @resource.Value</li>
-                }
-            </ul>
+            @if (Model.CheatsEnabled)
+            {
+                <table class="table compact">
+                    <tbody>
+                    @foreach (var resource in profile.Resources)
+                    {
+                        <tr>
+                            <td>@resource.Key</td>
+                            <td>
+                                <form method="post" asp-page-handler="Resource" asp-route-userId="@userId" class="inline">
+                                    <input type="hidden" name="key" value="@resource.Key">
+                                    <input type="number" name="amount" value="@resource.Value" min="0" class="narrow">
+                                    <button type="submit">Установить</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+                <form method="post" asp-page-handler="Resource" asp-route-userId="@userId" class="inline">
+                    <input name="key" list="resource-keys" placeholder="ключ ресурса" required class="narrow">
+                    <input type="number" name="amount" value="1000" min="0" class="narrow">
+                    <button type="submit">Установить</button>
+                </form>
+                <datalist id="resource-keys">
+                    @foreach (var key in Model.Catalog.Resources)
+                    {
+                        <option value="@key"></option>
+                    }
+                </datalist>
+                <p class="muted">Ставит точное значение, в том числе 0, чтобы проверить нехватку.</p>
+            }
+            else
+            {
+                <ul class="plain">
+                    @foreach (var resource in profile.Resources)
+                    {
+                        <li>@resource.Key: @resource.Value</li>
+                    }
+                </ul>
+            }
         </section>
         <section class="card">
             <h2>Выдать награду</h2>
-            <form method="post" asp-page-handler="Grant" asp-route-userId="@profile.UserId" class="form" data-confirm="Выдать награду игроку @profile.UserId?">
-                <label>Награды <input name="rewards" placeholder="resource:soft_money:500,character:2:1" required></label>
-                <label>Причина <input name="reason" placeholder="тест"></label>
+            <form method="post" asp-page-handler="GrantItem" asp-route-userId="@userId" class="form" data-confirm="Выдать награду игроку @userId?">
+                <label>
+                    Что
+                    <select name="item" required>
+                        <optgroup label="Ресурсы">
+                            @foreach (var key in Model.Catalog.Resources)
+                            {
+                                <option value="resource:@key">@key</option>
+                            }
+                        </optgroup>
+                        <optgroup label="Персонажи">
+                            @foreach (var item in Model.Catalog.Characters)
+                            {
+                                <option value="character:@item.Id">@item.Id · @item.Name</option>
+                            }
+                        </optgroup>
+                        <optgroup label="Саммоны">
+                            @foreach (var item in Model.Catalog.Summons)
+                            {
+                                <option value="summon:@item.Id">@item.Id · @item.Name · @item.Details</option>
+                            }
+                        </optgroup>
+                        <optgroup label="Снаряжение">
+                            @foreach (var item in Model.Catalog.Equipment)
+                            {
+                                <option value="equipment:@item.Id">@item.Id · @item.Name · @item.Details</option>
+                            }
+                        </optgroup>
+                        <optgroup label="Бонусы аккаунта">
+                            @foreach (var item in Model.Catalog.Bonuses)
+                            {
+                                <option value="bonus:@item.Id">@item.Id · @item.Name · @item.Details</option>
+                            }
+                        </optgroup>
+                    </select>
+                </label>
+                <label>Сколько <input type="number" name="count" value="1" min="1" required class="narrow"></label>
                 <button type="submit" class="primary">Выдать</button>
             </form>
-            <p class="muted">Формат как в конфигах: тип:id:количество через запятую.</p>
+            <details>
+                <summary>Строкой, как в конфигах</summary>
+                <form method="post" asp-page-handler="Grant" asp-route-userId="@userId" class="form" data-confirm="Выдать награду игроку @userId?">
+                    <label>Награды <input name="rewards" placeholder="resource:soft_money:500,character:2:1" required></label>
+                    <label>Причина <input name="reason" placeholder="тест"></label>
+                    <button type="submit">Выдать</button>
+                </form>
+            </details>
+            <p class="muted">Выдача идёт как обычная награда: копии персонажей и саммонов тратятся на прокачку, награды уровней выдаются.</p>
         </section>
     </div>
+    @if (Model.CheatsEnabled)
+    {
+        <section class="card">
+            <h2>Быстрые читы</h2>
+            <div class="actions">
+                <form method="post" asp-page-handler="Preset" asp-route-userId="@userId" data-confirm="Открыть всех персонажей?">
+                    <input type="hidden" name="preset" value="characters"><input type="hidden" name="amount" value="1">
+                    <button type="submit">Все персонажи</button>
+                </form>
+                <form method="post" asp-page-handler="Preset" asp-route-userId="@userId" data-confirm="Открыть всех саммонов?">
+                    <input type="hidden" name="preset" value="summons"><input type="hidden" name="amount" value="1">
+                    <button type="submit">Все саммоны</button>
+                </form>
+                <form method="post" asp-page-handler="Preset" asp-route-userId="@userId" data-confirm="Выдать по одному предмету каждого снаряжения?">
+                    <input type="hidden" name="preset" value="equipment"><input type="hidden" name="amount" value="1">
+                    <button type="submit">Всё снаряжение</button>
+                </form>
+                <form method="post" asp-page-handler="Preset" asp-route-userId="@userId" data-confirm="Прибавить каждый ресурс?">
+                    <input type="hidden" name="preset" value="resources">
+                    <input type="number" name="amount" value="100000" min="1" class="narrow">
+                    <button type="submit">Каждого ресурса</button>
+                </form>
+                <form method="post" asp-page-handler="Preset" asp-route-userId="@userId" data-confirm="Выдать всё: персонажей, саммонов, снаряжение и ресурсы?">
+                    <input type="hidden" name="preset" value="everything"><input type="hidden" name="amount" value="100000">
+                    <button type="submit" class="primary">Выдать всё</button>
+                </form>
+                <form method="post" asp-page-handler="Max" asp-route-userId="@userId" data-confirm="Прокачать всех имеющихся персонажей, саммонов и снаряжение до максимума?">
+                    <button type="submit" class="primary">Максимум всему</button>
+                </form>
+            </div>
+            <p class="muted">«Выдать всё» открывает недостающих персонажей и саммонов, даёт по предмету снаряжения и по 100 000 каждого ресурса. «Максимум всему» прокачивает то, что уже есть.</p>
+            <div class="actions">
+                <form method="post" asp-page-handler="Abandon" asp-route-userId="@userId" data-confirm="Прервать текущий забег игрока?">
+                    <button type="submit">Прервать забег</button>
+                </form>
+                <form method="post" asp-page-handler="Reset" asp-route-userId="@userId" data-confirm="Сбросить весь прогресс игрока @userId? Аккаунт и устройство останутся, профиль, забеги и журнал удалятся.">
+                    <button type="submit" class="danger">Сбросить прогресс</button>
+                </form>
+            </div>
+        </section>
+    }
     <div class="grid">
         <section class="card">
             <h2>Персонажи</h2>
             <table class="table compact">
-                <thead><tr><th>Id</th><th>Копии</th><th>Промоут</th></tr></thead>
+                <thead><tr><th>Персонаж</th><th>Копии</th><th>Промоут</th></tr></thead>
                 <tbody>
                 @foreach (var unit in profile.Characters)
                 {
-                    <tr><td>@unit.Id</td><td>@unit.Copies</td><td>@unit.PromoteLevel</td></tr>
+                    <tr>
+                        <td>@Model.DescribeCharacter(unit.Id)</td>
+                        <td>@unit.Copies</td>
+                        <td>
+                            @if (Model.CheatsEnabled)
+                            {
+                                <form method="post" asp-page-handler="Character" asp-route-userId="@userId" class="inline">
+                                    <input type="hidden" name="characterId" value="@unit.Id">
+                                    <input type="number" name="promoteLevel" value="@unit.PromoteLevel" min="1" max="@Model.FindMaxLevel(Model.Catalog.Characters, unit.Id)" class="narrow">
+                                    <span class="muted">из @Model.FindMaxLevel(Model.Catalog.Characters, unit.Id)</span>
+                                    <button type="submit">OK</button>
+                                </form>
+                            }
+                            else
+                            {
+                                @unit.PromoteLevel
+                            }
+                        </td>
+                    </tr>
                 }
                 </tbody>
             </table>
+            @if (Model.CheatsEnabled)
+            {
+                <form method="post" asp-page-handler="Character" asp-route-userId="@userId" class="inline">
+                    <select name="characterId" required>
+                        @foreach (var item in Model.Catalog.Characters)
+                        {
+                            <option value="@item.Id">@item.Id · @item.Name (до @item.MaxLevel)</option>
+                        }
+                    </select>
+                    <input type="number" name="promoteLevel" value="1" min="1" class="narrow">
+                    <button type="submit">Открыть / выставить промоут</button>
+                </form>
+            }
         </section>
         <section class="card">
             <h2>Саммоны</h2>
             <table class="table compact">
-                <thead><tr><th>Id</th><th>Копии</th><th>Уровень</th><th>Мастерство</th></tr></thead>
+                <thead><tr><th>Саммон</th><th>Копии</th><th>Уровень · мастерство · скиллы</th></tr></thead>
                 <tbody>
                 @foreach (var unit in profile.Summons)
                 {
-                    <tr><td>@unit.Id</td><td>@unit.Copies</td><td>@unit.Level</td><td>@unit.MasteryLevel</td></tr>
+                    <tr>
+                        <td>@Model.DescribeSummon(unit.Id)</td>
+                        <td>@unit.Copies</td>
+                        <td>
+                            @if (Model.CheatsEnabled)
+                            {
+                                <form method="post" asp-page-handler="Summon" asp-route-userId="@userId" class="inline">
+                                    <input type="hidden" name="summonId" value="@unit.Id">
+                                    <input type="number" name="level" value="@unit.Level" min="1" max="@Model.FindMaxLevel(Model.Catalog.Summons, unit.Id)" title="уровень, максимум @Model.FindMaxLevel(Model.Catalog.Summons, unit.Id)" class="narrow">
+                                    <input type="number" name="masteryLevel" value="@unit.MasteryLevel" min="1" max="@Model.FindMaxMastery(unit.Id)" title="мастерство, максимум @Model.FindMaxMastery(unit.Id)" class="narrow">
+                                    <input type="number" name="skillLevel" placeholder="скиллы: @string.Join("/", unit.SkillLevels)" min="1" title="уровень всех скиллов, выше максимума не поднимется" class="narrow">
+                                    <button type="submit">OK</button>
+                                </form>
+                            }
+                            else
+                            {
+                                @unit.Level <text>·</text> @unit.MasteryLevel <text>·</text> @string.Join("/", unit.SkillLevels)
+                            }
+                        </td>
+                    </tr>
                 }
                 </tbody>
             </table>
+            @if (Model.CheatsEnabled)
+            {
+                <form method="post" asp-page-handler="Summon" asp-route-userId="@userId" class="inline">
+                    <select name="summonId" required>
+                        @foreach (var item in Model.Catalog.Summons)
+                        {
+                            <option value="@item.Id">@item.Id · @item.Name · @item.Details (ур. @item.MaxLevel, мастерство @item.MaxMastery)</option>
+                        }
+                    </select>
+                    <input type="number" name="level" placeholder="уровень" min="1" class="narrow">
+                    <input type="number" name="masteryLevel" placeholder="мастерство" min="1" class="narrow">
+                    <button type="submit">Открыть / выставить</button>
+                </form>
+            }
         </section>
         <section class="card">
             <h2>Снаряжение</h2>
             <table class="table compact">
-                <thead><tr><th>Конфиг</th><th>Уровень</th><th>Слияние</th></tr></thead>
+                <thead><tr><th>Предмет</th><th>Уровень</th><th>Слияние</th></tr></thead>
                 <tbody>
                 @foreach (var item in profile.Equipment)
                 {
-                    <tr><td title="@item.InstanceId">@item.ConfigId</td><td>@item.Level</td><td>@item.MergeNumber</td></tr>
+                    <tr>
+                        <td title="@item.InstanceId">@Model.DescribeEquipment(item.ConfigId)</td>
+                        <td>
+                            @if (Model.CheatsEnabled)
+                            {
+                                <form method="post" asp-page-handler="Equipment" asp-route-userId="@userId" class="inline">
+                                    <input type="hidden" name="instanceId" value="@item.InstanceId">
+                                    <input type="number" name="level" value="@item.Level" min="1" max="@Model.FindMaxLevel(Model.Catalog.Equipment, item.ConfigId)" class="narrow">
+                                    <button type="submit">OK</button>
+                                </form>
+                            }
+                            else
+                            {
+                                @item.Level
+                            }
+                        </td>
+                        <td>@item.MergeNumber</td>
+                    </tr>
                 }
                 </tbody>
             </table>
         </section>
     </div>
+    @if (Model.CheatsEnabled)
+    {
+        <section class="card">
+            <h2>Флаги аккаунта</h2>
+            <ul class="plain">
+                @foreach (var flag in profile.Flags)
+                {
+                    <li>@flag.Key: @flag.Value</li>
+                }
+            </ul>
+            <form method="post" asp-page-handler="Flag" asp-route-userId="@userId" class="inline">
+                <input name="key" placeholder="флаг, например start_perk_choice_single" required class="wide">
+                <input type="number" name="value" value="1" min="0" class="narrow">
+                <button type="submit">Установить</button>
+            </form>
+            <p class="muted">0 убирает флаг.</p>
+        </section>
+    }
     <h2>Журнал выдач и трат</h2>
     <table class="table">
         <thead><tr><th>Когда</th><th>Действие</th><th>Источник</th><th>Изменения</th></tr></thead>
@@ -120,7 +406,7 @@
     {
         <section class="card danger-zone">
             <h2>Удалить аккаунт</h2>
-            <form method="post" asp-page-handler="Delete" asp-route-userId="@profile.UserId" class="inline" data-confirm="Удалить все данные игрока @profile.UserId без возможности восстановления?">
+            <form method="post" asp-page-handler="Delete" asp-route-userId="@userId" class="inline" data-confirm="Удалить все данные игрока @userId без возможности восстановления?">
                 <input name="confirm" placeholder="повторите userId" required class="wide">
                 <button type="submit" class="danger">Удалить</button>
             </form>

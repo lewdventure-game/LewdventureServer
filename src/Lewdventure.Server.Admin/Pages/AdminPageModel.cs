@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Server.Admin.Accounts;
 using Server.Admin.Backend;
+using Server.Admin.Backend.Models;
 
 namespace Server.Admin.Pages
 {
@@ -72,6 +73,20 @@ namespace Server.Admin.Pages
             }
 
             return result;
+        }
+
+        protected async Task<List<string>> LoadQaUserIdsAsync()
+        {
+            var userIds = new List<string>();
+            var result = await GameAdminClient.GetAsync<List<QaAccountModel>>(CurrentEnvironment, "/admin/qa/players", LoginName, HttpContext.RequestAborted);
+
+            if (result.IsSuccess == false || result.Data == null)
+                return userIds;
+
+            for (int i = 0; i < result.Data.Count; i++)
+                userIds.Add(result.Data[i].UserId);
+
+            return userIds;
         }
 
         protected IActionResult? RequireAdmin()

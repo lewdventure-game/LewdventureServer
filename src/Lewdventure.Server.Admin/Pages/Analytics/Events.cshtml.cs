@@ -58,7 +58,9 @@ namespace Server.Admin.Pages.Analytics
 
         public async Task OnGetAsync()
         {
-            Report = await _analyticsReportService.BuildEventReportAsync(CurrentEnvironment, Filter, HttpContext.RequestAborted);
+            var excludedUserIds = Filter.IncludeQa ? new List<string>() : await LoadQaUserIdsAsync();
+
+            Report = await _analyticsReportService.BuildEventReportAsync(CurrentEnvironment, Filter, excludedUserIds, HttpContext.RequestAborted);
             Chart = _svgChartBuilder.Build(Report.Series, Filter.Step == AnalyticsFilterValues.StepHour);
 
             var experiments = await LoadAsync<List<ExperimentModel>>("/admin/experiments?limit=50");

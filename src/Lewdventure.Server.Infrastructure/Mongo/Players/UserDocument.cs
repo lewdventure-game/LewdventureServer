@@ -29,5 +29,7 @@ namespace Server.Infrastructure.Mongo.Players
         public UserExperimentDocument? Experiment { get; set; }
 
         public List<string> ExperimentsSeen { get; set; } = new();
+
+        public UserQaDocument? Qa { get; set; }
     }
 }

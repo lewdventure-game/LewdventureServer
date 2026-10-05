@@ -29,6 +29,7 @@ namespace Server.Api.Endpoints
         public const string AdminConfig = "/admin/config";
         public const string AdminPlayer = "/admin/player";
         public const string AdminExperiments = "/admin/experiments";
+        public const string AdminQa = "/admin/qa";
         public const string Health = "/health";
         public const string HealthLive = "/health/live";
         public const string HealthReady = "/health/ready";

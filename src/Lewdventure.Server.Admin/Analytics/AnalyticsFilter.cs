@@ -31,5 +31,7 @@ namespace Server.Admin.Analytics
         public string PropertyKey { get; set; } = string.Empty;
 
         public string PropertyValue { get; set; } = string.Empty;
+
+        public bool IncludeQa { get; set; }
     }
 }
