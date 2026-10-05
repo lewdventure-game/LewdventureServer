@@ -28,7 +28,7 @@ namespace Tests.Integration.Mongo
 
             if (string.IsNullOrEmpty(ConnectionString))
             {
-                _container = new MongoDbBuilder("mongo:8.0").WithReplicaSet("rs0").Build();
+                _container = new MongoDbBuilder("mongo:8.0.15").WithReplicaSet("rs0").Build();
 
                 await _container.StartAsync();
 
