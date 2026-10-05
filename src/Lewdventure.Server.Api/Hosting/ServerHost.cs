@@ -96,11 +96,10 @@ namespace Server.Api.Hosting
             application.UseMiddleware<OpsPortGuardMiddleware>();
             application.UseRateLimiter();
             application.UseAuthentication();
+            application.UseAuthorization();
 
             if (IsQaDiagnosticsEnabled(application.Services))
                 application.UseMiddleware<RequestTraceMiddleware>();
-
-            application.UseAuthorization();
 
             if (application.Services.GetRequiredService<IOptions<MongoOptions>>().Value.Enabled)
                 application.UseMiddleware<GameConfigSelectionMiddleware>();
