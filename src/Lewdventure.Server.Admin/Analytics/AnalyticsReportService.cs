@@ -55,7 +55,7 @@ namespace Server.Admin.Analytics
 
             ReadBreakdown(breakdown, report.Breakdown);
 
-            var latest = await RunAsync($"SELECT event_time, event_type, user_id, country, experiment_id, group_id, source, app_version, event_properties {source} ORDER BY event_time DESC LIMIT 100", query.Parameters, report.Errors, cancellationToken);
+            var latest = await RunAsync($"SELECT event_time, event_type, user_id, device_id, country, experiment_id, group_id, source, app_version, event_properties {source} ORDER BY event_time DESC LIMIT 100", query.Parameters, report.Errors, cancellationToken);
 
             ReadEvents(latest, report.Latest);
 
@@ -169,7 +169,7 @@ namespace Server.Admin.Analytics
                 return events;
 
             var parameters = new Dictionary<string, string>(StringComparer.Ordinal) { ["user_id"] = userId };
-            var result = await RunAsync($"SELECT event_time, event_type, user_id, country, experiment_id, group_id, source, app_version, event_properties FROM {table} WHERE user_id = {{user_id:String}} ORDER BY event_time DESC LIMIT 200", parameters, errors, cancellationToken);
+            var result = await RunAsync($"SELECT event_time, event_type, user_id, device_id, country, experiment_id, group_id, source, app_version, event_properties FROM {table} WHERE user_id = {{user_id:String}} ORDER BY event_time DESC LIMIT 200", parameters, errors, cancellationToken);
 
             ReadEvents(result, events);
 
@@ -281,6 +281,7 @@ namespace Server.Admin.Analytics
                     Time = ReadTime(result.ReadString(i, "event_time")),
                     EventType = result.ReadString(i, "event_type"),
                     UserId = result.ReadString(i, "user_id"),
+                    DeviceId = result.ReadString(i, "device_id"),
                     Country = result.ReadString(i, "country"),
                     Experiment = experiment.Length == 0 ? AnalyticsFilterValues.MasterLabel : experiment + "/" + result.ReadString(i, "group_id"),
                     Source = result.ReadString(i, "source"),

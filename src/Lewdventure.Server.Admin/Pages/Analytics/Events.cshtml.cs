@@ -7,6 +7,8 @@ namespace Server.Admin.Pages.Analytics
 {
     internal sealed class EventsModel : AdminPageModel
     {
+        private const string UserIdPrefix = "usr_";
+
         private readonly AnalyticsReportService _analyticsReportService;
         private readonly SvgChartBuilder _svgChartBuilder;
 
@@ -31,7 +33,10 @@ namespace Server.Admin.Pages.Analytics
 
         public List<ExperimentModel> Experiments { get; private set; } = new();
 
-        public bool HasExtraFilters => Filter.UserId.Length != 0
+        public string PlayerNote { get; private set; } = string.Empty;
+
+        public bool HasExtraFilters => Filter.Player.Length != 0
+            || Filter.UserId.Length != 0
             || Filter.ExperimentId.Length != 0
             || Filter.GroupId.Length != 0
             || Filter.Country.Length != 0
@@ -58,7 +63,9 @@ namespace Server.Admin.Pages.Analytics
 
         public async Task OnGetAsync()
         {
-            var excludedUserIds = Filter.IncludeQa ? new List<string>() : await LoadQaUserIdsAsync();
+            await ResolvePlayerAsync();
+
+            var excludedUserIds = Filter.IncludeQa || Filter.UserId.Length != 0 || Filter.DeviceId.Length != 0 ? new List<string>() : await LoadQaUserIdsAsync();
 
             Report = await _analyticsReportService.BuildEventReportAsync(CurrentEnvironment, Filter, excludedUserIds, HttpContext.RequestAborted);
             Chart = _svgChartBuilder.Build(Report.Series, Filter.Step == AnalyticsFilterValues.StepHour);
@@ -67,6 +74,41 @@ namespace Server.Admin.Pages.Analytics
 
             if (experiments != null)
                 Experiments = experiments;
+        }
+
+        private async Task ResolvePlayerAsync()
+        {
+            var query = Filter.Player.Trim();
+
+            if (query.Length == 0)
+                query = Filter.UserId.Trim();
+
+            Filter.Player = query;
+            Filter.UserId = string.Empty;
+            Filter.DeviceId = string.Empty;
+
+            if (query.Length == 0)
+                return;
+
+            if (query.StartsWith(UserIdPrefix, StringComparison.Ordinal))
+            {
+                Filter.UserId = query;
+
+                return;
+            }
+
+            var matches = await LoadAsync<List<QaMatchModel>>("/admin/qa/find?query=" + Escape(query));
+
+            if (matches != null && matches.Count == 1)
+            {
+                Filter.UserId = matches[0].UserId;
+                PlayerNote = $"Найден по {(matches[0].MatchedBy == "alias" ? "псевдониму" : "deviceId")}: {matches[0].UserId}";
+
+                return;
+            }
+
+            Filter.DeviceId = query;
+            PlayerNote = "Аккаунт с таким deviceId или псевдонимом не найден, показаны события с этим deviceId.";
         }
     }
 }

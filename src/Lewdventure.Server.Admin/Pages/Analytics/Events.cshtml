@@ -60,7 +60,7 @@
     <details open="@(Model.HasExtraFilters ? "open" : null)">
         <summary>Дополнительные фильтры</summary>
         <div class="row">
-            <label>Игрок <input name="Filter.UserId" value="@f.UserId" placeholder="usr_…"></label>
+            <label>Игрок <input name="Filter.Player" value="@f.Player" placeholder="userId, псевдоним QA или deviceId"></label>
             <label>Эксперимент
                 <select name="Filter.ExperimentId">
                     <option value="">любой</option>
@@ -87,6 +87,10 @@
         </div>
         <label class="inline"><input type="checkbox" name="Filter.IncludeQa" value="true" checked="@f.IncludeQa"> Показать тестовые аккаунты</label>
     </details>
+    @if (Model.PlayerNote.Length != 0)
+    {
+        <p class="muted">@Model.PlayerNote</p>
+    }
     <datalist id="property-keys">
         @foreach (var key in Model.Report.PropertyKeys)
         {

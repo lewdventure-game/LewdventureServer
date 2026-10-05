@@ -26,6 +26,7 @@ namespace Server.Admin.Analytics
 
             AddEquals(where, query, "event_type", "event_type", filter.EventType);
             AddEquals(where, query, "user_id", "user_id", filter.UserId);
+            AddEquals(where, query, "device_id", "device_id", filter.DeviceId);
             AddEquals(where, query, "country", "country", filter.Country.ToUpperInvariant());
             AddEquals(where, query, "source", "source", filter.Source);
             AddEquals(where, query, "group_id", "group_id", filter.GroupId);
@@ -98,6 +99,8 @@ namespace Server.Admin.Analytics
             filter.GroupBy = Clean(filter.GroupBy);
             filter.GroupKey = Clean(filter.GroupKey);
             filter.UserId = Clean(filter.UserId);
+            filter.Player = Clean(filter.Player);
+            filter.DeviceId = Clean(filter.DeviceId);
             filter.ExperimentId = Clean(filter.ExperimentId);
             filter.GroupId = Clean(filter.GroupId);
             filter.Country = Clean(filter.Country);

@@ -13,7 +13,7 @@ else
             <tr>
                 <td class="nowrap">@row.Time.ToString("dd.MM HH:mm:ss")</td>
                 <td>@row.EventType</td>
-                <td><a href="/Players?userId=@Uri.EscapeDataString(row.UserId)" title="@row.UserId">@(row.UserId.Length <= 12 ? row.UserId : row.UserId.Substring(0, 12) + "…")</a></td>
+                <td><a href="/Players?userId=@Uri.EscapeDataString(row.UserId)" title="@row.UserId@(row.DeviceId.Length == 0 ? string.Empty : " · device " + row.DeviceId)">@(row.UserId.Length <= 12 ? row.UserId : row.UserId.Substring(0, 12) + "…")</a></td>
                 <td>@row.Country</td>
                 <td>@row.Experiment</td>
                 <td>@(row.Source == "server" ? "сервер" : "клиент")</td>

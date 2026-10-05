@@ -20,6 +20,10 @@ namespace Server.Admin.Analytics
 
         public string UserId { get; set; } = string.Empty;
 
+        public string Player { get; set; } = string.Empty;
+
+        public string DeviceId { get; set; } = string.Empty;
+
         public string ExperimentId { get; set; } = string.Empty;
 
         public string GroupId { get; set; } = string.Empty;

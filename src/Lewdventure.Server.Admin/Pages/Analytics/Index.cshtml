@@ -7,6 +7,13 @@
     <h1>Аналитика · @Model.CurrentEnvironment</h1>
     <a class="button" href="/Analytics/Events">Конструктор отчётов →</a>
 </div>
+<form method="get" action="/Analytics/Events" class="card inline">
+    <span class="muted">Найти игрока:</span>
+    <input name="Filter.Player" placeholder="userId, псевдоним QA или deviceId" required class="wide">
+    <input type="hidden" name="Filter.From" value="@Model.Filter.From">
+    <input type="hidden" name="Filter.To" value="@Model.Filter.To">
+    <button type="submit">Показать события</button>
+</form>
 <form method="get" class="card inline period">
     <span class="muted">Период:</span>
     <a class="button @(Model.Days == 1 ? "primary" : string.Empty)" href="?days=1@Model.QaSuffix">Сегодня</a>

@@ -8,6 +8,8 @@ namespace Server.Admin.Analytics
 
         public string UserId { get; set; } = string.Empty;
 
+        public string DeviceId { get; set; } = string.Empty;
+
         public string Country { get; set; } = string.Empty;
 
         public string Experiment { get; set; } = string.Empty;
