@@ -8,7 +8,7 @@ namespace Server.Admin.Pages.Experiments
 
         public string SnapshotVersion { get; set; } = string.Empty;
 
-        public double Percent { get; set; }
+        public string? Percent { get; set; }
 
         public bool NewPlayersOnly { get; set; }
 

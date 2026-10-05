@@ -32,7 +32,7 @@
             }
         </div>
         <form method="post" action="/Logout" class="logout">
-            <span class="user">@User.Identity!.Name · @(User.IsInRole("admin") ? "admin" : "tester")</span>
+            <a class="user" href="/Account" title="Профиль и смена пароля">@User.Identity!.Name · @(User.IsInRole("admin") ? "admin" : "tester")</a>
             <button type="submit" class="link">Выйти</button>
         </form>
     </header>

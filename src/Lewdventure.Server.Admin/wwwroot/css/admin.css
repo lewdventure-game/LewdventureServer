@@ -548,3 +548,26 @@ button.link {
 .stats th:first-child {
     text-align: left;
 }
+
+.password-field {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.password-field input {
+    flex: 1;
+}
+
+.form label[for] {
+    margin-bottom: 4px;
+}
+
+.danger-link {
+    color: var(--danger);
+    font-size: 16px;
+}
+
+.account {
+    max-width: 420px;
+}

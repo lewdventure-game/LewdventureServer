@@ -6,7 +6,7 @@ namespace Server.Admin.Pages.Experiments
 {
     internal sealed class CreateModel : AdminPageModel
     {
-        private const int GroupRows = 6;
+        private const int DefaultGroupRows = 2;
 
         public CreateModel(AdminAuditLog auditLog, AdminEnvironmentSelector environmentSelector, GameAdminClient gameAdminClient)
             : base(auditLog, environmentSelector, gameAdminClient)
@@ -67,6 +67,28 @@ namespace Server.Admin.Pages.Experiments
             return Page();
         }
 
+        public GroupRowView CreateRow(string key, GroupInput input, int index)
+        {
+            var row = new GroupRowView
+            {
+                Key = key,
+                Input = input,
+                Placeholder = index == 0 ? "control" : index == 1 ? "test" : string.Empty,
+            };
+
+            for (int i = 0; i < Snapshots.Count; i++)
+            {
+                row.Options.Add(new SnapshotOption
+                {
+                    Value = Snapshots[i].Version,
+                    Label = Describe(Snapshots[i]),
+                    Selected = string.Equals(Snapshots[i].Version, input.SnapshotVersion, StringComparison.Ordinal),
+                });
+            }
+
+            return row;
+        }
+
         public string Describe(ConfigSnapshotModel snapshot)
         {
             var shortVersion = snapshot.Version.Length < 19 ? snapshot.Version : "cfg-" + snapshot.Version.Substring(7, 12);
@@ -98,7 +120,7 @@ namespace Server.Admin.Pages.Experiments
 
         private void FillRows()
         {
-            while (Groups.Count < GroupRows)
+            while (Groups.Count < DefaultGroupRows)
                 Groups.Add(new GroupInput());
         }
 
@@ -118,13 +140,20 @@ namespace Server.Admin.Pages.Experiments
                     id = Clean(group.Id),
                     name = Clean(group.Name),
                     snapshotVersion = Clean(group.SnapshotVersion),
-                    percent = group.Percent,
+                    percent = ParsePercent(group.Percent),
                     newPlayersOnly = group.NewPlayersOnly,
                     countries = SplitCountries(Clean(group.Countries)),
                 });
             }
 
             return groups;
+        }
+
+        private double ParsePercent(string? value)
+        {
+            var text = Clean(value).Replace(',', '.');
+
+            return double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var percent) ? percent : 0d;
         }
 
         private string Clean(string? value)

@@ -1,0 +1,39 @@
+@page
+@model AccountModel
+@{
+    ViewData["Title"] = "Профиль";
+}
+<div class="account">
+    <h1>Профиль</h1>
+    <dl class="facts card">
+        <dt>Логин</dt><dd>@Model.LoginName</dd>
+        <dt>Роль</dt><dd>@Model.Role</dd>
+    </dl>
+    @if (string.IsNullOrEmpty(Model.Message) == false)
+    {
+        <div class="alert alert-ok">@Model.Message</div>
+    }
+    @if (string.IsNullOrEmpty(Model.Error) == false)
+    {
+        <div class="alert alert-error">@Model.Error</div>
+    }
+    <form method="post" class="card form">
+        <h2>Сменить пароль</h2>
+        <label for="current-password">Текущий пароль</label>
+        <div class="password-field">
+            <input asp-for="CurrentPassword" id="current-password" type="password" autocomplete="current-password" required>
+            <button type="button" data-action="toggle-password" data-target="current-password" aria-pressed="false">Показать</button>
+        </div>
+        <label for="new-password">Новый пароль, не короче @AccountModel.MinPasswordLength символов</label>
+        <div class="password-field">
+            <input asp-for="NewPassword" id="new-password" type="password" autocomplete="new-password" minlength="@AccountModel.MinPasswordLength" required>
+            <button type="button" data-action="toggle-password" data-target="new-password" aria-pressed="false">Показать</button>
+        </div>
+        <label for="confirm-password">Новый пароль ещё раз</label>
+        <div class="password-field">
+            <input asp-for="ConfirmPassword" id="confirm-password" type="password" autocomplete="new-password" required>
+            <button type="button" data-action="toggle-password" data-target="confirm-password" aria-pressed="false">Показать</button>
+        </div>
+        <button type="submit" class="primary">Сменить пароль</button>
+    </form>
+</div>

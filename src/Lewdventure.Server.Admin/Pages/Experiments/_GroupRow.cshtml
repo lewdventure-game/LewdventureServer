@@ -1,0 +1,21 @@
+@model Server.Admin.Pages.Experiments.GroupRowView
+<tr>
+    <td>
+        <input type="hidden" name="Groups.Index" value="@Model.Key">
+        <input name="Groups[@Model.Key].Id" value="@Model.Input.Id" placeholder="@Model.Placeholder" pattern="[a-z0-9_\-]{1,40}">
+    </td>
+    <td><input name="Groups[@Model.Key].Name" value="@Model.Input.Name"></td>
+    <td>
+        <select name="Groups[@Model.Key].SnapshotVersion">
+            <option value="">—</option>
+            @foreach (var option in Model.Options)
+            {
+                <option value="@option.Value" selected="@option.Selected">@option.Label</option>
+            }
+        </select>
+    </td>
+    <td><input name="Groups[@Model.Key].Percent" value="@Model.Input.Percent" type="number" min="0" max="100" step="0.01" class="narrow"></td>
+    <td class="center"><input name="Groups[@Model.Key].NewPlayersOnly" type="checkbox" value="true" checked="@Model.Input.NewPlayersOnly"></td>
+    <td><input name="Groups[@Model.Key].Countries" value="@Model.Input.Countries" placeholder="US, DE или пусто = все" class="narrow"></td>
+    <td><button type="button" class="link danger-link" data-action="remove-group" title="Удалить группу">✕</button></td>
+</tr>
