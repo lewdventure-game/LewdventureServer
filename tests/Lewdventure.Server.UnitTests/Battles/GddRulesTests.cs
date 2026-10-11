@@ -351,6 +351,33 @@ namespace Tests.Unit.Battles
             Assert.That(withEmptyStage.MaxHealth, Is.EqualTo(withoutStage.MaxHealth).Within(0.001f));
         }
 
+        [Test]
+        public void EnemiesListedOutOfSlotOrder_ActBySlot()
+        {
+            var replayData = CreateReplayData(CreateUnitSnapshot());
+
+            replayData.TeamB.MainUnits.Clear();
+            replayData.TeamB.MainUnits.Add(new UnitSnapshot { Id = SecondEnemyId, Level = 1, SlotIndex = 1 });
+            replayData.TeamB.MainUnits.Add(new UnitSnapshot { Id = EnemyId, Level = 1, SlotIndex = 0 });
+
+            var script = CreateCore(_domains).Replay(replayData);
+            var firstEnemyAttack = -1;
+
+            for (int i = 0; i < script.Steps.Count; i++)
+            {
+                var step = script.Steps[i];
+
+                if (step.Phase != BattlePhaseType.NormalAttack || step.ActorId == CharacterId)
+                    continue;
+
+                firstEnemyAttack = step.ActorSlotIndex;
+
+                break;
+            }
+
+            Assert.That(firstEnemyAttack, Is.EqualTo(0), "первым из врагов обязан ходить юнит первого слота");
+        }
+
         private UnitSnapshot CreateEnemySnapshot()
         {
             return new UnitSnapshot

@@ -304,9 +304,28 @@ namespace Server.Battles
                 summonStates.Add(_unitStateBuilder.Build(summon, battleSide, true, storyLevelId, stageId));
             }
 
+            SortBySlot(mainUnitStates);
+            SortBySlot(summonStates);
             RegisterTeamSummons(mainUnitStates, summonStates);
 
             return new TeamSimulationState(mainUnitStates, summonStates, battleSide);
+        }
+
+        private void SortBySlot(List<IUnitState> units)
+        {
+            for (int i = 1; i < units.Count; i++)
+            {
+                var unit = units[i];
+                var j = i - 1;
+
+                while (0 <= j && unit.SlotIndex < units[j].SlotIndex)
+                {
+                    units[j + 1] = units[j];
+                    j -= 1;
+                }
+
+                units[j + 1] = unit;
+            }
         }
 
         private void RegisterTeamSummons(List<IUnitState> mainUnitStates, List<IUnitState> summonStates)
