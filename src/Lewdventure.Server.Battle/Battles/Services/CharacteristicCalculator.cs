@@ -160,7 +160,7 @@ namespace Server.Battles
             state.CounterChance = counterChance;
             state.CounterMultiplier = counterMultiplier;
             state.SkillMultiplier = skillMultiplier;
-            state.EnergyGain = energyGain;
+            state.EnergyGain = MathF.Round(energyGain, MidpointRounding.AwayFromZero);
             state.MaxEnergy = buckets.EnergyMaxBase;
             state.Vampyrism = vampyrism;
             state.HealingBoost = healingBoost;
@@ -176,7 +176,10 @@ namespace Server.Battles
                 if (0f < previousMaxHealth)
                     ratio = previousHealth / previousMaxHealth;
 
-                state.Health = maxHealth * ratio;
+                state.Health = MathF.Round(maxHealth * ratio, MidpointRounding.AwayFromZero);
+
+                if (0f < previousHealth && state.Health < 1f)
+                    state.Health = 1f;
 
                 if (state.Health < 0f)
                     state.Health = 0f;
@@ -202,7 +205,7 @@ namespace Server.Battles
 
         public float CalculateHealingFromMax(float maxHealth, float healingBonus, float healingBoost)
         {
-            var healDelta = maxHealth * healingBonus * healingBoost;
+            var healDelta = MathF.Round(maxHealth * healingBonus * healingBoost, MidpointRounding.AwayFromZero);
 
             _coreLog.Debug($"[Story][Battle]: Healing from max, maxHealth = {maxHealth}, healingBonus = {healingBonus}, healingBoost = {healingBoost}, healDelta = {healDelta}");
 
@@ -211,7 +214,7 @@ namespace Server.Battles
 
         public float CalculateHealingFromCurrent(float currentHealth, float healingBonus, float healingBoost)
         {
-            var healDelta = currentHealth * healingBonus * healingBoost;
+            var healDelta = MathF.Round(currentHealth * healingBonus * healingBoost, MidpointRounding.AwayFromZero);
 
             _coreLog.Debug($"[Story][Battle]: Healing from current, currentHealth = {currentHealth}, healingBonus = {healingBonus}, healingBoost = {healingBoost}, healDelta = {healDelta}");
 
