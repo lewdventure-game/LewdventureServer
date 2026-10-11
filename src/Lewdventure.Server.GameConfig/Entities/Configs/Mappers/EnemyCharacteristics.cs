@@ -50,12 +50,10 @@ namespace Server.Entities
 
         public float EnergyMax => _energyMax;
 
-        public static EnemyCharacteristics Parse(string raw)
+        public EnemyCharacteristics(string raw)
         {
-            var result = new EnemyCharacteristics();
-
             if (string.IsNullOrWhiteSpace(raw))
-                return result;
+                return;
 
             var span = raw.AsSpan();
             var start = 0;
@@ -68,12 +66,10 @@ namespace Server.Entities
                 var segmentLength = i - start;
 
                 if (0 < segmentLength)
-                    result.ApplySegment(span.Slice(start, segmentLength));
+                    ApplySegment(span.Slice(start, segmentLength));
 
                 start = i + 1;
             }
-
-            return result;
         }
 
         private void ApplySegment(ReadOnlySpan<char> segment)

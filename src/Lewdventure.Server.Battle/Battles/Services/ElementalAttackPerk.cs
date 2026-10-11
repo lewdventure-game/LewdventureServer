@@ -47,7 +47,6 @@ namespace Server.Battles
 
             for (int i = 0; i < _procRounds.Count; i++)
             {
-                // Sheets/GDD rounds are 1-based; simulator turns are 0-based.
                 if (_procRounds[i] == currentTurn + 1)
                     return true;
             }

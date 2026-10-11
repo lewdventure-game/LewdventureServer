@@ -57,7 +57,7 @@ namespace Server.GameConfigs
 
                 CollectMissingKeys(domain.Domain, id, raw, warnings);
 
-                var packed = EnemyCharacteristics.Parse(raw);
+                var packed = new EnemyCharacteristics(raw);
 
                 CollectChanceWithoutMultiplier(domain.Domain, id, "crit", packed.CriticalChance, packed.CriticalMultiplier, warnings);
                 CollectChanceWithoutMultiplier(domain.Domain, id, "combo_1", packed.Combo1Chance, packed.Combo1Multiplier, warnings);

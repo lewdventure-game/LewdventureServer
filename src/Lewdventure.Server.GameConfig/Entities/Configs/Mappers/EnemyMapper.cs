@@ -4,7 +4,6 @@ using Server.Configs;
 
 namespace Server.Entities
 {
-    // Sheets may ship either flat client columns or packed other_characteristics.
     internal sealed class EnemyMapper : IEnemyMapper
     {
         private float _defence;
@@ -169,7 +168,7 @@ namespace Server.Entities
             if (string.IsNullOrWhiteSpace(_characteristicsRaw))
                 return;
 
-            var packed = EnemyCharacteristics.Parse(_characteristicsRaw);
+            var packed = new EnemyCharacteristics(_characteristicsRaw);
 
             _defence = packed.Defence;
             _evasion = packed.Evasion;
