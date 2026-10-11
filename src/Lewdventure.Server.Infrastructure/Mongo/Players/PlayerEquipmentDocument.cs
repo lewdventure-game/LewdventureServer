@@ -8,10 +8,6 @@ namespace Server.Infrastructure.Mongo.Players
 
         public int Level { get; set; } = 1;
 
-        public long ExpSpent { get; set; }
-
-        public int Breaks { get; set; }
-
         public int MergeNumber { get; set; }
 
         public DateTime ObtainedAt { get; set; }

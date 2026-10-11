@@ -279,9 +279,6 @@ namespace Server.Infrastructure.Players
                     return Failed(spendError);
                 }
 
-                for (int i = 0; i < costs.Count; i++)
-                    instance.ExpSpent += costs[i].Amount;
-
                 instance.Level += 1;
                 entries.Add(new PlayerLedgerEntryDocument { Type = ProgressEntry, Key = "equipment:" + instanceId + ":level", Amount = instance.Level });
 
@@ -416,7 +413,6 @@ namespace Server.Infrastructure.Players
                 var previousLevel = instance.Level;
 
                 instance.Level = 1;
-                instance.ExpSpent = 0;
                 Refund(profile, refunds, entries);
                 entries.Add(new PlayerLedgerEntryDocument { Type = ProgressEntry, Key = "equipment:" + instanceId + ":level", Amount = instance.Level });
 
