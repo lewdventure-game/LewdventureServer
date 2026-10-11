@@ -204,13 +204,6 @@ namespace Tests.Integration.Mongo
                     continue;
                 }
 
-                if (string.Equals(domain.Domain, "Constants", StringComparison.Ordinal))
-                {
-                    domains.Add(PatchRows(domain, EnableHealingBoost));
-
-                    continue;
-                }
-
                 domains.Add(domain);
             }
 
@@ -244,17 +237,6 @@ namespace Tests.Integration.Mongo
             row["multiple_picks"] = true;
 
             return row;
-        }
-
-        private void EnableHealingBoost(JArray rows)
-        {
-            for (int i = 0; i < rows.Count; i++)
-            {
-                var row = (JObject)rows[i];
-
-                if (string.Equals(row["constant_name"]?.ToString(), "healing_boost_base", StringComparison.Ordinal))
-                    row["constant_value"] = "1";
-            }
         }
 
         private async Task PrepareProfileAsync()
