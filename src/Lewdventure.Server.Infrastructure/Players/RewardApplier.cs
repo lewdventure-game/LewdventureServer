@@ -77,6 +77,7 @@ namespace Server.Infrastructure.Players
             var entries = new List<PlayerLedgerEntryDocument>();
 
             ApplySummonMasteryLevelRewards(profile, summon, summonMapper, configDistributor, now, entries);
+            ApplySummonCopiesOverflow(profile, summon, summonMapper, configDistributor, entries);
 
             return entries;
         }
