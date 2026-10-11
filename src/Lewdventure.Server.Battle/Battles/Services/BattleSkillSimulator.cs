@@ -124,6 +124,13 @@ namespace Server.Battles
             if (actor.IsAlive() == false)
                 return;
 
+            if (turnState.ShouldSkipRemainingActions(actor))
+            {
+                _coreLog.Debug($"[Story][Battle]: Energy skill skip after resurrection abort, unitId = {actor.Id}, turn = {currentTurn}");
+
+                return;
+            }
+
             if (TryFindEnergySkill(actor, out var energySkill) == false)
             {
                 LogMissingEnergySkill(actor);
