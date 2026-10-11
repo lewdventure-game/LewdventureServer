@@ -32,7 +32,7 @@ namespace Tests.Unit.Qa
             var builder = new GameConfigSetBuilder(
                 new BonusWorkModeParser(new SilentCoreLog()),
                 new ConfigRowsParser(new ConfigRowLocator(new ConfigRangeReader())),
-                new ConfigSnapshotValidator(domainNames, new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator(), new SkillComponentValidator(new SkillComponentRegistry())),
+                new ConfigSnapshotValidator(domainNames, new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator(), new ProgressionDataValidator(), new SkillComponentValidator(new SkillComponentRegistry())),
                 new SilentCoreLog());
             var parser = new BattleRewardParser(new SilentCoreLog());
             var rewardApplier = new RewardApplier(parser, new BonusWorkModeParser(new SilentCoreLog()), NullLogger<RewardApplier>.Instance);

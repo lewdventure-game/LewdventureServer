@@ -163,6 +163,18 @@ namespace Tests.Unit.GameConfig
         }
 
         [Test]
+        public async Task Builder_SummonDamageShorterThanLevels_Warns()
+        {
+            var source = new FileConfigSnapshotSource(new ConfigSnapshotSerializer(new ConfigSnapshotHasher()));
+            var snapshot = await source.LoadAsync(new ApiDirectoryLocator().FindFixture(), CancellationToken.None);
+
+            var result = CreateBuilder().Build(snapshot, "test");
+
+            Assert.That(result.Succeeded, Is.True, string.Join("; ", result.Errors));
+            Assert.That(result.Warnings, Has.Some.Contains("dmg_on_lvls"));
+        }
+
+        [Test]
         public void Builder_CharactersWithoutArtName_WarnsInsteadOfFailing()
         {
             var rows = "[{\"id\":\"1\",\"is_melee\":\"1\",\"promote_id\":\"1\",\"skill_ids\":\"1\",\"promote_to_skill_levels\":\"0\"}]";
@@ -233,7 +245,7 @@ namespace Tests.Unit.GameConfig
             return new GameConfigSetBuilder(
                 new BonusWorkModeParser(new SilentCoreLog()),
                 new ConfigRowsParser(new ConfigRowLocator(new ConfigRangeReader())),
-                new ConfigSnapshotValidator(_domainNames, new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator(), new SkillComponentValidator(new SkillComponentRegistry())),
+                new ConfigSnapshotValidator(_domainNames, new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator(), new ProgressionDataValidator(), new SkillComponentValidator(new SkillComponentRegistry())),
                 new SilentCoreLog());
         }
     }

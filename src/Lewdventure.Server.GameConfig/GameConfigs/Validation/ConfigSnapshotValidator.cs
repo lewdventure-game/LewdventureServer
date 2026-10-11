@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -20,6 +21,7 @@ namespace Server.GameConfigs
         private readonly ConfigDomainNames _configDomainNames;
         private readonly EffectParametersValidator _effectParametersValidator;
         private readonly EnemyDataValidator _enemyDataValidator;
+        private readonly ProgressionDataValidator _progressionDataValidator;
         private readonly SkillComponentValidator _skillComponentValidator;
         private readonly Dictionary<string, Type> _mapperTypes = new(StringComparer.Ordinal)
         {
@@ -48,11 +50,13 @@ namespace Server.GameConfigs
             ConfigDomainNames configDomainNames,
             EffectParametersValidator effectParametersValidator,
             EnemyDataValidator enemyDataValidator,
+            ProgressionDataValidator progressionDataValidator,
             SkillComponentValidator skillComponentValidator)
         {
             _configDomainNames = configDomainNames;
             _effectParametersValidator = effectParametersValidator;
             _enemyDataValidator = enemyDataValidator;
+            _progressionDataValidator = progressionDataValidator;
             _skillComponentValidator = skillComponentValidator;
         }
 
@@ -86,7 +90,7 @@ namespace Server.GameConfigs
                 if (string.Equals(domains[i], ConfigDomainNames.Skills, StringComparison.Ordinal))
                 {
                     _effectParametersValidator.CollectSkills(domain, warnings);
-                    _skillComponentValidator.Validate(domain, errors, warnings);
+                    _skillComponentValidator.Validate(domain, ReadEnergyMax(snapshot), errors, warnings);
                 }
             }
         }
@@ -107,6 +111,39 @@ namespace Server.GameConfigs
 
             if (distributor.Bonuses.Count == 0)
                 warnings.Add("Config snapshot domain Bonuses has no rows.");
+
+            _progressionDataValidator.Collect(distributor, warnings);
+        }
+
+        private float ReadEnergyMax(GameConfigSnapshot snapshot)
+        {
+            if (snapshot.TryGetDomain(ConfigDomainNames.Constants, out var constants) == false)
+                return 0f;
+
+            JArray rows;
+
+            try
+            {
+                rows = JArray.Parse(constants.RowsJson);
+            }
+            catch (JsonReaderException)
+            {
+                return 0f;
+            }
+
+            for (int i = 0; i < rows.Count; i++)
+            {
+                if (rows[i] is JObject row == false)
+                    continue;
+
+                if (string.Equals(row["constant_name"]?.ToString(), "energy_max_base", StringComparison.Ordinal) == false)
+                    continue;
+
+                if (float.TryParse(row["constant_value"]?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var energyMax))
+                    return energyMax;
+            }
+
+            return 0f;
         }
 
         private void CollectHeaderIssues(ConfigSnapshotDomain domain, List<string> errors, List<string> warnings)

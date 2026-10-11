@@ -115,6 +115,7 @@ namespace Server.ConfigTool
             builder.Services.AddSingleton<EffectParameterRegistry>()
                 .AddSingleton<EffectParametersValidator>()
                 .AddSingleton<EnemyDataValidator>()
+                .AddSingleton<ProgressionDataValidator>()
                 .AddSingleton<SkillComponentRegistry>()
                 .AddSingleton<SkillComponentValidator>()
                 .AddSingleton<ConfigSnapshotValidator>();

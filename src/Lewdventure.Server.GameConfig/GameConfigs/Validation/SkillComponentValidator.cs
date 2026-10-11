@@ -24,7 +24,7 @@ namespace Server.GameConfigs
             _skillComponentRegistry = skillComponentRegistry;
         }
 
-        public void Validate(ConfigSnapshotDomain domain, List<string> errors, List<string> warnings)
+        public void Validate(ConfigSnapshotDomain domain, float energyMax, List<string> errors, List<string> warnings)
         {
             JArray rows;
 
@@ -55,8 +55,8 @@ namespace Server.GameConfigs
                 if (actions.Length == 0)
                     errors.Add($"Лист Skills, скилл {id}: заполнены triggers, но пустые actions - скилл ничего не делает.");
 
-                ValidateColumn(id, TriggersProperty, triggers, true, errors, warnings);
-                ValidateColumn(id, ActionsProperty, actions, false, errors, warnings);
+                ValidateColumn(id, TriggersProperty, triggers, true, energyMax, errors, warnings);
+                ValidateColumn(id, ActionsProperty, actions, false, energyMax, errors, warnings);
                 ValidatePassiveBonus(id, triggers, actions, warnings);
             }
         }
@@ -87,7 +87,7 @@ namespace Server.GameConfigs
             return builder.ToString();
         }
 
-        private void ValidateColumn(string id, string column, string raw, bool isTrigger, List<string> errors, List<string> warnings)
+        private void ValidateColumn(string id, string column, string raw, bool isTrigger, float energyMax, List<string> errors, List<string> warnings)
         {
             if (raw.Length == 0)
                 return;
@@ -130,11 +130,11 @@ namespace Server.GameConfigs
                     continue;
                 }
 
-                ValidateParameters(id, column, name, body, definition, errors, warnings);
+                ValidateParameters(id, column, name, body, definition, energyMax, errors, warnings);
             }
         }
 
-        private void ValidateParameters(string id, string column, string componentName, string body, SkillComponentDefinition definition, List<string> errors, List<string> warnings)
+        private void ValidateParameters(string id, string column, string componentName, string body, SkillComponentDefinition definition, float energyMax, List<string> errors, List<string> warnings)
         {
             if (body.Trim().Length == 0)
             {
@@ -180,11 +180,11 @@ namespace Server.GameConfigs
                 if (0 <= inner.IndexOf(ParameterSeparator))
                     warnings.Add($"Лист Skills, скилл {id}: в значениях параметра {parameterName} у {componentName} стоит запятая, разделитель третьего порядка - двоеточие.");
 
-                ValidateArguments(id, componentName, parameterName, inner, errors);
+                ValidateArguments(id, componentName, parameterName, inner, energyMax, errors, warnings);
             }
         }
 
-        private void ValidateArguments(string id, string componentName, string parameterName, string inner, List<string> errors)
+        private void ValidateArguments(string id, string componentName, string parameterName, string inner, float energyMax, List<string> errors, List<string> warnings)
         {
             var arguments = SplitArguments(inner);
 
@@ -199,11 +199,30 @@ namespace Server.GameConfigs
             {
                 var argument = arguments[i];
 
-                if (float.TryParse(argument, NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+                if (float.TryParse(argument, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+                {
+                    if (IsEnergyAboveMax(componentName, parameterName, value, energyMax))
+                        warnings.Add($"Лист Skills, скилл {id}: порог энергии {argument} больше energy_max_base = {energyMax.ToString(CultureInfo.InvariantCulture)}, энергия столько не накопится и скилл не сработает.");
+
                     continue;
+                }
 
                 errors.Add($"Лист Skills, скилл {id}: значение {argument} параметра {parameterName} в {componentName} не число. Значения по уровням разделяются двоеточием, дробная часть - точкой.");
             }
+        }
+
+        private bool IsEnergyAboveMax(string componentName, string parameterName, float value, float energyMax)
+        {
+            if (energyMax <= 0f)
+                return false;
+
+            if (string.Equals(componentName, "energy_needed", StringComparison.Ordinal) == false)
+                return false;
+
+            if (string.Equals(parameterName, "energy", StringComparison.Ordinal) == false)
+                return false;
+
+            return energyMax < value;
         }
 
         private List<string> SplitArguments(string inner)

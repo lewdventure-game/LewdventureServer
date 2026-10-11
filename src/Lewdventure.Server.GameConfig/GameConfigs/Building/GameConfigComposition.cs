@@ -17,6 +17,7 @@ namespace Server.GameConfigs
                 new ConfigDomainNames(),
                 new EffectParametersValidator(new EffectParameterRegistry()),
                 new EnemyDataValidator(),
+                new ProgressionDataValidator(),
                 new SkillComponentValidator(new SkillComponentRegistry()));
 
             _configSnapshotHasher = new ConfigSnapshotHasher();

@@ -53,7 +53,25 @@ namespace Tests.Unit.GameConfig
             var errors = new List<string>();
             var warnings = new List<string>();
 
-            new SkillComponentValidator(_registry).Validate(domain, errors, warnings);
+            new SkillComponentValidator(_registry).Validate(domain, 0f, errors, warnings);
+
+            Assert.That(errors, Is.Empty);
+            Assert.That(warnings, Is.Empty);
+        }
+
+        [Test]
+        public void EnergyAboveMax_IsWarned()
+        {
+            Validate("energy_needed:[energy:{30:120}]", Actions, 90f, out var errors, out var warnings);
+
+            Assert.That(errors, Is.Empty);
+            Assert.That(warnings, Has.Some.Contains("energy_max_base"));
+        }
+
+        [Test]
+        public void EnergyWithinMax_IsNotWarned()
+        {
+            Validate("energy_needed:[energy:{30:90}]", Actions, 90f, out var errors, out var warnings);
 
             Assert.That(errors, Is.Empty);
             Assert.That(warnings, Is.Empty);
@@ -135,13 +153,18 @@ namespace Tests.Unit.GameConfig
 
         private void Validate(string triggers, string actions, out List<string> errors, out List<string> warnings)
         {
+            Validate(triggers, actions, 0f, out errors, out warnings);
+        }
+
+        private void Validate(string triggers, string actions, float energyMax, out List<string> errors, out List<string> warnings)
+        {
             var rows = "[{\"id\":\"1\",\"triggers\":\"" + Escape(triggers) + "\",\"actions\":\"" + Escape(actions) + "\"}]";
             var domain = new ConfigSnapshotDomain("Skills", "sheet", "A1:C2", rows);
 
             errors = new List<string>();
             warnings = new List<string>();
 
-            new SkillComponentValidator(_registry).Validate(domain, errors, warnings);
+            new SkillComponentValidator(_registry).Validate(domain, energyMax, errors, warnings);
         }
 
         private string Escape(string value)
