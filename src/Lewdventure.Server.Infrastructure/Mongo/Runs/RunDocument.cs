@@ -48,6 +48,8 @@ namespace Server.Infrastructure.Mongo.Runs
 
         public int PendingLevelUps { get; set; }
 
+        public List<int> PendingStartPerkGroups { get; set; } = new();
+
         public List<int> Perks { get; set; } = new();
 
         public List<int> Statuses { get; set; } = new();

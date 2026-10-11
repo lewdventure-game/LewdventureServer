@@ -1,13 +1,40 @@
+using System.Globalization;
 using Server.Services;
 
 namespace Server.GameConfigs
 {
     internal sealed class ProgressionDataValidator
     {
+        private const string StartPerkGroupsConstant = "start_perk_groups";
+
         public void Collect(IConfigDistributor distributor, List<string> warnings)
         {
             CollectSummonDamageLevels(distributor, warnings);
             CollectEquipmentBonusLevels(distributor, warnings);
+            CollectStartPerkGroups(distributor, warnings);
+        }
+
+        private void CollectStartPerkGroups(IConfigDistributor distributor, List<string> warnings)
+        {
+            if (distributor.Constants.TryGet(StartPerkGroupsConstant, out var constant) == false || string.IsNullOrWhiteSpace(constant.ConstantValue))
+                return;
+
+            var parts = constant.ConstantValue.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+
+            for (int i = 0; i < parts.Length; i++)
+            {
+                var part = parts[i].Trim();
+
+                if (int.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out var groupId) == false)
+                {
+                    warnings.Add($"Лист Constants, {StartPerkGroupsConstant}: «{part}» не число, этот стартовый выбор перка пропустится.");
+
+                    continue;
+                }
+
+                if (distributor.PerkGroups.TryGet(groupId, out _) == false)
+                    warnings.Add($"Лист Constants, {StartPerkGroupsConstant}: группы перков {groupId} нет в листе Perk_groups, этот стартовый выбор перка пропустится.");
+            }
         }
 
         private void CollectSummonDamageLevels(IConfigDistributor distributor, List<string> warnings)

@@ -1,5 +1,6 @@
 using Server.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Newtonsoft.Json.Linq;
 using Server.Bonuses;
 using Server.GameConfigs;
 using Server.Skills;
@@ -172,6 +173,41 @@ namespace Tests.Unit.GameConfig
 
             Assert.That(result.Succeeded, Is.True, string.Join("; ", result.Errors));
             Assert.That(result.Warnings, Has.Some.Contains("dmg_on_lvls"));
+        }
+
+        [Test]
+        public async Task Builder_StartPerkGroupsWithUnknownGroup_Warns()
+        {
+            var source = new FileConfigSnapshotSource(new ConfigSnapshotSerializer(new ConfigSnapshotHasher()));
+            var snapshot = await source.LoadAsync(new ApiDirectoryLocator().FindFixture(), CancellationToken.None);
+            var domains = new List<ConfigSnapshotDomain>(snapshot.Domains.Count);
+
+            for (int i = 0; i < snapshot.Domains.Count; i++)
+            {
+                var domain = snapshot.Domains[i];
+
+                if (string.Equals(domain.Domain, ConfigDomainNames.Constants, StringComparison.Ordinal))
+                {
+                    var rows = JArray.Parse(domain.RowsJson);
+
+                    rows.Add(new JObject
+                    {
+                        ["constant_name"] = "start_perk_groups",
+                        ["constant_value"] = "1,99,x",
+                        ["constant_type"] = "Array",
+                    });
+                    domain = new ConfigSnapshotDomain(domain.Domain, domain.SpreadsheetId, domain.Range, rows.ToString(), domain.SourceRows);
+                }
+
+                domains.Add(domain);
+            }
+
+            var result = CreateBuilder().Build(new GameConfigSnapshot(snapshot.Version, snapshot.CreatedAt, snapshot.SourceKind, domains), "test");
+
+            Assert.That(result.Succeeded, Is.True, string.Join("; ", result.Errors));
+            Assert.That(result.Warnings, Has.Some.Contains("группы перков 99 нет"));
+            Assert.That(result.Warnings, Has.Some.Contains("«x» не число"));
+            Assert.That(result.Warnings, Has.None.Contains("группы перков 1 нет"));
         }
 
         [Test]

@@ -16,6 +16,7 @@ namespace Server.Runs
     {
         private const string RunIdPrefix = "run_";
         private const int MaxAttempts = 3;
+        private const string StartPerkGroupsConstant = "start_perk_groups";
 
         private readonly IBattleBonusService _battleBonusService;
         private readonly IBattleParameterParser _battleParameterParser;
@@ -137,6 +138,9 @@ namespace Server.Runs
 
             run.CurrentHealth = ReadStartHealth(profile, run);
             run.CurrentHealthMaxReference = run.CurrentHealth;
+            run.PendingStartPerkGroups = ReadStartPerkGroups();
+
+            RollPendingChoices(run, level);
 
             await _runRepository.InsertAsync(run, cancellationToken);
 
@@ -409,7 +413,7 @@ namespace Server.Runs
             }
 
             ApplyExperience(run, level, experience, outcome);
-            RollPendingLevelUps(run, level);
+            RollPendingChoices(run, level);
 
             if (await SaveAsync(run, cancellationToken) == false)
                 return Conflict();
@@ -900,11 +904,30 @@ namespace Server.Runs
 
             run.PendingLevelUps += outcome.LevelUps.Count;
 
-            RollPendingLevelUps(run, level);
+            RollPendingChoices(run, level);
         }
 
-        private void RollPendingLevelUps(RunDocument run, IStoryLevelMapper level)
+        private List<int> ReadStartPerkGroups()
         {
+            if (_configDistributor.Constants.TryGet(StartPerkGroupsConstant, out var constant) == false)
+                return new List<int>();
+
+            return ReadIntList(constant.ConstantValue);
+        }
+
+        private void RollPendingChoices(RunDocument run, IStoryLevelMapper level)
+        {
+            while (run.PendingChoice == null && 0 < run.PendingStartPerkGroups.Count)
+            {
+                var groupId = run.PendingStartPerkGroups[0];
+
+                run.PendingStartPerkGroups.RemoveAt(0);
+                run.PendingChoice = RollGroupPerkChoice(run, groupId);
+
+                if (run.PendingChoice == null)
+                    _logger.LogWarning("[Run] start perk group {GroupId} gave no perk choice runId = {RunId} pending = {Pending}", groupId, run.Id, run.PendingStartPerkGroups.Count);
+            }
+
             while (run.PendingChoice == null && 0 < run.PendingLevelUps)
             {
                 run.PendingLevelUps -= 1;
@@ -1017,6 +1040,11 @@ namespace Server.Runs
 
             var groupId = _runRandomFactory.PickWeighted(groupRandom, pattern.PerkPresetIds, pattern.PerkPresetWeights);
 
+            return RollGroupPerkChoice(run, groupId);
+        }
+
+        private RunPendingChoiceDocument? RollGroupPerkChoice(RunDocument run, int groupId)
+        {
             if (_configDistributor.PerkGroups.TryGet(groupId, out var group) == false)
             {
                 _logger.LogWarning("[Run] perk group {GroupId} is missing in configs", groupId);
@@ -1249,7 +1277,11 @@ namespace Server.Runs
 
         private List<int> ReadIntList(Dictionary<string, string> parameters, string key)
         {
-            var raw = ReadString(parameters, key);
+            return ReadIntList(ReadString(parameters, key));
+        }
+
+        private List<int> ReadIntList(string raw)
+        {
             var result = new List<int>();
 
             if (string.IsNullOrWhiteSpace(raw))
