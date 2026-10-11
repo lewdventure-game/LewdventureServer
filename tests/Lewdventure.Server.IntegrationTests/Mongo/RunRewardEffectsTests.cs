@@ -99,25 +99,27 @@ namespace Tests.Integration.Mongo
 
         [Test]
         [Order(3)]
-        public async Task MaxHealthChange_RescalesCurrentHealthBeforeBattle()
+        public async Task MaxHealthChange_RescalesCurrentHealthBeforeHealing()
         {
-            var started = await RunService.StartAsync(UserId, StoryLevelId, CancellationToken.None);
-
-            Assert.That(started.Succeeded, Is.True, string.Join("; ", started.Errors));
-
-            var run = started.Run!;
+            var run = await StartWithPerkChoiceAsync(HealingPerkId);
             var maxHealth = run.CurrentHealth;
 
             run.CurrentHealth = maxHealth / 4f;
-            run.CurrentHealthMaxReference = maxHealth / 2f;
+            run.CurrentHealthMaxReference = maxHealth * 0.75f;
             run.Rev += 1;
 
             Assert.That(await RunRepository.ReplaceAsync(run, run.Rev - 1, CancellationToken.None), Is.True);
 
-            var fight = await AdvanceToFightAsync(run.Id);
+            var chosen = await RunService.ChooseAsync(UserId, run.Id, new List<int> { HealingPerkId }, "rescale-choice", CancellationToken.None);
 
-            Assert.That(fight, Is.Not.Null, "в забеге не дошли до боя");
-            Assert.That(fight!.BattleInput!.TeamA.MainUnits[0].CurrentHealth, Is.EqualTo(MathF.Round(maxHealth / 2f, MidpointRounding.AwayFromZero)).Within(0.001f), "ХП не пересчитано по пропорции МАКС.ХП");
+            Assert.That(chosen.Succeeded, Is.True, string.Join("; ", chosen.Errors));
+
+            var afterChoice = await RunRepository.GetAsync(run.Id, CancellationToken.None);
+            var rescaled = MathF.Round(maxHealth / 4f * maxHealth / (maxHealth * 0.75f), MidpointRounding.AwayFromZero);
+            var expected = MathF.Min(maxHealth, MathF.Round(rescaled + maxHealth * HealingFromMaxValue, MidpointRounding.AwayFromZero));
+
+            Assert.That(afterChoice!.CurrentHealth, Is.EqualTo(expected).Within(0.001f), "ХП не пересчитано по пропорции МАКС.ХП");
+            Assert.That(afterChoice.CurrentHealthMaxReference, Is.EqualTo(maxHealth).Within(0.001f));
 
             await RunService.AbandonAsync(UserId, run.Id, CancellationToken.None);
         }
@@ -125,37 +127,6 @@ namespace Tests.Integration.Mongo
         private RunService RunService => _environment.Services.GetRequiredService<RunService>();
 
         private RunRepository RunRepository => _environment.Services.GetRequiredService<RunRepository>();
-
-        private async Task<RunStepOutcome?> AdvanceToFightAsync(string runId)
-        {
-            for (int guard = 0; guard < 50; guard++)
-            {
-                var refreshed = await RunRepository.GetAsync(runId, CancellationToken.None);
-
-                Assert.That(refreshed, Is.Not.Null);
-
-                if (string.Equals(refreshed!.Status, RunDocument.ActiveStatus, StringComparison.Ordinal) == false)
-                    return null;
-
-                if (refreshed.PendingChoice != null)
-                {
-                    var picks = refreshed.PendingChoice.Options.GetRange(0, refreshed.PendingChoice.ChoiceCount);
-
-                    await RunService.ChooseAsync(UserId, runId, picks, $"fight-choice-{guard}", CancellationToken.None);
-
-                    continue;
-                }
-
-                var step = await RunService.AdvanceAsync(UserId, runId, $"fight-request-{guard}", CancellationToken.None);
-
-                Assert.That(step.Succeeded, Is.True, string.Join("; ", step.Errors));
-
-                if (step.Step?.BattleScript != null)
-                    return step.Step;
-            }
-
-            return null;
-        }
 
         private async Task<RunDocument> StartWithPerkChoiceAsync(int perkId)
         {

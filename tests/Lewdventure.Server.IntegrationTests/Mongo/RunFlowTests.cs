@@ -374,9 +374,9 @@ namespace Tests.Integration.Mongo
 
             for (int experienceLevel = 1; experienceLevel < run.ExperienceLevel; experienceLevel++)
             {
-                Assert.That(distributor.ExperienceLevelPatterns.TryGet(level.ExperienceLevelId, experienceLevel, out var pattern), Is.True);
+                Assert.That(distributor.ExperienceLevelPatterns.TryGet(level!.ExperienceLevelId, experienceLevel, out var pattern), Is.True);
 
-                spent += pattern.ExperienceForNextLevel;
+                spent += pattern!.ExperienceForNextLevel;
             }
 
             return spent;
