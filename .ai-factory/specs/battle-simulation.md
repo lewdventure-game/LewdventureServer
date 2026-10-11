@@ -151,13 +151,9 @@ Snapshot — вход для серверной сборки `UnitState`. Ито
 
 Клиент **не** решает: крит, уклон, урон, смерть, статусы, исход. Только играет команды по порядку.
 
-### Dual combo multipliers (constants / bonuses / enemy pack)
+### Combo multiplier
 
-| Key / bucket | Role |
-| --- | --- |
-| `combo_1_multiplier_*` / `Combo1Multiplier*` | Множитель Combo1 |
-| `combo_2_multiplier_*` / `Combo2Multiplier*` | Множитель Combo2 |
-| Legacy `combo_multiplier_*` | Fallback: значение копируется в оба bucket, если раздельные ключи отсутствуют |
+Множитель комбо один на оба удара (ответ геймдизайна 2026-10-11): константа `combo_multiplier_base`, бонусы `combo_multiplier_*`, у врага ключ `combo_multiplier` в `other_characteristics`. Шансы раздельные (`combo_1_chance_*`, `combo_2_chance_*`). Ключи врага `combo_1_multiplier` / `combo_2_multiplier` не читаются, публикация конфига предупреждает о них.
 
 Combo2 roll выполняется **только** если Combo1 сработал (шанс прошёл).
 
@@ -369,7 +365,7 @@ Stage: при `stageId > 0` дополнительно умножается `Sto
 
 Снаряжение (с 2026-10-02): бонусы берутся из `Equipments.bonus_ids`, значение выбирается по уровню предмета из списка `Bonuses.bonus_value` (`10;12;14;...`), скиллы — из `Equipments.skill_ids`. Стоимости уровней — лист `Equipment_promotes` по `promote_id`. Требования трансформации с количеством: `equipment_id:<id>:<n>`, `equipment_rarity:<редкость>:<n>`. Редкости — 15 значений, в `RarityType` добавлены в конец, сравнивать числом нельзя. Подробности: [`docs/gdd/07-equipment.md`](../../docs/gdd/07-equipment.md).
 
-Вампиризм (формула 6) начисляется только в фазах `NormalAttack`, `CounterAttack`, `Combo1Attack`, `Combo2Attack`, `SummonAttack`. Урон скиллов, перков и статусов лечение не даёт.
+Вампиризм (формула 6) начисляется только в фазах `NormalAttack`, `CounterAttack`, `Combo1Attack`, `Combo2Attack` — от атак персонажа (ответ геймдизайна 2026-10-11). Атака саммона, урон скиллов, перков и статусов лечение не дают. Итоговое УВЕЛИЧЕНИЕ_ЛЕЧЕНИЯ (формула 7) дробное и не округляется; округляется только итоговое лечение: `healing` / `healing_from_max` математически, вампиризм вверх.
 
-Bonus `work_mode` — строка на mapper, parse через `BonusWorkModeParser`; battle apply (`operator` + `end_of_battle` / `first_turns` / `every_turn`) — `IBattleBonusService` + layered `CharacteristicBuckets` rebuild (формулы GDD 1/2/3/5/6/7; формула 5 со `|raw|` в знаменателе; шансы и множители по формуле 3, база из константы приводится как `constant - 1`, чтобы без бонусов итог равнялся константе). Status apply uses `status_target`; damage-over-time stacks aggregate into one presentation tick per `statusId` per turn, queue = attacking mains only.
+Bonus `work_mode` — строка на mapper, parse через `BonusWorkModeParser`; battle apply (`operator` + `end_of_battle` / `first_turns` / `every_turn`) — `IBattleBonusService` + layered `CharacteristicBuckets` rebuild (формулы GDD 1/2/3/5/6/7; формула 5 со `|raw|` в знаменателе; шансы и множители по формуле 3, база из константы приводится как `constant - 1`, чтобы без бонусов итог равнялся константе). Status apply uses `status_target`; `enemy` вешается на цель удара (снаряд, атака, скилл), если это живой main противника; если цель убита этим же ударом, статус не вешается и на следующего врага не переходит. Если у награды нет цели-противника (перк `action_reward`, награда на себя), носитель — первый живой main противника; damage-over-time stacks aggregate into one presentation tick per `statusId` per turn, queue = attacking mains only.
 Training / Artifact / Aspect sheets — data-only mappers + managers; grant в `UnitStateBuilder` из snapshot ids/levels. Пустые sheets = runtime no-op.

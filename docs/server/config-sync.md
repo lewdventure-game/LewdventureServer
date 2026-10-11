@@ -201,7 +201,7 @@ Meta (`permanent` / `end_of_game`) в текущем бою живут как у
 
 Клиентский spawn HP обязан использовать **ту же** формулу (`BattleUnitHealthBuilder.BuildEnemyMaxHealth`). Если в `ConfigBundle` нет этих полей — UI baseline = raw Health, а wire `SetHp` будет «прыгать вверх» после первого удара. Канон значений — Sheets на сервере (пример stage 4 → ×1.3 → enemy 10101 max = 130).
 
-Constants: `combo_1_multiplier_base` / `combo_2_multiplier_base`; fallback с legacy `combo_multiplier_base` в оба.
+Constants: `combo_multiplier_base` — один множитель комбо на оба удара. У врага в `other_characteristics` — `combo_multiplier`; ключи `combo_1_multiplier` / `combo_2_multiplier` не читаются, публикация предупреждает. `start_perk_groups` — список id групп перков через запятую для стартового выбора перков забега; несуществующая группа или нечисловое значение — предупреждение при публикации.
 
 ## Logging
 

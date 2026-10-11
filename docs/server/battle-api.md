@@ -94,7 +94,7 @@ Rewards in battle: `bonus` / `status` применяются в симуляци
 
 - `parameters`: `key:value;...` (`damage_ratio`, `flat_value`, `damage_length`, `max_stacks`, `bonuses`).
 - `activeBonuses` в snapshot: бонусы аккаунта (`remainingBattles = 0`) + бонусы забега; сервер грантит их через `IBattleBonusService.Grant` с `sourceKey run:{id}:{index}`.
-- Apply учитывает `status_target` (`caster` / `enemy`) относительно source/target reward.
+- Apply учитывает `status_target` (`caster` / `enemy`) относительно source/target reward: `enemy` вешается на цель удара, если она живой main противника; убитой этим ударом цели статус не достаётся и на следующего врага не переходит; без цели-противника — первый живой main противника.
 - Damage over time: side-wide queue by `proc_order`; tick damage = live `source.Damage * damage_ratio * (1-DEF)`; crit from live source. `sourceUnitId = -1` (статус из награды события или стартовый статус забега) → tick damage = `flat_value * (1-DEF)`, крита нет, roll крита не тратится; нет `flat_value` → Warning и урон 0.
 - Non–damage-over-time statuses expire at battle end (`bonus_change` lifecycle).
 - Resurrection perk: charges → 0 removes perk; death-time resurrect aborts remainder of current side-turn.

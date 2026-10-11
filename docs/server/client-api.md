@@ -190,6 +190,8 @@
 { "storyLevelId": 1, "requestId": "…", "battleDelivery": "seed" }
 ```
 
+Если в конфиге задана константа `start_perk_groups`, ответ `start` уже содержит `pendingChoice` с `kind: "perk"` — стартовый выбор перка. Его нужно показать и отправить `choose` до первого `advance`; групп может быть несколько, тогда после каждого `choose` приходит следующий `pendingChoice`.
+
 ### `POST /api/run/advance`
 
 ```json
