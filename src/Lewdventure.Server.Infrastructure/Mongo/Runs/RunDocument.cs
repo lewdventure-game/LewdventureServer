@@ -44,6 +44,8 @@ namespace Server.Infrastructure.Mongo.Runs
 
         public float CurrentHealth { get; set; }
 
+        public float CurrentHealthMaxReference { get; set; }
+
         public int PendingLevelUps { get; set; }
 
         public List<int> Perks { get; set; } = new();

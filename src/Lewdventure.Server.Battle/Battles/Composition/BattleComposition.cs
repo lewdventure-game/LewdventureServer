@@ -6,6 +6,7 @@ namespace Server.Battles
 {
     internal sealed class BattleComposition
     {
+        private readonly IBattleBonusService _battleBonusService;
         private readonly IBattleParameterParser _battleParameterParser;
         private readonly ISkillActionRegistry _skillActionRegistry;
         private readonly ISkillTriggerRegistry _skillTriggerRegistry;
@@ -60,6 +61,8 @@ namespace Server.Battles
                 CreateSkillCreators(parserUtils));
 
             var bonusService = new BattleBonusService(coreLog, commandFactory, _bonusWorkModeParser, bucketApplicator, characteristicCalculator, configDistributor);
+
+            _battleBonusService = bonusService;
             var rewardService = new BattleRewardService(coreLog, bonusService, commandFactory, _battleRewardParser, configDistributor, statusParametersParser);
 
             _perkFactory = new PerkFactory(coreLog, CreatePerkCreators(coreLog, parserUtils, rewardService));
@@ -98,6 +101,8 @@ namespace Server.Battles
                 seededRandomFactory,
                 _unitStateBuilder);
         }
+
+        public IBattleBonusService BattleBonusService => _battleBonusService;
 
         public IBattleParameterParser BattleParameterParser => _battleParameterParser;
 

@@ -11,6 +11,7 @@ namespace Server.Api.Composition
         {
             services
                 .AddScoped(CreateComposition)
+                .AddScoped(ResolveBonusService)
                 .AddScoped(ResolveSimulator)
                 .AddScoped(ResolveValidator)
                 .AddScoped(ResolveUnitStateBuilder)
@@ -25,6 +26,11 @@ namespace Server.Api.Composition
             var coreLog = coreLogFactory.Create(serviceProvider.GetRequiredService<CoreLogCategories>().Battles);
 
             return new BattleComposition(serviceProvider.GetRequiredService<IConfigDistributor>(), coreLog);
+        }
+
+        private IBattleBonusService ResolveBonusService(IServiceProvider serviceProvider)
+        {
+            return serviceProvider.GetRequiredService<BattleComposition>().BattleBonusService;
         }
 
         private IBattleSimulatorService ResolveSimulator(IServiceProvider serviceProvider)

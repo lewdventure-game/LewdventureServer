@@ -1,5 +1,6 @@
 using System.Globalization;
 using Server.Battles;
+using Server.Bonuses;
 using Server.Infrastructure.GameConfigs;
 using Server.Infrastructure.Mongo.Players;
 using Server.Infrastructure.Mongo.Runs;
@@ -16,12 +17,14 @@ namespace Server.Runs
         private const string RunIdPrefix = "run_";
         private const int MaxAttempts = 3;
 
+        private readonly IBattleBonusService _battleBonusService;
         private readonly IBattleParameterParser _battleParameterParser;
         private readonly IBattleRewardParser _battleRewardParser;
         private readonly IBattleScriptDigest _battleScriptDigest;
         private readonly IBattleSimulationValidator _battleSimulationValidator;
         private readonly IBattleSimulatorService _battleSimulatorService;
         private readonly IUnitStateBuilder _unitStateBuilder;
+        private readonly IBonusWorkModeParser _bonusWorkModeParser;
         private readonly IConfigDistributor _configDistributor;
         private readonly GameConfigSelection _gameConfigSelection;
         private readonly ILogger<RunService> _logger;
@@ -37,12 +40,14 @@ namespace Server.Runs
         private readonly TimeProvider _timeProvider;
 
         public RunService(
+            IBattleBonusService battleBonusService,
             IBattleParameterParser battleParameterParser,
             IBattleRewardParser battleRewardParser,
             IBattleScriptDigest battleScriptDigest,
             IBattleSimulationValidator battleSimulationValidator,
             IBattleSimulatorService battleSimulatorService,
             IUnitStateBuilder unitStateBuilder,
+            IBonusWorkModeParser bonusWorkModeParser,
             IConfigDistributor configDistributor,
             GameConfigSelection gameConfigSelection,
             ILogger<RunService> logger,
@@ -57,12 +62,14 @@ namespace Server.Runs
             RunStageRoller runStageRoller,
             TimeProvider timeProvider)
         {
+            _battleBonusService = battleBonusService;
             _battleParameterParser = battleParameterParser;
             _battleRewardParser = battleRewardParser;
             _battleScriptDigest = battleScriptDigest;
             _battleSimulationValidator = battleSimulationValidator;
             _battleSimulatorService = battleSimulatorService;
             _unitStateBuilder = unitStateBuilder;
+            _bonusWorkModeParser = bonusWorkModeParser;
             _configDistributor = configDistributor;
             _gameConfigSelection = gameConfigSelection;
             _logger = logger;
@@ -129,6 +136,7 @@ namespace Server.Runs
             };
 
             run.CurrentHealth = ReadStartHealth(profile, run);
+            run.CurrentHealthMaxReference = run.CurrentHealth;
 
             await _runRepository.InsertAsync(run, cancellationToken);
 
@@ -433,6 +441,8 @@ namespace Server.Runs
             var profile = await _playerProfileService.GetOrCreateAsync(userId, _configDistributor, cancellationToken);
             var enemyIds = ReadIntList(parameters, RunEventKeys.Enemies);
 
+            RescaleHealthToMax(profile, run);
+
             if (_runSnapshotBuilder.TryBuild(profile, run, stage, enemyIds, _configDistributor, out var simulationData, out var buildError) == false)
                 return Failed(buildError);
 
@@ -484,16 +494,17 @@ namespace Server.Runs
 
             var experience = storyEvent.LevelExperience;
 
+            run.CurrentHealth = NormalizeRunHealth(ReadFinalHealth(script, profile.Loadout.CharacterId, run.CurrentHealth));
+            run.CurrentHealthMaxReference = ReadMaxHealth(profile, run);
+
+            ConsumeBattleBonuses(run);
+
             var grant = await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, StageGrantKey(run), outcome, cancellationToken);
 
             if (grant.IsConflict)
                 return Conflict();
 
             experience += grant.Experience;
-
-            run.CurrentHealth = ReadFinalHealth(script, profile.Loadout.CharacterId, run.CurrentHealth);
-
-            ConsumeBattleBonuses(run);
             ApplyExperience(run, level, experience, outcome);
             ResolveStage(run, stage);
 
@@ -564,11 +575,19 @@ namespace Server.Runs
 
             var parsed = _battleRewardParser.Parse(rewards);
             var profileRewards = new List<BattleReward>(parsed.Count);
+            var healthRewards = new List<BattleReward>();
             var experience = 0;
 
             for (int i = 0; i < parsed.Count; i++)
             {
                 var reward = parsed[i];
+
+                if (reward.Type == BattleRewardType.Bonus && IsHealthEffectBonus(reward.Id))
+                {
+                    healthRewards.Add(reward);
+
+                    continue;
+                }
 
                 if (reward.Type == BattleRewardType.Bonus)
                 {
@@ -593,6 +612,13 @@ namespace Server.Runs
                 }
 
                 profileRewards.Add(reward);
+            }
+
+            if (0 < healthRewards.Count)
+            {
+                var profile = await _playerProfileService.GetOrCreateAsync(userId, _configDistributor, cancellationToken);
+
+                ApplyHealthRewards(profile, run, healthRewards);
             }
 
             if (0 < profileRewards.Count)
@@ -638,11 +664,13 @@ namespace Server.Runs
 
         private void AddRunBonus(RunDocument run, int bonusId, int count, int rewardLength)
         {
+            var remainingBattles = ResolveRemainingBattles(bonusId, rewardLength);
+
             for (int i = 0; i < run.Bonuses.Count; i++)
             {
                 var existing = run.Bonuses[i];
 
-                if (existing.BonusId != bonusId || existing.RemainingBattles != rewardLength)
+                if (existing.BonusId != bonusId || existing.RemainingBattles != remainingBattles)
                     continue;
 
                 existing.Count += count;
@@ -650,7 +678,107 @@ namespace Server.Runs
                 return;
             }
 
-            run.Bonuses.Add(new RunBonusDocument { BonusId = bonusId, Count = count, RemainingBattles = rewardLength });
+            run.Bonuses.Add(new RunBonusDocument { BonusId = bonusId, Count = count, RemainingBattles = remainingBattles });
+        }
+
+        private int ResolveRemainingBattles(int bonusId, int rewardLength)
+        {
+            if (0 < rewardLength)
+                return rewardLength;
+
+            if (_configDistributor.Bonuses.TryGet(bonusId, out var bonusMapper) == false)
+                return 0;
+
+            if (_bonusWorkModeParser.TryParse(bonusMapper.WorkModeParameters, out var workMode) == false)
+                return 0;
+
+            if (workMode.TryGetPart(BonusWorkModeKind.NextBattles, out var nextBattlesPart))
+                return nextBattlesPart.Count;
+
+            return 0;
+        }
+
+        private bool IsHealthEffectBonus(int bonusId)
+        {
+            if (_configDistributor.Bonuses.TryGet(bonusId, out var bonusMapper) == false)
+                return false;
+
+            return bonusMapper.BonusType == BonusType.Healing
+                || bonusMapper.BonusType == BonusType.HealingFromMax
+                || bonusMapper.BonusType == BonusType.CurrentHealthLocal;
+        }
+
+        private void ApplyHealthRewards(PlayerProfileDocument profile, RunDocument run, List<BattleReward> healthRewards)
+        {
+            RescaleHealthToMax(profile, run);
+
+            var unitState = BuildRunUnitState(profile, run);
+
+            if (unitState == null)
+                return;
+
+            var commands = new List<BattleCommand>();
+
+            for (int i = 0; i < healthRewards.Count; i++)
+                _battleBonusService.Grant(unitState, healthRewards[i].Id, healthRewards[i].Count, "run:health:" + i.ToString(CultureInfo.InvariantCulture), commands, 0);
+
+            var health = NormalizeRunHealth(unitState.CharacteristicState.Health);
+
+            _logger.LogInformation("[Run] health reward runId = {RunId} health = {Before} -> {After} max = {Max}", run.Id, run.CurrentHealth, health, unitState.CharacteristicState.MaxHealth);
+
+            run.CurrentHealth = health;
+            run.CurrentHealthMaxReference = unitState.CharacteristicState.MaxHealth;
+        }
+
+        private void RescaleHealthToMax(PlayerProfileDocument profile, RunDocument run)
+        {
+            if (run.CurrentHealth <= 0f || run.CurrentHealthMaxReference <= 0f)
+                return;
+
+            var maxHealth = ReadMaxHealth(profile, run);
+
+            if (maxHealth <= 0f || MathF.Abs(maxHealth - run.CurrentHealthMaxReference) < 0.5f)
+                return;
+
+            var health = NormalizeRunHealth(run.CurrentHealth * maxHealth / run.CurrentHealthMaxReference);
+
+            _logger.LogInformation("[Run] health rescaled runId = {RunId} health = {Before} -> {After} max = {OldMax} -> {NewMax}", run.Id, run.CurrentHealth, health, run.CurrentHealthMaxReference, maxHealth);
+
+            run.CurrentHealth = health;
+            run.CurrentHealthMaxReference = maxHealth;
+        }
+
+        private float ReadMaxHealth(PlayerProfileDocument profile, RunDocument run)
+        {
+            var unitState = BuildRunUnitState(profile, run);
+
+            if (unitState == null)
+                return 0f;
+
+            return unitState.CharacteristicState.MaxHealth;
+        }
+
+        private IUnitState? BuildRunUnitState(PlayerProfileDocument profile, RunDocument run)
+        {
+            var character = _runSnapshotBuilder.FindCharacter(profile, profile.Loadout.CharacterId);
+
+            if (character == null)
+                return null;
+
+            var unit = _runSnapshotBuilder.BuildMainUnit(profile, run, character);
+            var stageId = run.StageIndex < run.Stages.Count ? run.Stages[run.StageIndex].StageId : 0;
+
+            return _unitStateBuilder.Build(unit, BattleSide.Attacking, false, run.StoryLevelId, stageId);
+        }
+
+        private float NormalizeRunHealth(float health)
+        {
+            var rounded = MathF.Round(health, MidpointRounding.AwayFromZero);
+
+            if (rounded < 1f)
+                return 1f;
+
+            return rounded;
         }
 
         private void ConsumeBattleBonuses(RunDocument run)
