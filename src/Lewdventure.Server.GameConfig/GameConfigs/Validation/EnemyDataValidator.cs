@@ -27,6 +27,12 @@ namespace Server.GameConfigs
             "energy_max",
         };
 
+        private readonly string[] _obsoleteKeys =
+        {
+            "combo_1_multiplier",
+            "combo_2_multiplier",
+        };
+
         public void Collect(ConfigSnapshotDomain domain, List<string> warnings)
         {
             JArray rows;
@@ -56,12 +62,13 @@ namespace Server.GameConfigs
                 }
 
                 CollectMissingKeys(domain.Domain, id, raw, warnings);
+                CollectObsoleteKeys(domain.Domain, id, raw, warnings);
 
                 var packed = new EnemyCharacteristics(raw);
 
                 CollectChanceWithoutMultiplier(domain.Domain, id, "crit", packed.CriticalChance, packed.CriticalMultiplier, warnings);
-                CollectChanceWithoutMultiplier(domain.Domain, id, "combo_1", packed.Combo1Chance, packed.Combo1Multiplier, warnings);
-                CollectChanceWithoutMultiplier(domain.Domain, id, "combo_2", packed.Combo2Chance, packed.Combo2Multiplier, warnings);
+                CollectChanceWithoutMultiplier(domain.Domain, id, "combo_1", packed.Combo1Chance, packed.ComboMultiplier, warnings);
+                CollectChanceWithoutMultiplier(domain.Domain, id, "combo_2", packed.Combo2Chance, packed.ComboMultiplier, warnings);
                 CollectChanceWithoutMultiplier(domain.Domain, id, "counter", packed.CounterChance, packed.CounterMultiplier, warnings);
             }
         }
@@ -80,6 +87,15 @@ namespace Server.GameConfigs
                 return;
 
             warnings.Add($"Лист {domainName}, враг {id}: в {CharacteristicsProperty} нет ключей {string.Join(", ", missing)} — они считаются нулями.");
+        }
+
+        private void CollectObsoleteKeys(string domainName, string id, string raw, List<string> warnings)
+        {
+            for (int i = 0; i < _obsoleteKeys.Length; i++)
+            {
+                if (raw.Contains(_obsoleteKeys[i], StringComparison.OrdinalIgnoreCase))
+                    warnings.Add($"Лист {domainName}, враг {id}: ключ {_obsoleteKeys[i]} в {CharacteristicsProperty} не читается — множитель комбо один на оба удара, укажите combo_multiplier.");
+            }
         }
 
         private void CollectChanceWithoutMultiplier(string domainName, string id, string mechanic, float chance, float multiplier, List<string> warnings)

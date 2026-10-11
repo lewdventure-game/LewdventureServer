@@ -63,7 +63,7 @@ namespace Server.Battles
                 CriticalMultiplierBase = enemyMapper.CriticalMultiplier,
                 Combo1ChanceBase = enemyMapper.Combo1Chance,
                 Combo2ChanceBase = enemyMapper.Combo2Chance,
-                ComboMultiplierBase = ResolveEnemyComboMultiplier(enemyMapper),
+                ComboMultiplierBase = enemyMapper.ComboMultiplier,
                 CounterChanceBase = enemyMapper.CounterChance,
                 CounterMultiplierBase = enemyMapper.CounterMultiplier,
                 SkillMultiplierBase = enemyMapper.SpellMultiplier,
@@ -215,21 +215,6 @@ namespace Server.Battles
             buckets.VampyrismBase = _battleConstantsReader.Get(ConstantKeys.VampyrismBaseKey);
 
             _coreLog.Debug($"[Story][Battle]: Constants buckets seeded, maxHealthBase = {buckets.HealthBase}, damageBase = {buckets.DamageBase}, armorBase = {buckets.ArmorBase}, vampyrismBase = {buckets.VampyrismBase}, comboMnBase = {buckets.ComboMultiplierBase}");
-        }
-
-        private float ResolveEnemyComboMultiplier(IEnemyMapper enemyMapper)
-        {
-            var combo1 = enemyMapper.Combo1Multiplier;
-            var combo2 = enemyMapper.Combo2Multiplier;
-
-            if (combo1 != combo2)
-            {
-                _coreLog.Error($"[Story][Battle]: Enemy combo multipliers differ, enemyId = {enemyMapper.Id}, combo1 = {combo1}, combo2 = {combo2}");
-
-                throw new InvalidOperationException($"[Story][Battle]: Enemy combo multipliers differ, enemyId = {enemyMapper.Id}");
-            }
-
-            return combo1;
         }
 
         private float ReadStoryStageMultiplier(int stageId)

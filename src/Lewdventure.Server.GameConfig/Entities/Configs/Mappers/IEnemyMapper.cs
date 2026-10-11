@@ -32,9 +32,7 @@ namespace Server.Entities
 
         public float Combo2Chance { get; }
 
-        public float Combo1Multiplier { get; }
-
-        public float Combo2Multiplier { get; }
+        public float ComboMultiplier { get; }
 
         public float CounterChance { get; }
 

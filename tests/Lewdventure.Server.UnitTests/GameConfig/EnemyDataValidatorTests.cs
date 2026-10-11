@@ -59,6 +59,15 @@ namespace Tests.Unit.GameConfig
             Assert.That(warnings, Has.None.Contains("counter_chance"));
         }
 
+        [Test]
+        public void Collect_SeparateComboMultiplier_WarnsObsolete()
+        {
+            var warnings = Collect(FullCharacteristics + ";combo_2_multiplier:[1.5]");
+
+            Assert.That(warnings, Has.Some.Contains("ключ combo_2_multiplier"));
+            Assert.That(warnings, Has.None.Contains("ключ combo_1_multiplier"));
+        }
+
         private List<string> Collect(string characteristics)
         {
             var rows = new[]
