@@ -497,8 +497,7 @@ namespace Server.Battles
             return phase == BattlePhaseType.NormalAttack
                 || phase == BattlePhaseType.CounterAttack
                 || phase == BattlePhaseType.Combo1Attack
-                || phase == BattlePhaseType.Combo2Attack
-                || phase == BattlePhaseType.SummonAttack;
+                || phase == BattlePhaseType.Combo2Attack;
         }
 
         private void ApplyVampyrism(List<BattleCommand> commands, IUnitState actor, float dealtDamage)
