@@ -357,7 +357,7 @@ Skills: `id` + `type` + `parameters` из Skills sheet (`C:F`). Factory без �
 
 Источник правды конфигов — колонки Google Sheets (не клиентский JSON-экспорт). Подробности: [`config-sync.md`](../../Assets/Documents/Server/config-sync.md).
 
-Story level: `enemies_attack_multiplier` / `enemies_health_multiplier` применяются к health/damage врагов при build по `storyLevelId`.
+Story level: `enemies_attack_multiplier` / `enemies_health_multiplier` применяются к damage/health врагов при build по `storyLevelId`; без них — общий `enemy_stats_multiplier`, без него — 1.
 Stage: при `stageId > 0` дополнительно умножается `StoryStage.EnemyStatsMultiplier` на health/damage врагов.
 Промоуты персонажа (`Character_promotes`) бонусов в бою не дают: их награды (`bonus:<id>`) выдаются на аккаунт в мете и приезжают в снапшоте через `activeBonuses`.
 

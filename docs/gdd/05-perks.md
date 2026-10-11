@@ -37,7 +37,7 @@
 
 ### reward
 
-При получении перка выдаёт награды (обычно bonus).
+При получении перка выдаёт награды (обычно bonus). Выдача разовая, в момент выбора перка в забеге (`choose`): ресурсы — в профиль, бонусы и статусы — в забег, `resource:exp_lvl` — в опыт прохождения. В бою перк ничего не делает. Так же разово выдаются `rewards` у `action_reward`.
 
 Параметр: `rewards` (reward format).
 
@@ -54,7 +54,7 @@
 **Серверная каноника (battle):**
 
 - `proc_rounds` обязателен; пустой список → перк не триггерится.
-- Fire/Earth: шанс награды = `rewards_chance` (Z). Если на цели есть poison (fire) / burn (earth) → `Z * debuff_rewards_chance` (A; поле `A` в GDD отсутствует, канон = `debuff_rewards_chance`). Один apply `hit_rewards` при успехе; chance > 1 clamp к 1.
+- Fire/Earth: шанс награды = `rewards_chance`. Если на цели есть poison (fire) / burn (earth), шанс равен `debuff_rewards_chance` (заменяет, а не умножает; так в ГДД 2026-10-05). Без `debuff_rewards_chance` берётся `rewards_chance`. Один apply `hit_rewards` при успехе; chance > 1 clamp к 1.
 - Air/Water: на hit нет плоского apply; при стаках burn (air) / poison (water) — ролл `rewards_chance`, при успехе cleanse всех стаков семьи + `hit_rewards` за каждый снятый стак.
 
 ### reward_on_target_action

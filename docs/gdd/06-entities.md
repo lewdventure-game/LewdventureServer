@@ -58,7 +58,9 @@ Bundle id: `art_name`.
 
 ### Скиллы мобов
 
-Уникальная логика; сервер исполняет в фазах unit skill / energy (если есть).
+Уникальная логика; сервер исполняет в фазах unit skill / energy (если есть). Скиллы берутся из `Enemies.skill_ids` пресета моба, а не из визуала (`skin_name`), как написано в ГДД. Сторона боя решает, чьи скиллы брать: у защитников — скиллы моба, у персонажа — скиллы персонажа и снаряжения, даже если id персонажа и моба совпадут.
+
+Характеристики `health` и `damage` моба умножаются на `Story_levels.enemies_health_multiplier` / `enemies_attack_multiplier` (без них — `enemy_stats_multiplier`) и на `Story_stages.enemy_stats_multiplier` этапа.
 
 ### Визуал (клиент)
 

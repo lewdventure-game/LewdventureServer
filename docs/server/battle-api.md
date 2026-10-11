@@ -87,7 +87,7 @@ Rewards in battle: `bonus` / `status` применяются в симуляци
 ### Elemental perks
 
 - `proc_rounds` пустой → перк не триггерится (Warning на create).
-- Fire/Earth: шанс hit_rewards = `rewards_chance` (Z); при наличии poison (fire) / burn (earth) → `Z * debuff_rewards_chance` (A); один apply; clamp chance > 1.
+- Fire/Earth: шанс hit_rewards = `rewards_chance`; при наличии poison (fire) / burn (earth) шанс равен `debuff_rewards_chance` (без параметра — `rewards_chance`); один apply; clamp chance > 1.
 - Air/Water: flat hit_rewards на hit нет; при стаках семьи — ролл Z, затем cleanse всех стаков + `hit_rewards` за каждый снятый.
 
 ### Statuses

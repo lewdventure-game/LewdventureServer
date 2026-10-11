@@ -118,6 +118,12 @@ Ops-порт (9090) никогда не публикуется наружу: н�
 
 Это предупреждения, а не ошибки: публикация не блокируется, но в диалоге таблицы видно, что данные неполные.
 
+Ещё три предупреждения по прокачке и скиллам:
+
+- порог `energy` в `energy_needed` больше `energy_max_base` из `Constants` — энергия столько не накопится, скилл не сработает;
+- у саммона в `dmg_on_lvls` меньше значений, чем уровней в `Summon_levels` его паттерна, — выше последнего значения урон не растёт;
+- у бонуса снаряжения со значениями по уровням их меньше, чем уровней в `Equipment_promotes`, — выше последнего значения бонус не растёт.
+
 Диапазон листа определяет сам Apps Script (`getDataRange`), сервер хранит только каталог таблиц `ConfigSheets:Sheets` (`appsettings.json`), менять его только по решению владельца.
 
 ### Какая вкладка публикуется
@@ -168,8 +174,8 @@ DI: runtime доступ к конфигам **только** через `IConfi
 | Trainings | `Trainings` | stub: sheet id не wired, manager empty после sync |
 | Artifacts | `Artifacts` | stub: sheet id не wired |
 | Aspects | `Aspects` | stub: sheet id не wired |
-| Story_levels | `StoryLevels` | `enemies_attack_multiplier`, `enemies_health_multiplier` |
-| Story_stages | `StoryStages` | `enemy_stats_multiplier` применяется при `stageId > 0` |
+| Story_levels | `StoryLevels` | `enemies_attack_multiplier`, `enemies_health_multiplier` (необязательные, без них берётся `enemy_stats_multiplier`) |
+| Story_stages | `StoryStages` | `enemy_stats_multiplier` применяется при `stageId > 0`; пустое значение считается 1 с предупреждением в логе |
 | Story_events | `StoryEvents` | load-only |
 | Exp_levels_patterns | `ExperienceLevelPatterns` | load-only |
 | Perks | `Perks` | |
@@ -191,7 +197,7 @@ Meta (`permanent` / `end_of_game`) в текущем бою живут как у
 
 ## Enemy multipliers
 
-При билде врагов `UnitStateBuilder` умножает health/damage на `Story_levels.enemies_*_multiplier` по `storyLevelId` и на `Story_stages.enemy_stats_multiplier` по `stageId` (если `stageId > 0`).
+При билде врагов `UnitStateBuilder` умножает health на `Story_levels.enemies_health_multiplier`, damage на `Story_levels.enemies_attack_multiplier` по `storyLevelId` и оба на `Story_stages.enemy_stats_multiplier` по `stageId` (если `stageId > 0`). Если раздельной колонки нет или она пустая, берётся общий `Story_levels.enemy_stats_multiplier`, если нет и его — 1 с предупреждением.
 
 Клиентский spawn HP обязан использовать **ту же** формулу (`BattleUnitHealthBuilder.BuildEnemyMaxHealth`). Если в `ConfigBundle` нет этих полей — UI baseline = raw Health, а wire `SetHp` будет «прыгать вверх» после первого удара. Канон значений — Sheets на сервере (пример stage 4 → ×1.3 → enemy 10101 max = 130).
 
