@@ -158,7 +158,7 @@ namespace Server.Battles
         {
             return new List<IPerkCreator>
             {
-                new RewardPerkCreator(battleRewardService, coreLog, CreateReader(coreLog, parserUtils)),
+                new RewardPerkCreator(),
                 new ActionRewardPerkCreator(battleRewardService, coreLog, CreateReader(coreLog, parserUtils)),
                 new ResurrectionPerkCreator(coreLog, CreateReader(coreLog, parserUtils)),
                 new FireAttackPerkCreator(coreLog, CreateReader(coreLog, parserUtils)),

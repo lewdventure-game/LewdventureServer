@@ -23,14 +23,12 @@ namespace Server.Battles
         {
             _perkParameterReader.Read(mapper);
 
-            var rewardsOnGrant = _perkParameterReader.Rewards("rewards");
             var rewardsOnAction = _perkParameterReader.Rewards("rewards_on_action");
             var thresholds = _perkParameterReader.ActionThresholds();
             var rewardsChance = _perkParameterReader.Float("rewards_chance", 0f);
 
             return new ActionRewardPerk(
                 mapper,
-                rewardsOnGrant,
                 rewardsOnAction,
                 thresholds,
                 rewardsChance,

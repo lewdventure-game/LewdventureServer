@@ -34,15 +34,6 @@ namespace Server.Battles
             _statusParametersParser = statusParametersParser;
         }
 
-        public void ApplyEquippedPerks(IUnitState unitState)
-        {
-            var perks = unitState.Perks;
-            var commands = new List<BattleCommand>();
-
-            for (int i = 0; i < perks.Count; i++)
-                perks[i].OnEquipped(unitState, commands);
-        }
-
         public void RegisterSnapshotEquippedEntities(
             UnitState unitState,
             IUnitSnapshot unitSnapshot,

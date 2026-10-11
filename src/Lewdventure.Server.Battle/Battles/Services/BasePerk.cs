@@ -29,10 +29,6 @@ namespace Server.Battles
         {
         }
 
-        public virtual void OnEquipped(IUnitState owner, List<BattleCommand> commands)
-        {
-        }
-
         public virtual bool CanTrigger(int currentTurn)
         {
             return true;

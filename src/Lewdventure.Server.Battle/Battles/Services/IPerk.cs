@@ -16,8 +16,6 @@ namespace Server.Battles
 
         public void RestoreUsage(int usedCount);
 
-        public void OnEquipped(IUnitState owner, List<BattleCommand> commands);
-
         public bool CanTrigger(int currentTurn);
 
         public void Trigger(IPerkExecutionContext context);

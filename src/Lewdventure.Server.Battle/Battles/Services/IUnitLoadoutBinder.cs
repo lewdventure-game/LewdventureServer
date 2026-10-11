@@ -8,8 +8,6 @@ namespace Server.Battles
 
         public void RegisterSnapshotEquippedEntities(UnitState unitState, IUnitSnapshot unitSnapshot, bool isSummon, BattleSide battleSide);
 
-        public void ApplyEquippedPerks(IUnitState unitState);
-
         public void SeedActiveStatuses(UnitState unitState, IUnitSnapshot unitSnapshot, bool isSummon);
     }
 }

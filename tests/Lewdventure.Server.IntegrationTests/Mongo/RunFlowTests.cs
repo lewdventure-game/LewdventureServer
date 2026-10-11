@@ -23,6 +23,10 @@ namespace Tests.Integration.Mongo
         private const int SeededStatusId = 1;
         private const int ResurrectionPerkId = 7;
         private const int AccountBonusId = 1;
+        private const int RewardPerkId = 1;
+        private const int RewardPerkBonusId = 1;
+        private const int RewardPerkExperience = 20;
+        private const int FirePerkId = 2;
 
         private readonly FixturePaths _paths = new();
 
@@ -286,6 +290,96 @@ namespace Tests.Integration.Mongo
             Assert.That(afterFight!.Statuses, Is.Empty, "статусы забега обязаны расходоваться в бою");
 
             await runService.AbandonAsync(UserId, run.Id, CancellationToken.None);
+        }
+
+        [Test]
+        [Order(9)]
+        public async Task ChooseRewardPerk_GrantsItsRewardsOnce()
+        {
+            var runService = _environment.Services.GetRequiredService<RunService>();
+            var repository = _environment.Services.GetRequiredService<RunRepository>();
+            var run = await StartWithPerkChoiceAsync(new List<int> { RewardPerkId }, 1);
+            var experienceBefore = run.Experience;
+
+            var chosen = await runService.ChooseAsync(UserId, run.Id, new List<int> { RewardPerkId }, "reward-perk-choice", CancellationToken.None);
+
+            Assert.That(chosen.Succeeded, Is.True, string.Join("; ", chosen.Errors));
+
+            var afterChoice = await repository.GetAsync(run.Id, CancellationToken.None);
+
+            Assert.That(afterChoice!.Perks, Does.Contain(RewardPerkId));
+            Assert.That(CountRunBonus(afterChoice, RewardPerkBonusId), Is.EqualTo(1), "бонус перка reward обязан лечь в забег");
+            Assert.That(afterChoice.Experience + ExperienceSpentOnLevels(afterChoice), Is.EqualTo(experienceBefore + RewardPerkExperience), "опыт перка reward не выдан");
+
+            await runService.AbandonAsync(UserId, run.Id, CancellationToken.None);
+        }
+
+        [Test]
+        [Order(10)]
+        public async Task ChoosePerks_SamePerkTwice_IsRejected()
+        {
+            var runService = _environment.Services.GetRequiredService<RunService>();
+            var run = await StartWithPerkChoiceAsync(new List<int> { RewardPerkId, FirePerkId }, 2);
+
+            var chosen = await runService.ChooseAsync(UserId, run.Id, new List<int> { RewardPerkId, RewardPerkId }, "double-pick", CancellationToken.None);
+
+            Assert.That(chosen.Succeeded, Is.False);
+            Assert.That(chosen.Errors, Has.Some.Contains("picked twice"));
+
+            await runService.AbandonAsync(UserId, run.Id, CancellationToken.None);
+        }
+
+        private async Task<RunDocument> StartWithPerkChoiceAsync(List<int> options, int choiceCount)
+        {
+            var runService = _environment.Services.GetRequiredService<RunService>();
+            var repository = _environment.Services.GetRequiredService<RunRepository>();
+            var started = await runService.StartAsync(UserId, StoryLevelId, CancellationToken.None);
+
+            Assert.That(started.Succeeded, Is.True, string.Join("; ", started.Errors));
+
+            var run = started.Run!;
+
+            run.PendingChoice = new RunPendingChoiceDocument
+            {
+                Kind = RunPendingChoiceDocument.PerkKind,
+                Options = options,
+                ChoiceCount = choiceCount,
+            };
+            run.Rev += 1;
+
+            Assert.That(await repository.ReplaceAsync(run, run.Rev - 1, CancellationToken.None), Is.True);
+
+            return run;
+        }
+
+        private int CountRunBonus(RunDocument run, int bonusId)
+        {
+            var count = 0;
+
+            for (int i = 0; i < run.Bonuses.Count; i++)
+            {
+                if (run.Bonuses[i].BonusId == bonusId)
+                    count += run.Bonuses[i].Count;
+            }
+
+            return count;
+        }
+
+        private int ExperienceSpentOnLevels(RunDocument run)
+        {
+            var distributor = _environment.Services.GetRequiredService<IGameConfigSetProvider>().Current.Distributor;
+            var spent = 0;
+
+            Assert.That(distributor.StoryLevels.TryGet(run.StoryLevelId, out var level), Is.True);
+
+            for (int experienceLevel = 1; experienceLevel < run.ExperienceLevel; experienceLevel++)
+            {
+                Assert.That(distributor.ExperienceLevelPatterns.TryGet(level.ExperienceLevelId, experienceLevel, out var pattern), Is.True);
+
+                spent += pattern.ExperienceForNextLevel;
+            }
+
+            return spent;
         }
 
         private async Task GrantAccountBonusAsync()

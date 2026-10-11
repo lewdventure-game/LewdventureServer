@@ -205,7 +205,7 @@ namespace Server.Runs
                 return Failed($"Story level {run.StoryLevelId} is missing in configs.");
 
             if (string.Equals(run.PendingChoice.Kind, RunPendingChoiceDocument.PerkKind, StringComparison.Ordinal))
-                return await ChoosePerksAsync(run, level, picks, cancellationToken);
+                return await ChoosePerksAsync(userId, run, level, picks, cancellationToken);
 
             return await ChooseForkAsync(userId, run, level, picks, cancellationToken);
         }
@@ -247,7 +247,7 @@ namespace Server.Runs
             };
             var experience = storyEvent.LevelExperience;
 
-            var grant = await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, outcome, cancellationToken);
+            var grant = await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, StageGrantKey(run), outcome, cancellationToken);
 
             if (grant.IsConflict)
                 return Conflict();
@@ -333,7 +333,7 @@ namespace Server.Runs
             };
             var experience = storyEvent.LevelExperience;
 
-            var grant = await ApplyRewardsAsync(userId, run, rewards, rewardLength, outcome, cancellationToken);
+            var grant = await ApplyRewardsAsync(userId, run, rewards, rewardLength, StageGrantKey(run), outcome, cancellationToken);
 
             if (grant.IsConflict)
                 return Conflict();
@@ -353,7 +353,12 @@ namespace Server.Runs
             return new RunOperationResult(run, outcome, false, new List<string>());
         }
 
-        private async Task<RunOperationResult> ChoosePerksAsync(RunDocument run, IStoryLevelMapper level, IReadOnlyList<int> picks, CancellationToken cancellationToken)
+        private async Task<RunOperationResult> ChoosePerksAsync(
+            string userId,
+            RunDocument run,
+            IStoryLevelMapper level,
+            IReadOnlyList<int> picks,
+            CancellationToken cancellationToken)
         {
             var choice = run.PendingChoice!;
 
@@ -365,21 +370,55 @@ namespace Server.Runs
                 if (choice.Options.Contains(picks[i]) == false)
                     return Failed($"Perk {picks[i]} is not offered.");
 
-                run.Perks.Add(picks[i]);
+                for (int previous = 0; previous < i; previous++)
+                {
+                    if (picks[previous] == picks[i])
+                        return Failed($"Perk {picks[i]} is picked twice.");
+                }
             }
+
+            var outcome = new RunStepOutcome { EventType = "perk_choice" };
+            var experience = 0;
+            var choiceKey = "choice:" + run.RollIndex.ToString(CultureInfo.InvariantCulture);
 
             run.PendingChoice = null;
 
-            if (0 < run.PendingLevelUps)
+            for (int i = 0; i < picks.Count; i++)
             {
-                run.PendingLevelUps -= 1;
-                run.PendingChoice = RollPerkChoice(run, level);
+                var perkId = picks[i];
+
+                run.Perks.Add(perkId);
+
+                var grant = await ApplyRewardsAsync(userId, run, ReadPerkGrantRewards(perkId), 0, choiceKey + ":perk:" + perkId.ToString(CultureInfo.InvariantCulture), outcome, cancellationToken);
+
+                if (grant.IsConflict)
+                    return Conflict();
+
+                experience += grant.Experience;
             }
+
+            ApplyExperience(run, level, experience, outcome);
+            RollPendingLevelUps(run, level);
 
             if (await SaveAsync(run, cancellationToken) == false)
                 return Conflict();
 
             return new RunOperationResult(run, null, false, new List<string>());
+        }
+
+        private string ReadPerkGrantRewards(int perkId)
+        {
+            if (_configDistributor.Perks.TryGet(perkId, out var perkMapper) == false)
+                return string.Empty;
+
+            if (perkMapper.PerkType != PerkType.Reward && perkMapper.PerkType != PerkType.ActionReward)
+                return string.Empty;
+
+            var parameters = new Dictionary<string, string>();
+
+            _battleParameterParser.ParseKeyValues(perkMapper.PerkParameters, parameters);
+
+            return ReadString(parameters, RunEventKeys.Rewards);
         }
 
         private async Task<RunOperationResult> ResolveFightAsync(
@@ -445,7 +484,7 @@ namespace Server.Runs
 
             var experience = storyEvent.LevelExperience;
 
-            var grant = await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, outcome, cancellationToken);
+            var grant = await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, StageGrantKey(run), outcome, cancellationToken);
 
             if (grant.IsConflict)
                 return Conflict();
@@ -516,6 +555,7 @@ namespace Server.Runs
             RunDocument run,
             string rewards,
             int rewardLength,
+            string grantKey,
             RunStepOutcome outcome,
             CancellationToken cancellationToken)
         {
@@ -558,7 +598,7 @@ namespace Server.Runs
             if (0 < profileRewards.Count)
             {
                 var source = "run:" + run.Id;
-                var stepKey = source + ":stage:" + run.StageIndex.ToString(CultureInfo.InvariantCulture);
+                var stepKey = source + ":" + grantKey;
                 var result = await _playerRewardService.GrantAsync(userId, profileRewards, source, stepKey, _configDistributor, cancellationToken);
 
                 if (result.Conflict)
@@ -571,6 +611,11 @@ namespace Server.Runs
             }
 
             return new RunRewardGrant(experience, false);
+        }
+
+        private string StageGrantKey(RunDocument run)
+        {
+            return "stage:" + run.StageIndex.ToString(CultureInfo.InvariantCulture);
         }
 
         private void CollectAppliedRewards(List<BattleReward> profileRewards, PlayerProfileDocument profile, RunStepOutcome outcome)
@@ -646,11 +691,19 @@ namespace Server.Runs
 
             run.PendingLevelUps += outcome.LevelUps.Count;
 
-            if (run.PendingChoice != null)
-                return;
+            RollPendingLevelUps(run, level);
+        }
 
-            run.PendingLevelUps -= 1;
-            run.PendingChoice = RollPerkChoice(run, level);
+        private void RollPendingLevelUps(RunDocument run, IStoryLevelMapper level)
+        {
+            while (run.PendingChoice == null && 0 < run.PendingLevelUps)
+            {
+                run.PendingLevelUps -= 1;
+                run.PendingChoice = RollPerkChoice(run, level);
+
+                if (run.PendingChoice == null)
+                    _logger.LogWarning("[Run] level up gave no perk choice runId = {RunId} level = {Level} pending = {Pending}", run.Id, run.ExperienceLevel, run.PendingLevelUps);
+            }
         }
 
         private void CollectOfferablePerks(RunDocument run, IPerkGroupMapper group, out int[] offerableIds, out int[] offerableChances)

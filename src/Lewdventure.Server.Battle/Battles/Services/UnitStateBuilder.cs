@@ -118,7 +118,6 @@ namespace Server.Battles
             }
 
             _unitLoadoutBinder.SeedActiveStatuses(unitState, unitSnapshot, isSummon);
-            _unitLoadoutBinder.ApplyEquippedPerks(unitState);
             ApplySnapshotHealth(unitState, unitSnapshot);
 
             _coreLog.Debug($"[Story][Battle]: Built, id = {unitState.Id}, level = {unitState.Level}, slot = {unitState.SlotIndex}, hp = {characteristics.Health}/{characteristics.MaxHealth}, damage = {characteristics.Damage}, vampyrism = {characteristics.Vampyrism}, healingBoost = {characteristics.HealingBoost}, statuses = {unitState.ActiveStatuses.Count}, perks = {perks.Count}, skills = {skills.Count}, activeBonuses = {unitState.ActiveBonuses.Count}");

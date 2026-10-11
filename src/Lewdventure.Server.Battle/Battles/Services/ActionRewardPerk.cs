@@ -6,7 +6,6 @@ namespace Server.Battles
 {
     internal sealed class ActionRewardPerk : BasePerk
     {
-        private readonly IReadOnlyList<BattleReward> _rewardsOnGrant;
         private readonly IReadOnlyList<BattleReward> _rewardsOnAction;
         private readonly IReadOnlyList<PerkActionThreshold> _actionThresholds;
         private readonly float _rewardsChance;
@@ -16,7 +15,6 @@ namespace Server.Battles
 
         internal ActionRewardPerk(
             IPerkMapper mapper,
-            IReadOnlyList<BattleReward> rewardsOnGrant,
             IReadOnlyList<BattleReward> rewardsOnAction,
             IReadOnlyList<PerkActionThreshold> actionThresholds,
             float rewardsChance,
@@ -24,19 +22,11 @@ namespace Server.Battles
             ICoreLog coreLog)
             : base(mapper)
         {
-            _rewardsOnGrant = rewardsOnGrant;
             _rewardsOnAction = rewardsOnAction;
             _actionThresholds = actionThresholds;
             _rewardsChance = rewardsChance;
             _battleRewardService = battleRewardService;
             _coreLog = coreLog;
-        }
-
-        public override void OnEquipped(IUnitState owner, List<BattleCommand> commands)
-        {
-            _coreLog.Debug($"[Story][Battle]: Perk action reward grant, perkId = {Id}, ownerId = {owner.Id}, rewards = {_rewardsOnGrant.Count}");
-
-            _battleRewardService.Apply(_rewardsOnGrant, owner, owner, commands, 0);
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
