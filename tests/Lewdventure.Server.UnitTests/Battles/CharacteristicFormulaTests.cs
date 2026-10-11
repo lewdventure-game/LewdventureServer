@@ -62,6 +62,18 @@ namespace Tests.Unit.Battles
             Assert.That(state.Damage, Is.EqualTo(1f));
         }
 
+        [Test]
+        public void Formula7_KeepsFractionalHealingBoost()
+        {
+            var buckets = CreateBuckets();
+
+            buckets.HealingBoostPerk = 0.3f;
+
+            var state = Apply(buckets);
+
+            Assert.That(state.HealingBoost, Is.EqualTo(1.3f).Within(0.0001f));
+        }
+
         private CharacteristicBuckets CreateBuckets()
         {
             return new CharacteristicBuckets

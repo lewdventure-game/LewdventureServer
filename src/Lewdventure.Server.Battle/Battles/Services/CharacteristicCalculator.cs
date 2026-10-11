@@ -383,14 +383,13 @@ namespace Server.Battles
         private float ApplyFormula7(float healingBoostBase, float local, float perk, float global)
         {
             var value = (1f + healingBoostBase + local) * (1f + perk) * (1f + global);
-            var rounded = RoundMathematical(value);
 
-            if (rounded < 0f)
-                rounded = 0f;
+            if (value < 0f)
+                value = 0f;
 
-            _coreLog.Debug($"[Story][Battle]: Formula7, base = {healingBoostBase}, local = {local}, perk = {perk}, global = {global}, raw = {value}, result = {rounded}");
+            _coreLog.Debug($"[Story][Battle]: Formula7, base = {healingBoostBase}, local = {local}, perk = {perk}, global = {global}, result = {value}");
 
-            return rounded;
+            return value;
         }
 
         private float RoundMathematical(float value)
