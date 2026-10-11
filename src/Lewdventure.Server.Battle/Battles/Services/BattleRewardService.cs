@@ -331,7 +331,21 @@ namespace Server.Battles
             if (statusTarget == StatusTargetType.Enemy)
             {
                 if (attacker != null && defender != null)
-                    return TryGetOpponentMain(source, attacker, defender, out bearer);
+                {
+                    if (IsSummon(target) || source.Side == target.Side)
+                        return TryGetOpponentMain(source, attacker, defender, out bearer);
+
+                    if (target.IsAlive() == false)
+                    {
+                        _coreLog.Debug($"[Story][Battle]: status_target enemy target dead, status skipped, sourceId = {source.Id}, targetId = {target.Id}");
+
+                        return false;
+                    }
+
+                    bearer = target;
+
+                    return true;
+                }
 
                 if (IsSummon(target) || source.Side == target.Side)
                 {

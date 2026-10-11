@@ -267,6 +267,54 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
+        public void FirePerk_ProjectileKillsTarget_StatusIsNotMovedToNextEnemy()
+        {
+            var patched = ReplaceDomain(_domains, "Perks", rows =>
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    var row = (JObject)rows[i];
+
+                    if (row["id"]!.ToString() != FirePerkId.ToString())
+                        continue;
+
+                    row["perk_parameters"] = "projectile_count:[1];\ndamage_ratio:[1];\nhit_rewards:[status:1:1];\nrewards_chance:[1];\ndebuff_rewards_chance:[1];\nproc_rounds:[1]";
+                }
+            });
+
+            patched = ReplaceDomain(patched, "Enemies", rows =>
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    var row = (JObject)rows[i];
+
+                    row["skill_ids"] = "";
+                    row["damage"] = "1";
+                    row["health"] = row["id"]!.ToString() == EnemyId.ToString() ? "1" : "1000000";
+                }
+            });
+
+            var unitSnapshot = CreateUnitSnapshot();
+
+            unitSnapshot.ActivePerkIds.Add(FirePerkId);
+
+            var replayData = CreateReplayData(unitSnapshot);
+
+            replayData.TeamB.MainUnits.Add(new UnitSnapshot
+            {
+                Id = SecondEnemyId,
+                Level = 1,
+                SlotIndex = 1,
+            });
+
+            var script = CreateCore(patched).Replay(replayData);
+
+            Assert.That(CountKillUnit(script, EnemyId), Is.EqualTo(1));
+            Assert.That(CountAppliedStatus(script, EnemyId, BurningStatusId), Is.EqualTo(0));
+            Assert.That(CountAppliedStatus(script, SecondEnemyId, BurningStatusId), Is.EqualTo(0), "статус снаряда, убившего цель, не должен переходить на следующего врага");
+        }
+
+        [Test]
         public void SkillDamageOnAllEnemies_KillsUnitOutsideMainTarget()
         {
             var patched = ReplaceDomain(_domains, "Skills", rows =>
