@@ -14,6 +14,8 @@ namespace Tests.Unit.Battles
         private const int EnemyId = 10101;
         private const int BurningStatusId = 1;
         private const int ResurrectionPerkId = 7;
+        private const int FirePerkId = 2;
+        private const int PoisonStatusId = 3;
         private const int StoryLevelId = 1;
         private const ulong Seed = 42;
 
@@ -231,6 +233,59 @@ namespace Tests.Unit.Battles
 
             Assert.That(script.OutcomeType, Is.EqualTo(OutcomeType.Timeout));
             Assert.That(CountKillUnit(script, CharacterId), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void FirePerk_OnPoisonedEnemy_UsesDebuffChanceInsteadOfProduct()
+        {
+            var patched = ReplaceDomain(_domains, "Perks", rows =>
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    var row = (JObject)rows[i];
+
+                    if (row["id"]!.ToString() != FirePerkId.ToString())
+                        continue;
+
+                    row["perk_parameters"] = "projectile_count:[3];\ndamage_ratio:[0.15];\nhit_rewards:[status:1:1];\nrewards_chance:[0];\ndebuff_rewards_chance:[1];\nproc_rounds:[1,2,3]";
+                }
+            });
+
+            var battleCore = CreateCore(patched);
+            var unitSnapshot = CreateUnitSnapshot();
+
+            unitSnapshot.ActivePerkIds.Add(FirePerkId);
+
+            var replayData = CreateReplayData(unitSnapshot);
+
+            replayData.TeamB.MainUnits[0].ActiveStatusIds.Add(PoisonStatusId);
+
+            var script = battleCore.Replay(replayData);
+
+            Assert.That(CountAppliedStatus(script, EnemyId, BurningStatusId), Is.GreaterThan(0), "при яде на враге шанс обязан быть debuff_rewards_chance, а не rewards_chance * debuff_rewards_chance");
+        }
+
+        private int CountAppliedStatus(IBattleScriptResponse script, int targetId, int statusId)
+        {
+            var count = 0;
+
+            for (int i = 0; i < script.Steps.Count; i++)
+            {
+                var commands = script.Steps[i].Commands;
+
+                for (int commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    var command = commands[commandIndex];
+
+                    if (command.CommandType != CommandType.ApplyStatus)
+                        continue;
+
+                    if (command.Parameters["targetId"]!.Value<int>() == targetId && command.Parameters["statusId"]!.Value<int>() == statusId)
+                        count += 1;
+                }
+            }
+
+            return count;
         }
 
         private int CountKillUnit(IBattleScriptResponse script, int unitId)

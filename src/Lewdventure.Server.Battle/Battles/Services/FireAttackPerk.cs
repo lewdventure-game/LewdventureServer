@@ -23,7 +23,7 @@ namespace Server.Battles
             var chance = RewardsChance;
 
             if (hasDebuff)
-                chance = RewardsChance * DebuffRewardsChance;
+                chance = DebuffRewardsChance;
 
             context.CoreLog.Debug($"[Story][Battle]: Fire hit rewards chance, perkId = {Id}, rewardsChance = {RewardsChance}, debuffRewardsChance = {DebuffRewardsChance}, poisonStacks = {poisonStacks}, hasDebuff = {hasDebuff}, effectiveChance = {chance}");
 

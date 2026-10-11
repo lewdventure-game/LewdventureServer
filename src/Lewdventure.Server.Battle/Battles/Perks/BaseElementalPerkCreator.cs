@@ -25,7 +25,7 @@ namespace Server.Battles
             var damageRatio = _perkParameterReader.Float("damage_ratio", 0f);
             var hitRewards = _perkParameterReader.Rewards("hit_rewards");
             var rewardsChance = _perkParameterReader.Float("rewards_chance", 0f);
-            var debuffRewardsChance = _perkParameterReader.Float("debuff_rewards_chance", 1f);
+            var debuffRewardsChance = _perkParameterReader.Float("debuff_rewards_chance", rewardsChance);
             var procRounds = _perkParameterReader.ProcRounds();
 
             if (procRounds.Count == 0)
