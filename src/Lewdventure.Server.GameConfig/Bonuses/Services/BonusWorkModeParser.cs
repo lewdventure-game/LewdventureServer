@@ -187,28 +187,30 @@ namespace Server.Bonuses
                 return false;
             }
 
-            if (IsAllowedEquippedEntityType(entityType) == false)
+            if (TryNormalizeEquippedEntityType(entityType, out var normalizedEntityType) == false)
             {
                 _coreLog.Error($"[Config]: if_equipped entity type unsupported, entityType = {entityType}, raw = {raw}");
 
                 return false;
             }
 
+            entityType = normalizedEntityType;
+
             return true;
         }
 
-        private bool IsAllowedEquippedEntityType(string entityType)
+        private bool TryNormalizeEquippedEntityType(string entityType, out string normalizedEntityType)
         {
+            normalizedEntityType = string.Empty;
+
             if (entityType.Equals("equipments", StringComparison.OrdinalIgnoreCase) || entityType.Equals("equipment", StringComparison.OrdinalIgnoreCase))
-                return true;
+                normalizedEntityType = "equipments";
+            else if (entityType.Equals("characters", StringComparison.OrdinalIgnoreCase) || entityType.Equals("character", StringComparison.OrdinalIgnoreCase))
+                normalizedEntityType = "characters";
+            else if (entityType.Equals("summons", StringComparison.OrdinalIgnoreCase) || entityType.Equals("summon", StringComparison.OrdinalIgnoreCase))
+                normalizedEntityType = "summons";
 
-            if (entityType.Equals("characters", StringComparison.OrdinalIgnoreCase) || entityType.Equals("character", StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            if (entityType.Equals("summons", StringComparison.OrdinalIgnoreCase) || entityType.Equals("summon", StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            return false;
+            return 0 < normalizedEntityType.Length;
         }
     }
 }

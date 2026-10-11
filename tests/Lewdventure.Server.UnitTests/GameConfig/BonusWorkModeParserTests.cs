@@ -76,6 +76,19 @@ namespace Tests.Unit.GameConfig
             Assert.That(workMode.Parts[0].EquippedEntityId, Is.EqualTo(1));
         }
 
+        [TestCase("if_equipped:equipment:2", "equipments")]
+        [TestCase("if_equipped:Equipments:2", "equipments")]
+        [TestCase("if_equipped:character:2", "characters")]
+        [TestCase("if_equipped:summon:2", "summons")]
+        public void TryParse_IfEquipped_NormalizesEntityType(string raw, string expectedEntityType)
+        {
+            var parsed = CreateParser().TryParse(raw, out var workMode);
+
+            Assert.That(parsed, Is.True);
+            Assert.That(workMode.Parts[0].EquippedEntityType, Is.EqualTo(expectedEntityType));
+            Assert.That(workMode.Parts[0].EquippedEntityId, Is.EqualTo(2));
+        }
+
         private BonusWorkModeParser CreateParser()
         {
             return new BonusWorkModeParser(new SilentCoreLog());

@@ -10,7 +10,7 @@ namespace Server.Battles
 
         public int Level => _level;
 
-        internal EquipmentSnapshot(int id, int level)
+        public EquipmentSnapshot(int id, int level)
         {
             _id = id;
             _level = level;
