@@ -106,6 +106,25 @@ namespace Tests.Unit.Players
         }
 
         [Test]
+        public void ApplySummonMasteryRewards_OnMaxMastery_ConvertsLeftoverCopies()
+        {
+            var profile = CreateProfile();
+
+            _applier.Apply(profile, _parser.Parse("summon:1:4"), _configDistributor, DateTime.UtcNow);
+
+            var summon = profile.Summons[0];
+
+            Assert.That(_configDistributor.Summons.TryGet(1, out var summonMapper), Is.True);
+            Assert.That(summon.Copies, Is.EqualTo(3));
+
+            summon.MasteryLevel = _configDistributor.SummonMasteries.GetMaxMasteryLevel(1);
+            _applier.ApplySummonMasteryRewards(profile, summon, summonMapper!, _configDistributor, DateTime.UtcNow);
+
+            Assert.That(summon.Copies, Is.EqualTo(0), "лишние копии после ручного выхода на максимум мастерства обязаны конвертироваться сразу");
+            Assert.That(300 <= profile.Resources["hard_money"], Is.True);
+        }
+
+        [Test]
         public void Apply_SummonCopiesBeforeMaxMastery_StayOnAccount()
         {
             var profile = CreateProfile();
