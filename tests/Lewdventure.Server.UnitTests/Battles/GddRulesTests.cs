@@ -378,6 +378,41 @@ namespace Tests.Unit.Battles
             Assert.That(firstEnemyAttack, Is.EqualTo(0), "первым из врагов обязан ходить юнит первого слота");
         }
 
+        [Test]
+        public void CharacterSharingIdWithEnemy_DoesNotGetEnemySkills()
+        {
+            var patched = ReplaceDomain(_domains, "Characters", rows =>
+            {
+                var row = (JObject)rows[0];
+
+                row["skill_ids"] = "";
+            });
+
+            patched = ReplaceDomain(patched, "Enemies", rows =>
+            {
+                var twin = (JObject)rows[0].DeepClone();
+
+                twin["id"] = CharacterId.ToString();
+                twin["skill_ids"] = "1";
+                rows.Add(twin);
+            });
+
+            var script = CreateCore(patched).Replay(CreateReplayData(CreateUnitSnapshot()));
+
+            for (int i = 0; i < script.Steps.Count; i++)
+            {
+                var commands = script.Steps[i].Commands;
+
+                for (int commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    var command = commands[commandIndex];
+
+                    if (command.CommandType == CommandType.CastSkill)
+                        Assert.That(command.Parameters["actorId"]!.Value<int>(), Is.Not.EqualTo(CharacterId), "персонаж получил скилл моба с тем же id");
+                }
+            }
+        }
+
         private UnitSnapshot CreateEnemySnapshot()
         {
             return new UnitSnapshot

@@ -85,7 +85,7 @@ namespace Server.Battles
             _characteristicCalculator.ApplyToState(baseBuckets, characteristics, Array.Empty<ReplaceOverride>(), false, true);
 
             var perks = _unitLoadoutBinder.BuildPerks(unitSnapshot);
-            var skills = _unitLoadoutBinder.BuildSkills(unitSnapshot, isSummon);
+            var skills = _unitLoadoutBinder.BuildSkills(unitSnapshot, isSummon, battleSide);
             var unitState = new UnitState(
                 unitSnapshot.Id,
                 unitSnapshot.Level,

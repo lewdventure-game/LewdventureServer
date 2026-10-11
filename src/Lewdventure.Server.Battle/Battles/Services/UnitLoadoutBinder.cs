@@ -123,7 +123,7 @@ namespace Server.Battles
             return 0;
         }
 
-        public IReadOnlyList<ISkill> BuildSkills(IUnitSnapshot unitSnapshot, bool isSummon)
+        public IReadOnlyList<ISkill> BuildSkills(IUnitSnapshot unitSnapshot, bool isSummon, BattleSide battleSide)
         {
             var skillIds = new List<string>();
             var activeSkillIds = unitSnapshot.ActiveSkillIds;
@@ -151,10 +151,12 @@ namespace Server.Battles
                 }
             }
 
-            if (isSummon == false)
+            if (isSummon == false && battleSide == BattleSide.Defending)
+                InjectEnemySkillIds(unitSnapshot, skillIds);
+
+            if (isSummon == false && battleSide != BattleSide.Defending)
             {
                 InjectCharacterSkillIds(unitSnapshot, skillIds);
-                InjectEnemySkillIds(unitSnapshot, skillIds);
                 InjectEquipmentSkillIds(unitSnapshot, skillIds);
             }
 

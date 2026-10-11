@@ -4,7 +4,7 @@ namespace Server.Battles
     {
         public List<IPerk> BuildPerks(IUnitSnapshot unitSnapshot);
 
-        public IReadOnlyList<ISkill> BuildSkills(IUnitSnapshot unitSnapshot, bool isSummon);
+        public IReadOnlyList<ISkill> BuildSkills(IUnitSnapshot unitSnapshot, bool isSummon, BattleSide battleSide);
 
         public void RegisterSnapshotEquippedEntities(UnitState unitState, IUnitSnapshot unitSnapshot, bool isSummon, BattleSide battleSide);
 
