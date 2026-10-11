@@ -1,7 +1,6 @@
 using Server.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Server.Battles;
-using Server.Bonuses;
 using Server.Infrastructure.GameConfigs;
 using Server.Runs;
 using Server.Services;
@@ -17,7 +16,6 @@ namespace Tests.Integration.Mongo
 
             services.AddScoped(CreateComposition);
             services.AddScoped(ResolveBonusService);
-            services.AddScoped(ResolveBonusWorkModeParser);
             services.AddScoped(ResolveSimulator);
             services.AddScoped(ResolveValidator);
             services.AddScoped(ResolveUnitStateBuilder);
@@ -36,11 +34,6 @@ namespace Tests.Integration.Mongo
         private IBattleBonusService ResolveBonusService(IServiceProvider serviceProvider)
         {
             return serviceProvider.GetRequiredService<BattleComposition>().BattleBonusService;
-        }
-
-        private IBonusWorkModeParser ResolveBonusWorkModeParser(IServiceProvider serviceProvider)
-        {
-            return serviceProvider.GetRequiredService<BattleComposition>().BonusWorkModeParser;
         }
 
         private IBattleSimulatorService ResolveSimulator(IServiceProvider serviceProvider)
