@@ -225,12 +225,15 @@ namespace Server.Runs
             if (run == null)
                 return Failed("No active run.");
 
+            var profile = await _playerProfileService.GetOrCreateAsync(userId, _configDistributor, cancellationToken);
+
             run.Status = RunDocument.AbandonedStatus;
+            run.IsNewRecord = IsNewRecord(profile, run);
 
             if (await SaveAsync(run, cancellationToken) == false)
                 return Conflict();
 
-            await ClearCurrentRunAsync(userId, run.Id, cancellationToken);
+            await ClearCurrentRunAsync(userId, run, cancellationToken);
             _runAnalytics.TrackFinished(run);
             _logger.LogInformation("[Run] abandoned userId = {UserId} runId = {RunId} stage = {Stage}", userId, run.Id, run.StageIndex);
 
@@ -270,7 +273,7 @@ namespace Server.Runs
             if (await SaveAsync(run, cancellationToken) == false)
                 return Conflict();
 
-            return new RunOperationResult(run, outcome, false, new List<string>());
+            return await CompleteIfFinishedAsync(run, outcome, cancellationToken);
         }
 
         private async Task<RunOperationResult> OpenForkAsync(
@@ -358,7 +361,7 @@ namespace Server.Runs
             if (await SaveAsync(run, cancellationToken) == false)
                 return Conflict();
 
-            return new RunOperationResult(run, outcome, false, new List<string>());
+            return await CompleteIfFinishedAsync(run, outcome, cancellationToken);
         }
 
         private async Task<RunOperationResult> ChoosePerksAsync(
@@ -410,6 +413,9 @@ namespace Server.Runs
 
             if (await SaveAsync(run, cancellationToken) == false)
                 return Conflict();
+
+            if (IsFinished(run))
+                return await CompleteAsync(run, cancellationToken);
 
             return new RunOperationResult(run, null, false, new List<string>());
         }
@@ -480,12 +486,13 @@ namespace Server.Runs
             if (script.OutcomeType != OutcomeType.TeamAWin)
             {
                 run.Status = RunDocument.FailedStatus;
+                run.IsNewRecord = IsNewRecord(profile, run);
                 outcome.RunFailed = true;
 
                 if (await SaveAsync(run, cancellationToken) == false)
                     return Conflict();
 
-                await ClearCurrentRunAsync(userId, run.Id, cancellationToken);
+                await ClearCurrentRunAsync(userId, run, cancellationToken);
                 _runAnalytics.TrackFinished(run);
                 _logger.LogInformation("[Run] failed userId = {UserId} runId = {RunId} stage = {Stage} outcome = {Outcome}", userId, run.Id, run.StageIndex, script.OutcomeType);
 
@@ -513,22 +520,35 @@ namespace Server.Runs
             if (await SaveAsync(run, cancellationToken) == false)
                 return Conflict();
 
-            if (run.Stages.Count <= run.StageIndex && run.PendingChoice == null)
-            {
-                var completed = await CompleteAsync(run, cancellationToken);
+            return await CompleteIfFinishedAsync(run, outcome, cancellationToken);
+        }
 
-                if (completed.Succeeded == false)
-                    return completed;
+        private bool IsFinished(RunDocument run)
+        {
+            return run.Stages.Count <= run.StageIndex && run.PendingChoice == null;
+        }
 
-                outcome.RunCompleted = true;
-            }
+        private async Task<RunOperationResult> CompleteIfFinishedAsync(RunDocument run, RunStepOutcome outcome, CancellationToken cancellationToken)
+        {
+            if (IsFinished(run) == false)
+                return new RunOperationResult(run, outcome, false, new List<string>());
+
+            var completed = await CompleteAsync(run, cancellationToken);
+
+            if (completed.Succeeded == false)
+                return completed;
+
+            outcome.RunCompleted = true;
 
             return new RunOperationResult(run, outcome, false, new List<string>());
         }
 
         private async Task<RunOperationResult> CompleteAsync(RunDocument run, CancellationToken cancellationToken)
         {
+            var currentProfile = await _playerProfileService.GetOrCreateAsync(run.UserId, _configDistributor, cancellationToken);
+
             run.Status = RunDocument.CompletedStatus;
+            run.IsNewRecord = IsNewRecord(currentProfile, run);
 
             if (await SaveAsync(run, cancellationToken) == false)
                 return Conflict();
@@ -540,6 +560,8 @@ namespace Server.Runs
 
                 if (profile.Story.CompletedLevelIds.Contains(run.StoryLevelId) == false)
                     profile.Story.CompletedLevelIds.Add(run.StoryLevelId);
+
+                StoreRecord(profile, run);
 
                 if (string.Equals(profile.Story.CurrentRunId, run.Id, StringComparison.Ordinal))
                     profile.Story.CurrentRunId = string.Empty;
@@ -633,7 +655,7 @@ namespace Server.Runs
                 if (result.Succeeded == false)
                     _logger.LogWarning("[Run] rewards not applied userId = {UserId} runId = {RunId} errors = {Errors}", userId, run.Id, string.Join("; ", result.Errors));
                 else
-                    CollectAppliedRewards(profileRewards, result.Profile!, outcome);
+                    CollectAppliedRewards(run, profileRewards, result.Profile!, outcome);
             }
 
             return new RunRewardGrant(experience, false);
@@ -644,22 +666,81 @@ namespace Server.Runs
             return "stage:" + run.StageIndex.ToString(CultureInfo.InvariantCulture);
         }
 
-        private void CollectAppliedRewards(List<BattleReward> profileRewards, PlayerProfileDocument profile, RunStepOutcome outcome)
+        private void CollectAppliedRewards(RunDocument run, List<BattleReward> profileRewards, PlayerProfileDocument profile, RunStepOutcome outcome)
         {
             for (int i = 0; i < profileRewards.Count; i++)
             {
                 var reward = profileRewards[i];
+                var type = reward.Type.ToString();
+                var rewardKey = reward.HasStringRewardKey ? reward.RewardKey : string.Empty;
 
                 outcome.AppliedRewards.Add(new RunAppliedReward
                 {
-                    Type = reward.Type.ToString(),
+                    Type = type,
                     Id = reward.Id,
-                    RewardKey = reward.HasStringRewardKey ? reward.RewardKey : string.Empty,
+                    RewardKey = rewardKey,
                     Count = reward.Count,
                 });
+
+                AddRewardTotal(run, type, reward.Id, rewardKey, reward.Count);
             }
 
             outcome.ProfileRev = profile.Rev;
+        }
+
+        private void AddRewardTotal(RunDocument run, string type, int id, string rewardKey, int count)
+        {
+            for (int i = 0; i < run.RewardTotals.Count; i++)
+            {
+                var total = run.RewardTotals[i];
+
+                if (total.Id != id
+                    || string.Equals(total.Type, type, StringComparison.Ordinal) == false
+                    || string.Equals(total.RewardKey, rewardKey, StringComparison.Ordinal) == false)
+                    continue;
+
+                total.Count += count;
+
+                return;
+            }
+
+            run.RewardTotals.Add(new RunRewardTotalDocument { Type = type, Id = id, RewardKey = rewardKey, Count = count });
+        }
+
+        private bool IsNewRecord(PlayerProfileDocument profile, RunDocument run)
+        {
+            var record = FindRecord(profile, run.StoryLevelId);
+            var best = record == null ? 0 : record.BestStageIndex;
+
+            return best < run.StageIndex;
+        }
+
+        private void StoreRecord(PlayerProfileDocument profile, RunDocument run)
+        {
+            var record = FindRecord(profile, run.StoryLevelId);
+
+            if (record == null)
+            {
+                profile.Story.Records.Add(new PlayerStoryRecordDocument { StoryLevelId = run.StoryLevelId, BestStageIndex = run.StageIndex });
+
+                return;
+            }
+
+            if (record.BestStageIndex < run.StageIndex)
+                record.BestStageIndex = run.StageIndex;
+        }
+
+        private PlayerStoryRecordDocument? FindRecord(PlayerProfileDocument profile, int storyLevelId)
+        {
+            var records = profile.Story.Records;
+
+            for (int i = 0; i < records.Count; i++)
+            {
+                if (records[i].StoryLevelId == storyLevelId)
+                    return records[i];
+            }
+
+            return null;
         }
 
         private void AddRunBonus(RunDocument run, int bonusId, int count, int rewardLength)
@@ -1115,8 +1196,10 @@ namespace Server.Runs
             return await _playerProfileRepository.ReplaceAsync(profile, expectedRev, cancellationToken);
         }
 
-        private async Task ClearCurrentRunAsync(string userId, string runId, CancellationToken cancellationToken)
+        private async Task ClearCurrentRunAsync(string userId, RunDocument run, CancellationToken cancellationToken)
         {
+            var runId = run.Id;
+
             for (int attempt = 1; attempt <= MaxAttempts; attempt++)
             {
                 var profile = await _playerProfileService.GetOrCreateAsync(userId, _configDistributor, cancellationToken);
@@ -1127,6 +1210,7 @@ namespace Server.Runs
                 var expectedRev = profile.Rev;
 
                 profile.Story.CurrentRunId = string.Empty;
+                StoreRecord(profile, run);
                 profile.Rev = expectedRev + 1;
                 profile.UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime;
 

@@ -56,6 +56,10 @@ namespace Server.Infrastructure.Mongo.Runs
 
         public List<RunBonusDocument> Bonuses { get; set; } = new();
 
+        public List<RunRewardTotalDocument> RewardTotals { get; set; } = new();
+
+        public bool IsNewRecord { get; set; }
+
         public RunPendingChoiceDocument? PendingChoice { get; set; }
     }
 }

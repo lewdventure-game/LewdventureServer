@@ -5,5 +5,7 @@ namespace Server.Api.Endpoints
         public List<int> CompletedLevelIds { get; set; } = new();
 
         public string CurrentRunId { get; set; } = string.Empty;
+
+        public List<PlayerStoryRecordResponse> Records { get; set; } = new();
     }
 }

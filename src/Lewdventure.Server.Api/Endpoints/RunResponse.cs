@@ -26,6 +26,10 @@ namespace Server.Api.Endpoints
 
         public List<RunBonusResponse> Bonuses { get; set; } = new();
 
+        public List<RunRewardResponse> RewardTotals { get; set; } = new();
+
+        public bool IsNewRecord { get; set; }
+
         public RunChoiceResponse? PendingChoice { get; set; }
 
         public RunStepResponse? Step { get; set; }

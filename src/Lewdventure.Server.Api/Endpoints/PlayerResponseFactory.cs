@@ -25,6 +25,17 @@ namespace Server.Api.Endpoints
                 },
             };
 
+            for (int i = 0; i < profile.Story.Records.Count; i++)
+            {
+                var record = profile.Story.Records[i];
+
+                response.Story.Records.Add(new PlayerStoryRecordResponse
+                {
+                    StoryLevelId = record.StoryLevelId,
+                    BestStageIndex = record.BestStageIndex,
+                });
+            }
+
             for (int i = 0; i < profile.Characters.Count; i++)
             {
                 var character = profile.Characters[i];

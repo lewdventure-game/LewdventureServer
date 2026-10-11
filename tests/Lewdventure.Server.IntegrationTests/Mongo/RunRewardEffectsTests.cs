@@ -20,6 +20,8 @@ namespace Tests.Integration.Mongo
         private const int CharacterId = 1;
         private const int NextBattlesPerkId = 101;
         private const int HealingPerkId = 102;
+        private const int MoneyPerkId = 103;
+        private const int MoneyPerkAmount = 50;
         private const int NextBattlesBonusId = 5;
         private const int NextBattlesCount = 5;
         private const int HealingFromMaxBonusId = 9;
@@ -124,6 +126,84 @@ namespace Tests.Integration.Mongo
             await RunService.AbandonAsync(UserId, run.Id, CancellationToken.None);
         }
 
+        [Test]
+        [Order(5)]
+        public async Task PerkChoiceOnLastStage_CompletesRun()
+        {
+            var run = await StartWithPerkChoiceAsync(MoneyPerkId);
+
+            run.StageIndex = run.Stages.Count;
+            run.Rev += 1;
+
+            Assert.That(await RunRepository.ReplaceAsync(run, run.Rev - 1, CancellationToken.None), Is.True);
+
+            var chosen = await RunService.ChooseAsync(UserId, run.Id, new List<int> { MoneyPerkId }, "last-stage-choice", CancellationToken.None);
+
+            Assert.That(chosen.Succeeded, Is.True, string.Join("; ", chosen.Errors));
+            Assert.That(chosen.Step, Is.Not.Null);
+            Assert.That(chosen.Step!.RunCompleted, Is.True, "после выбора перка на последнем этапе забег обязан завершиться");
+
+            var final = await RunRepository.GetAsync(run.Id, CancellationToken.None);
+
+            Assert.That(final!.Status, Is.EqualTo(RunDocument.CompletedStatus));
+            Assert.That(FindRewardTotal(final, "soft_money"), Is.EqualTo(MoneyPerkAmount), "сумма наград забега не накопилась");
+        }
+
+        [Test]
+        [Order(4)]
+        public async Task Abandon_StoresBestStageRecord()
+        {
+            var first = await AbandonAtStageAsync(2);
+
+            Assert.That(first.IsNewRecord, Is.True, "первый результат на уровне обязан быть рекордом");
+
+            var second = await AbandonAtStageAsync(1);
+
+            Assert.That(second.IsNewRecord, Is.False, "результат хуже рекорда не рекорд");
+
+            var profile = await _environment.Services.GetRequiredService<PlayerProfileService>().GetOrCreateAsync(UserId, CancellationToken.None);
+            var best = 0;
+
+            for (int i = 0; i < profile.Story.Records.Count; i++)
+            {
+                if (profile.Story.Records[i].StoryLevelId == StoryLevelId)
+                    best = profile.Story.Records[i].BestStageIndex;
+            }
+
+            Assert.That(best, Is.EqualTo(2));
+        }
+
+        private async Task<RunDocument> AbandonAtStageAsync(int stageIndex)
+        {
+            var started = await RunService.StartAsync(UserId, StoryLevelId, CancellationToken.None);
+
+            Assert.That(started.Succeeded, Is.True, string.Join("; ", started.Errors));
+
+            var run = started.Run!;
+
+            run.StageIndex = stageIndex;
+            run.Rev += 1;
+
+            Assert.That(await RunRepository.ReplaceAsync(run, run.Rev - 1, CancellationToken.None), Is.True);
+
+            var abandoned = await RunService.AbandonAsync(UserId, run.Id, CancellationToken.None);
+
+            Assert.That(abandoned.Succeeded, Is.True, string.Join("; ", abandoned.Errors));
+
+            return abandoned.Run!;
+        }
+
+        private int FindRewardTotal(RunDocument run, string rewardKey)
+        {
+            for (int i = 0; i < run.RewardTotals.Count; i++)
+            {
+                if (string.Equals(run.RewardTotals[i].RewardKey, rewardKey, StringComparison.Ordinal))
+                    return run.RewardTotals[i].Count;
+            }
+
+            return 0;
+        }
+
         private RunService RunService => _environment.Services.GetRequiredService<RunService>();
 
         private RunRepository RunRepository => _environment.Services.GetRequiredService<RunRepository>();
@@ -196,6 +276,7 @@ namespace Tests.Integration.Mongo
         {
             rows.Add(CreateRewardPerk(rows, NextBattlesPerkId, $"rewards:[bonus:{NextBattlesBonusId}:1]"));
             rows.Add(CreateRewardPerk(rows, HealingPerkId, $"rewards:[bonus:{HealingFromMaxBonusId}:1]"));
+            rows.Add(CreateRewardPerk(rows, MoneyPerkId, $"rewards:[resource:soft_money:{MoneyPerkAmount}]"));
         }
 
         private JObject CreateRewardPerk(JArray rows, int perkId, string parameters)

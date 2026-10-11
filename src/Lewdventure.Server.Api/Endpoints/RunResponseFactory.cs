@@ -26,7 +26,21 @@ namespace Server.Api.Endpoints
                 ExperienceLevel = run.ExperienceLevel,
                 CurrentHealth = run.CurrentHealth,
                 Perks = new List<int>(run.Perks),
+                IsNewRecord = run.IsNewRecord,
             };
+
+            for (int i = 0; i < run.RewardTotals.Count; i++)
+            {
+                var total = run.RewardTotals[i];
+
+                response.RewardTotals.Add(new RunRewardResponse
+                {
+                    Type = total.Type,
+                    Id = total.Id,
+                    RewardKey = total.RewardKey,
+                    Count = total.Count,
+                });
+            }
 
             for (int i = 0; i < run.Stages.Count; i++)
             {
