@@ -314,6 +314,53 @@ namespace Tests.Unit.Battles
             Assert.That(CountKillUnit(script, SecondEnemyId), Is.EqualTo(1), "смерть от скилла по второму слоту не попала в сценарий");
         }
 
+        [Test]
+        public void StoryLevel_SeparateEnemyMultipliers_ApplyToHealthAndDamage()
+        {
+            var patched = ReplaceDomain(_domains, "Story_levels", rows =>
+            {
+                var row = (JObject)rows[0];
+
+                row["enemy_stats_multiplier"] = "1";
+                row["enemies_attack_multiplier"] = "2";
+                row["enemies_health_multiplier"] = "3";
+            });
+
+            var battleCore = CreateCore(patched);
+            var baseline = CreateCore(_domains).BuildCharacteristics(CreateEnemySnapshot(), BattleSide.Defending, false, StoryLevelId, 0);
+            var characteristics = battleCore.BuildCharacteristics(CreateEnemySnapshot(), BattleSide.Defending, false, StoryLevelId, 0);
+
+            Assert.That(characteristics.MaxHealth, Is.EqualTo(baseline.MaxHealth * 3f).Within(0.5f));
+            Assert.That(characteristics.Damage, Is.EqualTo(baseline.Damage * 2f).Within(0.5f));
+        }
+
+        [Test]
+        public void StoryStage_EmptyEnemyMultiplier_FallsBackToOne()
+        {
+            var patched = ReplaceDomain(_domains, "Story_stages", rows =>
+            {
+                var row = (JObject)rows[0];
+
+                row["enemy_stats_multiplier"] = "";
+            });
+
+            var battleCore = CreateCore(patched);
+            var withoutStage = battleCore.BuildCharacteristics(CreateEnemySnapshot(), BattleSide.Defending, false, StoryLevelId, 0);
+            var withEmptyStage = battleCore.BuildCharacteristics(CreateEnemySnapshot(), BattleSide.Defending, false, StoryLevelId, 1);
+
+            Assert.That(withEmptyStage.MaxHealth, Is.EqualTo(withoutStage.MaxHealth).Within(0.001f));
+        }
+
+        private UnitSnapshot CreateEnemySnapshot()
+        {
+            return new UnitSnapshot
+            {
+                Id = EnemyId,
+                Level = 1,
+                SlotIndex = 0,
+            };
+        }
+
         private int CountAppliedStatus(IBattleScriptResponse script, int targetId, int statusId)
         {
             var count = 0;

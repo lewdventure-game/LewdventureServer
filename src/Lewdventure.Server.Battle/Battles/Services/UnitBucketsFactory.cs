@@ -29,36 +29,32 @@ namespace Server.Battles
 
         public CharacteristicBuckets BuildEnemyBuckets(IEnemyMapper enemyMapper, int storyLevelId, int stageId)
         {
-            var levelMultiplier = ReadStoryLevelMultiplier(storyLevelId);
-            var stageMultiplier = 1f;
+            var stageMultiplier = ReadStoryStageMultiplier(stageId);
+            var healthMultiplier = 1f;
+            var attackMultiplier = 1f;
 
-            if (0 < stageId)
+            if (0 < storyLevelId)
             {
-                if (_configDistributor.StoryStages.TryGet(stageId, out var storyStage) == false)
+                if (_configDistributor.StoryLevels.TryGet(storyLevelId, out var storyLevel))
                 {
-                    _coreLog.Error($"[Story][Battle]: Story stage missing id = {stageId}");
-
-                    throw new InvalidOperationException($"[Story][Battle]: Story stage missing id = {stageId}");
+                    healthMultiplier = ResolveLevelMultiplier(storyLevel.EnemiesHealthMultiplier, storyLevel.EnemyStatsMultiplier, "enemies_health_multiplier", storyLevelId);
+                    attackMultiplier = ResolveLevelMultiplier(storyLevel.EnemiesAttackMultiplier, storyLevel.EnemyStatsMultiplier, "enemies_attack_multiplier", storyLevelId);
                 }
-
-                stageMultiplier = storyStage.EnemyStatsMultiplier;
-
-                if (stageMultiplier <= 0f)
+                else
                 {
-                    _coreLog.Error($"[Story][Battle]: Invalid enemy_stats_multiplier = {stageMultiplier}, stageId = {stageId}");
-
-                    throw new InvalidOperationException($"[Story][Battle]: Invalid enemy_stats_multiplier = {stageMultiplier}, stageId = {stageId}");
+                    _coreLog.Warning($"[Story][Battle]: Story level missing for enemy multiplier, storyLevelId = {storyLevelId}");
                 }
             }
 
-            stageMultiplier *= levelMultiplier;
+            healthMultiplier *= stageMultiplier;
+            attackMultiplier *= stageMultiplier;
 
-            _coreLog.Debug($"[Story][Battle]: Enemy multipliers, storyLevelId = {storyLevelId}, stageId = {stageId}, level = {levelMultiplier}, total = {stageMultiplier}");
+            _coreLog.Debug($"[Story][Battle]: Enemy multipliers, storyLevelId = {storyLevelId}, stageId = {stageId}, stage = {stageMultiplier}, health = {healthMultiplier}, attack = {attackMultiplier}");
 
             var buckets = new CharacteristicBuckets
             {
-                HealthBase = enemyMapper.Health * stageMultiplier,
-                DamageBase = enemyMapper.Damage * stageMultiplier,
+                HealthBase = enemyMapper.Health * healthMultiplier,
+                DamageBase = enemyMapper.Damage * attackMultiplier,
                 AttackMultiplierBase = 1f,
                 ArmorBase = enemyMapper.Defence,
                 DefenceCoefficient = _battleConstantsReader.Get(ConstantKeys.DefenceCoefficientKey),
@@ -236,26 +232,39 @@ namespace Server.Battles
             return combo1;
         }
 
-        private float ReadStoryLevelMultiplier(int storyLevelId)
+        private float ReadStoryStageMultiplier(int stageId)
         {
-            if (storyLevelId <= 0)
+            if (stageId <= 0)
                 return 1f;
 
-            if (_configDistributor.StoryLevels.TryGet(storyLevelId, out var storyLevel) == false)
+            if (_configDistributor.StoryStages.TryGet(stageId, out var storyStage) == false)
             {
-                _coreLog.Warning($"[Story][Battle]: Story level missing for enemy multiplier, storyLevelId = {storyLevelId}");
+                _coreLog.Error($"[Story][Battle]: Story stage missing id = {stageId}");
+
+                throw new InvalidOperationException($"[Story][Battle]: Story stage missing id = {stageId}");
+            }
+
+            if (storyStage.EnemyStatsMultiplier <= 0f)
+            {
+                _coreLog.Warning($"[Story][Battle]: Story stage enemy_stats_multiplier is not set, stageId = {stageId}");
 
                 return 1f;
             }
 
-            if (storyLevel.EnemyStatsMultiplier <= 0f)
-            {
-                _coreLog.Warning($"[Story][Battle]: Story level enemy_stats_multiplier is not set, storyLevelId = {storyLevelId}");
+            return storyStage.EnemyStatsMultiplier;
+        }
 
-                return 1f;
-            }
+        private float ResolveLevelMultiplier(float specificMultiplier, float commonMultiplier, string specificKey, int storyLevelId)
+        {
+            if (0f < specificMultiplier)
+                return specificMultiplier;
 
-            return storyLevel.EnemyStatsMultiplier;
+            if (0f < commonMultiplier)
+                return commonMultiplier;
+
+            _coreLog.Warning($"[Story][Battle]: Story level {specificKey} and enemy_stats_multiplier are not set, storyLevelId = {storyLevelId}");
+
+            return 1f;
         }
 
     }

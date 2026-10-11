@@ -25,7 +25,16 @@ namespace Server.Stories
         public int MaxBattleTurns { get; init; }
 
         [JsonProperty("enemy_stats_multiplier")]
+        [OptionalColumn("общий множитель, если не заданы enemies_attack_multiplier и enemies_health_multiplier")]
         public float EnemyStatsMultiplier { get; init; }
+
+        [JsonProperty("enemies_attack_multiplier")]
+        [OptionalColumn("без колонки урон врагов берёт enemy_stats_multiplier")]
+        public float EnemiesAttackMultiplier { get; init; }
+
+        [JsonProperty("enemies_health_multiplier")]
+        [OptionalColumn("без колонки ХП врагов берёт enemy_stats_multiplier")]
+        public float EnemiesHealthMultiplier { get; init; }
 
         [JsonProperty("trigger_types")]
         [JsonConverter(typeof(DelimitedEnumArrayConverter<StoryLevelTriggerType>), ';')]

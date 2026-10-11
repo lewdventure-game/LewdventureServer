@@ -18,6 +18,10 @@ namespace Server.Stories
 
         public float EnemyStatsMultiplier { get; }
 
+        public float EnemiesAttackMultiplier { get; }
+
+        public float EnemiesHealthMultiplier { get; }
+
         public StoryLevelTriggerType[] TriggerTypes { get; }
 
         public int[] TriggerValues { get; }
