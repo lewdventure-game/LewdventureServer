@@ -28,7 +28,7 @@ namespace Server.Battles
             if (hit && context.Target.IsAlive() && string.IsNullOrWhiteSpace(_hitRewards) == false)
             {
                 var rewards = context.BattleRewardService.Parse(_hitRewards);
-                context.BattleRewardService.Apply(
+                context.BattleRewardService.ApplyFromSkill(
                     rewards,
                     context.Actor,
                     context.Target,

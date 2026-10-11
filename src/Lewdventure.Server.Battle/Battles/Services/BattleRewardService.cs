@@ -52,6 +52,31 @@ namespace Server.Battles
             List<BattleCommand> commands,
             int currentTurn)
         {
+            ApplyRewards(rewards, source, target, attacker, defender, commands, currentTurn, false);
+        }
+
+        public void ApplyFromSkill(
+            IReadOnlyList<BattleReward> rewards,
+            IUnitState source,
+            IUnitState target,
+            ITeamSimulationState? attacker,
+            ITeamSimulationState? defender,
+            List<BattleCommand> commands,
+            int currentTurn)
+        {
+            ApplyRewards(rewards, source, target, attacker, defender, commands, currentTurn, true);
+        }
+
+        private void ApplyRewards(
+            IReadOnlyList<BattleReward> rewards,
+            IUnitState source,
+            IUnitState target,
+            ITeamSimulationState? attacker,
+            ITeamSimulationState? defender,
+            List<BattleCommand> commands,
+            int currentTurn,
+            bool isSkillSource)
+        {
             if (rewards.Count == 0)
                 return;
 
@@ -64,7 +89,7 @@ namespace Server.Battles
                 switch (reward.Type)
                 {
                     case BattleRewardType.Bonus:
-                        ApplyBonus(reward, target, commands, currentTurn);
+                        ApplyBonus(reward, source, target, commands, currentTurn, isSkillSource);
                         break;
                     case BattleRewardType.Status:
                         ApplyStatus(reward, source, target, attacker, defender, commands, currentTurn);
@@ -123,7 +148,13 @@ namespace Server.Battles
             return string.Empty;
         }
 
-        private void ApplyBonus(BattleReward reward, IUnitState target, List<BattleCommand> commands, int currentTurn)
+        private void ApplyBonus(
+            BattleReward reward,
+            IUnitState source,
+            IUnitState target,
+            List<BattleCommand> commands,
+            int currentTurn,
+            bool isSkillSource)
         {
             if (_configDistributor.Bonuses.TryGet(reward.Id, out _) == false)
             {
@@ -132,11 +163,15 @@ namespace Server.Battles
                 return;
             }
 
+            var sourceKey = isSkillSource
+                ? $"skill:{source.Id}:bonus:{reward.Id}"
+                : _battleBonusService.CreateFreeSourceKey(target, $"reward:bonus:{reward.Id}", 0);
+
             _battleBonusService.Grant(
                 target,
                 reward.Id,
                 reward.Count,
-                $"reward:bonus:{reward.Id}",
+                sourceKey,
                 commands,
                 currentTurn);
         }
@@ -235,7 +270,7 @@ namespace Server.Battles
                 }
 
                 var appliesBonuses = IsStrongDamageOverTime(statusType);
-                var sourceKey = $"status:{reward.Id}:{currentStacks}";
+                var sourceKey = _battleBonusService.CreateFreeSourceKey(bearer, $"status:{reward.Id}", currentStacks);
                 var activeStatus = new ActiveStatus(
                     reward.Id,
                     parameters.DamageLength,

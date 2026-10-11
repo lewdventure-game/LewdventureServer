@@ -328,7 +328,7 @@ namespace Server.Battles
 
                 var appliesBonuses = statusMapper.StatusType == StatusType.BurningStrong
                     || statusMapper.StatusType == StatusType.PoisonStrong;
-                var sourceKey = $"status:{statusId}:{currentStacks}";
+                var sourceKey = _battleBonusService.CreateFreeSourceKey(unitState, $"status:{statusId}", currentStacks);
                 var activeStatus = new ActiveStatus(
                     statusId,
                     parameters.DamageLength,

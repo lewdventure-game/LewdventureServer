@@ -47,7 +47,7 @@ namespace Server.Battles
             if (string.IsNullOrWhiteSpace(_allyRewards) == false)
             {
                 var rewards = context.BattleRewardService.Parse(_allyRewards);
-                context.BattleRewardService.Apply(
+                context.BattleRewardService.ApplyFromSkill(
                     rewards,
                     context.Actor,
                     ally,

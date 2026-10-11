@@ -18,6 +18,8 @@ namespace Server.Battles
             List<BattleCommand> commands,
             int currentTurn);
 
+        public string CreateFreeSourceKey(IUnitState unit, string sourceKeyPrefix, int firstIndex);
+
         public void RemoveBySourceKey(
             IUnitState unit,
             string sourceKey,

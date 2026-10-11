@@ -108,6 +108,20 @@ namespace Server.Battles
             }
         }
 
+        public string CreateFreeSourceKey(IUnitState unit, string sourceKeyPrefix, int firstIndex)
+        {
+            var index = firstIndex;
+            var sourceKey = $"{sourceKeyPrefix}:{index}";
+
+            while (IsSourceKeyTaken(unit, sourceKey))
+            {
+                ++index;
+                sourceKey = $"{sourceKeyPrefix}:{index}";
+            }
+
+            return sourceKey;
+        }
+
         public void RemoveBySourceKey(
             IUnitState unit,
             string sourceKey,
@@ -277,6 +291,31 @@ namespace Server.Battles
 
             commands.Add(_battleCommandFactory.SetHp(unit.Id, unit.SlotIndex, healthAfterRebuild));
             _coreLog.Debug($"[Story][Battle]: Bonus rebuild health sync, unitId = {unit.Id}, healthBefore = {healthBeforeRebuild}, healthAfter = {healthAfterRebuild}, maxHealth = {unit.CharacteristicState.MaxHealth}");
+        }
+
+        private bool IsSourceKeyTaken(IUnitState unit, string sourceKey)
+        {
+            var activeBonuses = unit.ActiveBonuses;
+            var nestedPrefix = sourceKey + ":";
+
+            for (int i = 0; i < activeBonuses.Count; i++)
+            {
+                var activeSourceKey = activeBonuses[i].SourceKey;
+
+                if (string.Equals(activeSourceKey, sourceKey, StringComparison.Ordinal)
+                    || activeSourceKey.StartsWith(nestedPrefix, StringComparison.Ordinal))
+                    return true;
+            }
+
+            var activeStatuses = unit.ActiveStatuses;
+
+            for (int i = 0; i < activeStatuses.Count; i++)
+            {
+                if (string.Equals(activeStatuses[i].BonusSourceKey, sourceKey, StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
         }
 
         private void RemoveBonusesWithExactSourceKey(IUnitState unit, string sourceKey)

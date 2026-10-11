@@ -19,5 +19,14 @@ namespace Server.Battles
             ITeamSimulationState? defender,
             List<BattleCommand> commands,
             int currentTurn);
+
+        public void ApplyFromSkill(
+            IReadOnlyList<BattleReward> rewards,
+            IUnitState source,
+            IUnitState target,
+            ITeamSimulationState? attacker,
+            ITeamSimulationState? defender,
+            List<BattleCommand> commands,
+            int currentTurn);
     }
 }

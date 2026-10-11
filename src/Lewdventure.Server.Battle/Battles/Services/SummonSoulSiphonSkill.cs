@@ -34,7 +34,7 @@ namespace Server.Battles
                 if (context.Target.IsAlive() && string.IsNullOrWhiteSpace(_hitRewards) == false)
                 {
                     var hitRewards = context.BattleRewardService.Parse(_hitRewards);
-                    context.BattleRewardService.Apply(
+                    context.BattleRewardService.ApplyFromSkill(
                         hitRewards,
                         context.Actor,
                         context.Target,
@@ -52,7 +52,7 @@ namespace Server.Battles
                 {
                     var ally = context.Attacker.MainUnits[allyIndex];
                     var allyRewards = context.BattleRewardService.Parse(_allyRewards);
-                    context.BattleRewardService.Apply(
+                    context.BattleRewardService.ApplyFromSkill(
                         allyRewards,
                         context.Actor,
                         ally,

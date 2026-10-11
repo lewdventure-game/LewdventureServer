@@ -32,7 +32,7 @@ namespace Server.Battles
                 new BattleReward(BattleRewardType.Status, statusId, 1),
             };
 
-            executionContext.BattleRewardService.Apply(
+            executionContext.BattleRewardService.ApplyFromSkill(
                 rewards,
                 executionContext.Actor,
                 context.Target,
