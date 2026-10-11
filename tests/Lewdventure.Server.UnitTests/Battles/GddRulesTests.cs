@@ -16,6 +16,7 @@ namespace Tests.Unit.Battles
         private const int ResurrectionPerkId = 7;
         private const int FirePerkId = 2;
         private const int PoisonStatusId = 3;
+        private const int SecondEnemyId = 10102;
         private const int StoryLevelId = 1;
         private const ulong Seed = 42;
 
@@ -263,6 +264,54 @@ namespace Tests.Unit.Battles
             var script = battleCore.Replay(replayData);
 
             Assert.That(CountAppliedStatus(script, EnemyId, BurningStatusId), Is.GreaterThan(0), "при яде на враге шанс обязан быть debuff_rewards_chance, а не rewards_chance * debuff_rewards_chance");
+        }
+
+        [Test]
+        public void SkillDamageOnAllEnemies_KillsUnitOutsideMainTarget()
+        {
+            var patched = ReplaceDomain(_domains, "Skills", rows =>
+            {
+                rows.Clear();
+                rows.Add(new JObject
+                {
+                    ["id"] = "1",
+                    ["triggers"] = "on_cooldown:[cooldown:{1},is_start_availiable:{1}]",
+                    ["actions"] = "damage:[damage:{1},target:{3},is_spell_amp:{0},timing:{0.1}]",
+                });
+            });
+
+            patched = ReplaceDomain(patched, "Characters", rows =>
+            {
+                var row = (JObject)rows[0];
+
+                row["skill_ids"] = "1";
+                row["promote_to_skill_levels"] = "1";
+            });
+
+            patched = ReplaceDomain(patched, "Enemies", rows =>
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    var row = (JObject)rows[i];
+
+                    row["skill_ids"] = "";
+                    row["damage"] = "1";
+                    row["health"] = row["id"]!.ToString() == EnemyId.ToString() ? "1000000" : "1";
+                }
+            });
+
+            var replayData = CreateReplayData(CreateUnitSnapshot());
+
+            replayData.TeamB.MainUnits.Add(new UnitSnapshot
+            {
+                Id = SecondEnemyId,
+                Level = 1,
+                SlotIndex = 1,
+            });
+
+            var script = CreateCore(patched).Replay(replayData);
+
+            Assert.That(CountKillUnit(script, SecondEnemyId), Is.EqualTo(1), "смерть от скилла по второму слоту не попала в сценарий");
         }
 
         private int CountAppliedStatus(IBattleScriptResponse script, int targetId, int statusId)

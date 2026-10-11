@@ -182,11 +182,12 @@ namespace Server.Battles
 
             _coreLog.Information($"[Story][Battle]: Energy skill cast, unitId = {actor.Id}, targetId = {target.Id}, skillId = {energySkill.SkillKey}, energy = {actor.CharacteristicState.Energy}");
 
+            var aliveBefore = CollectAliveMainUnits(defender, attacker);
+
             energySkill.NotifyActivated(activationContext);
             energySkill.Execute(context);
 
-            if (target.IsAlive() == false)
-                context.EmitDeath(target);
+            EmitSkillDeaths(context, aliveBefore);
         }
 
         private void TryCastLegacyEnergySkill(
@@ -242,14 +243,15 @@ namespace Server.Battles
             commands.Add(_battleCommandFactory.PlayAnimation(actor.Id, actor.SlotIndex, "cast"));
             commands.Add(_battleCommandFactory.Wait(castDuration));
 
+            var aliveBefore = CollectAliveMainUnits(defender, attacker);
+
             context.TryDealStrike(commands, context.SpellMultiplier, out _, out _);
 
             characteristics.Energy = 0f;
             commands.Add(_battleCommandFactory.SetEnergy(actor.Id, actor.SlotIndex, 0f));
             context.AddStep(commands, target);
 
-            if (target.IsAlive() == false)
-                context.EmitDeath(target);
+            EmitSkillDeaths(context, aliveBefore);
         }
 
         private bool TryFindEnergySkill(IUnitState actor, out ISkill energySkill)
@@ -401,12 +403,13 @@ namespace Server.Battles
                     seededRandomService,
                     turnState);
 
+                var aliveBefore = CollectAliveMainUnits(defender, attacker);
+
                 skill.Execute(context);
                 skill.NotifyActivated(activationContext);
                 executedCount += 1;
 
-                if (target.IsAlive() == false)
-                    context.EmitDeath(target);
+                EmitSkillDeaths(context, aliveBefore);
 
                 if (turnState.ShouldSkipRemainingActions(actor))
                     break;
@@ -524,12 +527,43 @@ namespace Server.Battles
 
                     _coreLog.Information($"[Story][Battle]: Instant skill activation, unitId = {owner.Id}, skillId = {skill.SkillKey}, turn = {currentTurn}");
 
+                    var aliveBefore = CollectAliveMainUnits(opponentTeam, ownerTeam);
+
                     skill.Execute(context);
                     skill.NotifyActivated(activationContext);
 
-                    if (target.IsAlive() == false)
-                        context.EmitDeath(target);
+                    EmitSkillDeaths(context, aliveBefore);
                 }
+            }
+        }
+
+        private List<IUnitState> CollectAliveMainUnits(ITeamSimulationState firstTeam, ITeamSimulationState secondTeam)
+        {
+            var alive = new List<IUnitState>(firstTeam.MainUnits.Count + secondTeam.MainUnits.Count);
+
+            AddAliveMainUnits(firstTeam, alive);
+            AddAliveMainUnits(secondTeam, alive);
+
+            return alive;
+        }
+
+        private void AddAliveMainUnits(ITeamSimulationState team, List<IUnitState> alive)
+        {
+            var mainUnits = team.MainUnits;
+
+            for (int i = 0; i < mainUnits.Count; i++)
+            {
+                if (mainUnits[i].IsAlive())
+                    alive.Add(mainUnits[i]);
+            }
+        }
+
+        private void EmitSkillDeaths(ISkillExecutionContext context, List<IUnitState> aliveBefore)
+        {
+            for (int i = 0; i < aliveBefore.Count; i++)
+            {
+                if (aliveBefore[i].IsAlive() == false)
+                    context.EmitDeath(aliveBefore[i]);
             }
         }
 
