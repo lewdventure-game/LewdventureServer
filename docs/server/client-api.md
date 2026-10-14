@@ -56,9 +56,9 @@
   "resources": { "soft_money": 1500, "summon_lvl": 40 },
   "characters": [ { "id": 1, "copies": 3, "promoteLevel": 2, "unlockedScenes": [101, 102] } ],
   "summons": [ { "id": 1, "copies": 4, "level": 3, "masteryLevel": 1, "skillLevels": [2, 1], "unlockedScenes": [101] } ],
-  "equipment": [ { "instanceId": "eq_…", "configId": 5, "level": 2, "mergeNumber": 0 } ],
+  "equipment": [ { "instanceId": "eq_…", "configId": 5, "level": 2, "mergeNumber": 1 } ],
   "bonuses": [ { "id": 1, "count": 2 } ],
-  "loadout": { "characterId": 1, "equipment": { "weapon": "eq_…" }, "summons": [1, 2] },
+  "loadout": { "characterId": 1, "equipment": { "body": "eq_…" }, "summons": [1, 2] },
   "story": { "completedLevelIds": [1], "currentRunId": "run_…", "records": [ { "storyLevelId": 1, "bestStageIndex": 4 } ] },
   "flags": { "tutorial_done": 1 }
 }
@@ -68,21 +68,19 @@
 
 `bonuses` — постоянные бонусы аккаунта (`permanent` / `if_equipped` из листа `Bonuses`), выданные наградами; в бой они уезжают сами, клиенту нужны только для показа.
 
-`loadout.equipment` — словарь «слот → `instanceId`»; имена слотов задаёт клиент и конфиг экипировки. Сервер проверяет: персонаж открыт и есть в конфигах, не более трёх саммонов, саммоны без повторов и в собственности, экипировка в собственности и не занимает два слота одновременно. Нарушение — `400` с текстом причины.
+`loadout.equipment` — словарь «слот → `instanceId`»; слоты — виды снаряжения из ГДД: `body`, `pants`, `boots`, `necklace`, предмет можно надеть только в слот своего `type`. `mergeNumber` предмета — номер в цепочке трансформации из конфига (`merge_number`). Сервер проверяет: персонаж открыт и есть в конфигах, не более трёх саммонов, саммоны без повторов и в собственности, экипировка в собственности и не занимает два слота одновременно. Нарушение — `400` с текстом причины.
 
 Новый профиль создаётся пустым и получает стартовый набор из константы `start_content` (синтаксис наград `тип:id:количество` через запятую, например `character:1:1,resource:soft_money:500`). Если константы в конфигах нет, профиль останется без персонажа, и `POST /api/run/start` ответит `400` с `Loadout has no character.` Стартовый набор выдаётся один раз (флаг профиля `startContentGranted`), даже если в нём одни ресурсы.
 
 ### `POST /api/player/loadout`
 
 ```json
-{ "requestId": "…", "characterId": 1, "equipment": { "weapon": "eq_…" }, "summons": [1, 2] }
+{ "requestId": "…", "characterId": 1, "equipment": { "body": "eq_…" }, "summons": [1, 2] }
 ```
 
 Ответ — профиль целиком.
 
 ### `GET /api/player/characteristics`
-
-Поле `equipmentSpellMultiplier` удалено 2026-10-02 вместе с характеристикой СНАР_СПЕЛЛ_МН.
 
 Итоговые характеристики выбранного персонажа с учётом прокачек, экипировки, саммонов, перков и статусов активного забега. Считаются тем же кодом, что бой.
 
@@ -94,7 +92,7 @@
   "combo1Chance": 0.1, "combo2Chance": 0.05, "comboMultiplier": 0.5,
   "counterChance": 0.1, "counterMultiplier": 0.7,
   "energy": 0, "energyGain": 30, "maxEnergy": 100,
-  "skillMultiplier": 1, "equipmentSpellMultiplier": 1, "vampyrism": 0, "healingBoost": 1
+  "skillMultiplier": 1, "vampyrism": 0, "healingBoost": 1
 }
 ```
 
@@ -114,7 +112,7 @@
 { "instanceId": "eq_…", "requestId": "…" }
 ```
 
-Уровень предмета падает до первого, возвращается часть потраченных ресурсов (`equipment_lvl_drop_proportion`). Ответ — профиль.
+Уровень предмета падает до первого, возвращается округлённая сумма потраченных ресурсов × `equipment_lvl_drop_coeff` (старое имя `equipment_lvl_drop_proportion` читается как запасное), сама операция стоит ресурс из `equipment_lvl_drop_resource` (пусто — бесплатно). Ответ — профиль.
 
 ### `POST /api/player/equipment/merge`
 
@@ -427,7 +425,7 @@
 | Перки | конфиги `Configs.Perks` / `Configs.PerkGroups`; активные в забеге — `run.perks`, выбор — `pendingChoice` |
 | Бонусы | активные в забеге — `run.bonuses`; вне забега отдельной сущности нет, они уже учтены в характеристиках; описания — `Configs.Bonuses` |
 | Статусы | конфиги `Configs.Statuses`; в бою приходят командами `ApplyStatus` / `TickStatus` / `RemoveStatus` |
-| Экипировка | профиль (`equipment`, `loadout`), прокачка уровня — `POST /api/player/equipment/level`; трансформации нет |
+| Экипировка | профиль (`equipment`, `loadout`), прокачка уровня — `POST /api/player/equipment/level`, сброс — `/equipment/level/reset`, трансформация — `/equipment/merge` |
 | Саммоны | профиль (`summons`), прокачка — `/summon/level`, `/summon/mastery`, `/summon/skill/level`; описания — `Configs.Summons`, `Configs.SummonLevels`, `Configs.SummonMasteries`, `Configs.SkillPromotes` |
 | Сюжет | `Configs.StoryLevels` / `StoryStages` / `StoryEvents` для текстов и визуала, прохождение — `/api/run/*` |
 | Награды | `step.appliedRewards` и `profileRev`, ресурсы — в профиле |
