@@ -117,6 +117,9 @@ namespace Server.Infrastructure.Players
         {
             var errors = new List<string>();
 
+            if (string.IsNullOrEmpty(profile.Story.CurrentRunId) == false && update.CharacterId != profile.Loadout.CharacterId)
+                errors.Add($"Character cannot be changed during run {profile.Story.CurrentRunId}.");
+
             if (OwnsCharacter(profile, update.CharacterId) == false)
                 errors.Add($"Character {update.CharacterId} is not unlocked.");
             else if (configDistributor.Characters.TryGet(update.CharacterId, out _) == false)

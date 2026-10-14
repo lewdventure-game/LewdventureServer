@@ -91,13 +91,19 @@ namespace Server.Runs
             var run = await _runRepository.GetActiveAsync(userId, cancellationToken);
 
             if (run == null)
+            {
+                await ReconcileFinishedRunAsync(userId, cancellationToken);
+
                 return Failed("No active run.");
+            }
 
             return new RunOperationResult(run, null, false, new List<string>());
         }
 
         public async Task<RunOperationResult> StartAsync(string userId, int storyLevelId, CancellationToken cancellationToken)
         {
+            await ReconcileFinishedRunAsync(userId, cancellationToken);
+
             var active = await _runRepository.GetActiveAsync(userId, cancellationToken);
 
             if (active != null)
@@ -144,8 +150,16 @@ namespace Server.Runs
 
             await _runRepository.InsertAsync(run, cancellationToken);
 
-            if (await SetCurrentRunAsync(profile, run.Id, now, cancellationToken) == false)
+            if (await SetCurrentRunWithRetryAsync(userId, profile, run.Id, now, cancellationToken) == false)
+            {
+                run.Status = RunDocument.AbandonedStatus;
+
+                await SaveAsync(run, cancellationToken);
+
+                _logger.LogWarning("[Run] start rolled back userId = {UserId} runId = {RunId}", userId, run.Id);
+
                 return Conflict();
+            }
 
             _runAnalytics.TrackStarted(run);
             _logger.LogInformation("[Run] started userId = {UserId} runId = {RunId} level = {Level} stages = {Stages} config = {Config}", userId, run.Id, storyLevelId, run.Stages.Count, run.ConfigVersion);
@@ -1247,6 +1261,63 @@ namespace Server.Runs
             profile.UpdatedAt = now;
 
             return await _playerProfileRepository.ReplaceAsync(profile, expectedRev, cancellationToken);
+        }
+
+        private async Task<bool> SetCurrentRunWithRetryAsync(string userId, PlayerProfileDocument profile, string runId, DateTime now, CancellationToken cancellationToken)
+        {
+            if (await SetCurrentRunAsync(profile, runId, now, cancellationToken))
+                return true;
+
+            for (int attempt = 2; attempt <= MaxAttempts; attempt++)
+            {
+                var fresh = await _playerProfileService.GetOrCreateAsync(userId, _configDistributor, cancellationToken);
+
+                if (string.IsNullOrEmpty(fresh.Story.CurrentRunId) == false && string.Equals(fresh.Story.CurrentRunId, runId, StringComparison.Ordinal) == false)
+                    return false;
+
+                if (await SetCurrentRunAsync(fresh, runId, now, cancellationToken))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private async Task ReconcileFinishedRunAsync(string userId, CancellationToken cancellationToken)
+        {
+            for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+            {
+                var profile = await _playerProfileService.GetOrCreateAsync(userId, _configDistributor, cancellationToken);
+                var currentRunId = profile.Story.CurrentRunId;
+
+                if (string.IsNullOrEmpty(currentRunId))
+                    return;
+
+                var run = await _runRepository.GetAsync(currentRunId, cancellationToken);
+
+                if (run != null && string.Equals(run.Status, RunDocument.ActiveStatus, StringComparison.Ordinal))
+                    return;
+
+                var expectedRev = profile.Rev;
+
+                if (run != null && string.Equals(run.UserId, userId, StringComparison.Ordinal))
+                {
+                    if (string.Equals(run.Status, RunDocument.CompletedStatus, StringComparison.Ordinal) && profile.Story.CompletedLevelIds.Contains(run.StoryLevelId) == false)
+                        profile.Story.CompletedLevelIds.Add(run.StoryLevelId);
+
+                    StoreRecord(profile, run);
+                }
+
+                profile.Story.CurrentRunId = string.Empty;
+                profile.Rev = expectedRev + 1;
+                profile.UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime;
+
+                if (await _playerProfileRepository.ReplaceAsync(profile, expectedRev, cancellationToken))
+                {
+                    _logger.LogWarning("[Run] finished run reconciled userId = {UserId} runId = {RunId} status = {Status}", userId, currentRunId, run == null ? "missing" : run.Status);
+
+                    return;
+                }
+            }
         }
 
         private async Task ClearCurrentRunAsync(string userId, RunDocument run, CancellationToken cancellationToken)

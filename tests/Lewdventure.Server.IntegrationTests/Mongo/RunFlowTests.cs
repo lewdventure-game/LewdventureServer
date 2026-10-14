@@ -413,6 +413,44 @@ namespace Tests.Integration.Mongo
             Assert.That(found, Is.True, "бонус аккаунта обязан приезжать в снапшот боя");
         }
 
+        [Test]
+        [Order(11)]
+        public async Task ActiveRun_LocksCharacterAndFinishedRunIsReconciled()
+        {
+            const string userId = "usr_reconcile";
+
+            await PrepareProfileAsync(userId);
+
+            var runService = _environment.Services.GetRequiredService<RunService>();
+            var profileService = _environment.Services.GetRequiredService<PlayerProfileService>();
+            var runRepository = _environment.Services.GetRequiredService<RunRepository>();
+            var distributor = _environment.Services.GetRequiredService<IGameConfigSetProvider>().Current.Distributor;
+            var started = await runService.StartAsync(userId, StoryLevelId, CancellationToken.None);
+
+            Assert.That(started.Succeeded, Is.True, string.Join("; ", started.Errors));
+
+            var update = new LoadoutUpdate(CharacterId + 1, new Dictionary<string, string>(), Array.Empty<int>());
+            var loadout = await profileService.UpdateLoadoutAsync(userId, update, string.Empty, distributor, CancellationToken.None);
+
+            Assert.That(loadout.Succeeded, Is.False);
+            Assert.That(loadout.Errors, Has.Some.Contains("cannot be changed during run"));
+
+            var run = await runRepository.GetAsync(started.Run!.Id, CancellationToken.None);
+            var expectedRev = run!.Rev;
+
+            run.Status = RunDocument.CompletedStatus;
+            run.Rev = expectedRev + 1;
+
+            Assert.That(await runRepository.ReplaceAsync(run, expectedRev, CancellationToken.None), Is.True);
+
+            var current = await runService.GetCurrentAsync(userId, CancellationToken.None);
+            var profile = await profileService.GetOrCreateAsync(userId, CancellationToken.None);
+
+            Assert.That(current.Succeeded, Is.False);
+            Assert.That(profile.Story.CurrentRunId, Is.Empty, "ссылка на завершённый забег не снята");
+            Assert.That(profile.Story.CompletedLevelIds, Does.Contain(StoryLevelId), "завершённый забег не отметил уровень пройденным");
+        }
+
         private async Task PrepareProfileWithoutLoadoutAsync()
         {
             var profileService = _environment.Services.GetRequiredService<PlayerProfileService>();
@@ -428,9 +466,14 @@ namespace Tests.Integration.Mongo
 
         private async Task PrepareProfileAsync()
         {
+            await PrepareProfileAsync(UserId);
+        }
+
+        private async Task PrepareProfileAsync(string userId)
+        {
             var profileService = _environment.Services.GetRequiredService<PlayerProfileService>();
             var repository = _environment.Services.GetRequiredService<PlayerProfileRepository>();
-            var profile = await profileService.GetOrCreateAsync(UserId, CancellationToken.None);
+            var profile = await profileService.GetOrCreateAsync(userId, CancellationToken.None);
             var expectedRev = profile.Rev;
 
             profile.Characters.Add(new PlayerCharacterDocument { ConfigId = CharacterId, Copies = 0 });
