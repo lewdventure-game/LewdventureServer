@@ -59,7 +59,7 @@ Seed RNG для `/api/battle/simulate` генерирует только сер�
 | `activeSkillIds` | `string[]` | Активные скиллы (ключи из конфига) |
 | `activeStatusIds` | `int[]` | Стартовые статусы (id из Statuses) |
 | `skillLevels` | `int[]` | Только саммон: уровни скиллов по порядку `Summons.skill_ids` (с 1; нет значения — 1). Скилл берёт значения с номером уровня; скилл ниже `mastery_for_skills` в бой не попадает |
-| `activeBonuses` | `{ id, count, remainingBattles }[]` | Бонусы персонажа A: сперва постоянные бонусы аккаунта из профиля (`remainingBattles = 0`), затем run-bonuses забега. Саммоны/враги — `[]`. `remainingBattles`: `0` = не сжигать по боям (`permanent` / `end_of_game` / `first_turns` / `every_turn`); `> 0` = осталось боёв (`end_of_battle` / `next_battles` / fork `RewardLenght`) |
+| `activeBonuses` | `{ id, count, remainingBattles }[]` | Бонусы персонажа A: сперва постоянные бонусы аккаунта из профиля (`remainingBattles = 0`), затем run-bonuses забега. Саммоны/враги — `[]`. `remainingBattles`: `0` = не сжигать по боям (`permanent` / `end_of_game` / `first_turns` / `every_turn`); `> 0` = осталось боёв (`end_of_battle` / `next_battles`) |
 | `slotIndex` | `int` | Позиция в команде (2 моба / слоты саммонов) |
 
 ### `EquipmentSnapshot`
@@ -186,7 +186,7 @@ Combo2 roll выполняется **только** если Combo1 сработ
    2. Если `CanUseNormalAttack` = нет → EnergySkill (без Approach/Return/counter/combo).
    3. Иначе melee: Approach → `Wait(units_cooldown)` → NormalAttack. Ranged: `Wait(units_cooldown)` → NormalAttack (снаряд).
    4. Counter → Combo1 → Counter → Combo2 → Counter **только после hit** обычной атаки. Miss → Return (melee) + energy skill без цепочки. Контр не триггерит контр. Combo2 только если Combo1 прошло. Атакующий melee **не** Return после комбо; Return только в конце цепочки. Melee-защитник на контре подходит и возвращается на свой слот.
-   5. EnergySkill, если `Energy >= MaxEnergy` (без крита, с уклоном, без контратаки) → `Wait(units_cooldown)` → cast → `Wait(duration)` из parameters скилла → сброс energy.
+   5. EnergySkill, если `Energy` не меньше порога `energy_needed` скилла (`MaxEnergy` — потолок шкалы; у врага без `energy_max` равен порогу первого скилла за энергию, без такого скилла `MaxEnergy = 0` и энергия не копится) (без крита, с уклоном, без контратаки) → `Wait(units_cooldown)` → cast → `Wait(duration)` из parameters скилла → сброс energy.
 
 Цель атак/скиллов/саммонов: живой `mainUnits` защитника с минимальным `slotIndex`.
 
@@ -353,11 +353,12 @@ Skills: `id` + `type` + `parameters` из Skills sheet (`C:F`). Factory без �
 
 Источник правды конфигов — колонки Google Sheets (не клиентский JSON-экспорт). Подробности: [`config-sync.md`](../../Assets/Documents/Server/config-sync.md).
 
-Story level: `enemies_attack_multiplier` / `enemies_health_multiplier` применяются к damage/health врагов при build по `storyLevelId`; без них — общий `enemy_stats_multiplier`, без него — 1.
-Stage: при `stageId > 0` дополнительно умножается `StoryStage.EnemyStatsMultiplier` на health/damage врагов.
+Story level: `enemies_attack_multiplier` / `enemies_health_multiplier` применяются к итоговым damage/health врагов (после формулы 1 с бонусами, с математическим округлением, минимум 1) при build по `storyLevelId`; без них — общий `enemy_stats_multiplier`, без него — 1.
+Stage: при `stageId > 0` дополнительно умножается `StoryStage.EnemyStatsMultiplier` на итоговые health/damage врагов.
+Enemies `other_characteristics` (ГДД 2026-10-14): ключ брони `armor` (старый `defence` — синоним), ЗАЩИТА по формуле 5; `energy_max` необязателен.
 Промоуты персонажа (`Character_promotes`) бонусов в бою не дают: их награды (`bonus:<id>`) выдаются на аккаунт в мете и приезжают в снапшоте через `activeBonuses`.
 
-Скиллы (с 2026-10-01): механика собирается из конфига `Skills` — колонки `triggers` и `actions`, аргументы перечисляются по уровням прокачки. Условия: `energy_needed`, `ally_health_lower`, `on_cooldown` (несколько = И). Действия: `damage` (без уклонения, без крита, ЗАЩИТА цели не применяется), `set_status`, `set_bonus`; порядок по `timing`, между действиями `Wait`. Цель: `0` союзник, `1`/`2` враг в слоте с откатом, `3` все враги. Уровень скилла персонажа — из `promote_to_skill_levels`. При `is_instant_activation` скилл может сработать вне очереди — проверка идёт после каждого удара и не тратит RNG. Подробности: [`docs/gdd/12-skills.md`](../../docs/gdd/12-skills.md).
+Скиллы (с 2026-10-01): механика собирается из конфига `Skills` — колонки `triggers` и `actions`, аргументы перечисляются по уровням прокачки. Условия: `energy_needed`, `ally_health_lower` (ХП владельца скилла), `on_cooldown` (`is_start_available`, синоним `is_start_availiable`) (несколько = И). Действия: `damage` (без уклонения, без крита, ЗАЩИТА цели не применяется), `set_status`, `set_bonus`; порядок по `timing`, между действиями `Wait`. Цель: `0` союзник, `1`/`2` враг в слоте с откатом, `3` все враги. Уровень скилла персонажа — из `promote_to_skill_levels`. При `is_instant_activation` скилл может сработать вне очереди — проверка идёт после каждого удара и не тратит RNG. Подробности: [`docs/gdd/12-skills.md`](../../docs/gdd/12-skills.md).
 
 Статусы без источника (`sourceUnitId = -1`): тик считается от `flat_value` из `parameters`, `damage_ratio` не применяется, крит не роллится. Нет `flat_value` → Warning и урон 0.
 
