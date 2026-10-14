@@ -15,7 +15,7 @@ namespace Server.Skills
             {
                 new("energy_needed", new[] { "energy", InstantActivation }),
                 new("ally_health_lower", new[] { "health", InstantActivation }),
-                new("on_cooldown", new[] { "cooldown", "is_start_availiable", InstantActivation }),
+                new("on_cooldown", new[] { "cooldown", "is_start_available", "is_start_availiable", InstantActivation }),
                 new("as_bonus_logic", Array.Empty<string>()),
             };
 

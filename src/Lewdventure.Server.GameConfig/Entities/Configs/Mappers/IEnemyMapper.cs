@@ -16,7 +16,7 @@ namespace Server.Entities
 
         public int[] SkillIds { get; }
 
-        public float Defence { get; }
+        public float Armor { get; }
 
         public float Evasion { get; }
 

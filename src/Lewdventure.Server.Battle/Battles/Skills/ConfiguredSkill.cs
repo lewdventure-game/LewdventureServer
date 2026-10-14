@@ -5,6 +5,7 @@ namespace Server.Battles
         private const string TimingParameter = "timing";
         private const string TargetParameter = "target";
         private const string BonusParameter = "bonus_id";
+        private const string EnergyParameter = "energy";
 
         private readonly SkillDefinition _definition;
         private readonly string _skillKey;
@@ -155,6 +156,26 @@ namespace Server.Battles
 
                 bonusIds.Add(bonusId);
             }
+        }
+
+        public float ResolveRequiredEnergy(int skillLevel)
+        {
+            var triggers = _definition.Triggers;
+
+            for (int i = 0; i < triggers.Count; i++)
+            {
+                var trigger = triggers[i];
+
+                if (trigger.TriggerType != SkillTriggerType.EnergyNeeded)
+                    continue;
+
+                if (_skillArgumentReader.TryReadFloat(trigger.Component, EnergyParameter, skillLevel, out var requiredEnergy) && 0f < requiredEnergy)
+                    return requiredEnergy;
+
+                return 0f;
+            }
+
+            return 0f;
         }
 
         private void ExecuteAction(ISkillExecutionContext context, SkillActionDefinition action, int skillLevel, List<BattleCommand> commands)

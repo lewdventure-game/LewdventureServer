@@ -94,6 +94,19 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
+        public void CooldownSkill_CorrectStartAvailableSpelling_MatchesLegacySpelling()
+        {
+            var legacy = "on_cooldown:[cooldown:{3},is_start_availiable:{1}]";
+            var correct = "on_cooldown:[cooldown:{3},is_start_available:{1}]";
+            var actions = "damage:[damage:{0.5},target:{1},is_spell_amp:{0},timing:{0.1}]";
+            var legacyScript = CreateCore(WithSkill(legacy, actions)).Replay(CreateReplayData(CreateUnitSnapshot()));
+            var correctScript = CreateCore(WithSkill(correct, actions)).Replay(CreateReplayData(CreateUnitSnapshot()));
+
+            Assert.That(CountCommands(correctScript, CommandType.CastSkill), Is.EqualTo(CountCommands(legacyScript, CommandType.CastSkill)));
+            Assert.That(FindFirstStepIndex(correctScript, CommandType.CastSkill), Is.EqualTo(FindFirstStepIndex(legacyScript, CommandType.CastSkill)));
+        }
+
+        [Test]
         public void InstantSkill_ActivatesOutOfTurnOnLowHealth()
         {
             var triggers = "ally_health_lower:[health:{0.95},is_instant_activation:{1}]";

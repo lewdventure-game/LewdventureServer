@@ -7,9 +7,9 @@ namespace Tests.Unit.GameConfig
     public sealed class EnemyDataValidatorTests
     {
         private const string FullCharacteristics =
-            "defence:[10];evasion:[0];vampyrism:[0];healing_boost:[0];crit_chance:[0];crit_multiplier:[0];"
+            "armor:[10];evasion:[0];vampyrism:[0];healing_boost:[0];crit_chance:[0];crit_multiplier:[0];"
             + "combo_1_chance:[0];combo_2_chance:[0];combo_multiplier:[0];counter_chance:[0];counter_multiplier:[0];"
-            + "spell_multiplier:[0];energy:[0];energy_max:[0]";
+            + "spell_multiplier:[0];energy:[0]";
 
         private readonly EnemyDataValidator _validator = new();
 
@@ -32,7 +32,7 @@ namespace Tests.Unit.GameConfig
         [Test]
         public void Collect_MissingKeys_AreListed()
         {
-            var warnings = Collect("defence:[10];evasion:[0]");
+            var warnings = Collect("armor:[10];evasion:[0]");
 
             Assert.That(warnings, Has.Some.Contains("нет ключей"));
             Assert.That(warnings, Has.Some.Contains("crit_multiplier"));
@@ -66,6 +66,23 @@ namespace Tests.Unit.GameConfig
 
             Assert.That(warnings, Has.Some.Contains("ключ combo_2_multiplier"));
             Assert.That(warnings, Has.None.Contains("ключ combo_1_multiplier"));
+        }
+
+        [Test]
+        public void Collect_LegacyDefenceKey_WarnsObsolete()
+        {
+            var warnings = Collect(FullCharacteristics.Replace("armor:[10]", "defence:[10]"));
+
+            Assert.That(warnings, Has.Some.Contains("ключ defence"));
+            Assert.That(warnings, Has.Some.Contains("armor"));
+        }
+
+        [Test]
+        public void Collect_WithoutEnergyMax_HasNoWarnings()
+        {
+            var warnings = Collect(FullCharacteristics.Replace("energy:[0]", "energy:[10]"));
+
+            Assert.That(warnings, Is.Empty);
         }
 
         private List<string> Collect(string characteristics)

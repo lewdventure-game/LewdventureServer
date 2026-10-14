@@ -30,7 +30,7 @@ namespace Server.Battles
             if (context.IsInstantCheck && AllowsInstantActivation(component, context.SkillLevel) == false)
                 return false;
 
-            if (IsAnyAllyBelowThreshold(context, threshold) == false)
+            if (IsOwnerBelowThreshold(context, threshold) == false)
             {
                 context.RuntimeState.IsHealthThresholdArmed = true;
 
@@ -50,23 +50,32 @@ namespace Server.Battles
             return _skillArgumentReader.ReadFlag(component, InstantParameter, skillLevel);
         }
 
-        private bool IsAnyAllyBelowThreshold(SkillActivationContext context, float threshold)
+        private bool IsOwnerBelowThreshold(SkillActivationContext context, float threshold)
         {
+            var owner = context.Owner;
+
+            if ((owner.Flags & UnitFlags.Summon) != UnitFlags.Summon)
+                return IsBelowThreshold(owner, threshold);
+
             var mainUnits = context.OwnerTeam.MainUnits;
 
             for (int i = 0; i < mainUnits.Count; i++)
             {
-                var unit = mainUnits[i];
-                var characteristics = unit.CharacteristicState;
-
-                if (characteristics.MaxHealth <= 0f || unit.IsAlive() == false)
-                    continue;
-
-                if (characteristics.Health / characteristics.MaxHealth <= threshold)
+                if (IsBelowThreshold(mainUnits[i], threshold))
                     return true;
             }
 
             return false;
+        }
+
+        private bool IsBelowThreshold(IUnitState unit, float threshold)
+        {
+            var characteristics = unit.CharacteristicState;
+
+            if (characteristics.MaxHealth <= 0f || unit.IsAlive() == false)
+                return false;
+
+            return characteristics.Health / characteristics.MaxHealth <= threshold;
         }
     }
 }

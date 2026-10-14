@@ -262,7 +262,7 @@ namespace Server.Runs
             };
             var experience = storyEvent.LevelExperience;
 
-            var grant = await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, StageGrantKey(run), outcome, cancellationToken);
+            var grant = await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), StageGrantKey(run), outcome, cancellationToken);
 
             if (grant.IsConflict)
                 return Conflict();
@@ -338,7 +338,6 @@ namespace Server.Runs
             var success = random.GetRandomValue(RandomRollNames.RunEvent) < NormalizeChance(chance);
             var branch = button == 1 ? (success ? 1 : 2) : (success ? 3 : 4);
             var rewards = ReadString(parameters, _runEventKeys.ForkRewardsKey(branch));
-            var rewardLength = (int)ReadFloat(parameters, _runEventKeys.ForkRewardLengthKey(branch));
             var outcome = new RunStepOutcome
             {
                 EventType = "fork_event",
@@ -348,7 +347,7 @@ namespace Server.Runs
             };
             var experience = storyEvent.LevelExperience;
 
-            var grant = await ApplyRewardsAsync(userId, run, rewards, rewardLength, StageGrantKey(run), outcome, cancellationToken);
+            var grant = await ApplyRewardsAsync(userId, run, rewards, StageGrantKey(run), outcome, cancellationToken);
 
             if (grant.IsConflict)
                 return Conflict();
@@ -404,7 +403,7 @@ namespace Server.Runs
 
                 run.Perks.Add(perkId);
 
-                var grant = await ApplyRewardsAsync(userId, run, ReadPerkGrantRewards(perkId), 0, choiceKey + ":perk:" + perkId.ToString(CultureInfo.InvariantCulture), outcome, cancellationToken);
+                var grant = await ApplyRewardsAsync(userId, run, ReadPerkGrantRewards(perkId), choiceKey + ":perk:" + perkId.ToString(CultureInfo.InvariantCulture), outcome, cancellationToken);
 
                 if (grant.IsConflict)
                     return Conflict();
@@ -510,7 +509,7 @@ namespace Server.Runs
 
             ConsumeBattleBonuses(run);
 
-            var grant = await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), 0, StageGrantKey(run), outcome, cancellationToken);
+            var grant = await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), StageGrantKey(run), outcome, cancellationToken);
 
             if (grant.IsConflict)
                 return Conflict();
@@ -591,7 +590,6 @@ namespace Server.Runs
             string userId,
             RunDocument run,
             string rewards,
-            int rewardLength,
             string grantKey,
             RunStepOutcome outcome,
             CancellationToken cancellationToken)
@@ -617,7 +615,7 @@ namespace Server.Runs
 
                 if (reward.Type == BattleRewardType.Bonus)
                 {
-                    AddRunBonus(run, reward.Id, reward.Count, rewardLength);
+                    AddRunBonus(run, reward.Id, reward.Count);
 
                     continue;
                 }
@@ -747,9 +745,9 @@ namespace Server.Runs
             return null;
         }
 
-        private void AddRunBonus(RunDocument run, int bonusId, int count, int rewardLength)
+        private void AddRunBonus(RunDocument run, int bonusId, int count)
         {
-            var remainingBattles = ResolveRemainingBattles(bonusId, rewardLength);
+            var remainingBattles = ResolveRemainingBattles(bonusId);
 
             for (int i = 0; i < run.Bonuses.Count; i++)
             {
@@ -766,11 +764,8 @@ namespace Server.Runs
             run.Bonuses.Add(new RunBonusDocument { BonusId = bonusId, Count = count, RemainingBattles = remainingBattles });
         }
 
-        private int ResolveRemainingBattles(int bonusId, int rewardLength)
+        private int ResolveRemainingBattles(int bonusId)
         {
-            if (0 < rewardLength)
-                return rewardLength;
-
             if (_configDistributor.Bonuses.TryGet(bonusId, out var bonusMapper) == false)
                 return 0;
 

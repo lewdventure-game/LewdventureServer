@@ -6,7 +6,7 @@ namespace Server.Entities
 {
     internal sealed class EnemyMapper : IEnemyMapper
     {
-        private float _defence;
+        private float _armor;
         private float _evasion;
         private float _vampyrism;
         private float _healingBoost;
@@ -91,9 +91,9 @@ namespace Server.Entities
 
         [OptionalColumn("значение приходит в other_characteristics")]
         [JsonProperty("defence")]
-        private float DefenceRaw
+        private float ArmorLegacyRaw
         {
-            set { _defence = value; }
+            set { _armor = value; }
         }
 
         [OptionalColumn("значение приходит в other_characteristics")]
@@ -113,7 +113,7 @@ namespace Server.Entities
         [JsonProperty("other_characteristics")]
         private string _characteristicsRaw = string.Empty;
 
-        public float Defence => _defence;
+        public float Armor => _armor;
 
         public float Evasion => _evasion;
 
@@ -149,7 +149,7 @@ namespace Server.Entities
 
             var packed = new EnemyCharacteristics(_characteristicsRaw);
 
-            _defence = packed.Defence;
+            _armor = packed.Armor;
             _evasion = packed.Evasion;
             _vampyrism = packed.Vampyrism;
             _healingBoost = packed.HealingBoost;

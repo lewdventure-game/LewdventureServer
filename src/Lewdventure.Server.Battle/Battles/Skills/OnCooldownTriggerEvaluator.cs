@@ -3,7 +3,8 @@ namespace Server.Battles
     internal sealed class OnCooldownTriggerEvaluator : ISkillTriggerEvaluator
     {
         private const string CooldownParameter = "cooldown";
-        private const string StartAvailableParameter = "is_start_availiable";
+        private const string StartAvailableParameter = "is_start_available";
+        private const string LegacyStartAvailableParameter = "is_start_availiable";
 
         private readonly ICoreLog _coreLog;
         private readonly ISkillArgumentReader _skillArgumentReader;
@@ -35,7 +36,7 @@ namespace Server.Battles
             if (0 <= runtimeState.LastActivationTurn)
                 return cooldownTurns <= context.CurrentTurn - runtimeState.LastActivationTurn;
 
-            if (_skillArgumentReader.ReadFlag(component, StartAvailableParameter, context.SkillLevel))
+            if (IsStartAvailable(component, context.SkillLevel))
                 return true;
 
             return cooldownTurns <= context.CurrentTurn;
@@ -44,6 +45,14 @@ namespace Server.Battles
         public void OnActivated(SkillComponent component, SkillActivationContext context)
         {
             context.RuntimeState.LastActivationTurn = context.CurrentTurn;
+        }
+
+        private bool IsStartAvailable(SkillComponent component, int skillLevel)
+        {
+            if (component.TryGetParameter(StartAvailableParameter, out _))
+                return _skillArgumentReader.ReadFlag(component, StartAvailableParameter, skillLevel);
+
+            return _skillArgumentReader.ReadFlag(component, LegacyStartAvailableParameter, skillLevel);
         }
     }
 }

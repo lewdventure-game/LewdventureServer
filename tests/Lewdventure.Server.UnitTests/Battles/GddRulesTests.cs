@@ -461,6 +461,218 @@ namespace Tests.Unit.Battles
             }
         }
 
+        [Test]
+        public void EnemyArmorKey_ReadsLikeLegacyDefence()
+        {
+            var patched = ReplaceDomain(_domains, "Enemies", rows =>
+            {
+                var row = (JObject)rows[0];
+
+                row["other_characteristics"] = row["other_characteristics"]!.ToString().Replace("defence:", "armor:");
+            });
+
+            var legacy = CreateCore(_domains).BuildCharacteristics(CreateEnemySnapshot(), BattleSide.Defending, false, StoryLevelId, 0);
+            var characteristics = CreateCore(patched).BuildCharacteristics(CreateEnemySnapshot(), BattleSide.Defending, false, StoryLevelId, 0);
+
+            Assert.That(characteristics.Armor, Is.EqualTo(10f));
+            Assert.That(characteristics.Defence, Is.EqualTo(legacy.Defence).Within(0.0001f));
+            Assert.That(0f < characteristics.Defence, Is.True);
+        }
+
+        [Test]
+        public void EnemyEnergySkill_WithoutEnergyMax_UsesSkillThreshold()
+        {
+            var battleCore = CreateCore(WithEnemyEnergySkill("2"));
+            var characteristics = battleCore.BuildCharacteristics(CreateEnemySnapshot(), BattleSide.Defending, false, StoryLevelId, 0);
+            var script = battleCore.Replay(CreateReplayData(CreateUnitSnapshot()));
+
+            Assert.That(characteristics.MaxEnergy, Is.EqualTo(30f));
+            Assert.That(CountCommandsOf(script, CommandType.CastSkill, "actorId", EnemyId), Is.GreaterThan(0), "моб без energy_max так и не применил скилл за энергию");
+        }
+
+        [Test]
+        public void EnemyWithoutEnergySkill_HasNoEnergyBar()
+        {
+            var battleCore = CreateCore(WithEnemyEnergySkill(string.Empty));
+            var characteristics = battleCore.BuildCharacteristics(CreateEnemySnapshot(), BattleSide.Defending, false, StoryLevelId, 0);
+            var script = battleCore.Replay(CreateReplayData(CreateUnitSnapshot()));
+
+            Assert.That(characteristics.MaxEnergy, Is.EqualTo(0f));
+            Assert.That(CountCommandsOf(script, CommandType.SetEnergy, "unitId", EnemyId), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void EnemyAllyHealthLowerSkill_ChecksOnlyOwnerHealth()
+        {
+            var patched = ReplaceDomain(_domains, "Skills", rows =>
+            {
+                rows.Add(new JObject
+                {
+                    ["id"] = "2",
+                    ["triggers"] = "ally_health_lower:[health:{0.99},is_instant_activation:{1}]",
+                    ["actions"] = "set_bonus:[bonus_id:{1},target:{0},timing:{0}]",
+                });
+            });
+
+            patched = ReplaceDomain(patched, "Enemies", rows =>
+            {
+                ((JObject)rows[0])["skill_ids"] = "";
+                ((JObject)rows[1])["skill_ids"] = "2";
+            });
+
+            var replayData = CreateReplayData(CreateUnitSnapshot());
+
+            replayData.TeamB.MainUnits.Add(new UnitSnapshot { Id = SecondEnemyId, Level = 1, SlotIndex = 1 });
+
+            var script = CreateCore(patched).Replay(replayData);
+            var firstHitOnOwner = FindFirstStepOf(script, CommandType.ShowDamage, "targetId", SecondEnemyId);
+            var firstCast = FindFirstStepOf(script, CommandType.CastSkill, "actorId", SecondEnemyId);
+            var firstHitOnOther = FindFirstStepOf(script, CommandType.ShowDamage, "targetId", EnemyId);
+
+            Assert.That(firstHitOnOther, Is.GreaterThanOrEqualTo(0), "по первому мобу никто не попал, тест ничего не проверяет");
+
+            if (firstHitOnOwner < 0)
+            {
+                Assert.That(firstCast, Is.LessThan(0), "скилл сработал от ХП другого моба");
+
+                return;
+            }
+
+            Assert.That(firstCast, Is.GreaterThanOrEqualTo(firstHitOnOwner), "скилл сработал раньше, чем урон получил его владелец");
+        }
+
+        [Test]
+        public void DesignerEnemies20261014_FightWithTheirSkills()
+        {
+            var patched = ReplaceDomain(_domains, "Skills", rows =>
+            {
+                rows.Add(new JObject
+                {
+                    ["id"] = "10",
+                    ["triggers"] = "energy_needed:[\nenergy:{30}]",
+                    ["actions"] = "damage:[\ndamage:{1.5},\ntarget:{1},\nis_spell_amp:{0},\ntiming:{0.75}]",
+                });
+                rows.Add(new JObject
+                {
+                    ["id"] = "11",
+                    ["triggers"] = "ally_health_lower:[\nhealth:{0.5},\nis_instant_activation:{1}]",
+                    ["actions"] = "set_bonus:[\nbonus_id:{60},\ntarget:{0},\ntiming:{0}]",
+                });
+            });
+
+            patched = ReplaceDomain(patched, "Bonuses", rows =>
+            {
+                rows.Add(new JObject
+                {
+                    ["id"] = "60",
+                    ["operator"] = "add",
+                    ["bonus_type"] = "healing_from_max",
+                    ["bonus_value"] = "0.2",
+                    ["work_modes"] = "permanent",
+                });
+            });
+
+            patched = ReplaceDomain(patched, "Enemies", rows =>
+            {
+                rows.Clear();
+                rows.Add(CreateDesignerEnemy(EnemyId, "dildo_monster", true, "600", "50", "10", "10", "10"));
+                rows.Add(CreateDesignerEnemy(SecondEnemyId, "spermomet", false, "400", "40", "11", "5", "0"));
+            });
+
+            var battleCore = CreateCore(patched);
+            var first = battleCore.BuildCharacteristics(CreateEnemySnapshot(), BattleSide.Defending, false, StoryLevelId, 0);
+            var second = battleCore.BuildCharacteristics(new UnitSnapshot { Id = SecondEnemyId, Level = 1, SlotIndex = 1 }, BattleSide.Defending, false, StoryLevelId, 0);
+            var replayData = CreateReplayData(CreateUnitSnapshot());
+
+            replayData.TeamB.MainUnits.Add(new UnitSnapshot { Id = SecondEnemyId, Level = 1, SlotIndex = 1 });
+
+            var script = battleCore.Replay(replayData);
+
+            Assert.That(first.Armor, Is.EqualTo(10f));
+            Assert.That(second.Armor, Is.EqualTo(5f));
+            Assert.That(first.MaxEnergy, Is.EqualTo(30f));
+            Assert.That(second.MaxEnergy, Is.EqualTo(0f));
+            Assert.That(CountCommandsOf(script, CommandType.CastSkill, "actorId", EnemyId), Is.GreaterThan(0), "моб 10101 не применил скилл 10");
+            Assert.That(CountCommandsOf(script, CommandType.SetEnergy, "unitId", SecondEnemyId), Is.EqualTo(0), "у моба 10102 нет скилла за энергию, шкалы быть не должно");
+        }
+
+        private JObject CreateDesignerEnemy(int id, string skinName, bool isMelee, string health, string damage, string skillIds, string armor, string energy)
+        {
+            return new JObject
+            {
+                ["id"] = id.ToString(),
+                ["skin_name"] = skinName,
+                ["is_melee"] = isMelee,
+                ["health"] = health,
+                ["damage"] = damage,
+                ["skill_ids"] = skillIds,
+                ["other_characteristics"] = "armor:[" + armor + "];\nevasion:[0];\nvampyrism:[0];\nhealing_boost:[0];\ncrit_chance:[0];\ncrit_multiplier:[0];\n"
+                    + "combo_1_chance:[0];\ncombo_2_chance:[0];\ncombo_multiplier:[0];\ncounter_chance:[0];\ncounter_multiplier:[0];\n"
+                    + "spell_multiplier:[0];\nenergy:[" + energy + "]",
+            };
+        }
+
+        private List<CoreConfigDomain> WithEnemyEnergySkill(string skillIds)
+        {
+            var patched = ReplaceDomain(_domains, "Skills", rows =>
+            {
+                rows.Add(new JObject
+                {
+                    ["id"] = "2",
+                    ["triggers"] = "energy_needed:[energy:{30}]",
+                    ["actions"] = "damage:[damage:{1.5},target:{1},is_spell_amp:{0},timing:{0.75}]",
+                });
+            });
+
+            return ReplaceDomain(patched, "Enemies", rows =>
+            {
+                var row = (JObject)rows[0];
+
+                row["other_characteristics"] = "armor:[10];evasion:[0];vampyrism:[0];healing_boost:[0];crit_chance:[0];crit_multiplier:[0];"
+                    + "combo_1_chance:[0];combo_2_chance:[0];combo_multiplier:[0];counter_chance:[0];counter_multiplier:[0];"
+                    + "spell_multiplier:[0];energy:[10]";
+                row["skill_ids"] = skillIds;
+            });
+        }
+
+        private int CountCommandsOf(IBattleScriptResponse script, CommandType commandType, string unitParameter, int unitId)
+        {
+            var count = 0;
+
+            for (int i = 0; i < script.Steps.Count; i++)
+            {
+                var commands = script.Steps[i].Commands;
+
+                for (int commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    var command = commands[commandIndex];
+
+                    if (command.CommandType == commandType && command.Parameters[unitParameter]!.Value<int>() == unitId)
+                        count += 1;
+                }
+            }
+
+            return count;
+        }
+
+        private int FindFirstStepOf(IBattleScriptResponse script, CommandType commandType, string unitParameter, int unitId)
+        {
+            for (int i = 0; i < script.Steps.Count; i++)
+            {
+                var commands = script.Steps[i].Commands;
+
+                for (int commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    var command = commands[commandIndex];
+
+                    if (command.CommandType == commandType && command.Parameters[unitParameter]!.Value<int>() == unitId)
+                        return i;
+                }
+            }
+
+            return -1;
+        }
+
         private UnitSnapshot CreateEnemySnapshot()
         {
             return new UnitSnapshot

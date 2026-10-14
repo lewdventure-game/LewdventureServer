@@ -8,10 +8,11 @@ namespace Server.GameConfigs
     {
         private const string IdProperty = "id";
         private const string CharacteristicsProperty = "other_characteristics";
+        private const string LegacyArmorKey = "defence";
 
         private readonly string[] _expectedKeys =
         {
-            "defence",
+            "armor",
             "evasion",
             "vampyrism",
             "healing_boost",
@@ -24,7 +25,6 @@ namespace Server.GameConfigs
             "counter_multiplier",
             "spell_multiplier",
             "energy",
-            "energy_max",
         };
 
         private readonly string[] _obsoleteKeys =
@@ -96,6 +96,9 @@ namespace Server.GameConfigs
                 if (raw.Contains(_obsoleteKeys[i], StringComparison.OrdinalIgnoreCase))
                     warnings.Add($"Лист {domainName}, враг {id}: ключ {_obsoleteKeys[i]} в {CharacteristicsProperty} не читается — множитель комбо один на оба удара, укажите combo_multiplier.");
             }
+
+            if (raw.Contains(LegacyArmorKey, StringComparison.OrdinalIgnoreCase))
+                warnings.Add($"Лист {domainName}, враг {id}: ключ {LegacyArmorKey} в {CharacteristicsProperty} устарел — укажите armor, ЗАЩИТА считается из БРОНИ по формуле 5.");
         }
 
         private void CollectChanceWithoutMultiplier(string domainName, string id, string mechanic, float chance, float multiplier, List<string> warnings)

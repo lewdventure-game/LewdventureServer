@@ -4,7 +4,7 @@ namespace Server.Entities
 {
     internal sealed class EnemyCharacteristics
     {
-        private float _defence;
+        private float _armor;
         private float _evasion;
         private float _vampyrism;
         private float _healingBoost;
@@ -19,7 +19,7 @@ namespace Server.Entities
         private float _energy;
         private float _energyMax;
 
-        public float Defence => _defence;
+        public float Armor => _armor;
 
         public float Evasion => _evasion;
 
@@ -84,8 +84,9 @@ namespace Server.Entities
             var key = segment.Slice(0, colon).Trim();
             var value = ParseBracketValue(segment.Slice(colon + 1).Trim());
 
-            if (key.Equals("defence", StringComparison.OrdinalIgnoreCase))
-                _defence = value;
+            if (key.Equals("armor", StringComparison.OrdinalIgnoreCase)
+                || key.Equals("defence", StringComparison.OrdinalIgnoreCase))
+                _armor = value;
             else if (key.Equals("evasion", StringComparison.OrdinalIgnoreCase))
                 _evasion = value;
             else if (key.Equals("vampyrism", StringComparison.OrdinalIgnoreCase))

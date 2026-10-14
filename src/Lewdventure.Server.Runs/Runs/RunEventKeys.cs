@@ -29,10 +29,5 @@ namespace Server.Runs
         {
             return "rewards_event" + branch;
         }
-
-        public string ForkRewardLengthKey(int branch)
-        {
-            return "reward_lenght_event" + branch;
-        }
     }
 }

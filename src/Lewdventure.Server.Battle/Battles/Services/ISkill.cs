@@ -23,5 +23,7 @@ namespace Server.Battles
         public void Execute(ISkillExecutionContext context);
 
         public void CollectPassiveBonusIds(int skillLevel, List<int> bonusIds);
+
+        public float ResolveRequiredEnergy(int skillLevel);
     }
 }

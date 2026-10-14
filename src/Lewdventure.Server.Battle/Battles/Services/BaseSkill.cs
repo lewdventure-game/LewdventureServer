@@ -49,6 +49,11 @@ namespace Server.Battles
         {
         }
 
+        public float ResolveRequiredEnergy(int skillLevel)
+        {
+            return 0f;
+        }
+
         protected void BeginCast(ISkillExecutionContext context, List<BattleCommand> commands)
         {
             commands.Add(context.BattleCommandFactory.CastSkill(context.Actor.Id, context.Actor.SlotIndex, context.Target.Id, context.Target.SlotIndex, SkillKey));

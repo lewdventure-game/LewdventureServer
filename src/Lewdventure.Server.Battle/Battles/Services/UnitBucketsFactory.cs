@@ -53,10 +53,12 @@ namespace Server.Battles
 
             var buckets = new CharacteristicBuckets
             {
-                HealthBase = enemyMapper.Health * healthMultiplier,
-                DamageBase = enemyMapper.Damage * attackMultiplier,
+                HealthBase = enemyMapper.Health,
+                DamageBase = enemyMapper.Damage,
+                HealthEntityMultiplier = healthMultiplier,
+                DamageEntityMultiplier = attackMultiplier,
                 AttackMultiplierBase = 1f,
-                ArmorBase = enemyMapper.Defence,
+                ArmorBase = enemyMapper.Armor,
                 DefenceCoefficient = _battleConstantsReader.Get(ConstantKeys.DefenceCoefficientKey),
                 EvasionBase = enemyMapper.Evasion,
                 CriticalChanceBase = enemyMapper.CriticalChance,

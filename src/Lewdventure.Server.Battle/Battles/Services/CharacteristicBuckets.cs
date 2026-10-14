@@ -8,6 +8,8 @@ namespace Server.Battles
         public float HealthMajor;
         public float HealthPerk;
         public float HealthGlobal;
+        public float HealthEntityMultiplier = 1f;
+        public float DamageEntityMultiplier = 1f;
         public float DamageBase;
         public float DamageLocal;
         public float DamageMinor;

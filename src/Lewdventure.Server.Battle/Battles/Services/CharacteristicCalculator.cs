@@ -37,6 +37,10 @@ namespace Server.Battles
                 buckets.DamagePerk,
                 buckets.DamageGlobal,
                 "damage");
+
+            maxHealth = ApplyEntityMultiplier(maxHealth, buckets.HealthEntityMultiplier, "maxHealth");
+            damage = ApplyEntityMultiplier(damage, buckets.DamageEntityMultiplier, "damage");
+
             var armor = ApplyFormula2(
                 buckets.ArmorBase,
                 buckets.ArmorLocal,
@@ -337,6 +341,21 @@ namespace Server.Battles
                         throw new InvalidOperationException($"[Story][Battle]: Unknown replace bonus type, bonusType = {replaceOverride.BonusType}");
                 }
             }
+        }
+
+        private float ApplyEntityMultiplier(float value, float multiplier, string fieldName)
+        {
+            if (multiplier == 1f)
+                return value;
+
+            var rounded = RoundMathematical(value * multiplier);
+
+            if (rounded < 1f)
+                rounded = 1f;
+
+            _coreLog.Debug($"[Story][Battle]: Entity multiplier, field = {fieldName}, value = {value}, multiplier = {multiplier}, result = {rounded}");
+
+            return rounded;
         }
 
         private float ApplyFormula1(

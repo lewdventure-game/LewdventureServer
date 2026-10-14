@@ -81,11 +81,15 @@ namespace Server.Battles
                 throw new InvalidOperationException($"[Story][Battle]: Character config missing, id = {unitSnapshot.Id}, side = {battleSide}");
             }
 
+            var perks = _unitLoadoutBinder.BuildPerks(unitSnapshot);
+            var skills = _unitLoadoutBinder.BuildSkills(unitSnapshot, isSummon, battleSide);
+
+            if (isSummon == false && battleSide == BattleSide.Defending)
+                ApplyEnemyEnergyMax(baseBuckets, skills, unitSnapshot.Id);
+
             var characteristics = new CharacteristicState();
             _characteristicCalculator.ApplyToState(baseBuckets, characteristics, Array.Empty<ReplaceOverride>(), false, true);
 
-            var perks = _unitLoadoutBinder.BuildPerks(unitSnapshot);
-            var skills = _unitLoadoutBinder.BuildSkills(unitSnapshot, isSummon, battleSide);
             var unitState = new UnitState(
                 unitSnapshot.Id,
                 unitSnapshot.Level,
@@ -123,6 +127,31 @@ namespace Server.Battles
             _coreLog.Debug($"[Story][Battle]: Built, id = {unitState.Id}, level = {unitState.Level}, slot = {unitState.SlotIndex}, hp = {characteristics.Health}/{characteristics.MaxHealth}, damage = {characteristics.Damage}, vampyrism = {characteristics.Vampyrism}, healingBoost = {characteristics.HealingBoost}, statuses = {unitState.ActiveStatuses.Count}, perks = {perks.Count}, skills = {skills.Count}, activeBonuses = {unitState.ActiveBonuses.Count}");
 
             return unitState;
+        }
+
+        private void ApplyEnemyEnergyMax(CharacteristicBuckets buckets, IReadOnlyList<ISkill> skills, int enemyId)
+        {
+            if (0f < buckets.EnergyMaxBase)
+                return;
+
+            for (int i = 0; i < skills.Count; i++)
+            {
+                var skill = skills[i];
+
+                if (skill.RequiresEnergy == false)
+                    continue;
+
+                var requiredEnergy = skill.ResolveRequiredEnergy(0);
+
+                if (requiredEnergy <= 0f)
+                    continue;
+
+                buckets.EnergyMaxBase = requiredEnergy;
+
+                _coreLog.Debug($"[Story][Battle]: Enemy energy max from skill, id = {enemyId}, skillId = {skill.SkillKey}, energyMax = {requiredEnergy}");
+
+                return;
+            }
         }
 
         private void ApplySkillLevel(UnitState unitState, IUnitSnapshot unitSnapshot, bool isSummon, BattleSide battleSide)

@@ -50,6 +50,23 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
+        public void EntityMultiplier_AppliesToFinalValueAfterLocalBonus()
+        {
+            var buckets = CreateBuckets();
+
+            buckets.DamageBase = 50f;
+            buckets.DamageLocal = -10f;
+            buckets.DamageEntityMultiplier = 1.5f;
+            buckets.HealthBase = 401f;
+            buckets.HealthEntityMultiplier = 1.5f;
+
+            var state = Apply(buckets);
+
+            Assert.That(state.Damage, Is.EqualTo(60f));
+            Assert.That(state.MaxHealth, Is.EqualTo(602f));
+        }
+
+        [Test]
         public void Formula1_CannotGoBelowOne()
         {
             var buckets = CreateBuckets();
