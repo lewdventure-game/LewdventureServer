@@ -263,8 +263,10 @@ namespace Server.Battles
                     if (0 < activeBonus.RemainingBattles)
                     {
                         if (workMode.Contains(BonusWorkModeKind.EveryTurn))
+                        {
                             activeBonus.EveryTurnStacks = 0;
                             activeBonus.LastStackedTurn = -1;
+                        }
 
                         continue;
                     }
