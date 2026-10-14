@@ -136,9 +136,9 @@ namespace Server.Battles
 
                 if (_configDistributor.Equipments.TryGet(equipmentId, out var equipmentMapper) == false)
                 {
-                    _coreLog.Error($"[Story][Battle]: Equipment missing id = {equipmentId}");
+                    _coreLog.Warning($"[Story][Battle]: Equipment missing in configs, skipped, id = {equipmentId}, unitId = {unitState.Id}");
 
-                    throw new InvalidOperationException($"[Story][Battle]: Equipment missing id = {equipmentId}");
+                    continue;
                 }
 
                 var bonusIds = equipmentMapper.BonusIds;

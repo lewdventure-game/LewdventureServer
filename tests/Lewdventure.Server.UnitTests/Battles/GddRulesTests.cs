@@ -164,6 +164,22 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
+        public void EquipmentMissingInConfigs_IsSkippedWithoutBreakingBattle()
+        {
+            var battleCore = CreateCore(_domains);
+            var unitSnapshot = CreateUnitSnapshot();
+            var baseline = battleCore.BuildCharacteristics(unitSnapshot, BattleSide.Attacking, false, 0, 0);
+
+            unitSnapshot.Equipments.Add(new EquipmentSnapshot(999999, 1));
+
+            var characteristics = battleCore.BuildCharacteristics(unitSnapshot, BattleSide.Attacking, false, 0, 0);
+            var script = battleCore.Replay(CreateReplayData(unitSnapshot));
+
+            Assert.That(characteristics.Damage, Is.EqualTo(baseline.Damage));
+            Assert.That(script.Steps, Is.Not.Empty);
+        }
+
+        [Test]
         public void BonusChangeStatusInSnapshot_GrantsItsBonuses()
         {
             var battleCore = CreateCore(_domains);

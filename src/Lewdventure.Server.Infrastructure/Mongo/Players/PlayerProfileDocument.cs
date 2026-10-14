@@ -28,6 +28,8 @@ namespace Server.Infrastructure.Mongo.Players
 
         public PlayerStoryDocument Story { get; set; } = new();
 
+        public bool StartContentGranted { get; set; }
+
         public Dictionary<string, int> Flags { get; set; } = new();
 
         public Dictionary<string, string> Settings { get; set; } = new();

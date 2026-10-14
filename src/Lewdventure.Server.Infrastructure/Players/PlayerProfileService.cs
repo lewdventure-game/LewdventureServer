@@ -218,7 +218,7 @@ namespace Server.Infrastructure.Players
             IConfigDistributor configDistributor,
             CancellationToken cancellationToken)
         {
-            if (0 < profile.Characters.Count || 0 < profile.Summons.Count || 0 < profile.Equipment.Count)
+            if (profile.StartContentGranted || 0 < profile.Characters.Count || 0 < profile.Summons.Count || 0 < profile.Equipment.Count)
                 return profile;
 
             if (configDistributor.Constants.TryGet(StartContentConstant, out var constant) == false || string.IsNullOrWhiteSpace(constant.ConstantValue))
@@ -246,6 +246,7 @@ namespace Server.Infrastructure.Players
             if (profile.Loadout.CharacterId <= 0 && 0 < profile.Characters.Count)
                 profile.Loadout.CharacterId = profile.Characters[0].ConfigId;
 
+            profile.StartContentGranted = true;
             profile.Rev = expectedRev + 1;
             profile.UpdatedAt = now;
 
