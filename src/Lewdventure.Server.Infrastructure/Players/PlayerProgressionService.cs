@@ -491,6 +491,11 @@ namespace Server.Infrastructure.Players
 
                 var targetConfigId = targetConfig.Id;
                 var targetMergeNumber = targetConfig.MergeNumber;
+                var targetLevel = instance.Level;
+                var targetMaxLevel = configDistributor.EquipmentPromotes.GetMaxLevel(targetConfig.PromoteId);
+
+                if (0 < targetMaxLevel && targetMaxLevel < targetLevel)
+                    targetLevel = targetMaxLevel;
 
                 var sourceSlot = FindEquippedSlot(profile, instanceId);
                 var entries = new List<PlayerLedgerEntryDocument>
@@ -512,7 +517,7 @@ namespace Server.Infrastructure.Players
                 {
                     InstanceId = EquipmentInstancePrefix + Guid.NewGuid().ToString("N"),
                     ConfigId = targetConfigId,
-                    Level = instance.Level,
+                    Level = targetLevel,
                     MergeNumber = targetMergeNumber,
                     ObtainedAt = _timeProvider.GetUtcNow().UtcDateTime,
                 };

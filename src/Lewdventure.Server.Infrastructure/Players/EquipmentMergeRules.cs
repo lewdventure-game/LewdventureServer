@@ -129,33 +129,75 @@ namespace Server.Infrastructure.Players
                 return false;
             }
 
-            for (int i = 0; i < requirements.Count; i++)
-            {
-                if (requirements[i].Kind != EquipmentMergeRequirementKind.ConfigId)
-                    continue;
-
-                if (TryUseCandidates(requirements[i], source, candidates) == false)
-                {
-                    error = $"Transformation needs {requirements[i].Count} equipment with id {requirements[i].ConfigId}.";
-
-                    return false;
-                }
-            }
+            var slots = new List<int>(required);
 
             for (int i = 0; i < requirements.Count; i++)
             {
-                if (requirements[i].Kind != EquipmentMergeRequirementKind.Rarity)
+                for (int copy = 0; copy < requirements[i].Count; copy++)
+                    slots.Add(i);
+            }
+
+            var slotOfCandidate = new int[candidates.Count];
+
+            for (int i = 0; i < slotOfCandidate.Length; i++)
+                slotOfCandidate[i] = -1;
+
+            for (int slot = 0; slot < slots.Count; slot++)
+            {
+                var visited = new bool[candidates.Count];
+
+                if (TryAssignSlot(slot, slots, requirements, source, candidates, slotOfCandidate, visited))
                     continue;
 
-                if (TryUseCandidates(requirements[i], source, candidates) == false)
-                {
-                    error = $"Transformation needs {requirements[i].Count} equipment of type {source.Type} with rarity {requirements[i].Rarity}.";
+                error = DescribeRequirement(requirements[slots[slot]], source);
 
-                    return false;
-                }
+                return false;
             }
+
+            for (int i = 0; i < candidates.Count; i++)
+                candidates[i].IsUsed = true;
 
             return true;
+        }
+
+        private bool TryAssignSlot(
+            int slot,
+            List<int> slots,
+            IReadOnlyList<EquipmentMergeRequirement> requirements,
+            IEquipmentMapper source,
+            IReadOnlyList<EquipmentMergeCandidate> candidates,
+            int[] slotOfCandidate,
+            bool[] visited)
+        {
+            var requirement = requirements[slots[slot]];
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                if (visited[i])
+                    continue;
+
+                if (Matches(requirement, source, candidates[i].Mapper) == false)
+                    continue;
+
+                visited[i] = true;
+
+                if (slotOfCandidate[i] < 0 || TryAssignSlot(slotOfCandidate[i], slots, requirements, source, candidates, slotOfCandidate, visited))
+                {
+                    slotOfCandidate[i] = slot;
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private string DescribeRequirement(in EquipmentMergeRequirement requirement, IEquipmentMapper source)
+        {
+            if (requirement.Kind == EquipmentMergeRequirementKind.ConfigId)
+                return $"Transformation needs {requirement.Count} equipment with id {requirement.ConfigId}.";
+
+            return $"Transformation needs {requirement.Count} equipment of type {source.Type} with rarity {requirement.Rarity}.";
         }
 
         public bool TryResolveTarget(IEquipmentMapper source, IConfigDistributor configDistributor, out IEquipmentMapper target, out string error)
@@ -190,30 +232,6 @@ namespace Server.Infrastructure.Players
             error = $"Merge group {source.MergeGroup} has no equipment with merge_number {source.MergeNumber + 1}.";
 
             return false;
-        }
-
-        private bool TryUseCandidates(
-            in EquipmentMergeRequirement requirement,
-            IEquipmentMapper source,
-            IReadOnlyList<EquipmentMergeCandidate> candidates)
-        {
-            var taken = 0;
-
-            for (int i = 0; i < candidates.Count && taken < requirement.Count; i++)
-            {
-                var candidate = candidates[i];
-
-                if (candidate.IsUsed)
-                    continue;
-
-                if (Matches(requirement, source, candidate.Mapper) == false)
-                    continue;
-
-                candidate.IsUsed = true;
-                taken += 1;
-            }
-
-            return taken == requirement.Count;
         }
 
         private bool Matches(in EquipmentMergeRequirement requirement, IEquipmentMapper source, IEquipmentMapper candidate)

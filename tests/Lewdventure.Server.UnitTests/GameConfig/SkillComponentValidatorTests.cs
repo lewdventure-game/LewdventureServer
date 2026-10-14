@@ -12,6 +12,15 @@ namespace Tests.Unit.GameConfig
         private readonly SkillComponentRegistry _registry = new();
 
         [Test]
+        public void DifferentValueCountsInsideAction_AreWarned()
+        {
+            Validate(Triggers, "damage:[damage:{1:1.1:1.2},target:{1:1},is_spell_amp:{0:0:0},timing:{0.5:0.5:0.5}]", out var errors, out var warnings);
+
+            Assert.That(errors, Is.Empty);
+            Assert.That(warnings, Has.Some.Contains("разное число значений по уровням (от 2 до 3)"));
+        }
+
+        [Test]
         public void CanonicalRow_HasNoComplaints()
         {
             Validate(Triggers, Actions, out var errors, out var warnings);

@@ -145,6 +145,8 @@ namespace Server.GameConfigs
             }
 
             var parameters = SplitTopLevel(body, ParameterSeparator);
+            var minCount = int.MaxValue;
+            var maxCount = 0;
 
             for (int i = 0; i < parameters.Count; i++)
             {
@@ -181,7 +183,18 @@ namespace Server.GameConfigs
                     warnings.Add($"Лист Skills, скилл {id}: в значениях параметра {parameterName} у {componentName} стоит запятая, разделитель третьего порядка - двоеточие.");
 
                 ValidateArguments(id, componentName, parameterName, inner, energyMax, errors, warnings);
+
+                var count = SplitArguments(inner).Count;
+
+                if (1 < count && count < minCount)
+                    minCount = count;
+
+                if (maxCount < count)
+                    maxCount = count;
             }
+
+            if (1 < maxCount && minCount != int.MaxValue && minCount < maxCount)
+                warnings.Add($"Лист Skills, скилл {id}: у {componentName} у параметров разное число значений по уровням (от {minCount} до {maxCount}). На уровнях выше {minCount} короткие параметры возьмут последнее значение.");
         }
 
         private void ValidateArguments(string id, string componentName, string parameterName, string inner, float energyMax, List<string> errors, List<string> warnings)

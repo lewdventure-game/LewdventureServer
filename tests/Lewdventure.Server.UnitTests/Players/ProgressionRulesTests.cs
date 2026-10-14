@@ -211,6 +211,24 @@ namespace Tests.Unit.Players
         }
 
         [Test]
+        public void MergePayment_FindsAssignmentRegardlessOfOrder()
+        {
+            var source = CreateEquipment(10, EquipmentType.Body, RarityType.Epic, mergeGroup: 1, mergeNumber: 0, mergeRequirements: "equipment_id:5:1;equipment_rarity:epic:1");
+
+            Assert.That(_mergeRules.TryResolveRequirements(source, out var requirements, out _), Is.True);
+
+            var candidates = new List<EquipmentMergeCandidate>
+            {
+                CreateCandidate("eq_a", CreateEquipment(5, EquipmentType.Body, RarityType.Epic)),
+                CreateCandidate("eq_b", CreateEquipment(5, EquipmentType.Body, RarityType.Rare)),
+            };
+
+            Assert.That(_mergeRules.TryMatchPayment(source, requirements, candidates, out var error), Is.True, error);
+            Assert.That(candidates[0].IsUsed, Is.True);
+            Assert.That(candidates[1].IsUsed, Is.True);
+        }
+
+        [Test]
         public void MergePayment_RarityOfOtherType_IsRejected()
         {
             var source = CreateEquipment(10, EquipmentType.Body, RarityType.Epic, mergeGroup: 1, mergeNumber: 0, mergeRequirements: "equipment_rarity:rare");

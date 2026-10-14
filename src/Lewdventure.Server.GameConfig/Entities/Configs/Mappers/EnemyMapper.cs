@@ -111,7 +111,7 @@ namespace Server.Entities
         }
 
         [JsonProperty("other_characteristics")]
-        private string _characteristicsRaw = string.Empty;
+        private string CharacteristicsRaw { get; set; } = string.Empty;
 
         public float Armor => _armor;
 
@@ -144,10 +144,10 @@ namespace Server.Entities
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            if (string.IsNullOrWhiteSpace(_characteristicsRaw))
+            if (string.IsNullOrWhiteSpace(CharacteristicsRaw))
                 return;
 
-            var packed = new EnemyCharacteristics(_characteristicsRaw);
+            var packed = new EnemyCharacteristics(CharacteristicsRaw);
 
             _armor = packed.Armor;
             _evasion = packed.Evasion;

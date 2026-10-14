@@ -176,6 +176,92 @@ namespace Tests.Unit.GameConfig
         }
 
         [Test]
+        public async Task Builder_Fixture_ReportsMissingStagesOncePerLevel()
+        {
+            var result = await BuildPatchedAsync(string.Empty, rows => { });
+
+            Assert.That(result.Succeeded, Is.True, string.Join("; ", result.Errors));
+            Assert.That(result.Warnings, Has.Exactly(1).Contains("Лист Story_levels, уровень 2: этапов 11, 12"));
+            Assert.That(result.Warnings, Has.None.Contains("колонка other_characteristics сервером не используется"));
+            Assert.That(result.Warnings, Has.None.Contains("promote_level = 1"));
+            Assert.That(result.Warnings, Has.None.Contains("promote_to_skill_levels"));
+        }
+
+        [Test]
+        public async Task Builder_PromoteToSkillLevelsShorterThanSkill_Warns()
+        {
+            var result = await BuildPatchedAsync(ConfigDomainNames.Characters, rows =>
+            {
+                ((JObject)rows[0])["promote_to_skill_levels"] = "1;2;3";
+            });
+
+            Assert.That(result.Warnings, Has.Some.Contains("в promote_to_skill_levels 3 значений, а у скилла 1 по 8 значений"));
+        }
+
+        [Test]
+        public async Task Builder_CharacterPromotesWithoutFirstLevel_Warns()
+        {
+            var result = await BuildPatchedAsync(ConfigDomainNames.CharacterPromotes, rows =>
+            {
+                for (int i = rows.Count - 1; 0 <= i; i--)
+                {
+                    if (rows[i]["promote_level"]!.ToString() == "1")
+                        rows.RemoveAt(i);
+                }
+            });
+
+            Assert.That(result.Warnings, Has.Some.Contains("нет строки promote_level = 1"));
+        }
+
+        [Test]
+        public async Task Builder_StageWithUnknownEvent_Warns()
+        {
+            var result = await BuildPatchedAsync(ConfigDomainNames.StoryStages, rows =>
+            {
+                ((JObject)rows[0])["event_ids"] = "999";
+                ((JObject)rows[0])["event_chances"] = "1";
+            });
+
+            Assert.That(result.Warnings, Has.Some.Contains("события 999 нет в Story_events"));
+        }
+
+        [Test]
+        public async Task Builder_MergeWithoutTarget_Warns()
+        {
+            var result = await BuildPatchedAsync(ConfigDomainNames.Equipments, rows =>
+            {
+                for (int i = 0; i < rows.Count; i++)
+                    ((JObject)rows[i])["merge_group"] = (i + 1).ToString();
+            });
+
+            Assert.That(result.Warnings, Has.Some.Contains("трансформация не сработает"));
+        }
+
+        private async Task<GameConfigBuildResult> BuildPatchedAsync(string domainName, Action<JArray> patch)
+        {
+            var source = new FileConfigSnapshotSource(new ConfigSnapshotSerializer(new ConfigSnapshotHasher()));
+            var snapshot = await source.LoadAsync(new ApiDirectoryLocator().FindFixture(), CancellationToken.None);
+            var domains = new List<ConfigSnapshotDomain>(snapshot.Domains.Count);
+
+            for (int i = 0; i < snapshot.Domains.Count; i++)
+            {
+                var domain = snapshot.Domains[i];
+
+                if (string.Equals(domain.Domain, domainName, StringComparison.Ordinal))
+                {
+                    var rows = JArray.Parse(domain.RowsJson);
+
+                    patch(rows);
+                    domain = new ConfigSnapshotDomain(domain.Domain, domain.SpreadsheetId, domain.Range, rows.ToString(), domain.SourceRows);
+                }
+
+                domains.Add(domain);
+            }
+
+            return CreateBuilder().Build(new GameConfigSnapshot(snapshot.Version, snapshot.CreatedAt, snapshot.SourceKind, domains), "test");
+        }
+
+        [Test]
         public async Task Builder_StartPerkGroupsWithUnknownGroup_Warns()
         {
             var source = new FileConfigSnapshotSource(new ConfigSnapshotSerializer(new ConfigSnapshotHasher()));

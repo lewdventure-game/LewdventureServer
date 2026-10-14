@@ -623,7 +623,7 @@ namespace Server.Infrastructure.Players
             DateTime now,
             List<PlayerLedgerEntryDocument> entries)
         {
-            if (configDistributor.Equipments.TryGet(equipmentId, out _) == false)
+            if (configDistributor.Equipments.TryGet(equipmentId, out var equipmentMapper) == false)
             {
                 _logger.LogWarning("[Player] equipment {EquipmentId} is missing in configs, reward skipped", equipmentId);
 
@@ -637,6 +637,7 @@ namespace Server.Infrastructure.Players
                     InstanceId = EquipmentInstancePrefix + Guid.NewGuid().ToString("N"),
                     ConfigId = equipmentId,
                     Level = 1,
+                    MergeNumber = equipmentMapper.MergeNumber,
                     ObtainedAt = now,
                 });
             }
