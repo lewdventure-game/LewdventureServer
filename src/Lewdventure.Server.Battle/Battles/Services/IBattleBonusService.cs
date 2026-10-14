@@ -30,6 +30,8 @@ namespace Server.Battles
 
         public void OnBattleEnd(IUnitState unit, List<BattleCommand> commands);
 
+        public List<BonusGrantSnapshot> CollectRewardGrants(IReadOnlyList<IUnitState> units);
+
         public void Rebuild(IUnitState unit, int currentTurn, List<BattleCommand> commands, bool emitSetBonusCommands);
     }
 }

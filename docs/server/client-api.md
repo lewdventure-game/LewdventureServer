@@ -330,7 +330,7 @@
 
 `UnitSnapshot`: `id`, `level`, `masteryLevel`, `equipments` (`id`, `level`), `equipmentIds`, `trainingLevel`, `artifactIds`, `aspectIds`, `activePerkIds`, `perkUsages` (`perkId`, `usedCount`), `activeSkillIds`, `activeStatusIds`, `activeBonuses` (`id`, `count`, `remainingBattles`), `slotIndex`, `currentHealth`, `skillLevels` (уровни скиллов саммона по порядку `Summons.skill_ids`).
 
-`BattleScriptResponse` кроме `steps` несёт `perkUsages` (`perkId`, `usedCount`, `remainingUses`) — расход перков с лимитом использований (сейчас воскрешение). Для проигрывания боя поле не нужно, забег использует его сам.
+`BattleScriptResponse` кроме `steps` несёт `perkUsages` (`perkId`, `usedCount`, `remainingUses`) — расход перков с лимитом использований (сейчас воскрешение) — и `bonusGrants` (`id`, `count`, `remainingBattles`) — бонусы из наград, выданные персонажу в бою и живые после него. Для проигрывания боя эти поля не нужны, забег использует их сам.
 
 Клиент этот объект не собирает: его строит сервер. Единственное применение на клиенте — передать в `ISharedCore.Battle.Replay(...)`.
 

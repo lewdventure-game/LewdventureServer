@@ -86,6 +86,7 @@ Snapshot — вход для серверной сборки `UnitState`. Ито
 | `outcomeType` | `OutcomeType` as int | Результат боя (`Unknown=0`, `TeamAWin=1`, `TeamBWin=2`, `Timeout=3`, `Draw=4`) |
 | `steps` | `List<BattleStep>` | Пошаговый script |
 | `perkUsages` | `{ perkId, usedCount, remainingUses }[]` | Итог по перкам с лимитом использований у стороны A после боя. `remainingUses = 0` → перк исчерпан, забег удаляет его из своего списка и он снова может выпасть |
+| `bonusGrants` | `{ id, count, remainingBattles }[]` | Бонусы из наград (перки, статусы), выданные main-юнитам стороны A во время боя и живые после него: всё, кроме `end_of_battle`. `remainingBattles` — остаток `next_battles:N` после этого боя, иначе `0`. Забег после победы кладёт их в свои `bonuses`. Бонусы `set_bonus` скиллов сюда не попадают (открытый вопрос: складывать или обновлять) |
 
 Число отыгранных ходов клиент берёт из `steps` (`max(turn)`, либо `0` если script пуст). Отдельного поля `turnsPlayed` нет.
 
@@ -180,13 +181,13 @@ Combo2 roll выполняется **только** если Combo1 сработ
 0. **Turn-start bonuses** уже начислены в начале полного хода (оба стороны), не внутри side-turn.
 1. **Statuses** — статусы **main** атакующей стороны по слотам, внутри юнита по `proc_order`; тики одного id суммируются за ход; саммоны в очередь не входят. `Wait(statuses_cooldown)` после каждого сработавшего, включая последнее. Пустая очередь — без wait. Тик, убивший юнита, обрывает его оставшиеся статусы; очередь переходит к следующему живому main или (если живых main нет) остаток хода стороны не выполняется. `SetHp` если статус изменил HP; статус без изменения HP `SetHp` не шлёт.
 2. **Perks** — перки атакующей стороны: владельцы по порядку (main-юниты по слотам, затем саммоны), внутри владельца по `proc_order` (доступные на ходе; `proc_rounds` 1-based). `Wait(perks_cooldown)` после каждого сработавшего; пустая очередь — без wait.
-3. **Summons** — слоты по возрастанию `slotIndex`: скиллы (`Wait(summons_cooldown)` после каждого, включая последний) → обычная атака только если не на `attack_cooldown` (крит от живого main с мин. `slotIndex`; `is_melee` из Summons → Approach/Return, иначе ranged без возврата) → `Wait(summons_cooldown)` после атаки. Пропуск атаки wait за неё не даёт. Нет действий в фазе — без wait.
+3. **Summons** — слоты по возрастанию `slotIndex`: скиллы (старый формат — `Wait(summons_cooldown)` после каждого; новый `triggers`/`actions` — только паузы `timing`) → обычная атака только если не на `attack_cooldown` (крит от живого main с мин. `slotIndex`; `is_melee` из Summons → Approach/Return, иначе ranged без возврата) → `Wait(summons_cooldown)` после атаки. Если атака пропущена, а скилл нового формата сработал, `Wait(summons_cooldown)` ставится после скиллов. Нет действий в фазе — без wait.
 4. **Main unit(s)** (все живые main стороны; два моба — оба ходят):
    1. Unit skills (не energy). Wait между ними — не этот пункт.
    2. Если `CanUseNormalAttack` = нет → EnergySkill (без Approach/Return/counter/combo).
-   3. Иначе melee: Approach → `Wait(units_cooldown)` → NormalAttack. Ranged: `Wait(units_cooldown)` → NormalAttack (снаряд).
+   3. Иначе melee: Approach → `Wait(units_cooldown)` → NormalAttack. Ranged: `Wait(units_cooldown)` → NormalAttack (снаряд). Это единственная пауза между скиллами юнита и атакой (с 2026-10-14 отдельного `Wait` после фазы скиллов нет).
    4. Counter → Combo1 → Counter → Combo2 → Counter **только после hit** обычной атаки. Miss → Return (melee) + energy skill без цепочки. Контр не триггерит контр. Combo2 только если Combo1 прошло. Атакующий melee **не** Return после комбо; Return только в конце цепочки. Melee-защитник на контре подходит и возвращается на свой слот.
-   5. EnergySkill, если `Energy` не меньше порога `energy_needed` скилла (`MaxEnergy` — потолок шкалы; у врага без `energy_max` равен порогу первого скилла за энергию, без такого скилла `MaxEnergy = 0` и энергия не копится) (без крита, с уклоном, без контратаки) → `Wait(units_cooldown)` → cast → `Wait(duration)` из parameters скилла → сброс energy.
+   5. EnergySkill, если `Energy` не меньше порога `energy_needed` скилла (`MaxEnergy` — потолок шкалы; у врага без `energy_max` равен порогу первого скилла за энергию, без такого скилла `MaxEnergy = 0` и энергия не копится) (без крита, с уклоном, без контратаки) → `Wait(units_cooldown)` отдельным шагом фазы EnergySkill (и у старого, и у нового формата) → cast → паузы `timing` / `Wait(duration)` → сброс energy.
 
 Цель атак/скиллов/саммонов: живой `mainUnits` защитника с минимальным `slotIndex`.
 

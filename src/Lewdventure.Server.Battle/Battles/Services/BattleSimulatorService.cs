@@ -140,6 +140,7 @@ namespace Server.Battles
                 OutcomeType = outcomeType,
                 Steps = steps,
                 PerkUsages = CollectPerkUsages(stateA),
+                BonusGrants = _battleBonusService.CollectRewardGrants(stateA.MainUnits),
             };
 
             return response;

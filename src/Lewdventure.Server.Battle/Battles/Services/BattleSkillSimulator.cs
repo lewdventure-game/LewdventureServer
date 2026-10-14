@@ -63,7 +63,7 @@ namespace Server.Battles
                 turnState);
         }
 
-        public void SimulateSummonSkills(
+        public int SimulateSummonSkills(
             List<BattleStep> steps,
             IUnitState summon,
             ITeamSimulationState attacker,
@@ -72,7 +72,7 @@ namespace Server.Battles
             ISeededRandomService seededRandomService,
             BattleTurnState turnState)
         {
-            CastAllSkills(
+            return CastAllSkills(
                 steps,
                 summon,
                 attacker,
@@ -188,6 +188,9 @@ namespace Server.Battles
                 turnState);
 
             _coreLog.Information($"[Story][Battle]: Energy skill cast, unitId = {actor.Id}, targetId = {target.Id}, skillId = {energySkill.SkillKey}, energy = {actor.CharacteristicState.Energy}");
+
+            if (0f < cooldown)
+                _battleScriptBuilder.Add(steps, currentTurn, BattlePhaseType.EnergySkill, actor, new List<BattleCommand> { _battleCommandFactory.Wait(cooldown) });
 
             var aliveBefore = CollectAliveMainUnits(defender, attacker);
 
@@ -333,7 +336,7 @@ namespace Server.Battles
             throw new InvalidOperationException($"[Error][Story][Battle]: Energy skill duration missing, unitId = {actor.Id}");
         }
 
-        private void CastAllSkills(
+        private int CastAllSkills(
             List<BattleStep> steps,
             IUnitState actor,
             ITeamSimulationState attacker,
@@ -347,7 +350,7 @@ namespace Server.Battles
             var skills = actor.Skills;
 
             if (skills.Count == 0)
-                return;
+                return 0;
 
             var cooldownKey = string.Empty;
 
@@ -357,10 +360,10 @@ namespace Server.Battles
                 cooldownKey = ConstantKeys.SummonsCooldownKey;
 
             if (string.IsNullOrEmpty(cooldownKey))
-                return;
+                return 0;
 
             var cooldown = _battleConstantsReader.Get(cooldownKey);
-            var executedCount = 0;
+            var configuredCount = 0;
 
             for (int i = 0; i < skills.Count; i++)
             {
@@ -414,7 +417,9 @@ namespace Server.Battles
 
                 skill.Execute(context);
                 skill.NotifyActivated(activationContext);
-                executedCount += 1;
+
+                if (skill.SkillType == SkillType.Configured)
+                    configuredCount += 1;
 
                 EmitSkillDeaths(context, aliveBefore);
 
@@ -422,42 +427,7 @@ namespace Server.Battles
                     break;
             }
 
-            TryEmitUnitSkillPhaseWait(steps, actor, currentTurn, cooldown, phase, executedCount);
-        }
-
-        private void TryEmitUnitSkillPhaseWait(
-            List<BattleStep> steps,
-            IUnitState actor,
-            int currentTurn,
-            float cooldown,
-            BattlePhaseType phase,
-            int executedCount)
-        {
-            if (phase != BattlePhaseType.UnitSkill)
-                return;
-
-            if (executedCount <= 0)
-                return;
-
-            if (actor.IsAlive() == false)
-                return;
-
-            if (cooldown <= 0f)
-                return;
-
-            var commands = new List<BattleCommand>
-            {
-                _battleCommandFactory.Wait(cooldown),
-            };
-
-            _battleScriptBuilder.Add(
-                steps,
-                currentTurn,
-                BattlePhaseType.UnitSkill,
-                actor,
-                commands);
-
-            _coreLog.Debug($"[Story][Battle]: Unit skill phase wait, unitId = {actor.Id}, wait = {cooldown}, executed = {executedCount}");
+            return configuredCount;
         }
 
         private string FindEnergySkillKey(IUnitState actor)
@@ -493,11 +463,23 @@ namespace Server.Battles
             ISeededRandomService seededRandomService,
             BattleTurnState turnState)
         {
-            var mainUnits = ownerTeam.MainUnits;
+            SimulateInstantSkillsForUnits(steps, ownerTeam.MainUnits, ownerTeam, opponentTeam, BattlePhaseType.UnitSkill, currentTurn, seededRandomService, turnState);
+            SimulateInstantSkillsForUnits(steps, ownerTeam.Summons, ownerTeam, opponentTeam, BattlePhaseType.SummonSkill, currentTurn, seededRandomService, turnState);
+        }
 
-            for (int unitIndex = 0; unitIndex < mainUnits.Count; unitIndex++)
+        private void SimulateInstantSkillsForUnits(
+            List<BattleStep> steps,
+            IReadOnlyList<IUnitState> owners,
+            ITeamSimulationState ownerTeam,
+            ITeamSimulationState opponentTeam,
+            BattlePhaseType phase,
+            int currentTurn,
+            ISeededRandomService seededRandomService,
+            BattleTurnState turnState)
+        {
+            for (int unitIndex = 0; unitIndex < owners.Count; unitIndex++)
             {
-                var owner = mainUnits[unitIndex];
+                var owner = owners[unitIndex];
 
                 if (owner.IsAlive() == false)
                     continue;
@@ -526,13 +508,13 @@ namespace Server.Battles
                         ownerTeam,
                         opponentTeam,
                         currentTurn,
-                        BattlePhaseType.UnitSkill,
+                        phase,
                         false,
                         cooldown,
                         seededRandomService,
                         turnState);
 
-                    _coreLog.Information($"[Story][Battle]: Instant skill activation, unitId = {owner.Id}, skillId = {skill.SkillKey}, turn = {currentTurn}");
+                    _coreLog.Information($"[Story][Battle]: Instant skill activation, unitId = {owner.Id}, skillId = {skill.SkillKey}, turn = {currentTurn}, phase = {phase}");
 
                     var aliveBefore = CollectAliveMainUnits(opponentTeam, ownerTeam);
 

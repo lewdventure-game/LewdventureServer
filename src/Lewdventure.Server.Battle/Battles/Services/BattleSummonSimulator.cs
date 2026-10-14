@@ -113,10 +113,11 @@ namespace Server.Battles
                     continue;
 
                 var hasSkills = HasNonEnergySkills(summon);
+                var configuredSkillCasts = 0;
 
                 if (hasSkills)
                 {
-                    _battleSkillSimulator.SimulateSummonSkills(
+                    configuredSkillCasts = _battleSkillSimulator.SimulateSummonSkills(
                         steps,
                         summon,
                         attacker,
@@ -140,6 +141,9 @@ namespace Server.Battles
                 if (summon.CanUseNormalAttack(currentTurn) == false)
                 {
                     _coreLog.Debug($"[Story][Battle]: Summon skip attack on cooldown, unitId = {summon.Id}, turn = {currentTurn}");
+
+                    if (0 < configuredSkillCasts)
+                        EmitSummonCooldown(steps, summon, currentTurn, cooldown);
 
                     continue;
                 }

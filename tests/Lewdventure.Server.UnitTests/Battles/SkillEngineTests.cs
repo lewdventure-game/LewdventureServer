@@ -50,6 +50,57 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
+        public void EnergySkill_StartsWithUnitsCooldown()
+        {
+            var script = CreateCore(WithSkill(EnergyTriggers, EnergyActions)).Replay(CreateReplayData(CreateUnitSnapshot()));
+            var castIndex = FindFirstCommandOf(script, CommandType.CastSkill, "actorId", CharacterId);
+
+            Assert.That(castIndex, Is.GreaterThan(0));
+
+            var previous = script.Steps[castIndex - 1];
+
+            Assert.That(previous.Phase, Is.EqualTo(BattlePhaseType.EnergySkill));
+            Assert.That(previous.Commands.Count, Is.EqualTo(1));
+            Assert.That(previous.Commands[0].CommandType, Is.EqualTo(CommandType.Wait));
+            Assert.That(previous.Commands[0].Parameters["seconds"]!.Value<float>(), Is.GreaterThan(0f));
+        }
+
+        [Test]
+        public void UnitSkillThenAttack_HasSingleUnitsCooldown()
+        {
+            var triggers = "on_cooldown:[cooldown:{1},is_start_available:{1}]";
+            var actions = "damage:[damage:{0.5},target:{1},is_spell_amp:{0},timing:{0.1}]";
+            var script = CreateCore(WithSkill(triggers, actions)).Replay(CreateReplayData(CreateUnitSnapshot()));
+            var castIndex = FindFirstCommandOf(script, CommandType.CastSkill, "actorId", CharacterId);
+            var waitsBeforeAttack = 0;
+            var attackFound = false;
+
+            for (int i = castIndex + 1; i < script.Steps.Count && attackFound == false; i++)
+            {
+                var commands = script.Steps[i].Commands;
+
+                for (int commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    var command = commands[commandIndex];
+
+                    if (command.CommandType == CommandType.PlayAnimation && command.Parameters["animationKey"]!.ToString() == "attack")
+                    {
+                        attackFound = true;
+
+                        break;
+                    }
+
+                    if (command.CommandType == CommandType.Wait)
+                        waitsBeforeAttack += 1;
+                }
+            }
+
+            Assert.That(castIndex, Is.GreaterThanOrEqualTo(0), "скилл не сработал");
+            Assert.That(attackFound, Is.True);
+            Assert.That(waitsBeforeAttack, Is.EqualTo(1), "между скиллами и атакой должна быть одна пауза units_cooldown");
+        }
+
+        [Test]
         public void EnergySkill_DamageIgnoresDefence()
         {
             var battleCore = CreateCore(WithSkill(EnergyTriggers, EnergyActions));
@@ -165,6 +216,49 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
+        public void SummonInstantSkill_ActivatesOutOfTurnOnOwnerLowHealth()
+        {
+            var patched = ReplaceDomain(WithSummonSkill("1"), "Skills", rows =>
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    var row = (JObject)rows[i];
+
+                    if (row["id"]!.ToString() != "50")
+                        continue;
+
+                    row["triggers"] = "ally_health_lower:[health:{0.95:0.95},is_instant_activation:{1:1}]";
+                    row["actions"] = "set_bonus:[bonus_id:{1:1},target:{0:0},timing:{0.1:0.1}]";
+                }
+            });
+
+            var script = CreateCore(patched).Replay(CreateReplayData(CreateUnitSnapshot(), CreateSummonSnapshot(1, 1)));
+            var firstHitIndex = FindFirstCommandOf(script, CommandType.ShowDamage, "targetId", CharacterId);
+            var castStepIndex = -1;
+
+            for (int i = 0; i < script.Steps.Count && castStepIndex < 0; i++)
+            {
+                if (script.Steps[i].Phase == BattlePhaseType.SummonSkill && FindCommandInStep(script.Steps[i], CommandType.CastSkill))
+                    castStepIndex = i;
+            }
+
+            Assert.That(firstHitIndex, Is.GreaterThanOrEqualTo(0), "персонаж не получил урона, тест ничего не проверяет");
+            Assert.That(castStepIndex, Is.GreaterThan(firstHitIndex), "скилл саммона не сработал после урона по персонажу");
+            Assert.That(script.Steps[castStepIndex].Turn, Is.EqualTo(script.Steps[firstHitIndex].Turn), "скилл саммона ждал своей фазы вместо внеочередного каста");
+        }
+
+        private bool FindCommandInStep(BattleStep step, CommandType commandType)
+        {
+            for (int i = 0; i < step.Commands.Count; i++)
+            {
+                if (step.Commands[i].CommandType == commandType)
+                    return true;
+            }
+
+            return false;
+        }
+
+        [Test]
         public void SummonSkill_LockedByMastery_DoesNotActivate()
         {
             var battleCore = CreateCore(WithSummonSkill("3"));
@@ -202,6 +296,89 @@ namespace Tests.Unit.Battles
 
             Assert.That(promotedCharacteristics.MaxHealth, Is.LessThan(baseCharacteristics.MaxHealth), "на втором уровне должен действовать бонус 7, а не 1");
             Assert.That(promotedCharacteristics.Damage, Is.LessThan(baseCharacteristics.Damage), "бонус 7 снижает урон");
+        }
+
+        [Test]
+        public void InstantSkill_EnabledOnlyOnLaterLevel_ActivatesOutOfTurn()
+        {
+            var triggers = "ally_health_lower:[health:{0.95:0.95},is_instant_activation:{0:1}]";
+            var actions = "set_bonus:[bonus_id:{1:1},target:{0:0},timing:{0.1:0.1}]";
+            var battleCore = CreateCore(WithSkill(triggers, actions, "1;2"));
+            var snapshot = CreateUnitSnapshot();
+
+            snapshot.Level = 2;
+
+            var script = battleCore.Replay(CreateReplayData(snapshot));
+            var castStepIndex = FindFirstCommandOf(script, CommandType.CastSkill, "actorId", CharacterId);
+            var firstHitIndex = FindFirstCommandOf(script, CommandType.ShowDamage, "targetId", CharacterId);
+
+            Assert.That(firstHitIndex, Is.GreaterThanOrEqualTo(0), "персонаж не получил урона, тест ничего не проверяет");
+            Assert.That(castStepIndex, Is.GreaterThan(firstHitIndex), "скилл сработал до урона");
+            Assert.That(script.Steps[castStepIndex].Turn, Is.EqualTo(script.Steps[firstHitIndex].Turn), "скилл ждал своей очереди вместо внеочередного каста");
+        }
+
+        private int FindFirstCommandOf(IBattleScriptResponse script, CommandType commandType, string unitParameter, int unitId)
+        {
+            for (int i = 0; i < script.Steps.Count; i++)
+            {
+                var commands = script.Steps[i].Commands;
+
+                for (int commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    var command = commands[commandIndex];
+
+                    if (command.CommandType == commandType && command.Parameters[unitParameter]!.Value<int>() == unitId)
+                        return i;
+                }
+            }
+
+            return -1;
+        }
+
+        [Test]
+        public void ReplaceBonus_GrantedTwice_KeepsItsValue()
+        {
+            var battleCore = CreateCore(_domains);
+            var snapshot = CreateUnitSnapshot();
+
+            snapshot.ActiveBonuses.Add(new BonusGrantSnapshot { Id = 8, Count = 2, RemainingBattles = 0 });
+
+            var characteristics = battleCore.BuildCharacteristics(snapshot, BattleSide.Attacking, false, StoryLevelId, 0);
+
+            Assert.That(characteristics.CriticalChance, Is.EqualTo(1f).Within(0.0001f), "replace-бонус умножился на количество выдач");
+        }
+
+        [Test]
+        public void EquipmentPassiveSkill_UsesFirstLevelRegardlessOfPromote()
+        {
+            var actions = "set_bonus:[bonus_id:{1:7},target:{0:0},timing:{0:0}]";
+            var withSkill = WithEquipmentSkill(actions, "1");
+            var withoutSkill = WithEquipmentSkill(actions, string.Empty);
+            var snapshot = CreateUnitSnapshot();
+
+            snapshot.Level = 2;
+            snapshot.Equipments.Add(new EquipmentSnapshot(1, 1));
+
+            var withCharacteristics = CreateCore(withSkill).BuildCharacteristics(snapshot, BattleSide.Attacking, false, StoryLevelId, 0);
+            var withoutCharacteristics = CreateCore(withoutSkill).BuildCharacteristics(snapshot, BattleSide.Attacking, false, StoryLevelId, 0);
+
+            Assert.That(withCharacteristics.MaxHealth, Is.GreaterThan(withoutCharacteristics.MaxHealth), "скилл снаряжения должен дать бонус первого уровня (1)");
+            Assert.That(withCharacteristics.Damage, Is.EqualTo(withoutCharacteristics.Damage), "скилл снаряжения взял уровень персонажа (бонус 7)");
+        }
+
+        private List<CoreConfigDomain> WithEquipmentSkill(string actions, string equipmentSkillIds)
+        {
+            var patched = WithSkill("as_bonus_logic:[]", actions, "1;2");
+
+            patched = ReplaceDomain(patched, "Characters", rows =>
+            {
+                ((JObject)rows[0])["skill_ids"] = "";
+            });
+
+            return ReplaceDomain(patched, "Equipments", rows =>
+            {
+                ((JObject)rows[0])["skill_ids"] = equipmentSkillIds;
+            });
         }
 
         [Test]

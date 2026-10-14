@@ -80,7 +80,7 @@ namespace Server.Battles
                 healRatio = 1f;
 
             var healthBefore = characteristics.Health;
-            var healthAfter = characteristics.MaxHealth * healRatio;
+            var healthAfter = MathF.Round(characteristics.MaxHealth * healRatio, MidpointRounding.AwayFromZero);
 
             if (healthAfter < 1f)
                 healthAfter = 1f;

@@ -14,6 +14,7 @@ namespace Tests.Unit.Battles
         private const int EnemyId = 10101;
         private const int BurningStatusId = 1;
         private const int ResurrectionPerkId = 7;
+        private const int ActionRewardPerkId = 6;
         private const int FirePerkId = 2;
         private const int PoisonStatusId = 3;
         private const int SecondEnemyId = 10102;
@@ -209,6 +210,102 @@ namespace Tests.Unit.Battles
             Assert.That(usage!.UsedCount, Is.EqualTo(1));
             Assert.That(usage.RemainingUses, Is.EqualTo(0));
             Assert.That(CountPerkTriggers(script, ResurrectionPerkId), Is.EqualTo(0));
+        }
+
+        [TestCase("end_of_game", 0)]
+        [TestCase("next_battles:3", 2)]
+        [TestCase("first_turns:2", 0)]
+        public void ActionRewardBonus_OutlivingBattle_IsReportedForRun(string workMode, int expectedRemainingBattles)
+        {
+            var script = ReplayWithActionRewardBonus(workMode);
+            var grant = FindBonusGrant(script, 1);
+
+            Assert.That(grant, Is.Not.Null, "бонус из action_reward не вернулся в забег");
+            Assert.That(grant!.Count, Is.GreaterThan(0));
+            Assert.That(grant.RemainingBattles, Is.EqualTo(expectedRemainingBattles));
+        }
+
+        [Test]
+        public void ActionRewardBonus_EndOfBattle_IsNotReported()
+        {
+            var script = ReplayWithActionRewardBonus("end_of_battle");
+
+            Assert.That(FindBonusGrant(script, 1), Is.Null);
+        }
+
+        [Test]
+        public void ResurrectionPerk_RestoresWholeHealth()
+        {
+            var patched = ReplaceDomain(_domains, "Perks", rows =>
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    var row = (JObject)rows[i];
+
+                    if (row["id"]!.ToString() == ResurrectionPerkId.ToString())
+                        row["perk_parameters"] = "health_ratio:[0.333];\nresurrections_count:[1]";
+                }
+            });
+
+            var unitSnapshot = CreateUnitSnapshot();
+
+            unitSnapshot.ActivePerkIds.Add(ResurrectionPerkId);
+
+            var script = CreateCore(patched).Replay(CreateReplayData(unitSnapshot));
+            var checkedHealth = 0;
+
+            for (int i = 0; i < script.Steps.Count; i++)
+            {
+                var commands = script.Steps[i].Commands;
+
+                for (int commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    var command = commands[commandIndex];
+
+                    if (command.CommandType != CommandType.SetHp || command.Parameters["unitId"]!.Value<int>() != CharacterId)
+                        continue;
+
+                    var hp = command.Parameters["hp"]!.Value<float>();
+
+                    Assert.That(hp, Is.EqualTo(MathF.Round(hp)), "ХП персонажа дробное");
+
+                    checkedHealth += 1;
+                }
+            }
+
+            Assert.That(CountPerkTriggers(script, ResurrectionPerkId), Is.EqualTo(1), "воскрешение не сработало, тест ничего не проверяет");
+            Assert.That(checkedHealth, Is.GreaterThan(0));
+        }
+
+        private IBattleScriptResponse ReplayWithActionRewardBonus(string workMode)
+        {
+            var patched = ReplaceDomain(_domains, "Bonuses", rows =>
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    var row = (JObject)rows[i];
+
+                    if (row["id"]!.ToString() == "1")
+                        row["work_modes"] = workMode;
+                }
+            });
+
+            var unitSnapshot = CreateUnitSnapshot();
+
+            unitSnapshot.ActivePerkIds.Add(ActionRewardPerkId);
+
+            return CreateCore(patched).Replay(CreateReplayData(unitSnapshot));
+        }
+
+        private BonusGrantSnapshot? FindBonusGrant(IBattleScriptResponse script, int bonusId)
+        {
+            for (int i = 0; i < script.BonusGrants.Count; i++)
+            {
+                if (script.BonusGrants[i].Id == bonusId)
+                    return script.BonusGrants[i];
+            }
+
+            return null;
         }
 
         [Test]

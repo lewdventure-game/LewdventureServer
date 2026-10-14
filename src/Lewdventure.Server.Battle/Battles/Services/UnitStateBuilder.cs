@@ -177,8 +177,22 @@ namespace Server.Battles
             var skillLevel = _skillLevelResolver.Resolve(characterMapper.PromoteToSkillLevels, promoteLevel);
 
             unitState.SetSkillLevel(skillLevel);
+            ApplyEquipmentSkillLevels(unitState, characterMapper.SkillIds);
 
             _coreLog.Debug($"[Story][Battle]: Skill level resolved, unitId = {unitState.Id}, promoteLevel = {promoteLevel}, skillLevel = {skillLevel}");
+        }
+
+        private void ApplyEquipmentSkillLevels(UnitState unitState, int[] characterSkillIds)
+        {
+            var skills = unitState.Skills;
+
+            for (int i = 0; i < skills.Count; i++)
+            {
+                var skillId = skills[i].Id;
+
+                if (Array.IndexOf(characterSkillIds, skillId) < 0)
+                    unitState.SetSkillLevel(skillId, 0);
+            }
         }
 
         private bool GrantPassiveSkillBonuses(UnitState unitState)

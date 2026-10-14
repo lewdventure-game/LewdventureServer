@@ -13,7 +13,7 @@ namespace Server.Battles
             ISeededRandomService seededRandomService,
             BattleTurnState turnState);
 
-        public void SimulateSummonSkills(
+        public int SimulateSummonSkills(
             List<BattleStep> steps,
             IUnitState summon,
             ITeamSimulationState attacker,

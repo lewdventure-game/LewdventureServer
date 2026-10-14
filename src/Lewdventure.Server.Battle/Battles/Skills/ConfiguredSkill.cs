@@ -6,6 +6,7 @@ namespace Server.Battles
         private const string TargetParameter = "target";
         private const string BonusParameter = "bonus_id";
         private const string EnergyParameter = "energy";
+        private const string InstantActivationParameter = "is_instant_activation";
 
         private readonly SkillDefinition _definition;
         private readonly string _skillKey;
@@ -269,7 +270,18 @@ namespace Server.Battles
             if (_definition.TryGetTrigger(SkillTriggerType.AllyHealthLower, out var trigger) == false)
                 return false;
 
-            return _skillArgumentReader.ReadFlag(trigger.Component, "is_instant_activation", 0);
+            if (trigger.Component.TryGetParameter(InstantActivationParameter, out var parameter) == false)
+                return false;
+
+            var arguments = parameter.Arguments;
+
+            for (int level = 0; level < arguments.Count; level++)
+            {
+                if (_skillArgumentReader.ReadFlag(trigger.Component, InstantActivationParameter, level))
+                    return true;
+            }
+
+            return false;
         }
     }
 }

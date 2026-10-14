@@ -12,5 +12,7 @@ namespace Server.Battles
         public List<BattleStep> Steps { get; set; }
 
         public List<PerkUsage> PerkUsages { get; set; }
+
+        public List<BonusGrantSnapshot> BonusGrants { get; set; }
     }
 }

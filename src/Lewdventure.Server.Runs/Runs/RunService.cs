@@ -505,9 +505,11 @@ namespace Server.Runs
             var experience = storyEvent.LevelExperience;
 
             run.CurrentHealth = NormalizeRunHealth(ReadFinalHealth(script, profile.Loadout.CharacterId, run.CurrentHealth));
-            run.CurrentHealthMaxReference = ReadMaxHealth(profile, run);
 
             ConsumeBattleBonuses(run);
+            ApplyBattleBonusGrants(run, script);
+
+            run.CurrentHealthMaxReference = ReadMaxHealth(profile, run);
 
             var grant = await ApplyRewardsAsync(userId, run, ReadString(parameters, RunEventKeys.Rewards), StageGrantKey(run), outcome, cancellationToken);
 
@@ -747,8 +749,11 @@ namespace Server.Runs
 
         private void AddRunBonus(RunDocument run, int bonusId, int count)
         {
-            var remainingBattles = ResolveRemainingBattles(bonusId);
+            AddRunBonus(run, bonusId, count, ResolveRemainingBattles(bonusId));
+        }
 
+        private void AddRunBonus(RunDocument run, int bonusId, int count, int remainingBattles)
+        {
             for (int i = 0; i < run.Bonuses.Count; i++)
             {
                 var existing = run.Bonuses[i];
@@ -774,6 +779,9 @@ namespace Server.Runs
 
             if (workMode.TryGetPart(BonusWorkModeKind.NextBattles, out var nextBattlesPart))
                 return nextBattlesPart.Count;
+
+            if (workMode.Contains(BonusWorkModeKind.EndOfBattle))
+                return 1;
 
             return 0;
         }
@@ -859,6 +867,23 @@ namespace Server.Runs
                 return 1f;
 
             return rounded;
+        }
+
+        private void ApplyBattleBonusGrants(RunDocument run, IBattleScriptResponse script)
+        {
+            var grants = script.BonusGrants;
+
+            for (int i = 0; i < grants.Count; i++)
+            {
+                var grant = grants[i];
+
+                if (grant.Count <= 0)
+                    continue;
+
+                AddRunBonus(run, grant.Id, grant.Count, grant.RemainingBattles);
+
+                _logger.LogInformation("[Run] battle bonus kept runId = {RunId} bonusId = {BonusId} count = {Count} remainingBattles = {RemainingBattles}", run.Id, grant.Id, grant.Count, grant.RemainingBattles);
+            }
         }
 
         private void ConsumeBattleBonuses(RunDocument run)

@@ -5,6 +5,8 @@ namespace Server.Battles
 {
     internal sealed class BattleBonusService : IBattleBonusService
     {
+        private const string RewardSourceKeyPrefix = "reward:bonus:";
+
         private readonly ICoreLog _coreLog;
         private readonly IBattleCommandFactory _battleCommandFactory;
         private readonly IBonusWorkModeParser _bonusWorkModeParser;
@@ -55,7 +57,9 @@ namespace Server.Battles
 
             if (bonusMapper.BonusType == BonusType.CurrentHealthLocal)
             {
-                ApplyCurrentHealthLocal(unit, bonusMapper.BonusValue * count, bonusMapper.OperatorType, commands);
+                var healthValue = bonusMapper.OperatorType == BonusOperatorType.Replace ? bonusMapper.BonusValue : bonusMapper.BonusValue * count;
+
+                ApplyCurrentHealthLocal(unit, healthValue, bonusMapper.OperatorType, commands);
 
                 return;
             }
@@ -182,6 +186,40 @@ namespace Server.Battles
             Rebuild(unit, currentTurn, commands, true);
         }
 
+        public List<BonusGrantSnapshot> CollectRewardGrants(IReadOnlyList<IUnitState> units)
+        {
+            var grants = new List<BonusGrantSnapshot>();
+
+            for (int unitIndex = 0; unitIndex < units.Count; unitIndex++)
+            {
+                var activeBonuses = units[unitIndex].ActiveBonuses;
+
+                for (int i = 0; i < activeBonuses.Count; i++)
+                {
+                    var activeBonus = activeBonuses[i];
+
+                    if (activeBonus.SourceKey.StartsWith(RewardSourceKeyPrefix, StringComparison.Ordinal) == false)
+                        continue;
+
+                    if (activeBonus.WorkMode.Contains(BonusWorkModeKind.EndOfBattle))
+                        continue;
+
+                    var remainingBattles = activeBonus.WorkMode.Contains(BonusWorkModeKind.NextBattles) ? activeBonus.RemainingBattles : 0;
+
+                    grants.Add(new BonusGrantSnapshot
+                    {
+                        Id = activeBonus.BonusId,
+                        Count = activeBonus.Count,
+                        RemainingBattles = remainingBattles,
+                    });
+
+                    _coreLog.Debug($"[Story][Battle]: Reward bonus reported, unitId = {units[unitIndex].Id}, bonusId = {activeBonus.BonusId}, count = {activeBonus.Count}, remainingBattles = {remainingBattles}");
+                }
+            }
+
+            return grants;
+        }
+
         public void OnBattleEnd(IUnitState unit, List<BattleCommand> commands)
         {
             var activeBonuses = unit.ActiveBonuses;
@@ -263,7 +301,7 @@ namespace Server.Battles
 
                 if (activeBonus.OperatorType == BonusOperatorType.Replace)
                 {
-                    replaceOverrides.Add(new ReplaceOverride(activeBonus.BonusType, totalValue));
+                    replaceOverrides.Add(new ReplaceOverride(activeBonus.BonusType, activeBonus.BonusValue));
 
                     continue;
                 }
@@ -377,7 +415,7 @@ namespace Server.Battles
                     if (activeBonus.WorkMode.Contains(BonusWorkModeKind.EveryTurn))
                         totalCount = activeBonus.Count * Math.Max(activeBonus.EveryTurnStacks, 1);
 
-                    appliedValue += activeBonus.BonusValue * totalCount;
+                    appliedValue += activeBonus.OperatorType == BonusOperatorType.Replace ? activeBonus.BonusValue : activeBonus.BonusValue * totalCount;
                 }
 
                 if (hasActiveEntry == false)
