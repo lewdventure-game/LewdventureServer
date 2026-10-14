@@ -82,6 +82,12 @@ namespace Server.Battles
                 workMode,
                 sourceKey);
 
+            if (workMode.Contains(BonusWorkModeKind.EveryTurn))
+            {
+                activeBonus.EveryTurnStacks = 1;
+                activeBonus.LastStackedTurn = currentTurn;
+            }
+
             unit.ActiveBonuses.Add(activeBonus);
 
             if (workMode.Contains(BonusWorkModeKind.NextBattles))
@@ -173,7 +179,11 @@ namespace Server.Battles
                 if (activeBonus.WorkMode.Contains(BonusWorkModeKind.EveryTurn) == false)
                     continue;
 
+                if (activeBonus.LastStackedTurn == currentTurn)
+                    continue;
+
                 ++activeBonus.EveryTurnStacks;
+                activeBonus.LastStackedTurn = currentTurn;
 
                 changed = true;
 
@@ -254,6 +264,7 @@ namespace Server.Battles
                     {
                         if (workMode.Contains(BonusWorkModeKind.EveryTurn))
                             activeBonus.EveryTurnStacks = 0;
+                            activeBonus.LastStackedTurn = -1;
 
                         continue;
                     }
@@ -270,6 +281,7 @@ namespace Server.Battles
                     continue;
 
                 activeBonus.EveryTurnStacks = 0;
+                activeBonus.LastStackedTurn = -1;
                 nextBattlesChanged = true;
             }
 

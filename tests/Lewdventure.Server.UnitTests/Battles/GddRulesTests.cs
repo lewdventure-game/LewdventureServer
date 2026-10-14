@@ -180,6 +180,78 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
+        public void DamageOverTime_FromDeadSource_DealsNoDamage()
+        {
+            var patched = ReplaceDomain(_domains, "Skills", rows =>
+            {
+                rows.Add(new JObject
+                {
+                    ["id"] = "2",
+                    ["triggers"] = "on_cooldown:[cooldown:{100},is_start_available:{1}]",
+                    ["actions"] = "set_status:[status_id:{1},target:{1},timing:{0.1}]",
+                });
+            });
+
+            patched = ReplaceDomain(patched, "Characters", rows =>
+            {
+                ((JObject)rows[0])["skill_ids"] = "";
+            });
+
+            patched = ReplaceDomain(patched, "Enemies", rows =>
+            {
+                var first = (JObject)rows[0];
+
+                first["health"] = "100";
+                first["skill_ids"] = "2";
+                first["other_characteristics"] = "armor:[0];evasion:[0];vampyrism:[0];healing_boost:[0];crit_chance:[0];crit_multiplier:[0];"
+                    + "combo_1_chance:[0];combo_2_chance:[0];combo_multiplier:[0];counter_chance:[0];counter_multiplier:[0];"
+                    + "spell_multiplier:[0];energy:[0]";
+                ((JObject)rows[1])["skill_ids"] = "";
+            });
+
+            var replayData = CreateReplayData(CreateUnitSnapshot());
+
+            replayData.TeamB.MainUnits.Add(new UnitSnapshot { Id = SecondEnemyId, Level = 1, SlotIndex = 1 });
+
+            var script = CreateCore(patched).Replay(replayData);
+            var killIndex = -1;
+            var ticksBeforeKill = 0;
+            var ticksAfterKill = 0;
+            var damageAfterKill = 0f;
+
+            for (int i = 0; i < script.Steps.Count; i++)
+            {
+                var commands = script.Steps[i].Commands;
+
+                for (int commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    var command = commands[commandIndex];
+
+                    if (command.CommandType == CommandType.KillUnit && command.Parameters["unitId"]!.Value<int>() == EnemyId && killIndex < 0)
+                        killIndex = i;
+
+                    if (command.CommandType != CommandType.TickStatus || command.Parameters["targetId"]!.Value<int>() != CharacterId)
+                        continue;
+
+                    if (killIndex < 0)
+                    {
+                        ticksBeforeKill += 1;
+
+                        continue;
+                    }
+
+                    ticksAfterKill += 1;
+                    damageAfterKill += command.Parameters["value"]!.Value<float>();
+                }
+            }
+
+            Assert.That(killIndex, Is.GreaterThanOrEqualTo(0), "моб-источник не умер, тест ничего не проверяет");
+            Assert.That(ticksAfterKill, Is.GreaterThan(0), "после смерти источника ожог не тикал, тест ничего не проверяет");
+            Assert.That(damageAfterKill, Is.EqualTo(0f), "ожог мёртвого моба продолжает наносить урон");
+            TestContext.Out.WriteLine($"ticks before = {ticksBeforeKill}, after = {ticksAfterKill}");
+        }
+
+        [Test]
         public void BonusChangeStatusInSnapshot_GrantsItsBonuses()
         {
             var battleCore = CreateCore(_domains);

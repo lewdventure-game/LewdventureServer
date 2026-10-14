@@ -392,6 +392,25 @@ namespace Server.Battles
             return -1;
         }
 
+        private bool TryFindAliveMain(ITeamSimulationState team, int unitId, [MaybeNullWhen(false)] out IUnitState unit)
+        {
+            var mainUnits = team.MainUnits;
+
+            for (int i = 0; i < mainUnits.Count; i++)
+            {
+                if (mainUnits[i].Id != unitId || mainUnits[i].IsAlive() == false)
+                    continue;
+
+                unit = mainUnits[i];
+
+                return true;
+            }
+
+            unit = null;
+
+            return false;
+        }
+
         private bool TryFindMain(ITeamSimulationState team, int unitId, [MaybeNullWhen(false)] out IUnitState unit)
         {
             var mainUnits = team.MainUnits;
@@ -486,13 +505,20 @@ namespace Server.Battles
             criticalChance = 0f;
             criticalMultiplier = 0f;
 
-            if (TryFindMain(ownerTeam, activeStatus.SourceUnitId, out var sourceUnit)
-                || TryFindMain(opponentTeam, activeStatus.SourceUnitId, out sourceUnit))
+            if (TryFindAliveMain(ownerTeam, activeStatus.SourceUnitId, out var sourceUnit)
+                || TryFindAliveMain(opponentTeam, activeStatus.SourceUnitId, out sourceUnit))
             {
                 var sourceCharacteristics = sourceUnit.CharacteristicState;
                 sourceDamage = sourceCharacteristics.Damage;
                 criticalChance = sourceCharacteristics.CriticalChance;
                 criticalMultiplier = sourceCharacteristics.CriticalMultiplier;
+
+                return;
+            }
+
+            if (TryFindMain(ownerTeam, activeStatus.SourceUnitId, out _) || TryFindMain(opponentTeam, activeStatus.SourceUnitId, out _))
+            {
+                _coreLog.Debug($"[Story][Battle]: Damage over time source dead, no damage, sourceId = {activeStatus.SourceUnitId}, bearerId = {bearer.Id}, statusId = {activeStatus.StatusId}");
 
                 return;
             }

@@ -50,6 +50,54 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
+        public void EveryTurnBonusGrantedInBattle_GrowsFromNextTurn()
+        {
+            var patched = ReplaceDomain(WithSkill("on_cooldown:[cooldown:{100},is_start_available:{1}]", "set_bonus:[bonus_id:{1},target:{0},timing:{0.1}]"), "Bonuses", rows =>
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    var row = (JObject)rows[i];
+
+                    if (row["id"]!.ToString() == "1")
+                        row["work_modes"] = "every_turn";
+                }
+            });
+
+            var script = CreateCore(patched).Replay(CreateReplayData(CreateUnitSnapshot()));
+            var grantTurn = -1;
+            var grantValue = 0f;
+            var nextTurnValue = 0f;
+
+            for (int i = 0; i < script.Steps.Count; i++)
+            {
+                var commands = script.Steps[i].Commands;
+
+                for (int commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    var command = commands[commandIndex];
+
+                    if (command.CommandType != CommandType.SetBonus || command.Parameters["unitId"]!.Value<int>() != CharacterId || command.Parameters["bonusId"]!.Value<int>() != 1)
+                        continue;
+
+                    var value = command.Parameters["value"]!.Value<float>();
+
+                    if (grantTurn < 0)
+                    {
+                        grantTurn = script.Steps[i].Turn;
+                        grantValue = value;
+                    }
+                    else if (script.Steps[i].Turn == grantTurn + 1 && nextTurnValue == 0f)
+                    {
+                        nextTurnValue = value;
+                    }
+                }
+            }
+
+            Assert.That(grantTurn, Is.GreaterThanOrEqualTo(0), "бонус не выдался");
+            Assert.That(nextTurnValue, Is.EqualTo(grantValue * 2f).Within(0.0001f), "every_turn, выданный в бою, на следующем ходу должен удвоиться");
+        }
+
+        [Test]
         public void EnergySkill_StartsWithUnitsCooldown()
         {
             var script = CreateCore(WithSkill(EnergyTriggers, EnergyActions)).Replay(CreateReplayData(CreateUnitSnapshot()));

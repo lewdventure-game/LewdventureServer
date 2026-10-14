@@ -20,6 +20,8 @@ namespace Server.Battles
 
         public int EveryTurnStacks { get; set; }
 
+        public int LastStackedTurn { get; set; }
+
         public int RemainingBattles { get; set; }
 
         public ActiveBattleBonus(
@@ -39,6 +41,7 @@ namespace Server.Battles
             WorkMode = workMode;
             SourceKey = sourceKey;
             EveryTurnStacks = 0;
+            LastStackedTurn = -1;
             RemainingBattles = 0;
 
             if (workMode.TryGetPart(BonusWorkModeKind.NextBattles, out var nextBattlesPart))
