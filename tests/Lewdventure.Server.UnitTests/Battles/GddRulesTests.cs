@@ -164,6 +164,21 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
+        public void BonusChangeStatusInSnapshot_GrantsItsBonuses()
+        {
+            var battleCore = CreateCore(_domains);
+            var unitSnapshot = CreateUnitSnapshot();
+            var baseline = battleCore.BuildCharacteristics(unitSnapshot, BattleSide.Attacking, false, 0, 0);
+
+            unitSnapshot.ActiveStatusIds.Add(5);
+
+            var characteristics = battleCore.BuildCharacteristics(unitSnapshot, BattleSide.Attacking, false, 0, 0);
+
+            Assert.That(baseline.CriticalChance, Is.LessThan(1f));
+            Assert.That(characteristics.CriticalChance, Is.EqualTo(1f).Within(0.0001f), "bonus_change из снапшота не выдал свой бонус 8");
+        }
+
+        [Test]
         public void StatusWithoutSourceAndFlatValue_DealsNoDamage()
         {
             var battleCore = CreateCore(_domains);

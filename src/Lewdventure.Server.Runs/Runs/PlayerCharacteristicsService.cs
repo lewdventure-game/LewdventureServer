@@ -43,10 +43,12 @@ namespace Server.Runs
                 return new PlayerCharacteristicsResult(null, $"Character {characterId} is missing in configs.");
 
             var run = await _runRepository.GetActiveAsync(userId, cancellationToken);
-            var unit = _runSnapshotBuilder.BuildMainUnit(profile, run ?? CreateEmptyRun(userId), ResolveCharacter(profile, characterId));
+            var unit = _runSnapshotBuilder.BuildMainUnit(profile, run ?? CreateEmptyRun(userId), ResolveCharacter(profile, characterId), _configDistributor);
             var storyLevelId = run == null ? 0 : run.StoryLevelId;
             var stageId = ResolveStageId(run);
             var unitState = _unitStateBuilder.Build(unit, BattleSide.Attacking, false, storyLevelId, stageId);
+
+            _unitStateBuilder.ApplyTeamSummons(unitState, _runSnapshotBuilder.CollectSummonIds(profile), unit);
 
             return new PlayerCharacteristicsResult(unitState.CharacteristicState, string.Empty);
         }

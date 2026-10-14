@@ -295,6 +295,13 @@ namespace Server.Battles
             var summons = teamSnapshot.Summons;
             var summonsCount = summons.Count;
             var summonStates = new List<IUnitState>(summonsCount);
+            var summonIds = new List<int>(summonsCount);
+
+            for (int i = 0; i < summonsCount; i++)
+                summonIds.Add(summons[i].Id);
+
+            for (int i = 0; i < mainUnitsCount; i++)
+                _unitStateBuilder.ApplyTeamSummons(mainUnitStates[i], summonIds, mainUnits[i]);
 
             for (int i = 0; i < summonsCount; i++)
             {
@@ -307,7 +314,6 @@ namespace Server.Battles
 
             SortBySlot(mainUnitStates);
             SortBySlot(summonStates);
-            RegisterTeamSummons(mainUnitStates, summonStates);
 
             return new TeamSimulationState(mainUnitStates, summonStates, battleSide);
         }
@@ -326,26 +332,6 @@ namespace Server.Battles
                 }
 
                 units[j + 1] = unit;
-            }
-        }
-
-        private void RegisterTeamSummons(List<IUnitState> mainUnitStates, List<IUnitState> summonStates)
-        {
-            if (summonStates.Count == 0)
-                return;
-
-            var rebuildCommands = new List<BattleCommand>();
-
-            for (int i = 0; i < mainUnitStates.Count; i++)
-            {
-                var mainUnit = mainUnitStates[i];
-
-                for (int j = 0; j < summonStates.Count; j++)
-                    mainUnit.RegisterEquippedEntity("summons", summonStates[j].Id);
-
-                _battleBonusService.Rebuild(mainUnit, 0, rebuildCommands, false);
-
-                _coreLog.Debug($"[Story][Battle]: Team summons applied on main unitId = {mainUnit.Id}, summonCount = {summonStates.Count}");
             }
         }
 

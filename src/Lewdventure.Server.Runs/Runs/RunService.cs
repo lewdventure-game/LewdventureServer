@@ -853,10 +853,13 @@ namespace Server.Runs
             if (character == null)
                 return null;
 
-            var unit = _runSnapshotBuilder.BuildMainUnit(profile, run, character);
+            var unit = _runSnapshotBuilder.BuildMainUnit(profile, run, character, _configDistributor);
             var stageId = run.StageIndex < run.Stages.Count ? run.Stages[run.StageIndex].StageId : 0;
+            var unitState = _unitStateBuilder.Build(unit, BattleSide.Attacking, false, run.StoryLevelId, stageId);
 
-            return _unitStateBuilder.Build(unit, BattleSide.Attacking, false, run.StoryLevelId, stageId);
+            _unitStateBuilder.ApplyTeamSummons(unitState, _runSnapshotBuilder.CollectSummonIds(profile), unit);
+
+            return unitState;
         }
 
         private float NormalizeRunHealth(float health)
@@ -1138,9 +1141,11 @@ namespace Server.Runs
             if (character == null)
                 return 0f;
 
-            var unit = _runSnapshotBuilder.BuildMainUnit(profile, run, character);
+            var unit = _runSnapshotBuilder.BuildMainUnit(profile, run, character, _configDistributor);
             var stageId = run.Stages.Count == 0 ? 0 : run.Stages[0].StageId;
             var unitState = _unitStateBuilder.Build(unit, BattleSide.Attacking, false, run.StoryLevelId, stageId);
+
+            _unitStateBuilder.ApplyTeamSummons(unitState, _runSnapshotBuilder.CollectSummonIds(profile), unit);
 
             return unitState.CharacteristicState.MaxHealth;
         }

@@ -300,15 +300,18 @@ namespace Server.Battles
                     continue;
                 }
 
+                if (_statusParametersParser.TryParse(statusMapper.Parameters, statusMapper.StatusType, out var parameters) == false)
+                    continue;
+
                 if (statusMapper.StatusType == StatusType.BonusChange)
                 {
-                    _coreLog.Error($"[Story][Battle]: bonus_change cannot hang in snapshot, id = {statusId}, unitId = {unitState.Id}");
+                    var bonusSourceKey = _battleBonusService.CreateFreeSourceKey(unitState, $"status:{statusId}", 0);
+
+                    _battleBonusService.GrantRewardBonuses(unitState, parameters.Bonuses, 1, bonusSourceKey, commands, 0);
+                    _coreLog.Debug($"[Story][Battle]: bonus_change seeded as bonuses, id = {statusId}, unitId = {unitState.Id}, bonuses = {parameters.Bonuses.Count}");
 
                     continue;
                 }
-
-                if (_statusParametersParser.TryParse(statusMapper.Parameters, statusMapper.StatusType, out var parameters) == false)
-                    continue;
 
                 var currentStacks = CountStatusStacks(activeStatuses, statusId);
 

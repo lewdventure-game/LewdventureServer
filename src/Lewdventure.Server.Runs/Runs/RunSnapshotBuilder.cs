@@ -2,6 +2,7 @@ using Server.Battles;
 using Server.Infrastructure.Mongo.Players;
 using Server.Infrastructure.Mongo.Runs;
 using Server.Services;
+using Server.Statuses;
 
 namespace Server.Runs
 {
@@ -54,7 +55,7 @@ namespace Server.Runs
             var teamA = new TeamSnapshot();
             var teamB = new TeamSnapshot();
 
-            teamA.MainUnits.Add(BuildMainUnit(profile, run, character));
+            teamA.MainUnits.Add(BuildMainUnit(profile, run, character, configDistributor));
             AddSummons(profile, teamA);
 
             for (int i = 0; i < enemyIds.Count; i++)
@@ -74,6 +75,8 @@ namespace Server.Runs
                 });
             }
 
+            AddEnemyRunStatuses(run, teamB, configDistributor);
+
             simulationData = new BattleSimulationData
             {
                 TeamA = teamA,
@@ -85,7 +88,29 @@ namespace Server.Runs
             return true;
         }
 
-        public UnitSnapshot BuildMainUnit(PlayerProfileDocument profile, RunDocument run, PlayerCharacterDocument character)
+        private void AddEnemyRunStatuses(RunDocument run, TeamSnapshot teamB, IConfigDistributor configDistributor)
+        {
+            if (teamB.MainUnits.Count == 0)
+                return;
+
+            var firstEnemy = teamB.MainUnits[0];
+
+            for (int i = 0; i < run.Statuses.Count; i++)
+            {
+                if (IsEnemyStatus(run.Statuses[i], configDistributor))
+                    firstEnemy.ActiveStatusIds.Add(run.Statuses[i]);
+            }
+        }
+
+        private bool IsEnemyStatus(int statusId, IConfigDistributor configDistributor)
+        {
+            if (configDistributor.Statuses.TryGet(statusId, out var statusMapper) == false)
+                return false;
+
+            return statusMapper.StatusTarget == StatusTargetType.Enemy;
+        }
+
+        public UnitSnapshot BuildMainUnit(PlayerProfileDocument profile, RunDocument run, PlayerCharacterDocument character, IConfigDistributor configDistributor)
         {
             var unit = new UnitSnapshot
             {
@@ -124,7 +149,10 @@ namespace Server.Runs
             }
 
             for (int i = 0; i < run.Statuses.Count; i++)
-                unit.ActiveStatusIds.Add(run.Statuses[i]);
+            {
+                if (IsEnemyStatus(run.Statuses[i], configDistributor) == false)
+                    unit.ActiveStatusIds.Add(run.Statuses[i]);
+            }
 
             for (int i = 0; i < profile.Bonuses.Count; i++)
             {
@@ -151,6 +179,22 @@ namespace Server.Runs
             }
 
             return unit;
+        }
+
+        public List<int> CollectSummonIds(PlayerProfileDocument profile)
+        {
+            var summonIds = profile.Loadout.Summons;
+            var configIds = new List<int>(summonIds.Count);
+
+            for (int i = 0; i < summonIds.Count; i++)
+            {
+                var summon = FindSummon(profile, summonIds[i]);
+
+                if (summon != null)
+                    configIds.Add(summon.ConfigId);
+            }
+
+            return configIds;
         }
 
         public void AddSummons(PlayerProfileDocument profile, TeamSnapshot team)

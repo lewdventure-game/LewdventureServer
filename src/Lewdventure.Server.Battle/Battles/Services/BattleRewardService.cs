@@ -164,7 +164,7 @@ namespace Server.Battles
             }
 
             var sourceKey = isSkillSource
-                ? $"skill:{source.Id}:bonus:{reward.Id}"
+                ? $"skill:{source.Side}:{(int)(source.Flags & UnitFlags.Summon)}:{source.SlotIndex}:{source.Id}:bonus:{reward.Id}"
                 : _battleBonusService.CreateFreeSourceKey(target, $"reward:bonus:{reward.Id}", 0);
 
             _battleBonusService.Grant(

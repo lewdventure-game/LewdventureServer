@@ -54,6 +54,28 @@ namespace Tests.Unit.Players
         }
 
         [Test]
+        public void PickDistinct_ZeroWeightOptions_AreNeverOffered()
+        {
+            var options = new[] { 1, 2, 3, 4 };
+            var weights = new[] { 1, 0, 1, 0 };
+
+            for (int i = 0; i < 50; i++)
+            {
+                var picked = _factory.PickDistinct(_factory.Create(11, i), options, weights, 3);
+
+                Assert.That(picked, Is.EquivalentTo(new[] { 1, 3 }));
+            }
+        }
+
+        [Test]
+        public void PickDistinct_DuplicateOptions_AreOfferedOnce()
+        {
+            var picked = _factory.PickDistinct(_factory.Create(3, 0), new[] { 5, 5, 6 }, new[] { 1, 1, 1 }, 3);
+
+            Assert.That(picked, Is.EquivalentTo(new[] { 5, 6 }));
+        }
+
+        [Test]
         public void PickDistinct_MoreThanAvailable_ReturnsAll()
         {
             var options = new[] { 1, 2 };

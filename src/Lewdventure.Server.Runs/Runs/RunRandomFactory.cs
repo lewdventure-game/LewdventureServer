@@ -76,22 +76,36 @@ namespace Server.Runs
 
         public List<int> PickDistinct(ISeededRandomService random, int[] options, int[] weights, int count)
         {
-            var available = new List<int>(options);
+            var available = new List<int>(options.Length);
             var availableWeights = new List<int>(options.Length);
 
             for (int i = 0; i < options.Length; i++)
-                availableWeights.Add(ResolveWeight(weights, i));
+            {
+                var weight = ResolveWeight(weights, i);
+
+                if (weight <= 0)
+                    continue;
+
+                available.Add(options[i]);
+                availableWeights.Add(weight);
+            }
 
             var result = new List<int>(count);
 
             while (result.Count < count && 0 < available.Count)
             {
                 var picked = PickWeighted(random, available.ToArray(), availableWeights.ToArray());
-                var index = available.IndexOf(picked);
 
                 result.Add(picked);
-                available.RemoveAt(index);
-                availableWeights.RemoveAt(index);
+
+                for (int i = available.Count - 1; 0 <= i; i--)
+                {
+                    if (available[i] != picked)
+                        continue;
+
+                    available.RemoveAt(i);
+                    availableWeights.RemoveAt(i);
+                }
             }
 
             return result;

@@ -129,6 +129,20 @@ namespace Server.Battles
             return unitState;
         }
 
+        public void ApplyTeamSummons(IUnitState mainUnit, IReadOnlyList<int> summonIds, IUnitSnapshot mainSnapshot)
+        {
+            if (summonIds.Count == 0)
+                return;
+
+            for (int i = 0; i < summonIds.Count; i++)
+                mainUnit.RegisterEquippedEntity("summons", summonIds[i]);
+
+            _battleBonusService.Rebuild(mainUnit, 0, new List<BattleCommand>(), false);
+            ApplySnapshotHealth(mainUnit, mainSnapshot);
+
+            _coreLog.Debug($"[Story][Battle]: Team summons applied on main unitId = {mainUnit.Id}, summonCount = {summonIds.Count}, health = {mainUnit.CharacteristicState.Health}/{mainUnit.CharacteristicState.MaxHealth}");
+        }
+
         private void ApplyEnemyEnergyMax(CharacteristicBuckets buckets, IReadOnlyList<ISkill> skills, int enemyId)
         {
             if (0f < buckets.EnergyMaxBase)

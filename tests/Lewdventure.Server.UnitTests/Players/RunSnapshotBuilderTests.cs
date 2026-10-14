@@ -106,6 +106,23 @@ namespace Tests.Unit.Players
         }
 
         [Test]
+        public void TryBuild_RunStatusesGoToTheirTargets()
+        {
+            var profile = CreateProfile();
+            var run = CreateRun();
+
+            run.Statuses.Add(1);
+            run.Statuses.Add(5);
+
+            var built = _builder.TryBuild(profile, run, run.Stages[0], new[] { EnemyId, EnemyId }, _configDistributor, out var data, out var error);
+
+            Assert.That(built, Is.True, error);
+            Assert.That(data.TeamA.MainUnits[0].ActiveStatusIds, Is.EquivalentTo(new[] { 5 }), "на персонаже только статусы со status_target = caster");
+            Assert.That(data.TeamB.MainUnits[0].ActiveStatusIds, Is.EquivalentTo(new[] { 1 }), "статус со status_target = enemy вешается на первого врага");
+            Assert.That(data.TeamB.MainUnits[1].ActiveStatusIds, Is.Empty);
+        }
+
+        [Test]
         public void TryBuild_WithoutCharacter_Fails()
         {
             var profile = CreateProfile();

@@ -259,6 +259,98 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
+        public void SummonMaxHealthBonus_KeepsAbsoluteSnapshotHealth()
+        {
+            var patched = ReplaceDomain(_domains, "Bonuses", rows =>
+            {
+                rows.Add(new JObject
+                {
+                    ["id"] = "90",
+                    ["operator"] = "add",
+                    ["bonus_type"] = "max_health_perk",
+                    ["bonus_value"] = "0.2",
+                    ["work_modes"] = "if_equipped:summons:1",
+                });
+            });
+
+            patched = ReplaceDomain(patched, "Characters", rows =>
+            {
+                ((JObject)rows[0])["skill_ids"] = string.Empty;
+            });
+
+            var battleCore = CreateCore(patched);
+            var snapshot = CreateUnitSnapshot();
+
+            snapshot.CurrentHealth = 300f;
+            snapshot.ActiveBonuses.Add(new BonusGrantSnapshot { Id = 90, Count = 1, RemainingBattles = 0 });
+
+            var script = battleCore.Replay(CreateReplayData(snapshot, CreateSummonSnapshot(1, 1)));
+            var startHealth = ReadHealthBeforeFirstHit(script, CharacterId);
+
+            Assert.That(startHealth, Is.EqualTo(300f), "бонус саммона к МАКС.ХП пересчитал принесённое ХП пропорционально");
+        }
+
+        [Test]
+        public void SummonMaxHealthBonus_FullSnapshotHealthIsFullMaximum()
+        {
+            var patched = ReplaceDomain(_domains, "Bonuses", rows =>
+            {
+                rows.Add(new JObject
+                {
+                    ["id"] = "90",
+                    ["operator"] = "add",
+                    ["bonus_type"] = "max_health_perk",
+                    ["bonus_value"] = "0.2",
+                    ["work_modes"] = "if_equipped:summons:1",
+                });
+            });
+
+            patched = ReplaceDomain(patched, "Characters", rows =>
+            {
+                ((JObject)rows[0])["skill_ids"] = string.Empty;
+            });
+
+            var battleCore = CreateCore(patched);
+            var snapshot = CreateUnitSnapshot();
+            var withoutSummon = battleCore.BuildCharacteristics(snapshot, BattleSide.Attacking, false, StoryLevelId, 0).MaxHealth;
+
+            snapshot.ActiveBonuses.Add(new BonusGrantSnapshot { Id = 90, Count = 1, RemainingBattles = 0 });
+
+            var script = battleCore.Replay(CreateReplayData(snapshot, CreateSummonSnapshot(1, 1)));
+            var startHealth = ReadHealthBeforeFirstHit(script, CharacterId);
+
+            Assert.That(startHealth, Is.EqualTo(MathF.Round(withoutSummon * 1.2f, MidpointRounding.AwayFromZero)), "с полным ХП бой начинается с полным максимумом вместе с бонусом саммона");
+        }
+
+        private float ReadHealthBeforeFirstHit(IBattleScriptResponse script, int unitId)
+        {
+            for (int i = 0; i < script.Steps.Count; i++)
+            {
+                var commands = script.Steps[i].Commands;
+
+                for (int commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    var command = commands[commandIndex];
+
+                    if (command.CommandType != CommandType.ShowDamage || command.Parameters["targetId"]!.Value<int>() != unitId)
+                        continue;
+
+                    var damage = command.Parameters["damage"]!.Value<float>();
+
+                    for (int next = commandIndex + 1; next < commands.Count; next++)
+                    {
+                        var hpCommand = commands[next];
+
+                        if (hpCommand.CommandType == CommandType.SetHp && hpCommand.Parameters["unitId"]!.Value<int>() == unitId)
+                            return hpCommand.Parameters["hp"]!.Value<float>() + damage;
+                    }
+                }
+            }
+
+            return -1f;
+        }
+
+        [Test]
         public void SummonSkill_LockedByMastery_DoesNotActivate()
         {
             var battleCore = CreateCore(WithSummonSkill("3"));
