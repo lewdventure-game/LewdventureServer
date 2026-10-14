@@ -675,6 +675,9 @@ namespace Server.Infrastructure.Players
                 costs.Add(new ResourceCost(reward.RewardKey, reward.Count));
             }
 
+            if (costs.Count == 0 && string.IsNullOrWhiteSpace(constant.ConstantValue) == false)
+                _logger.LogWarning("[Player] constant {Key} has no readable resource cost value = {Value}, operation is free", constantKey, constant.ConstantValue);
+
             return 0 < costs.Count;
         }
 

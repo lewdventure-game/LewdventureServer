@@ -232,6 +232,28 @@ namespace Tests.Unit.GameConfig
         }
 
         [Test]
+        public async Task Builder_UnreadableResetCost_Warns()
+        {
+            var result = await BuildPatchedAsync(ConfigDomainNames.Constants, rows =>
+            {
+                for (int i = rows.Count - 1; 0 <= i; i--)
+                {
+                    if (rows[i]["constant_name"]?.ToString() == "equipment_lvl_drop_resource")
+                        rows.RemoveAt(i);
+                }
+
+                rows.Add(new JObject
+                {
+                    ["constant_name"] = "equipment_lvl_drop_resource",
+                    ["constant_value"] = "hard_money:25",
+                    ["constant_type"] = "Array",
+                });
+            });
+
+            Assert.That(result.Warnings, Has.Some.Contains("equipment_lvl_drop_resource: запись «hard_money:25» не читается"));
+        }
+
+        [Test]
         public async Task Builder_UnknownLevelTriggerType_Warns()
         {
             var result = await BuildPatchedAsync(ConfigDomainNames.StoryLevels, rows =>

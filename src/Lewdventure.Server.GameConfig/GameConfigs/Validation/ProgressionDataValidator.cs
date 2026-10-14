@@ -10,6 +10,8 @@ namespace Server.GameConfigs
     {
         private const string StartPerkGroupsConstant = "start_perk_groups";
         private const string EnergyMaxBaseConstant = "energy_max_base";
+        private const string EquipmentLevelDropResourceConstant = "equipment_lvl_drop_resource";
+        private const string SummonLevelResetResourceConstant = "summon_level_reset_resource";
 
         public void Collect(IConfigDistributor distributor, List<string> warnings)
         {
@@ -24,6 +26,30 @@ namespace Server.GameConfigs
             CollectEquipmentBonusLinks(distributor, warnings);
             CollectPassiveHealingBonuses(distributor, warnings);
             CollectEnergyThresholds(distributor, warnings);
+            CollectResourceCostConstant(distributor, EquipmentLevelDropResourceConstant, warnings);
+            CollectResourceCostConstant(distributor, SummonLevelResetResourceConstant, warnings);
+        }
+
+        private void CollectResourceCostConstant(IConfigDistributor distributor, string constantName, List<string> warnings)
+        {
+            if (distributor.Constants.TryGet(constantName, out var constant) == false || string.IsNullOrWhiteSpace(constant.ConstantValue))
+                return;
+
+            var entries = constant.ConstantValue.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+
+            for (int i = 0; i < entries.Length; i++)
+            {
+                var tokens = entries[i].Trim().Split(':');
+
+                if (tokens.Length == 3
+                    && string.Equals(tokens[0].Trim(), "resource", StringComparison.OrdinalIgnoreCase)
+                    && tokens[1].Trim().Length != 0
+                    && int.TryParse(tokens[2].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var amount)
+                    && 0 < amount)
+                    continue;
+
+                warnings.Add($"Лист Constants, {constantName}: запись «{entries[i].Trim()}» не читается, ожидается resource:ключ:количество. Нечитаемая стоимость делает операцию бесплатной.");
+            }
         }
 
         private void CollectSummonSkillLevels(IConfigDistributor distributor, List<string> warnings)

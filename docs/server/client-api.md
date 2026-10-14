@@ -262,8 +262,13 @@
 
 - `status` — `active`, `completed`, `failed`.
 - `step.eventType` — `default_event`, `fork_event`, `fight`, `completed`.
-- `pendingChoice.kind` — `perk` (выбрать перк из `options`) или `fork` (выбрать ветку: `picks: [1]` или `picks: [3]`).
+- `pendingChoice.kind` — `perk` (выбрать перк из `options`) или `fork` (выбрать кнопку развилки: `picks: [1]` или `picks: [2]`, `options` всегда `[1, 2]`).
 - `appliedRewards[].type` — `Resource`, `Character`, `Summon`, `Equipment` (для `Resource` смысл несёт `rewardKey`, для остальных — `id`). Награды типов `Bonus` и `Status` в профиль не пишутся: они уходят в забег и видны в `run.bonuses`.
+
+Развилка (`fork_event`):
+- Шаг, открывающий развилку, приходит с `eventType: "fork_event"`, `locKeyStart` (текст начала события), `locKey` — ключ кнопки 1 (`loc_key_button1`), `locKeyEnd` — ключ кнопки 2 (`loc_key_button2`), и `pendingChoice.kind = "fork"`.
+- Ответ `choose` с `picks: [1]` или `[2]` приходит шагом с тем же `eventType`, где `locKey` — ключ выпавшего исхода (`loc_key_eventN`), награды — в `appliedRewards` и `run.bonuses`.
+- Шаг открытия повторно не присылается. Если клиент переподключился (`GET /api/run/current`) с висящим `pendingChoice.kind = "fork"`, тексты кнопок он берёт из конфига события текущего этапа: `stages[stageIndex].eventId` → `Configs.StoryEvents` → `event_parameters` (`loc_key_start`, `loc_key_button1`, `loc_key_button2`).
 
 Важное:
 - `stages` до текущего этапа раскрыты, дальше `eventId = 0` (сервер не показывает будущее).
