@@ -250,7 +250,7 @@ Handoff для ИИ (клиент целиком): [`gdd/10-client-battle-ai.md`
 
 | Симптом | Что проверить |
 | --- | --- |
-| `400` unknown skill | `activeSkillIds` должен резолвиться в Skills config (`id` или `type`, напр. `"1"` / `"fireball"`) |
+| `400` unknown skill | `activeSkillIds` должен резолвиться в скилл нового формата (`triggers` / `actions`) из Skills config по `id`, напр. `"1"` |
 | `maxTurns = 0` / странный outcome | `storyLevelId` есть в загруженных story configs |
 | Клиент не играет script | Response format: `steps`/`commands`, не legacy `events` |
 | Неизвестный unit id | Snapshot `id` должен существовать в characters/enemies/summons config |

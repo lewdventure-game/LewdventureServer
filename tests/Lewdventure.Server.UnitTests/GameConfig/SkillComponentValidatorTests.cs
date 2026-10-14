@@ -56,34 +56,25 @@ namespace Tests.Unit.GameConfig
         }
 
         [Test]
-        public void LegacyRow_IsNotTouched()
+        public void LegacyRow_IsWarnedAsUnsupported()
         {
             var domain = new ConfigSnapshotDomain("Skills", "sheet", "A1:E2", "[{\"id\":\"1\",\"type\":\"fireball\",\"parameters\":\"damage_ratio:[1]\"}]");
             var errors = new List<string>();
             var warnings = new List<string>();
 
-            new SkillComponentValidator(_registry).Validate(domain, 0f, errors, warnings);
+            new SkillComponentValidator(_registry).Validate(domain, errors, warnings);
 
             Assert.That(errors, Is.Empty);
-            Assert.That(warnings, Is.Empty);
+            Assert.That(warnings, Has.Some.Contains("старый формат (type / parameters) сервер больше не поддерживает"));
         }
 
         [Test]
-        public void EnergyAboveMax_IsWarned()
+        public void UnknownTarget_IsWarned()
         {
-            Validate("energy_needed:[energy:{30:120}]", Actions, 90f, out var errors, out var warnings);
+            Validate(Triggers, "damage:[damage:{1.1},target:{5},is_spell_amp:{0},timing:{0.5}]", out var errors, out var warnings);
 
             Assert.That(errors, Is.Empty);
-            Assert.That(warnings, Has.Some.Contains("energy_max_base"));
-        }
-
-        [Test]
-        public void EnergyWithinMax_IsNotWarned()
-        {
-            Validate("energy_needed:[energy:{30:90}]", Actions, 90f, out var errors, out var warnings);
-
-            Assert.That(errors, Is.Empty);
-            Assert.That(warnings, Is.Empty);
+            Assert.That(warnings, Has.Some.Contains("target = 5"));
         }
 
         [Test]
@@ -162,18 +153,13 @@ namespace Tests.Unit.GameConfig
 
         private void Validate(string triggers, string actions, out List<string> errors, out List<string> warnings)
         {
-            Validate(triggers, actions, 0f, out errors, out warnings);
-        }
-
-        private void Validate(string triggers, string actions, float energyMax, out List<string> errors, out List<string> warnings)
-        {
             var rows = "[{\"id\":\"1\",\"triggers\":\"" + Escape(triggers) + "\",\"actions\":\"" + Escape(actions) + "\"}]";
             var domain = new ConfigSnapshotDomain("Skills", "sheet", "A1:C2", rows);
 
             errors = new List<string>();
             warnings = new List<string>();
 
-            new SkillComponentValidator(_registry).Validate(domain, energyMax, errors, warnings);
+            new SkillComponentValidator(_registry).Validate(domain, errors, warnings);
         }
 
         private string Escape(string value)

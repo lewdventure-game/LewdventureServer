@@ -5,7 +5,5 @@ namespace Server.Battles
         public ISkill Create(string skillId);
 
         public bool IsKnownSkillId(string skillId);
-
-        public IReadOnlyCollection<string> KnownTypeKeys { get; }
     }
 }

@@ -38,12 +38,6 @@ namespace Server.Battles
 
         public float DealFixedDamage(IUnitState target, float damageMultiplier, List<BattleCommand> commands);
 
-        public bool TryDealStrike(List<BattleCommand> commands, float damageMultiplier, out float dealtDamage, out bool isCritical);
-
-        public void Heal(IUnitState unit, float amount, List<BattleCommand> commands);
-
-        public int FindAllyMainIndex();
-
         public void EmitDeath(IUnitState unit);
 
         public void AddStep(List<BattleCommand> commands, IUnitState target);

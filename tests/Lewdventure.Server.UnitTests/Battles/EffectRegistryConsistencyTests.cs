@@ -34,12 +34,6 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
-        public void SkillCreators_MatchValidatorDescriptors()
-        {
-            Assert.That(Sorted(_battleComposition.SkillFactory.KnownTypeKeys), Is.EqualTo(Sorted(_effectParameterRegistry.SkillTypeKeys)));
-        }
-
-        [Test]
         public void SkillTriggerEvaluators_MatchValidatorRegistry()
         {
             Assert.That(Sorted(_battleComposition.SkillTriggerRegistry.TypeKeys), Is.EqualTo(Sorted(Names(_skillComponentRegistry.Triggers))));

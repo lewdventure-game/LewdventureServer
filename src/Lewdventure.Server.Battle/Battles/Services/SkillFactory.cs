@@ -9,42 +9,28 @@ namespace Server.Battles
     {
         private readonly ICoreLog _coreLog;
         private readonly IConfigDistributor _configDistributor;
-        private readonly ParserUtils _parserUtils;
         private readonly ISkillActionRegistry _skillActionRegistry;
         private readonly ISkillArgumentReader _skillArgumentReader;
         private readonly ISkillDefinitionParser _skillDefinitionParser;
         private readonly ISkillTargetResolver _skillTargetResolver;
         private readonly ISkillTriggerRegistry _skillTriggerRegistry;
-        private readonly Dictionary<SkillType, ISkillCreator> _creatorsByType = new();
-        private readonly Dictionary<string, ISkillCreator> _creatorsByTypeKey = new(StringComparer.OrdinalIgnoreCase);
 
         public SkillFactory(
             ICoreLog coreLog,
             IConfigDistributor configDistributor,
-            ParserUtils parserUtils,
             ISkillActionRegistry skillActionRegistry,
             ISkillArgumentReader skillArgumentReader,
             ISkillDefinitionParser skillDefinitionParser,
             ISkillTargetResolver skillTargetResolver,
-            ISkillTriggerRegistry skillTriggerRegistry,
-            IReadOnlyList<ISkillCreator> skillCreators)
+            ISkillTriggerRegistry skillTriggerRegistry)
         {
             _coreLog = coreLog;
             _configDistributor = configDistributor;
-            _parserUtils = parserUtils;
             _skillActionRegistry = skillActionRegistry;
             _skillArgumentReader = skillArgumentReader;
             _skillDefinitionParser = skillDefinitionParser;
             _skillTargetResolver = skillTargetResolver;
             _skillTriggerRegistry = skillTriggerRegistry;
-
-            for (int i = 0; i < skillCreators.Count; i++)
-            {
-                var creator = skillCreators[i];
-
-                _creatorsByType[creator.SkillType] = creator;
-                _creatorsByTypeKey[creator.TypeKey] = creator;
-            }
         }
 
         public ISkill Create(string skillId)
@@ -53,7 +39,7 @@ namespace Server.Battles
             {
                 _coreLog.Warning($"[Story][Battle]: Skill unknown, id = {skillId}");
 
-                return new UnknownSkill(new SkillMapper(0, string.Empty, SkillType.Unknown, string.Empty), _parserUtils);
+                return new UnknownSkill(0, string.Empty);
             }
 
             var trimmed = skillId.Trim();
@@ -62,7 +48,7 @@ namespace Server.Battles
             {
                 _coreLog.Warning($"[Story][Battle]: Skill unknown, id = {trimmed}");
 
-                return new UnknownSkill(new SkillMapper(0, trimmed, SkillType.Unknown, string.Empty), _parserUtils);
+                return new UnknownSkill(0, trimmed);
             }
 
             if (_skillDefinitionParser.TryParse(skillConfig, out var definition))
@@ -79,19 +65,10 @@ namespace Server.Battles
                     _skillTriggerRegistry);
             }
 
-            if (TryResolveCreator(skillConfig.Type, out var creator) == false)
-            {
-                _coreLog.Warning($"[Story][Battle]: Skill unknown type, id = {trimmed}, type = {skillConfig.Type}");
+            _coreLog.Warning($"[Story][Battle]: Skill without triggers and actions is not supported, id = {trimmed}, type = {skillConfig.Type}");
 
-                return new UnknownSkill(new SkillMapper(skillConfig.Id, skillConfig.Type, SkillType.Unknown, skillConfig.Parameters), _parserUtils);
-            }
-
-            var mapper = new SkillMapper(skillConfig.Id, skillConfig.Type, creator.SkillType, skillConfig.Parameters);
-
-            return creator.Create(mapper);
+            return new UnknownSkill(skillConfig.Id, trimmed);
         }
-
-        public IReadOnlyCollection<string> KnownTypeKeys => _creatorsByTypeKey.Keys;
 
         public bool IsKnownSkillId(string skillId)
         {
@@ -103,10 +80,7 @@ namespace Server.Battles
             if (TryFindSkillConfig(trimmed, out var skillConfig) == false)
                 return false;
 
-            if (_skillDefinitionParser.TryParse(skillConfig, out _))
-                return true;
-
-            return TryResolveCreator(skillConfig.Type, out _);
+            return _skillDefinitionParser.TryParse(skillConfig, out _);
         }
 
         private bool TryFindSkillConfig(string skillId, [MaybeNullWhen(false)] out Server.Skills.ISkillMapper skillConfig)
@@ -116,18 +90,6 @@ namespace Server.Battles
                 return true;
 
             return _configDistributor.Skills.TryGetByType(skillId, out skillConfig);
-        }
-
-        private bool TryResolveCreator(string skillTypeKey, [MaybeNullWhen(false)] out ISkillCreator creator)
-        {
-            if (string.IsNullOrWhiteSpace(skillTypeKey))
-            {
-                creator = null;
-
-                return false;
-            }
-
-            return _creatorsByTypeKey.TryGetValue(skillTypeKey.Trim(), out creator);
         }
     }
 }

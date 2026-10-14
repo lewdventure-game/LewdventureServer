@@ -52,13 +52,11 @@ namespace Server.Battles
             _skillFactory = new SkillFactory(
                 coreLog,
                 configDistributor,
-                parserUtils,
                 skillActionRegistry,
                 skillArgumentReader,
                 new SkillDefinitionParser(coreLog),
                 skillTargetResolver,
-                skillTriggerRegistry,
-                CreateSkillCreators(parserUtils));
+                skillTriggerRegistry);
 
             var bonusService = new BattleBonusService(coreLog, commandFactory, _bonusWorkModeParser, bucketApplicator, characteristicCalculator, configDistributor);
 
@@ -144,18 +142,6 @@ namespace Server.Battles
                 new DamageSkillActionExecutor(coreLog, skillArgumentReader),
                 new SetStatusSkillActionExecutor(coreLog, skillArgumentReader),
                 new SetBonusSkillActionExecutor(coreLog, skillArgumentReader),
-            };
-        }
-
-        private IReadOnlyList<ISkillCreator> CreateSkillCreators(ParserUtils parserUtils)
-        {
-            return new List<ISkillCreator>
-            {
-                new FireballSkillCreator(parserUtils),
-                new EnergySkillCreator(parserUtils),
-                new SummonVenomStrikeSkillCreator(parserUtils),
-                new SummonWarHowlSkillCreator(parserUtils),
-                new SummonSoulSiphonSkillCreator(parserUtils),
             };
         }
 

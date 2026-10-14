@@ -130,70 +130,6 @@ namespace Server.Battles
             return damage;
         }
 
-        public bool TryDealStrike(List<BattleCommand> commands, float damageMultiplier, out float dealtDamage, out bool isCritical)
-        {
-            dealtDamage = 0f;
-            isCritical = false;
-
-            var actorCharacteristics = _actor.CharacteristicState;
-            var targetCharacteristics = _target.CharacteristicState;
-            var evasionRoll = _seededRandomService.GetRandomValue(RandomRollNames.Evasion);
-            var isEvaded = evasionRoll < targetCharacteristics.Evasion;
-
-            _coreLog.Debug($"[Story][Battle]: Skill strike, actorId = {_actor.Id}, targetId = {_target.Id}, evasionRoll = {evasionRoll}, evasion = {targetCharacteristics.Evasion}, isEvaded = {isEvaded}, allowCritical = {_allowCritical}");
-
-            if (isEvaded)
-            {
-                commands.Add(_battleCommandFactory.ShowMiss(_actor.Id, _actor.SlotIndex, _target.Id, _target.SlotIndex));
-
-                if (0f < _battleFlytextTimer)
-                {
-                    commands.Add(_battleCommandFactory.Wait(_battleFlytextTimer));
-                    _coreLog.Debug($"[Story][Battle]: Skill miss wait, actorId = {_actor.Id} seconds = {_battleFlytextTimer}");
-                }
-
-                return false;
-            }
-
-            if (_allowCritical)
-            {
-                var criticalRoll = _seededRandomService.GetRandomValue(RandomRollNames.Critical);
-                isCritical = criticalRoll < actorCharacteristics.CriticalChance;
-
-                _coreLog.Debug($"[Story][Battle]: Skill crit roll, actorId = {_actor.Id}, criticalRoll = {criticalRoll}, criticalChance = {actorCharacteristics.CriticalChance}, isCritical = {isCritical}");
-            }
-
-            var defenceFactor = 1f - targetCharacteristics.Defence;
-
-            if (defenceFactor < 0f)
-                defenceFactor = 0f;
-
-            var damage = actorCharacteristics.Damage * damageMultiplier;
-
-            if (isCritical)
-                damage *= actorCharacteristics.CriticalMultiplier;
-
-            damage = _battleDamageMath.RoundDamage(damage * defenceFactor);
-
-            var healthAfter = targetCharacteristics.Health - damage;
-
-            if (healthAfter < 0f)
-                healthAfter = 0f;
-
-            targetCharacteristics.Health = healthAfter;
-            dealtDamage = damage;
-
-            commands.Add(_battleCommandFactory.ShowDamage(_actor.Id, _actor.SlotIndex, _target.Id, _target.SlotIndex, damage, isCritical, false));
-            commands.Add(_battleCommandFactory.SetHp(_target.Id, _target.SlotIndex, healthAfter));
-
-            _coreLog.Information($"[Story][Battle]: Skill damage, actorId = {_actor.Id}, targetId = {_target.Id}, damage = {damage}, isCritical = {isCritical}, health = {healthAfter}");
-
-            _pendingAnyDamageCount += 1;
-            _coreLog.Debug($"[Story][Battle]: any_damage deferred until step commit, actorId = {_actor.Id} targetId = {_target.Id} pending = {_pendingAnyDamageCount} turn = {_currentTurn}");
-
-            return true;
-        }
-
         private float ResolveSpellMultiplier()
         {
             if ((_actor.Flags & UnitFlags.Summon) == 0)
@@ -207,29 +143,7 @@ namespace Server.Battles
             return _attacker.MainUnits[allyIndex].CharacteristicState.SkillMultiplier;
         }
 
-        public void Heal(IUnitState unit, float amount, List<BattleCommand> commands)
-        {
-            if (amount <= 0f)
-                return;
-
-            var characteristics = unit.CharacteristicState;
-            var heal = MathF.Ceiling(amount);
-
-            if (heal <= 0f)
-                return;
-
-            characteristics.Health += heal;
-
-            if (characteristics.MaxHealth < characteristics.Health)
-                characteristics.Health = characteristics.MaxHealth;
-
-            commands.Add(_battleCommandFactory.ShowHeal(_actor.Id, _actor.SlotIndex, unit.Id, unit.SlotIndex, heal));
-            commands.Add(_battleCommandFactory.SetHp(unit.Id, unit.SlotIndex, characteristics.Health));
-
-            _coreLog.Debug($"[Story][Battle]: Skill heal, actorId = {_actor.Id}, unitId = {unit.Id}, heal = {heal}, health = {characteristics.Health}");
-        }
-
-        public int FindAllyMainIndex()
+        private int FindAllyMainIndex()
         {
             var mainUnits = _attacker.MainUnits;
             var selectedIndex = -1;

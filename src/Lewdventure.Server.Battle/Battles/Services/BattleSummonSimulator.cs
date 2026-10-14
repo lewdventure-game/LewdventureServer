@@ -387,7 +387,7 @@ namespace Server.Battles
 
             for (int i = 0; i < skills.Count; i++)
             {
-                if (skills[i].SkillType == SkillType.Energy)
+                if (skills[i].RequiresEnergy)
                     continue;
 
                 return true;

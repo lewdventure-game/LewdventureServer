@@ -1,4 +1,5 @@
 using System.Globalization;
+using Server.Bonuses;
 using Server.Equipments;
 using Server.Services;
 using Server.Stories;
@@ -8,6 +9,7 @@ namespace Server.GameConfigs
     internal sealed class ProgressionDataValidator
     {
         private const string StartPerkGroupsConstant = "start_perk_groups";
+        private const string EnergyMaxBaseConstant = "energy_max_base";
 
         public void Collect(IConfigDistributor distributor, List<string> warnings)
         {
@@ -18,6 +20,202 @@ namespace Server.GameConfigs
             CollectCharacterSkillLevels(distributor, warnings);
             CollectStoryReferences(distributor, warnings);
             CollectEquipmentMergeChains(distributor, warnings);
+            CollectSummonSkillLevels(distributor, warnings);
+            CollectEquipmentBonusLinks(distributor, warnings);
+            CollectPassiveHealingBonuses(distributor, warnings);
+            CollectEnergyThresholds(distributor, warnings);
+        }
+
+        private void CollectSummonSkillLevels(IConfigDistributor distributor, List<string> warnings)
+        {
+            var summons = distributor.Summons.Collection;
+
+            for (int i = 0; i < summons.Count; i++)
+            {
+                var summon = summons[i];
+
+                for (int skillIndex = 0; skillIndex < summon.SkillIds.Length && skillIndex < summon.SkillUpgradeIds.Length; skillIndex++)
+                {
+                    if (int.TryParse(summon.SkillIds[skillIndex], NumberStyles.Integer, CultureInfo.InvariantCulture, out var skillId) == false)
+                        continue;
+
+                    if (distributor.Skills.TryGet(skillId, out var skill) == false)
+                        continue;
+
+                    var values = Math.Max(CountMaxArguments(skill.Triggers), CountMaxArguments(skill.Actions));
+                    var levels = ReadMaxSkillPromoteLevel(distributor, summon.SkillUpgradeIds[skillIndex]);
+
+                    if (values <= 1 || values == levels)
+                        continue;
+
+                    warnings.Add($"Лист Summons, саммон {summon.Id}: у скилла {skillId} по {values} значений на параметр, а уровней в Skill_promotes (паттерн {summon.SkillUpgradeIds[skillIndex]}) до {levels}. По ГДД количество должно совпадать.");
+                }
+            }
+        }
+
+        private int ReadMaxSkillPromoteLevel(IConfigDistributor distributor, int patternId)
+        {
+            var promotes = distributor.SkillPromotes.Collection;
+            var maxLevel = 1;
+
+            for (int i = 0; i < promotes.Count; i++)
+            {
+                if (promotes[i].PatternId == patternId && maxLevel < promotes[i].Level)
+                    maxLevel = promotes[i].Level;
+            }
+
+            return maxLevel;
+        }
+
+        private void CollectEquipmentBonusLinks(IConfigDistributor distributor, List<string> warnings)
+        {
+            var equipments = distributor.Equipments.Collection;
+
+            for (int i = 0; i < equipments.Count; i++)
+            {
+                var equipment = equipments[i];
+
+                for (int bonusIndex = 0; bonusIndex < equipment.BonusIds.Length; bonusIndex++)
+                {
+                    var bonusId = equipment.BonusIds[bonusIndex];
+
+                    if (distributor.Bonuses.TryGet(bonusId, out var bonus) == false)
+                        continue;
+
+                    if (IsHealingBonus(bonus.BonusType))
+                        warnings.Add($"Лист Equipments, предмет {equipment.Id}: бонус {bonusId} — лечение ({bonus.BonusType}), в бонусах снаряжения он ничего не сделает. Лечение работает только как награда.");
+
+                    if (TryReadEquippedId(bonus.WorkModeParameters, out var equippedId) && equippedId != equipment.Id)
+                        warnings.Add($"Лист Equipments, предмет {equipment.Id}: бонус {bonusId} привязан к if_equipped предмета {equippedId}, а не к самому предмету. На этом предмете он не включится.");
+                }
+            }
+        }
+
+        private bool TryReadEquippedId(string workModes, out int equipmentId)
+        {
+            equipmentId = 0;
+
+            if (string.IsNullOrWhiteSpace(workModes))
+                return false;
+
+            var parts = workModes.Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+            for (int i = 0; i < parts.Length; i++)
+            {
+                var tokens = parts[i].Trim().Split(':');
+
+                if (tokens.Length < 3 || string.Equals(tokens[0].Trim(), "if_equipped", StringComparison.OrdinalIgnoreCase) == false)
+                    continue;
+
+                var entity = tokens[1].Trim();
+
+                if (string.Equals(entity, "equipment", StringComparison.OrdinalIgnoreCase) == false && string.Equals(entity, "equipments", StringComparison.OrdinalIgnoreCase) == false)
+                    continue;
+
+                return int.TryParse(tokens[2].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out equipmentId);
+            }
+
+            return false;
+        }
+
+        private void CollectPassiveHealingBonuses(IConfigDistributor distributor, List<string> warnings)
+        {
+            var skills = distributor.Skills.Collection;
+            var bonusIds = new List<int>();
+
+            for (int i = 0; i < skills.Count; i++)
+            {
+                var skill = skills[i];
+
+                if (skill.Triggers.Contains("as_bonus_logic", StringComparison.Ordinal) == false)
+                    continue;
+
+                bonusIds.Clear();
+                CollectParameterIntegers(skill.Actions, "bonus_id", bonusIds);
+
+                for (int bonusIndex = 0; bonusIndex < bonusIds.Count; bonusIndex++)
+                {
+                    if (distributor.Bonuses.TryGet(bonusIds[bonusIndex], out var bonus) && IsHealingBonus(bonus.BonusType))
+                        warnings.Add($"Лист Skills, скилл {skill.Id}: пассивный скилл (as_bonus_logic) выдаёт лечение бонусом {bonusIds[bonusIndex]}, оно ничего не сделает. Лечение работает только как награда или действие скилла в бою.");
+                }
+            }
+        }
+
+        private void CollectEnergyThresholds(IConfigDistributor distributor, List<string> warnings)
+        {
+            if (distributor.Constants.TryGet(EnergyMaxBaseConstant, out var constant) == false)
+                return;
+
+            if (float.TryParse(constant.ConstantValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var energyMax) == false || energyMax <= 0f)
+                return;
+
+            var checkedSkills = new HashSet<int>();
+            var characters = distributor.Characters.Collection;
+
+            for (int i = 0; i < characters.Count; i++)
+                CollectEnergyThresholds(distributor, characters[i].SkillIds, energyMax, checkedSkills, warnings);
+
+            var equipments = distributor.Equipments.Collection;
+
+            for (int i = 0; i < equipments.Count; i++)
+                CollectEnergyThresholds(distributor, equipments[i].SkillIds, energyMax, checkedSkills, warnings);
+        }
+
+        private void CollectEnergyThresholds(IConfigDistributor distributor, int[] skillIds, float energyMax, HashSet<int> checkedSkills, List<string> warnings)
+        {
+            var thresholds = new List<int>();
+
+            for (int i = 0; i < skillIds.Length; i++)
+            {
+                if (checkedSkills.Add(skillIds[i]) == false || distributor.Skills.TryGet(skillIds[i], out var skill) == false)
+                    continue;
+
+                if (skill.Triggers.Contains("energy_needed", StringComparison.Ordinal) == false)
+                    continue;
+
+                thresholds.Clear();
+                CollectParameterIntegers(skill.Triggers, "energy", thresholds);
+
+                for (int thresholdIndex = 0; thresholdIndex < thresholds.Count; thresholdIndex++)
+                {
+                    if (thresholds[thresholdIndex] <= energyMax)
+                        continue;
+
+                    warnings.Add($"Лист Skills, скилл {skill.Id}: порог энергии {thresholds[thresholdIndex]} больше {EnergyMaxBaseConstant} = {energyMax.ToString(CultureInfo.InvariantCulture)}, у персонажа энергия столько не накопится и скилл не сработает.");
+
+                    break;
+                }
+            }
+        }
+
+        private void CollectParameterIntegers(string text, string parameterName, List<int> values)
+        {
+            var marker = parameterName + ":{";
+            var start = text.IndexOf(marker, StringComparison.Ordinal);
+
+            while (0 <= start)
+            {
+                var open = start + marker.Length;
+                var close = text.IndexOf('}', open);
+
+                if (close < 0)
+                    return;
+
+                var tokens = text.Substring(open, close - open).Split(new[] { ':', ',' }, StringSplitOptions.RemoveEmptyEntries);
+
+                for (int i = 0; i < tokens.Length; i++)
+                {
+                    if (float.TryParse(tokens[i].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+                        values.Add((int)MathF.Ceiling(value));
+                }
+
+                start = text.IndexOf(marker, close, StringComparison.Ordinal);
+            }
+        }
+
+        private bool IsHealingBonus(BonusType bonusType)
+        {
+            return bonusType == BonusType.Healing || bonusType == BonusType.HealingFromMax || bonusType == BonusType.CurrentHealthLocal;
         }
 
         private void CollectCharacterPromotes(IConfigDistributor distributor, List<string> warnings)
@@ -133,6 +331,13 @@ namespace Server.GameConfigs
                 for (int triggerIndex = 0; triggerIndex < level.TriggerTypes.Length; triggerIndex++)
                 {
                     var triggerType = level.TriggerTypes[triggerIndex];
+
+                    if (triggerType == StoryLevelTriggerType.Unknown)
+                    {
+                        warnings.Add($"Лист Story_levels, уровень {level.Id}: неизвестный тип условия открытия {triggerIndex + 1} в trigger_types, сервер считает это условие выполненным.");
+
+                        continue;
+                    }
 
                     if (triggerType != StoryLevelTriggerType.StoryLevelCompleted && triggerType != StoryLevelTriggerType.StoryLevelNotCompleted)
                         continue;
@@ -292,10 +497,19 @@ namespace Server.GameConfigs
 
                     var valuesCount = bonus.BonusValues.Length;
 
-                    if (valuesCount <= 1 || maxLevel <= valuesCount)
+                    if (valuesCount == maxLevel)
                         continue;
 
-                    warnings.Add($"Лист Bonuses, бонус {bonusId} снаряжения {equipment.Id}: значений {valuesCount}, а уровней снаряжения до {maxLevel}. На уровнях выше {valuesCount} бонус перестанет расти.");
+                    if (valuesCount < maxLevel)
+                    {
+                        warnings.Add(valuesCount <= 1
+                            ? $"Лист Bonuses, бонус {bonusId} снаряжения {equipment.Id}: одно значение, а уровней снаряжения до {maxLevel}. Бонус не будет расти с уровнем, по ГДД значений должно быть столько же, сколько уровней."
+                            : $"Лист Bonuses, бонус {bonusId} снаряжения {equipment.Id}: значений {valuesCount}, а уровней снаряжения до {maxLevel}. На уровнях выше {valuesCount} бонус перестанет расти.");
+
+                        continue;
+                    }
+
+                    warnings.Add($"Лист Bonuses, бонус {bonusId} снаряжения {equipment.Id}: значений {valuesCount}, а уровней снаряжения только {maxLevel}. Лишние значения не используются.");
                 }
             }
         }

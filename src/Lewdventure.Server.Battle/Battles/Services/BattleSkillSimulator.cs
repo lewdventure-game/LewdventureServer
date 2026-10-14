@@ -138,14 +138,7 @@ namespace Server.Battles
                 return;
             }
 
-            if (energySkill.SkillType == SkillType.Configured)
-            {
-                TryCastConfiguredEnergySkill(steps, actor, attacker, defender, energySkill, currentTurn, seededRandomService, turnState);
-
-                return;
-            }
-
-            TryCastLegacyEnergySkill(steps, actor, attacker, defender, currentTurn, seededRandomService, turnState);
+            TryCastConfiguredEnergySkill(steps, actor, attacker, defender, energySkill, currentTurn, seededRandomService, turnState);
         }
 
         private void TryCastConfiguredEnergySkill(
@@ -200,70 +193,6 @@ namespace Server.Battles
             EmitSkillDeaths(context, aliveBefore);
         }
 
-        private void TryCastLegacyEnergySkill(
-            List<BattleStep> steps,
-            IUnitState actor,
-            ITeamSimulationState attacker,
-            ITeamSimulationState defender,
-            int currentTurn,
-            ISeededRandomService seededRandomService,
-            BattleTurnState turnState)
-        {
-            var characteristics = actor.CharacteristicState;
-
-            if (characteristics.MaxEnergy <= 0f)
-                return;
-
-            if (characteristics.Energy < characteristics.MaxEnergy)
-            {
-                _coreLog.Debug($"[Story][Battle]: Energy skill skip bar not full, unitId = {actor.Id}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}");
-
-                return;
-            }
-
-            var targetIndex = _battleTeamQuery.FindTargetIndex(defender);
-
-            if (targetIndex < 0)
-                return;
-
-            var target = defender.MainUnits[targetIndex];
-            var cooldown = _battleConstantsReader.Get(ConstantKeys.UnitsCooldownKey);
-            var castDuration = GetEnergyCastDuration(actor);
-            var context = CreateContext(
-                steps,
-                actor,
-                target,
-                attacker,
-                defender,
-                currentTurn,
-                BattlePhaseType.EnergySkill,
-                false,
-                cooldown,
-                seededRandomService,
-                turnState);
-
-            _coreLog.Information($"[Story][Battle]: Energy skill cast, unitId = {actor.Id}, targetId = {target.Id}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}, duration = {castDuration}");
-
-            var commands = new List<BattleCommand>();
-
-            if (0f < cooldown)
-                commands.Add(_battleCommandFactory.Wait(cooldown));
-
-            commands.Add(_battleCommandFactory.CastSkill(actor.Id, actor.SlotIndex, target.Id, target.SlotIndex, "energy"));
-            commands.Add(_battleCommandFactory.PlayAnimation(actor.Id, actor.SlotIndex, "cast"));
-            commands.Add(_battleCommandFactory.Wait(castDuration));
-
-            var aliveBefore = CollectAliveMainUnits(defender, attacker);
-
-            context.TryDealStrike(commands, context.SpellMultiplier, out _, out _);
-
-            characteristics.Energy = 0f;
-            commands.Add(_battleCommandFactory.SetEnergy(actor.Id, actor.SlotIndex, 0f));
-            context.AddStep(commands, target);
-
-            EmitSkillDeaths(context, aliveBefore);
-        }
-
         private bool TryFindEnergySkill(IUnitState actor, out ISkill energySkill)
         {
             var skills = actor.Skills;
@@ -295,45 +224,6 @@ namespace Server.Battles
             }
 
             _coreLog.Warning($"[Story][Battle]: Energy skill skip bar full without skill, unitId = {actor.Id}, energy = {characteristics.Energy}, maxEnergy = {characteristics.MaxEnergy}");
-        }
-
-        private bool HasEnergySkill(IUnitState actor)
-        {
-            var skills = actor.Skills;
-
-            for (int i = 0; i < skills.Count; i++)
-            {
-                if (skills[i].RequiresEnergy)
-                    return true;
-            }
-
-            return false;
-        }
-
-        private float GetEnergyCastDuration(IUnitState actor)
-        {
-            var skills = actor.Skills;
-
-            for (int i = 0; i < skills.Count; i++)
-            {
-                var skill = skills[i];
-
-                if (skill.RequiresEnergy == false)
-                    continue;
-
-                if (skill.CastDurationSeconds <= 0f)
-                {
-                    _coreLog.Error($"[Error][Story][Battle]: Energy skill duration missing or zero, unitId = {actor.Id}, skillId = {skill.SkillKey}");
-
-                    throw new InvalidOperationException($"[Error][Story][Battle]: Energy skill duration missing or zero, unitId = {actor.Id}, skillId = {skill.SkillKey}");
-                }
-
-                return skill.CastDurationSeconds;
-            }
-
-            _coreLog.Error($"[Error][Story][Battle]: Energy skill duration missing, unitId = {actor.Id}");
-
-            throw new InvalidOperationException($"[Error][Story][Battle]: Energy skill duration missing, unitId = {actor.Id}");
         }
 
         private int CastAllSkills(
@@ -428,19 +318,6 @@ namespace Server.Battles
             }
 
             return configuredCount;
-        }
-
-        private string FindEnergySkillKey(IUnitState actor)
-        {
-            var skills = actor.Skills;
-
-            for (int i = 0; i < skills.Count; i++)
-            {
-                if (skills[i].RequiresEnergy)
-                    return skills[i].SkillKey;
-            }
-
-            return string.Empty;
         }
 
         public void TrySimulateInstantSkills(

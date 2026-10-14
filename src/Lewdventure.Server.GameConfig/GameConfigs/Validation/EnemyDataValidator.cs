@@ -8,6 +8,7 @@ namespace Server.GameConfigs
     {
         private const string IdProperty = "id";
         private const string CharacteristicsProperty = "other_characteristics";
+        private const string ArmorKey = "armor";
         private const string LegacyArmorKey = "defence";
 
         private readonly string[] _expectedKeys =
@@ -79,8 +80,13 @@ namespace Server.GameConfigs
 
             for (int i = 0; i < _expectedKeys.Length; i++)
             {
-                if (raw.Contains(_expectedKeys[i], StringComparison.OrdinalIgnoreCase) == false)
-                    missing.Add(_expectedKeys[i]);
+                if (raw.Contains(_expectedKeys[i], StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (string.Equals(_expectedKeys[i], ArmorKey, StringComparison.Ordinal) && raw.Contains(LegacyArmorKey, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                missing.Add(_expectedKeys[i]);
             }
 
             if (missing.Count == 0)

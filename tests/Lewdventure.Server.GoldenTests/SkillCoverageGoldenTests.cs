@@ -44,8 +44,7 @@ namespace Tests.Golden
 
                 if (hasNewFormat == false)
                 {
-                    if (_battleComposition.SkillFactory.IsKnownSkillId(skill.Id.ToString()) == false)
-                        unreadable.Add($"{skill.Id}: нет ни triggers/actions, ни известного type");
+                    unreadable.Add($"{skill.Id}: нет triggers/actions, старый формат не поддерживается");
 
                     continue;
                 }
@@ -62,33 +61,6 @@ namespace Tests.Golden
             }
 
             Assert.That(unreadable, Is.Empty, "сервер не понимает скиллы: " + string.Join("; ", unreadable));
-        }
-
-        [Test]
-        public void EveryKnownSkillType_HasGoldenCase()
-        {
-            var cases = _host.Catalog.LoadAll();
-            var missing = new List<string>();
-
-            foreach (var typeKey in _battleComposition.SkillFactory.KnownTypeKeys)
-            {
-                var covered = false;
-
-                for (int i = 0; i < cases.Count; i++)
-                {
-                    if (cases[i].RequestText.Contains(typeKey, StringComparison.OrdinalIgnoreCase) == false)
-                        continue;
-
-                    covered = true;
-
-                    break;
-                }
-
-                if (covered == false)
-                    missing.Add(typeKey);
-            }
-
-            Assert.That(missing, Is.Empty, "у типа скилла нет эталонного кейса: " + string.Join(", ", missing));
         }
     }
 }

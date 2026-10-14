@@ -185,6 +185,72 @@ namespace Tests.Unit.GameConfig
             Assert.That(result.Warnings, Has.None.Contains("колонка other_characteristics сервером не используется"));
             Assert.That(result.Warnings, Has.None.Contains("promote_level = 1"));
             Assert.That(result.Warnings, Has.None.Contains("promote_to_skill_levels"));
+            Assert.That(result.Warnings, Has.None.Contains("нет ключей armor"));
+        }
+
+        [Test]
+        public async Task Builder_CharacterEnergyThresholdAboveMax_Warns()
+        {
+            var result = await BuildPatchedAsync(ConfigDomainNames.Skills, rows =>
+            {
+                ((JObject)rows[0])["triggers"] = "energy_needed:[energy:{30:30:30:30:30:30:30:1000}]";
+            });
+
+            Assert.That(result.Warnings, Has.Some.Contains("порог энергии 1000 больше energy_max_base"));
+        }
+
+        [Test]
+        public async Task Builder_EnemyOnlyEnergyThresholdAboveMax_IsNotWarned()
+        {
+            var result = await BuildPatchedAsync(ConfigDomainNames.Skills, rows =>
+            {
+                rows.Add(new JObject
+                {
+                    ["id"] = "77",
+                    ["triggers"] = "energy_needed:[energy:{1000}]",
+                    ["actions"] = "damage:[damage:{1.5},target:{1},is_spell_amp:{0},timing:{0.75}]",
+                });
+            });
+
+            Assert.That(result.Warnings, Has.None.Contains("скилл 77: порог энергии"));
+        }
+
+        [Test]
+        public async Task Builder_SummonSkillValuesDifferFromSkillPromotes_Warns()
+        {
+            var result = await BuildPatchedAsync(ConfigDomainNames.Summons, rows =>
+            {
+                var row = (JObject)rows[0];
+
+                row["skill_ids"] = "1";
+                row["mastery_for_skills"] = "1";
+                row["skill_upgrade_ids"] = "1";
+            });
+
+            Assert.That(result.Succeeded, Is.True, string.Join("; ", result.Errors));
+            Assert.That(result.Warnings, Has.Some.Contains("у скилла 1 по 8 значений на параметр, а уровней в Skill_promotes"));
+        }
+
+        [Test]
+        public async Task Builder_UnknownLevelTriggerType_Warns()
+        {
+            var result = await BuildPatchedAsync(ConfigDomainNames.StoryLevels, rows =>
+            {
+                ((JObject)rows[1])["trigger_types"] = "story_lvl_done";
+            });
+
+            Assert.That(result.Warnings, Has.Some.Contains("неизвестный тип условия открытия"));
+        }
+
+        [Test]
+        public async Task Builder_EquipmentBonusForAnotherItem_Warns()
+        {
+            var result = await BuildPatchedAsync(ConfigDomainNames.Equipments, rows =>
+            {
+                ((JObject)rows[0])["bonus_ids"] = "11";
+            });
+
+            Assert.That(result.Warnings, Has.Some.Contains("привязан к if_equipped предмета 2"));
         }
 
         [Test]
