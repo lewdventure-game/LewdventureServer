@@ -113,12 +113,51 @@ namespace Server.Infrastructure.Players
             return new PlayerUpdateResult(profile, false, new List<string>());
         }
 
+        private bool HasSameSummons(IReadOnlyList<int> current, IReadOnlyList<int> update)
+        {
+            if (current.Count != update.Count)
+                return false;
+
+            for (int i = 0; i < current.Count; i++)
+            {
+                if (current[i] != update[i])
+                    return false;
+            }
+
+            return true;
+        }
+
+        private bool HasSameEquipment(IReadOnlyDictionary<string, string> current, IReadOnlyDictionary<string, string> update)
+        {
+            return ContainsEquipment(current, update) && ContainsEquipment(update, current);
+        }
+
+        private bool ContainsEquipment(IReadOnlyDictionary<string, string> source, IReadOnlyDictionary<string, string> target)
+        {
+            foreach (var pair in source)
+            {
+                if (string.IsNullOrEmpty(pair.Value))
+                    continue;
+
+                if (target.TryGetValue(pair.Key, out var value) == false || string.Equals(value, pair.Value, StringComparison.Ordinal) == false)
+                    return false;
+            }
+
+            return true;
+        }
+
         private List<string> Validate(PlayerProfileDocument profile, LoadoutUpdate update, IConfigDistributor configDistributor)
         {
             var errors = new List<string>();
 
             if (string.IsNullOrEmpty(profile.Story.CurrentRunId) == false && update.CharacterId != profile.Loadout.CharacterId)
                 errors.Add($"Character cannot be changed during run {profile.Story.CurrentRunId}.");
+
+            if (string.IsNullOrEmpty(profile.Story.CurrentRunId) == false && HasSameSummons(profile.Loadout.Summons, update.Summons) == false)
+                errors.Add($"Summons cannot be changed during run {profile.Story.CurrentRunId}.");
+
+            if (string.IsNullOrEmpty(profile.Story.CurrentRunId) == false && HasSameEquipment(profile.Loadout.Equipment, update.Equipment) == false)
+                errors.Add($"Equipment cannot be changed during run {profile.Story.CurrentRunId}.");
 
             if (OwnsCharacter(profile, update.CharacterId) == false)
                 errors.Add($"Character {update.CharacterId} is not unlocked.");

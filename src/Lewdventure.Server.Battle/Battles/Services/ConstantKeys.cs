@@ -8,7 +8,8 @@ namespace Server.Battles
         internal const string EpicSummonOverflowResourceKey = "epic_summon_overflow_resource";
         internal const string LegendarySummonOverflowResourceKey = "legendary_summon_overflow_resource";
         internal const string IsEquipmentEnabledKey = "is_equipment_enabled";
-        internal const string HealthBaseKey = "health_base";
+        internal const string HealthBaseKey = "max_health_base";
+        internal const string LegacyHealthBaseKey = "health_base";
         internal const string HealingBoostBaseKey = "healing_boost_base";
         internal const string VampyrismBaseKey = "vampyrism_base";
         internal const string DamageBaseKey = "damage_base";
@@ -19,10 +20,12 @@ namespace Server.Battles
         internal const string ComboOneChanceBaseKey = "combo_1_chance_base";
         internal const string ComboTwoChanceBaseKey = "combo_2_chance_base";
         internal const string ComboMultiplierBaseKey = "combo_multiplier_base";
+        internal const string ComboTwoMultiplierBaseKey = "combo_2_multiplier_base";
         internal const string CounterChanceBaseKey = "counter_chance_base";
         internal const string CounterMultiplierBaseKey = "counter_multiplier_base";
         internal const string SkillMultiplierBaseKey = "spell_multiplier_base";
-        internal const string DefenceBaseKey = "defence_base";
+        internal const string ArmorBaseKey = "armor_base";
+        internal const string LegacyArmorBaseKey = "defence_base";
         internal const string DefenceCoefficientKey = "defence_coeff";
         internal const string EnergyBaseKey = "energy_base";
         internal const string EnergyMaxBaseKey = "energy_max_base";

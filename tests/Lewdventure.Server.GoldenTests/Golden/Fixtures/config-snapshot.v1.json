@@ -1,7 +1,7 @@
 {
   "format": "lewdventure-config-snapshot",
   "formatVersion": 1,
-  "version": "sha256:d5aeba593be1b8b04165e3feb5d4e0b93627eb208edbd13a8c2d226d8a7d93ca",
+  "version": "sha256:aeec9f4c6ce5fa5dd92c8e0c13da3af0e8a5a8b42fe88fa94b94843edb58e33b",
   "createdAt": "2026-10-04T04:06:48.0090000Z",
   "sourceKind": "SheetsUpload",
   "domains": [
@@ -48,7 +48,7 @@
         {
           "name": "",
           "is_off": false,
-          "constant_name": "health_base",
+          "constant_name": "max_health_base",
           "constant_value": "600",
           "constant_type": "Float"
         },
@@ -125,6 +125,13 @@
         {
           "name": "",
           "is_off": false,
+          "constant_name": "combo_2_multiplier_base",
+          "constant_value": "0",
+          "constant_type": "Float"
+        },
+        {
+          "name": "",
+          "is_off": false,
           "constant_name": "counter_chance_base",
           "constant_value": "0",
           "constant_type": "Float"
@@ -146,7 +153,7 @@
         {
           "name": "",
           "is_off": false,
-          "constant_name": "defence_base",
+          "constant_name": "armor_base",
           "constant_value": "7",
           "constant_type": "Float"
         },
@@ -2201,7 +2208,7 @@
           "health": "500",
           "damage": "130",
           "skill_ids": "1",
-          "other_characteristics": "defence:[10];\nevasion:[0];\nvampyrism:[0];\nhealing_boost:[0];\ncrit_chance:[0];\ncrit_multiplier:[0];\ncombo_1_chance:[0];\ncombo_2_chance:[0];\ncombo_multiplier:[0];\ncounter_chance:[0];\ncounter_multiplier:[0];\nspell_multiplier:[0];\nenergy:[30];\nenergy_max:[90];"
+          "other_characteristics": "defence:[10];\nevasion:[0];\nvampyrism:[0];\nhealing_boost:[0];\ncrit_chance:[0];\ncrit_multiplier:[0];\ncombo_1_chance:[0];\ncombo_2_chance:[0];\ncombo_multiplier:[0];\ncombo_2_multiplier:[0];\ncounter_chance:[0];\ncounter_multiplier:[0];\nspell_multiplier:[0];\nenergy:[30];\nenergy_max:[90];"
         },
         {
           "name": "",
@@ -2212,7 +2219,7 @@
           "health": "200",
           "damage": "40",
           "skill_ids": "1",
-          "other_characteristics": "defence:[10];\nevasion:[0];\nvampyrism:[0];\nhealing_boost:[0];\ncrit_chance:[0];\ncrit_multiplier:[0];\ncombo_1_chance:[0];\ncombo_2_chance:[0];\ncombo_multiplier:[0];\ncounter_chance:[0];\ncounter_multiplier:[0];\nspell_multiplier:[0];\nenergy:[30];\nenergy_max:[90];"
+          "other_characteristics": "defence:[10];\nevasion:[0];\nvampyrism:[0];\nhealing_boost:[0];\ncrit_chance:[0];\ncrit_multiplier:[0];\ncombo_1_chance:[0];\ncombo_2_chance:[0];\ncombo_multiplier:[0];\ncombo_2_multiplier:[0];\ncounter_chance:[0];\ncounter_multiplier:[0];\nspell_multiplier:[0];\nenergy:[30];\nenergy_max:[90];"
         }
       ],
       "sourceRows": [

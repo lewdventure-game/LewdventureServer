@@ -32,12 +32,12 @@ Bundle id: `art_name`.
 
 - Reward type `character`.
 - Первый дроп: персонаж открывается сразу на **1 уровне прокачки** (ГДД 2026-10-04): строка `promote_level = 1` в `Character_promotes` стоит 0 копий и применяется автоматически вместе с её наградами.
-- Повторки → промоуты по листу `Character_promotes`; overflow сверх последнего уровня → `character_overflow_resource` (meta).
+- Повторки копятся на аккаунте; промоут — вручную, `POST /api/player/character/promote` (с 2026-10-16). Overflow сверх последнего уровня → `character_overflow_resource` (meta).
 
 **Промоуты (лист `Character_promotes`, подключён 2026-09-30):**
 
 - Персонаж ссылается на набор промоутов через `promote_id`; строки набора нумерованы `promote_level` (1, 2, 3 …).
-- `copies_to_upgrade` — цена уровня в повторках, у первого уровня 0. Копии тратятся автоматически, пока хватает на следующий уровень; отрицательная цена останавливает прокачку с предупреждением.
+- `copies_to_upgrade` — цена уровня в повторках, у первого уровня 0. Автоматически применяются только шаги с ценой 0 (открытие на уровень 1); остальные — запросом промоута, он списывает копии и выдаёт награды уровня. Отрицательная цена останавливает прокачку с предупреждением.
 - `frame_id` — рамка/ранг для визуала, сервер только отдаёт значение.
 - `reward_types` / `reward_ids` / `reward_values` — награды за уровень тремя параллельными колонками через `;`. Внутри встречаются `resource`, `bonus` (постоянный бонус на аккаунт) и `story` (сцена персонажа: id складывается в `characters[].unlockedScenes` того персонажа, чей промоут выдал награду).
 - Бонусы за прокачку теперь приходят наградой на аккаунт и попадают в бой через `activeBonuses`, а не считаются в билде из Characters.
@@ -53,7 +53,7 @@ Bundle id: `art_name`.
 
 ### Пресеты и характеристики
 
-С ГДД 2026-10-14 в `Enemies` задаются не итоговые значения, а «константы» моба: `health`, `damage` отдельными колонками, остальное в `other_characteristics` (`armor`, `evasion`, `vampyrism`, `healing_boost`, `crit_chance`, `crit_multiplier`, `combo_1_chance`, `combo_2_chance`, `combo_multiplier`, `counter_chance`, `counter_multiplier`, `spell_multiplier`, `energy`). Итог считается по тем же формулам, что у аккаунта игрока, с нулевыми суммами бонусов при спавне; бонусы и дебаффы в бою ложатся в обычные корзины (`damage_local` и т. д.) и действуют только на этот экземпляр моба, в следующем бою моб снова чистый.
+С ГДД 2026-10-14 в `Enemies` задаются не итоговые значения, а «константы» моба: `health`, `damage` отдельными колонками, остальное в `other_characteristics` (`armor`, `evasion`, `vampyrism`, `healing_boost`, `crit_chance`, `crit_multiplier`, `combo_1_chance`, `combo_2_chance`, `combo_multiplier` (синоним `combo_1_multiplier`), `combo_2_multiplier` (с 2026-10-16), `counter_chance`, `counter_multiplier`, `spell_multiplier`, `energy`). Итог считается по тем же формулам, что у аккаунта игрока, с нулевыми суммами бонусов при спавне; бонусы и дебаффы в бою ложатся в обычные корзины (`damage_local` и т. д.) и действуют только на этот экземпляр моба, в следующем бою моб снова чистый.
 
 ЗАЩИТА моба не задаётся: она считается из БРОНИ (`armor`) по формуле 5. Старый ключ `defence` читается как синоним `armor`, публикация о нём предупреждает.
 
@@ -82,7 +82,7 @@ Bundle id: `art_name`.
 
 ### Лист Summons
 
-`id`, `art_name`, `is_melee`, `rarity`, `dmg_on_lvls`, `attack_cooldown`, `mastery_id` (набор в `Summon_masteries`), `level_pattern_id` (набор в `Summon_levels`), `skill_ids`, `mastery_for_skills`, `skill_upgrade_ids` (наборы в `Skill_promotes`). Три последних — параллельные списки через `;`: i-е значение относится к i-му скиллу.
+`id`, `art_name`, `skin_name` (префаб боя, с 2026-10-16), `is_melee`, `rarity`, `dmg_on_lvls`, `attack_cooldown`, `mastery_id` (набор в `Summon_masteries`), `level_pattern_id` (набор в `Summon_levels`), `skill_ids`, `mastery_for_skills`, `skill_upgrade_ids` (наборы в `Skill_promotes`). Три последних — параллельные списки через `;`: i-е значение относится к i-му скиллу.
 
 ### Бой
 

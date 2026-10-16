@@ -142,6 +142,28 @@ powershell -ExecutionPolicy Bypass -File Tools\update-battle-core.ps1
 | `equipmentSpellMultiplier` | `GET /api/player/characteristics` и `IBattleCore.BuildCharacteristics` | новая характеристика СНАР_СПЕЛЛ_МН в HUD/попапе |
 | `SetHp 0` + `KillUnit` по персонажу игрока при исходе `Timeout` | скрипт боя | при исчерпании лимита ходов смерть теперь приходит командами, придумывать её не надо |
 
+### Что изменилось 2026-10-16
+
+Правки под ГДД 2026-10-16 (`GDD_new7`) и ответы геймдизайна. `protocolVersion` остался `1`: команды боя не менялись, в ответах добавлены поля.
+
+#### Обязательно
+
+1. **Обновить DLL ядра** в `Assets/Plugins/BattleCore` (три DLL и `VERSION.txt`). Поменялась математика боя, со старым ядром `battleDigest` разойдётся. Публичный API только расширен: `IEnemyMapper.Combo2Multiplier`, `Combo2Multiplier` в характеристиках, `BonusType` 59–61 (`combo_2_multiplier_*`), `BattleRewardType.Perk = 9` / `PerkGroup = 10`, `IExperienceLevelPatternMapperManager.TryGetOrLast`, `ICharacterMapper.SkinName` и `ISummonMapper.SkinName` (колонка `skin_name` — id префаба боя в Unity, как у мобов). Если клиент сам реализует эти интерфейсы (тестовые двойники), их нужно дополнить.
+2. **Бой применяется после просмотра.** `advance` на бою отдаёт бой и `battlePending: true` без наград и опыта; после просмотра клиент зовёт `POST /api/run/battle/finish` `{runId, requestId}`, награды, опыт, `runFailed` / `runCompleted` приходят в его шаге. При возобновлении с `battlePending: true` (шага нет) — сразу `battle/finish`. Пока бой отложен, `advance` / `choose` дают `400`. Сдача во время боя отбрасывает его без наград.
+3. **Промоут персонажа по кнопке.** Копии больше не тратятся сами; нужна кнопка, которая зовёт `POST /api/player/character/promote` `{characterId, requestId}` (ответ — профиль). Автоматически применяется только открытие на уровень 1.
+4. **Лоадаут во время забега закрыт целиком:** саммоны и снаряжение, как и персонаж, дают `400` «… cannot be changed during run …». Смену на время забега выключить. Прокачка (саммоны, снаряжение, промоут персонажа) во время забега тоже даёт `400` «Progression is locked during run …» — кнопки прокачки выключить.
+5. **Уровни забега за последней строкой `Exp_levels_patterns`** повторяют последнюю строку: если клиент сам рисует прогресс опыта (`RunProgressService`), повторять последнюю строку, а не останавливаться.
+
+#### Изменилось поведение боя (считает ядро)
+
+6. КОМБО_1_МН и КОМБО_2_МН снова раздельные; `GET /api/player/characteristics` отдаёт `combo2Multiplier`.
+7. БРОНЯ округляется вниз; вампиризм — от реально снятого ХП; после воскрешения ход заканчивает вся сторона; статус мёртвого наложившего тикает по его статам; воздух и вода не снимают усиленные ожог и яд.
+8. `set_bonus` скиллов и `bonus_change` — каждая выдача отдельный стак, живущие после боя бонусы уходят в `bonusGrants` и в забег.
+
+#### Забег
+
+9. Новые награды `perk` / `perk_group`: в `appliedRewards` типы `Perk` (перк уже в `run.perks`) и `PerkGroup` (дальше придёт `pendingChoice.kind = "perk"`). Можно показывать в экране награды.
+
 ### Что изменилось 2026-10-14
 
 Правки под ГДД 2026-10-14 (мобы и скиллы). `protocolVersion` остался `1`: команды боя и поля ответов не менялись.
@@ -237,18 +259,20 @@ powershell -ExecutionPolicy Bypass -File Tools\update-battle-core.ps1
 | `POST /api/auth/device` | вход по `deviceId`, отдаёт `userId`, access и refresh токены |
 | `POST /api/auth/refresh` | обновить токены (refresh одноразовый) |
 | `GET /api/player/profile` | всё состояние: ресурсы, персонажи, саммоны, экипировка, лоадаут, сюжет, флаги, `rev` |
-| `POST /api/player/loadout` | сменить персонажа, экипировку, саммонов |
+| `POST /api/player/loadout` | сменить персонажа, экипировку, саммонов (не во время забега) |
 | `GET /api/player/characteristics` | итоговые характеристики (то же даёт ядро локально) |
 | `POST /api/player/equipment/level` | прокачка уровня экипировки |
 | `POST /api/player/summon/level` | прокачка уровня саммона |
 | `POST /api/player/summon/mastery` | прокачка мастерства саммона |
 | `POST /api/player/summon/skill/level` | прокачка скилла саммона |
+| `POST /api/player/character/promote` | промоут персонажа за копии |
 | `POST /api/player/reset` | стереть свой прогресс, аккаунт остаётся, стартовый набор выдаётся заново |
 | `DELETE /api/player/account` | удалить аккаунт и данные |
 | `GET /api/run/current` | текущий забег или `404` |
 | `POST /api/run/start` | начать забег: `storyLevelId`, `requestId`, `battleDelivery` |
 | `POST /api/run/advance` | шаг забега |
 | `POST /api/run/choose` | выбор из `pendingChoice` (перк или ветка) |
+| `POST /api/run/battle/finish` | применить бой после просмотра (`battlePending`) |
 | `POST /api/run/abandon` | бросить забег |
 
 Правила:

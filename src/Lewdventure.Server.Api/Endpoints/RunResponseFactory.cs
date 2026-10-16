@@ -27,6 +27,7 @@ namespace Server.Api.Endpoints
                 CurrentHealth = run.CurrentHealth,
                 Perks = new List<int>(run.Perks),
                 IsNewRecord = run.IsNewRecord,
+                BattlePending = run.PendingBattle != null,
             };
 
             for (int i = 0; i < run.RewardTotals.Count; i++)

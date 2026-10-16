@@ -15,6 +15,7 @@ namespace Server.Entities
         private float _comboChance;
         private float _combo2Chance;
         private float _comboMultiplier;
+        private float _combo2Multiplier;
         private float _counterChance;
         private float _counterMultiplier;
         private float _spellMultiplier = 1f;
@@ -76,6 +77,13 @@ namespace Server.Entities
         }
 
         [OptionalColumn("значение приходит в other_characteristics")]
+        [JsonProperty("combo_2_multiplier")]
+        private float Combo2MultiplierRaw
+        {
+            set { _combo2Multiplier = value; }
+        }
+
+        [OptionalColumn("значение приходит в other_characteristics")]
         [JsonProperty("counter_chance")]
         private float CounterChanceRaw
         {
@@ -131,6 +139,8 @@ namespace Server.Entities
 
         public float ComboMultiplier => _comboMultiplier;
 
+        public float Combo2Multiplier => _combo2Multiplier;
+
         public float CounterChance => _counterChance;
 
         public float CounterMultiplier => _counterMultiplier;
@@ -158,6 +168,7 @@ namespace Server.Entities
             _comboChance = packed.Combo1Chance;
             _combo2Chance = packed.Combo2Chance;
             _comboMultiplier = packed.ComboMultiplier;
+            _combo2Multiplier = packed.Combo2Multiplier;
             _counterChance = packed.CounterChance;
             _counterMultiplier = packed.CounterMultiplier;
             _spellMultiplier = packed.SpellMultiplier;

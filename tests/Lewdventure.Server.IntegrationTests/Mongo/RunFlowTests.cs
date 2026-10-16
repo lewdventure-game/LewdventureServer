@@ -108,6 +108,15 @@ namespace Tests.Integration.Mongo
                 if (string.Equals(refreshed!.Status, RunDocument.ActiveStatus, StringComparison.Ordinal) == false)
                     break;
 
+                if (refreshed.PendingBattle != null)
+                {
+                    var finished = await runService.FinishBattleAsync(UserId, run.Id, "run-finish-" + guard, CancellationToken.None);
+
+                    Assert.That(finished.Succeeded, Is.True, string.Join("; ", finished.Errors));
+
+                    continue;
+                }
+
                 if (refreshed.PendingChoice != null)
                 {
                     AssertOfferedPerksRespectMultiplePicks(refreshed);
@@ -284,6 +293,10 @@ namespace Tests.Integration.Mongo
             Assert.That(fight, Is.Not.Null, "в забеге не дошли до боя");
             Assert.That(fight!.BattleInput!.TeamA.MainUnits[0].ActiveStatusIds, Does.Contain(SeededStatusId));
             AssertAccountBonusIsDelivered(fight.BattleInput!);
+
+            var finishedFight = await runService.FinishBattleAsync(UserId, run.Id, "status-finish", CancellationToken.None);
+
+            Assert.That(finishedFight.Succeeded, Is.True, string.Join("; ", finishedFight.Errors));
 
             var afterFight = await repository.GetAsync(run.Id, CancellationToken.None);
 

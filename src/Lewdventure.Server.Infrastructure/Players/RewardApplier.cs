@@ -347,16 +347,41 @@ namespace Server.Infrastructure.Players
             entries.Add(CreateEntry(CharacterEntry, characterId.ToString(), count));
 
             ApplyCharacterPromotes(profile, character, mapper, configDistributor, now, entries);
+            ApplyCharacterCopiesOverflow(profile, character, mapper, configDistributor, entries);
+        }
 
+        public List<PlayerLedgerEntryDocument> PromoteCharacter(
+            PlayerProfileDocument profile,
+            PlayerCharacterDocument character,
+            ICharacterMapper mapper,
+            ICharacterPromoteMapper promote,
+            IConfigDistributor configDistributor,
+            DateTime now)
+        {
+            var entries = new List<PlayerLedgerEntryDocument>();
+
+            ApplyCharacterPromoteStep(profile, character, mapper, promote, configDistributor, now, entries);
+            ApplyCharacterCopiesOverflow(profile, character, mapper, configDistributor, entries);
+
+            return entries;
+        }
+
+        private void ApplyCharacterCopiesOverflow(
+            PlayerProfileDocument profile,
+            PlayerCharacterDocument character,
+            ICharacterMapper mapper,
+            IConfigDistributor configDistributor,
+            List<PlayerLedgerEntryDocument> entries)
+        {
             var maxPromoteLevel = configDistributor.CharacterPromotes.GetMaxPromoteLevel(mapper.PromoteId);
 
-            if (0 < maxPromoteLevel && maxPromoteLevel <= character.PromoteLevel && 0 < character.Copies)
-            {
-                var overflow = character.Copies;
+            if (maxPromoteLevel <= 0 || character.PromoteLevel < maxPromoteLevel || character.Copies <= 0)
+                return;
 
-                character.Copies = 0;
-                ApplyOverflow(profile, CharacterOverflowConstant, overflow, configDistributor, entries);
-            }
+            var overflow = character.Copies;
+
+            character.Copies = 0;
+            ApplyOverflow(profile, CharacterOverflowConstant, overflow, configDistributor, entries);
         }
 
         private void ApplyCharacterPromotes(
@@ -401,30 +426,44 @@ namespace Server.Infrastructure.Players
                     return;
                 }
 
-                if (character.Copies < promote.CopiesToUpgrade)
+                if (0 < promote.CopiesToUpgrade)
                     return;
 
-                character.Copies -= promote.CopiesToUpgrade;
-                character.PromoteLevel = nextLevel;
-                entries.Add(CreateEntry(PromoteEntry, $"{mapper.Id}:{nextLevel}", promote.CopiesToUpgrade));
-
-                _logger.LogInformation(
-                    "[Player] character {CharacterId} promoted to level {Level} for {Copies} copies",
-                    mapper.Id,
-                    nextLevel,
-                    promote.CopiesToUpgrade);
-
-                ApplyLevelRewards(
-                    profile,
-                    promote.RewardTypes,
-                    promote.RewardIds,
-                    promote.RewardValues,
-                    $"promote {mapper.PromoteId} level {nextLevel}",
-                    new SceneOwner(SceneOwnerKind.Character, mapper.Id),
-                    configDistributor,
-                    now,
-                    entries);
+                ApplyCharacterPromoteStep(profile, character, mapper, promote, configDistributor, now, entries);
             }
+        }
+
+        private void ApplyCharacterPromoteStep(
+            PlayerProfileDocument profile,
+            PlayerCharacterDocument character,
+            ICharacterMapper mapper,
+            ICharacterPromoteMapper promote,
+            IConfigDistributor configDistributor,
+            DateTime now,
+            List<PlayerLedgerEntryDocument> entries)
+        {
+            var nextLevel = character.PromoteLevel + 1;
+
+            character.Copies -= promote.CopiesToUpgrade;
+            character.PromoteLevel = nextLevel;
+            entries.Add(CreateEntry(PromoteEntry, $"{mapper.Id}:{nextLevel}", promote.CopiesToUpgrade));
+
+            _logger.LogInformation(
+                "[Player] character {CharacterId} promoted to level {Level} for {Copies} copies",
+                mapper.Id,
+                nextLevel,
+                promote.CopiesToUpgrade);
+
+            ApplyLevelRewards(
+                profile,
+                promote.RewardTypes,
+                promote.RewardIds,
+                promote.RewardValues,
+                $"promote {mapper.PromoteId} level {nextLevel}",
+                new SceneOwner(SceneOwnerKind.Character, mapper.Id),
+                configDistributor,
+                now,
+                entries);
         }
 
         private void ApplySummonMasteryLevelRewards(

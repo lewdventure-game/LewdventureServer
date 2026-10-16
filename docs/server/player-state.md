@@ -28,6 +28,7 @@
 | `/api/player/loadout` | POST | Bearer | профиль после изменения |
 | `/api/player/summon/level` | POST | Bearer | поднять уровень саммона за ресурсы |
 | `/api/player/summon/mastery` | POST | Bearer | поднять мастерство саммона за копии и выдать награды уровня |
+| `/api/player/character/promote` | POST | Bearer | промоут персонажа за копии и награды уровня (с 2026-10-16) |
 | `/api/player/summon/skill/level` | POST | Bearer | поднять уровень скилла саммона за ресурсы |
 | `/api/player/equipment/level` | POST | Bearer | поднять уровень инстанса снаряжения за ресурсы |
 | `/api/player/summon/level/reset` | POST | Bearer | сбросить уровень саммона до первого с возвратом части потраченных ресурсов |
@@ -37,7 +38,7 @@
 
 Тело `loadout`: `{requestId, characterId, equipment: {слот: instanceId}, summons: [id]}`.
 
-Проверки: персонаж открыт и есть в конфигах, саммонов не больше трёх и все свои, инстанс снаряжения принадлежит игроку, а тип из конфига совпадает с именем слота. Ошибки возвращаются списком в 400.
+Проверки: персонаж открыт и есть в конфигах, саммонов не больше трёх и все свои, инстанс снаряжения принадлежит игроку, а тип из конфига совпадает с именем слота. Во время активного забега (`story.currentRunId`) нельзя сменить персонажа, саммонов и снаряжение (саммоны и снаряжение — с 2026-10-16): «Character / Summons / Equipment cannot be changed during run …». Во время забега прокачка тоже закрыта: уровень, мастерство и скиллы саммона, уровень, сброс и трансформация снаряжения, промоут персонажа отвечают `400` «Progression is locked during run …» (с 2026-10-16), поэтому бои забега идут на сетапе, с которым в него вошли. Ошибки возвращаются списком в 400.
 
 ## Награды
 
@@ -46,15 +47,20 @@
 | Тип | Что делает с профилем |
 | --- | --- |
 | `resource:<ключ>:<n>` | прибавляет к `resources[ключ]` |
-| `character:<id>:<n>` | первая копия открывает персонажа на 1 уровне прокачки (строка `promote_level = 1` стоит 0 копий, её награды выдаются сразу), остальные идут в `copies`; копии автоматически тратятся на промоуты по листу `Character_promotes` (цена — `copies_to_upgrade` уровня), за каждый промоут выдаются его награды, лишние копии сверх последнего уровня конвертируются по константе `character_overflow_resource` |
+| `character:<id>:<n>` | первая копия открывает персонажа на 1 уровне прокачки (строка `promote_level = 1` стоит 0 копий, её награды выдаются сразу), остальные копятся в `copies`; с 2026-10-16 автоматически применяются только шаги `Character_promotes` с `copies_to_upgrade = 0`, остальные — ручным промоутом (ниже). На максимальном уровне лишние копии конвертируются по константе `character_overflow_resource` |
 | `story:<id>:<n>` | открывает сцену владельца награды: из промоута персонажа — в `characters[].unlockedScenes`, из мастерства саммона — в `summons[].unlockedScenes`. Без владельца (например, в награде события) сервер пишет Warning и ничего не открывает |
 | `summon:<id>:<n>` | первая копия открывает саммона с уровнем 1 и мастерством 1 и выдаёт награды строки `mastery_level = 1` из `Summon_masteries`, остальные идут в `copies`; когда мастерство саммона уже максимальное, лишние копии конвертируются по константе редкости (`rare/epic/legendary/mythic_summon_overflow_resource`) |
 | `equipment:<id>:<n>` | создаёт `n` инстансов первого уровня с собственным `instanceId` |
 | `account:<флаг>:<n>` | прибавляет к `flags[флаг]`, например `start_perk_choice_single` |
 | `bonus:<id>:<n>` | бонус на аккаунт: `n` складывается в `bonuses[id].count`, если у бонуса в `Bonuses` стоят только `permanent` и/или `if_equipped`. Режимы забега (`end_of_game`, `end_of_battle`, `next_battles`, `first_turns`, `every_turn`) на аккаунт не выдаются — Warning и пропуск, по ГДД они живут только внутри забега |
 | `status:*` | профиль не меняет: статус живёт внутри забега |
+| `perk:*`, `perk_group:*` | профиль не меняет: перк или выбор из группы живут внутри забега (с 2026-10-16, см. [runs](runs.md)) |
 
 Каждое начисление пишет запись в `player_ledger` (что, кому, за что, какой `requestId`, какой `rev`). Повтор с тем же `requestId` не начисляет второй раз.
+
+### Промоут персонажа
+
+`POST /api/player/character/promote` `{characterId, requestId}` (с 2026-10-16, ГДД: промоут по кнопке, как мастерство саммона). Берёт строку `Character_promotes` с `promote_level` = текущий + 1, списывает `copies_to_upgrade` копий, поднимает `promoteLevel`, выдаёт награды уровня (`reward_types/ids/values`, `story` открывает сцену персонажа). Копии сверх последнего уровня конвертируются в `character_overflow_resource`. Ошибки — `400`: персонаж не открыт, уровень максимальный, не хватает копий. Повтор с тем же `requestId` возвращает профиль без изменений.
 
 ### Прокачка саммонов
 
@@ -95,7 +101,7 @@
 
 `GET /api/player/characteristics` считает те же числа, что использует бой: сервер собирает юнита из профиля (персонаж с прокачками, надетая экипировка, саммоны) и активного забега (перки, бонусы, текущее здоровье) и прогоняет через боевой `UnitStateBuilder`. Клиент ничего не присылает и ничего не считает сам, поэтому HUD не может разойтись с боем.
 
-Поля ответа совпадают с боевыми: `health`, `maxHealth`, `damage`, `attackMultiplier`, `armor`, `defence`, `evasion`, `criticalChance`, `criticalMultiplier`, `combo1Chance`, `combo2Chance`, `comboMultiplier`, `counterChance`, `counterMultiplier`, `energy`, `energyGain`, `maxEnergy`, `skillMultiplier`, `vampyrism`, `healingBoost`.
+Поля ответа совпадают с боевыми: `health`, `maxHealth`, `damage`, `attackMultiplier`, `armor`, `defence`, `evasion`, `criticalChance`, `criticalMultiplier`, `combo1Chance`, `combo2Chance`, `comboMultiplier`, `combo2Multiplier`, `counterChance`, `counterMultiplier`, `energy`, `energyGain`, `maxEnergy`, `skillMultiplier`, `vampyrism`, `healingBoost`.
 
 Клиентская фича характеристик ходит в несуществующий `POST api/character/characteristics` — её нужно перевести на этот эндпоинт. Команда боя `SetCharacteristics = 21`, которую ждёт клиент, сервером пока не отправляется: это изменение battle script, его делаем отдельно и осознанно.
 

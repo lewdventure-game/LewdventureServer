@@ -11,6 +11,7 @@ namespace Server.Infrastructure.Players
         private const string SummonLevelAction = "summon-level";
         private const string SummonMasteryAction = "summon-mastery";
         private const string SummonSkillLevelAction = "summon-skill-level";
+        private const string CharacterPromoteAction = "character-promote";
         private const string EquipmentLevelAction = "equipment-level";
         private const string SummonLevelResetAction = "summon-level-reset";
         private const string EquipmentLevelResetAction = "equipment-level-reset";
@@ -79,6 +80,14 @@ namespace Server.Infrastructure.Players
             for (int attempt = 1; attempt <= MaxAttempts; attempt++)
             {
                 var profile = await _playerProfileService.GetOrCreateAsync(userId, cancellationToken);
+
+                if (string.IsNullOrEmpty(profile.Story.CurrentRunId) == false)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed($"Progression is locked during run {profile.Story.CurrentRunId}.");
+                }
+
                 var summon = FindSummon(profile, summonId);
 
                 if (summon == null)
@@ -132,6 +141,14 @@ namespace Server.Infrastructure.Players
             for (int attempt = 1; attempt <= MaxAttempts; attempt++)
             {
                 var profile = await _playerProfileService.GetOrCreateAsync(userId, cancellationToken);
+
+                if (string.IsNullOrEmpty(profile.Story.CurrentRunId) == false)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed($"Progression is locked during run {profile.Story.CurrentRunId}.");
+                }
+
                 var summon = FindSummon(profile, summonId);
 
                 if (summon == null)
@@ -177,6 +194,80 @@ namespace Server.Infrastructure.Players
             return Conflict();
         }
 
+        public async Task<PlayerUpdateResult> PromoteCharacterAsync(
+            string userId,
+            int characterId,
+            string requestId,
+            IConfigDistributor configDistributor,
+            CancellationToken cancellationToken)
+        {
+            if (configDistributor.Characters.TryGet(characterId, out var characterConfig) == false)
+                return Failed($"Character {characterId} is missing in configs.");
+
+            if (await IsAlreadyAppliedAsync(userId, requestId, CharacterPromoteAction, cancellationToken))
+                return new PlayerUpdateResult(await _playerProfileService.GetOrCreateAsync(userId, cancellationToken), false, new List<string>());
+
+            for (int attempt = 1; attempt <= MaxAttempts; attempt++)
+            {
+                var profile = await _playerProfileService.GetOrCreateAsync(userId, cancellationToken);
+
+                if (string.IsNullOrEmpty(profile.Story.CurrentRunId) == false)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed($"Progression is locked during run {profile.Story.CurrentRunId}.");
+                }
+
+                var character = FindCharacter(profile, characterId);
+
+                if (character == null)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed($"Character {characterId} is not unlocked.");
+                }
+
+                var nextLevel = character.PromoteLevel + 1;
+
+                if (configDistributor.CharacterPromotes.TryGet(characterConfig.PromoteId, nextLevel, out var promote) == false)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed($"Character {characterId} has max promote level {character.PromoteLevel}.");
+                }
+
+                if (promote.CopiesToUpgrade < 0)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed($"Promote {characterConfig.PromoteId} level {nextLevel} has copies_to_upgrade {promote.CopiesToUpgrade}.");
+                }
+
+                if (character.Copies < promote.CopiesToUpgrade)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed($"Character {characterId} needs {promote.CopiesToUpgrade} copies, has {character.Copies}.");
+                }
+
+                var entries = new List<PlayerLedgerEntryDocument>
+                {
+                    new PlayerLedgerEntryDocument { Type = SpendEntry, Key = "character:" + characterId + ":copies", Amount = -promote.CopiesToUpgrade },
+                };
+
+                entries.AddRange(_rewardApplier.PromoteCharacter(profile, character, characterConfig, promote, configDistributor, _timeProvider.GetUtcNow().UtcDateTime));
+
+                var saved = await SaveAsync(userId, profile, entries, CharacterPromoteAction, requestId, cancellationToken);
+
+                if (saved)
+                    return new PlayerUpdateResult(profile, false, new List<string>());
+            }
+
+            await ReleaseAsync(userId, requestId, cancellationToken);
+
+            return Conflict();
+        }
+
         public async Task<PlayerUpdateResult> UpgradeSummonSkillLevelAsync(
             string userId,
             int summonId,
@@ -197,6 +288,14 @@ namespace Server.Infrastructure.Players
             for (int attempt = 1; attempt <= MaxAttempts; attempt++)
             {
                 var profile = await _playerProfileService.GetOrCreateAsync(userId, cancellationToken);
+
+                if (string.IsNullOrEmpty(profile.Story.CurrentRunId) == false)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed($"Progression is locked during run {profile.Story.CurrentRunId}.");
+                }
+
                 var summon = FindSummon(profile, summonId);
 
                 if (summon == null)
@@ -249,6 +348,14 @@ namespace Server.Infrastructure.Players
             for (int attempt = 1; attempt <= MaxAttempts; attempt++)
             {
                 var profile = await _playerProfileService.GetOrCreateAsync(userId, cancellationToken);
+
+                if (string.IsNullOrEmpty(profile.Story.CurrentRunId) == false)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed($"Progression is locked during run {profile.Story.CurrentRunId}.");
+                }
+
                 var instance = FindEquipment(profile, instanceId);
 
                 if (instance == null)
@@ -315,6 +422,14 @@ namespace Server.Infrastructure.Players
             for (int attempt = 1; attempt <= MaxAttempts; attempt++)
             {
                 var profile = await _playerProfileService.GetOrCreateAsync(userId, cancellationToken);
+
+                if (string.IsNullOrEmpty(profile.Story.CurrentRunId) == false)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed($"Progression is locked during run {profile.Story.CurrentRunId}.");
+                }
+
                 var summon = FindSummon(profile, summonId);
 
                 if (summon == null)
@@ -380,6 +495,14 @@ namespace Server.Infrastructure.Players
             for (int attempt = 1; attempt <= MaxAttempts; attempt++)
             {
                 var profile = await _playerProfileService.GetOrCreateAsync(userId, cancellationToken);
+
+                if (string.IsNullOrEmpty(profile.Story.CurrentRunId) == false)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed($"Progression is locked during run {profile.Story.CurrentRunId}.");
+                }
+
                 var instance = FindEquipment(profile, instanceId);
 
                 if (instance == null)
@@ -445,6 +568,14 @@ namespace Server.Infrastructure.Players
             for (int attempt = 1; attempt <= MaxAttempts; attempt++)
             {
                 var profile = await _playerProfileService.GetOrCreateAsync(userId, cancellationToken);
+
+                if (string.IsNullOrEmpty(profile.Story.CurrentRunId) == false)
+                {
+                    await ReleaseAsync(userId, requestId, cancellationToken);
+
+                    return Failed($"Progression is locked during run {profile.Story.CurrentRunId}.");
+                }
+
                 var instance = FindEquipment(profile, instanceId);
 
                 if (instance == null)
@@ -806,6 +937,17 @@ namespace Server.Infrastructure.Players
                 summon.SkillLevels.Add(1);
 
             summon.SkillLevels[skillIndex] = skillLevel;
+        }
+
+        private PlayerCharacterDocument? FindCharacter(PlayerProfileDocument profile, int characterId)
+        {
+            for (int i = 0; i < profile.Characters.Count; i++)
+            {
+                if (profile.Characters[i].ConfigId == characterId)
+                    return profile.Characters[i];
+            }
+
+            return null;
         }
 
         private PlayerSummonDocument? FindSummon(PlayerProfileDocument profile, int summonId)

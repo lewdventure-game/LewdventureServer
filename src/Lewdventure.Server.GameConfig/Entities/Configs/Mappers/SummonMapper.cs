@@ -12,6 +12,10 @@ namespace Server.Entities
         [JsonProperty("art_name")]
         public string ArtName { get; init; } = string.Empty;
 
+        [JsonProperty("skin_name")]
+        [OptionalColumn("визуал боя: id префаба в Unity")]
+        public string SkinName { get; init; } = string.Empty;
+
         [JsonProperty("rarity")]
         public RarityType Rarity { get; init; }
 

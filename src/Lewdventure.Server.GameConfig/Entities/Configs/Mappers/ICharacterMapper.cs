@@ -15,5 +15,7 @@ namespace Server.Entities
         public int[] PromoteToSkillLevels { get; }
 
         public string ArtName { get; }
+
+        public string SkinName { get; }
     }
 }

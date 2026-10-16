@@ -180,7 +180,7 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
-        public void DamageOverTime_FromDeadSource_DealsNoDamage()
+        public void DamageOverTime_FromDeadSource_KeepsDealingDamage()
         {
             var patched = ReplaceDomain(_domains, "Skills", rows =>
             {
@@ -204,7 +204,7 @@ namespace Tests.Unit.Battles
                 first["health"] = "100";
                 first["skill_ids"] = "2";
                 first["other_characteristics"] = "armor:[0];evasion:[0];vampyrism:[0];healing_boost:[0];crit_chance:[0];crit_multiplier:[0];"
-                    + "combo_1_chance:[0];combo_2_chance:[0];combo_multiplier:[0];counter_chance:[0];counter_multiplier:[0];"
+                    + "combo_1_chance:[0];combo_2_chance:[0];combo_multiplier:[0];combo_2_multiplier:[0];counter_chance:[0];counter_multiplier:[0];"
                     + "spell_multiplier:[0];energy:[0]";
                 ((JObject)rows[1])["skill_ids"] = "";
             });
@@ -247,8 +247,141 @@ namespace Tests.Unit.Battles
 
             Assert.That(killIndex, Is.GreaterThanOrEqualTo(0), "моб-источник не умер, тест ничего не проверяет");
             Assert.That(ticksAfterKill, Is.GreaterThan(0), "после смерти источника ожог не тикал, тест ничего не проверяет");
-            Assert.That(damageAfterKill, Is.EqualTo(0f), "ожог мёртвого моба продолжает наносить урон");
+            Assert.That(0f < damageAfterKill, Is.True, "ожог мёртвого моба перестал наносить урон");
             TestContext.Out.WriteLine($"ticks before = {ticksBeforeKill}, after = {ticksAfterKill}");
+        }
+
+        [Test]
+        public void Vampyrism_IgnoresDamageBeyondTargetHealth()
+        {
+            const float EnemyHealth = 10f;
+
+            var patched = ReplaceDomain(_domains, "Bonuses", rows =>
+            {
+                var row = (JObject)rows[0];
+
+                row["bonus_type"] = "vampyrism_local";
+                row["bonus_value"] = "1";
+                row["work_modes"] = "permanent";
+            });
+
+            patched = ReplaceDomain(patched, "Characters", rows =>
+            {
+                ((JObject)rows[0])["skill_ids"] = "";
+            });
+
+            patched = ReplaceDomain(patched, "Enemies", rows =>
+            {
+                ((JObject)rows[0])["health"] = EnemyHealth.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                ((JObject)rows[0])["skill_ids"] = "";
+            });
+
+            var unitSnapshot = CreateUnitSnapshot();
+
+            unitSnapshot.ActiveBonuses.Add(new BonusGrantSnapshot { Id = 1, Count = 1, RemainingBattles = 0 });
+
+            var script = CreateCore(patched).Replay(CreateReplayData(unitSnapshot));
+            var heals = 0;
+
+            for (int i = 0; i < script.Steps.Count; i++)
+            {
+                var commands = script.Steps[i].Commands;
+
+                for (int commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    if (commands[commandIndex].CommandType != CommandType.ShowHeal)
+                        continue;
+
+                    heals += 1;
+
+                    Assert.That(commands[commandIndex].Parameters["heal"]!.Value<float>(), Is.LessThanOrEqualTo(EnemyHealth), "вампиризм посчитан от урона сверх ХП цели");
+                }
+            }
+
+            Assert.That(heals, Is.GreaterThan(0), "вампиризм не сработал, тест ничего не проверяет");
+        }
+
+        [Test]
+        public void Resurrection_EndsWholeKillerSideTurn()
+        {
+            var patched = ReplaceDomain(_domains, "Characters", rows =>
+            {
+                ((JObject)rows[0])["skill_ids"] = "";
+            });
+
+            patched = ReplaceDomain(patched, "Enemies", rows =>
+            {
+                for (int i = 0; i < 2; i++)
+                {
+                    var row = (JObject)rows[i];
+
+                    row["health"] = "1000000";
+                    row["damage"] = "1000000";
+                    row["skill_ids"] = "";
+                }
+            });
+
+            var unitSnapshot = CreateUnitSnapshot();
+
+            unitSnapshot.ActivePerkIds.Add(ResurrectionPerkId);
+
+            var replayData = CreateReplayData(unitSnapshot);
+
+            replayData.TeamB.MainUnits.Add(new UnitSnapshot { Id = SecondEnemyId, Level = 1, SlotIndex = 1 });
+
+            var script = CreateCore(patched).Replay(replayData);
+            var resurrectionIndex = FindFirstStepOf(script, CommandType.TriggerPerk, "perkId", ResurrectionPerkId);
+
+            Assert.That(0 <= resurrectionIndex, Is.True, "воскрешение не сработало, тест ничего не проверяет");
+
+            for (int i = resurrectionIndex + 1; i < script.Steps.Count; i++)
+            {
+                var step = script.Steps[i];
+
+                if (step.ActorId == CharacterId)
+                    return;
+
+                Assert.That(step.ActorId, Is.Not.EqualTo(SecondEnemyId), "второй враг походил после воскрешения в том же ходу");
+            }
+        }
+
+        [Test]
+        public void AirPerk_DoesNotCleanseStrongBurning()
+        {
+            const int AirPerkId = 4;
+            const int StrongBurningStatusId = 2;
+
+            var unitSnapshot = CreateUnitSnapshot();
+
+            unitSnapshot.ActivePerkIds.Add(AirPerkId);
+
+            var replayData = CreateReplayData(unitSnapshot);
+
+            replayData.TeamB.MainUnits[0].ActiveStatusIds.Add(StrongBurningStatusId);
+
+            var script = CreateCore(_domains).Replay(replayData);
+
+            Assert.That(CountPerkTriggers(script, AirPerkId), Is.GreaterThan(0), "перк воздуха не сработал, тест ничего не проверяет");
+
+            for (int i = 0; i < script.Steps.Count; i++)
+            {
+                var commands = script.Steps[i].Commands;
+                var hasAirTrigger = false;
+                var removesStrongBurning = false;
+
+                for (int commandIndex = 0; commandIndex < commands.Count; commandIndex++)
+                {
+                    var command = commands[commandIndex];
+
+                    if (command.CommandType == CommandType.TriggerPerk && command.Parameters["perkId"]!.Value<int>() == AirPerkId)
+                        hasAirTrigger = true;
+
+                    if (command.CommandType == CommandType.RemoveStatus && command.Parameters["statusId"]!.Value<int>() == StrongBurningStatusId)
+                        removesStrongBurning = true;
+                }
+
+                Assert.That(hasAirTrigger && removesStrongBurning, Is.False, "воздух снял усиленный ожог");
+            }
         }
 
         [Test]
@@ -829,7 +962,7 @@ namespace Tests.Unit.Battles
                 var row = (JObject)rows[0];
 
                 row["other_characteristics"] = "armor:[10];evasion:[0];vampyrism:[0];healing_boost:[0];crit_chance:[0];crit_multiplier:[0];"
-                    + "combo_1_chance:[0];combo_2_chance:[0];combo_multiplier:[0];counter_chance:[0];counter_multiplier:[0];"
+                    + "combo_1_chance:[0];combo_2_chance:[0];combo_multiplier:[0];combo_2_multiplier:[0];counter_chance:[0];counter_multiplier:[0];"
                     + "spell_multiplier:[0];energy:[10]";
                 row["skill_ids"] = skillIds;
             });

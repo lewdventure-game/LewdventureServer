@@ -21,6 +21,7 @@ namespace Server.Api.Endpoints
         public const string PlayerEquipmentLevel = "/api/player/equipment/level";
         public const string PlayerSummonLevel = "/api/player/summon/level";
         public const string PlayerSummonMastery = "/api/player/summon/mastery";
+        public const string PlayerCharacterPromote = "/api/player/character/promote";
         public const string PlayerSummonLevelReset = "/api/player/summon/level/reset";
         public const string PlayerSummonSkillLevel = "/api/player/summon/skill/level";
         public const string PlayerEquipmentLevelReset = "/api/player/equipment/level/reset";

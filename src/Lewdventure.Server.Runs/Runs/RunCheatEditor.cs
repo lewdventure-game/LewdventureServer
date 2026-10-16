@@ -52,6 +52,7 @@ namespace Server.Runs
                 run.Stages[i].Resolved = i < index;
 
             run.StageIndex = index;
+            run.PendingBattle = null;
 
             if (run.PendingChoice != null && string.Equals(run.PendingChoice.Kind, RunPendingChoiceDocument.ForkKind, StringComparison.Ordinal))
                 run.PendingChoice = null;
@@ -71,6 +72,9 @@ namespace Server.Runs
 
             if (index < run.StageIndex)
                 return $"Stage {stageNumber} is already passed; move the run back to it first.";
+
+            if (index == run.StageIndex)
+                run.PendingBattle = null;
 
             if (index == run.StageIndex && run.PendingChoice != null && string.Equals(run.PendingChoice.Kind, RunPendingChoiceDocument.ForkKind, StringComparison.Ordinal))
                 run.PendingChoice = null;

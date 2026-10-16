@@ -47,6 +47,7 @@ namespace Server.Battles
                 buckets.ArmorPerk,
                 buckets.ArmorGlobal,
                 "armor");
+            armor = MathF.Floor(armor);
             var attackMultiplier = ApplyFormula3(
                 buckets.AttackMultiplierBase,
                 buckets.AttackMultiplierLocal,
@@ -89,6 +90,12 @@ namespace Server.Battles
                 buckets.ComboMultiplierPerk,
                 buckets.ComboMultiplierGlobal,
                 "comboMultiplier");
+            var combo2Multiplier = ApplyFormula3(
+                buckets.Combo2MultiplierBase,
+                buckets.Combo2MultiplierLocal,
+                buckets.Combo2MultiplierPerk,
+                buckets.Combo2MultiplierGlobal,
+                "combo2Multiplier");
             var counterChance = ApplyFormula3(
                 buckets.CounterChanceBase,
                 buckets.CounterChanceLocal,
@@ -140,6 +147,7 @@ namespace Server.Battles
                 ref combo1Chance,
                 ref combo2Chance,
                 ref comboMultiplier,
+                ref combo2Multiplier,
                 ref counterChance,
                 ref counterMultiplier,
                 ref skillMultiplier,
@@ -161,6 +169,7 @@ namespace Server.Battles
             state.Combo1Chance = combo1Chance;
             state.Combo2Chance = combo2Chance;
             state.ComboMultiplier = comboMultiplier;
+            state.Combo2Multiplier = combo2Multiplier;
             state.CounterChance = counterChance;
             state.CounterMultiplier = counterMultiplier;
             state.SkillMultiplier = skillMultiplier;
@@ -189,7 +198,7 @@ namespace Server.Battles
                     state.Health = 0f;
             }
 
-            _coreLog.Information($"[Story][Battle]: Characteristic rebuild, maxHealth = {state.MaxHealth}, health = {state.Health}, damage = {state.Damage}, armor = {state.Armor}, defence = {state.Defence}, comboMn = {state.ComboMultiplier}, vampyrism = {state.Vampyrism}, healingBoost = {state.HealingBoost}");
+            _coreLog.Information($"[Story][Battle]: Characteristic rebuild, maxHealth = {state.MaxHealth}, health = {state.Health}, damage = {state.Damage}, armor = {state.Armor}, defence = {state.Defence}, comboMn = {state.ComboMultiplier}, combo2Mn = {state.Combo2Multiplier}, vampyrism = {state.Vampyrism}, healingBoost = {state.HealingBoost}");
         }
 
         public float CalculateVampyrismHeal(float dealtDamage, ICharacteristicState state)
@@ -237,6 +246,7 @@ namespace Server.Battles
             ref float combo1Chance,
             ref float combo2Chance,
             ref float comboMultiplier,
+            ref float combo2Multiplier,
             ref float counterChance,
             ref float counterMultiplier,
             ref float skillMultiplier,
@@ -304,6 +314,11 @@ namespace Server.Battles
                     case BonusType.ComboMultiplierPerk:
                     case BonusType.ComboMultiplierGlobal:
                         comboMultiplier = value;
+                        break;
+                    case BonusType.Combo2MultiplierLocal:
+                    case BonusType.Combo2MultiplierPerk:
+                    case BonusType.Combo2MultiplierGlobal:
+                        combo2Multiplier = value;
                         break;
                     case BonusType.CounterChanceLocal:
                     case BonusType.CounterChancePerk:

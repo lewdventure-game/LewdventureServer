@@ -50,6 +50,39 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
+        public void Formula2_ArmorRoundsDown()
+        {
+            var buckets = CreateBuckets();
+
+            buckets.ArmorBase = 7f;
+            buckets.ArmorPerk = -0.2f;
+
+            var positive = Apply(buckets);
+
+            buckets.ArmorBase = -7f;
+
+            var negative = Apply(buckets);
+
+            Assert.That(positive.Armor, Is.EqualTo(5f));
+            Assert.That(negative.Armor, Is.EqualTo(-6f));
+        }
+
+        [Test]
+        public void ComboMultipliers_AreSeparatePerComboAttack()
+        {
+            var buckets = CreateBuckets();
+
+            buckets.ComboMultiplierBase = 1.5f;
+            buckets.Combo2MultiplierBase = 2f;
+            buckets.Combo2MultiplierPerk = 0.5f;
+
+            var state = Apply(buckets);
+
+            Assert.That(state.ComboMultiplier, Is.EqualTo(1.5f).Within(0.0001f));
+            Assert.That(state.Combo2Multiplier, Is.EqualTo(3f).Within(0.0001f));
+        }
+
+        [Test]
         public void EntityMultiplier_AppliesToFinalValueAfterLocalBonus()
         {
             var buckets = CreateBuckets();

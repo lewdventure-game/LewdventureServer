@@ -25,5 +25,9 @@ namespace Server.Entities
         [JsonProperty("art_name")]
         [OptionalColumn("визуал настраивается в билде по id персонажа, колонка из листа убрана")]
         public string ArtName { get; init; } = string.Empty;
+
+        [JsonProperty("skin_name")]
+        [OptionalColumn("визуал боя: id префаба в Unity")]
+        public string SkinName { get; init; } = string.Empty;
     }
 }

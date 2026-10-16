@@ -26,6 +26,8 @@ namespace Server.Api.Endpoints
 
         public float ComboMultiplier { get; set; }
 
+        public float Combo2Multiplier { get; set; }
+
         public float CounterChance { get; set; }
 
         public float CounterMultiplier { get; set; }

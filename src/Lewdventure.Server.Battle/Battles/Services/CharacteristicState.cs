@@ -30,6 +30,8 @@ namespace Server.Battles
 
         public float ComboMultiplier { get; set; }
 
+        public float Combo2Multiplier { get; set; }
+
         public float Energy { get; set; }
 
         public float EnergyGain { get; set; }

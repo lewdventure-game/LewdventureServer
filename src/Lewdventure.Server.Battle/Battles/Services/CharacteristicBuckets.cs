@@ -49,6 +49,10 @@ namespace Server.Battles
         public float ComboMultiplierLocal;
         public float ComboMultiplierPerk;
         public float ComboMultiplierGlobal;
+        public float Combo2MultiplierBase;
+        public float Combo2MultiplierLocal;
+        public float Combo2MultiplierPerk;
+        public float Combo2MultiplierGlobal;
         public float CounterChanceBase;
         public float CounterChanceLocal;
         public float CounterChancePerk;

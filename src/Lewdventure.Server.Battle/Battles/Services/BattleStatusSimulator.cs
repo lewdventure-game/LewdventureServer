@@ -516,9 +516,14 @@ namespace Server.Battles
                 return;
             }
 
-            if (TryFindMain(ownerTeam, activeStatus.SourceUnitId, out _) || TryFindMain(opponentTeam, activeStatus.SourceUnitId, out _))
+            if (TryFindMain(ownerTeam, activeStatus.SourceUnitId, out sourceUnit) || TryFindMain(opponentTeam, activeStatus.SourceUnitId, out sourceUnit))
             {
-                _coreLog.Debug($"[Story][Battle]: Damage over time source dead, no damage, sourceId = {activeStatus.SourceUnitId}, bearerId = {bearer.Id}, statusId = {activeStatus.StatusId}");
+                var sourceCharacteristics = sourceUnit.CharacteristicState;
+                sourceDamage = sourceCharacteristics.Damage;
+                criticalChance = sourceCharacteristics.CriticalChance;
+                criticalMultiplier = sourceCharacteristics.CriticalMultiplier;
+
+                _coreLog.Debug($"[Story][Battle]: Damage over time source dead, stats kept, sourceId = {activeStatus.SourceUnitId}, bearerId = {bearer.Id}, statusId = {activeStatus.StatusId}");
 
                 return;
             }

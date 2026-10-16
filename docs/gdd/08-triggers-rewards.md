@@ -39,6 +39,8 @@ Meta-триггеры прогрессии аккаунта — future.
 | `character` | id Characters | кол-во выдач |
 | `summon` | id Summons | кол-во |
 | `resource` | ключ ресурса (string) или int id | кол-во |
+| `perk` | id Perks | сколько копий добавить в забег (с учётом `multiple_picks`), с 2026-10-16 |
+| `perk_group` | id Perk_groups | сколько выборов перка из группы поставить в очередь забега, с 2026-10-16 |
 
 ### Battle-relevant награды
 
@@ -51,7 +53,7 @@ Meta-триггеры прогрессии аккаунта — future.
 
 - character / summon / resource на профиль;
 - постоянные bonus (`permanent`, `end_of_game`); run-session re-grant; `next_battles` внутри одного simulate уже декрементируется на battle end;
-- выбор перков из группы как награда события.
+- ~~выбор перков из группы как награда события~~ — сделано 2026-10-16: `perk` / `perk_group` в наградах событий, развилок, боёв и перков, живут только в забеге (`docs/server/runs.md`).
 
 ## Серверные задачи (кратко)
 

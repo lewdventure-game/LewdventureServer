@@ -353,6 +353,13 @@ namespace Server.Battles
 
                 phase.Execute(steps, attacker, defender, currentTurn, seededRandomService, turnState);
 
+                if (turnState.IsSideTurnAborted)
+                {
+                    _coreLog.Debug($"[Story][Battle]: Side turn aborted after {phase.Name}, side = {attacker.BattleSide}, turn = {currentTurn}");
+
+                    return;
+                }
+
                 if (phase.StopsSideTurnWhenAttackerDead == false || _battleTeamQuery.HasAliveMainUnits(attacker))
                     continue;
 

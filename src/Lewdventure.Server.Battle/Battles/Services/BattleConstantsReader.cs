@@ -42,5 +42,20 @@ namespace Server.Battles
 
             return value;
         }
+
+        public float Get(string constantKey, string fallbackKey)
+        {
+            if (TryGet(constantKey, out var value))
+                return value;
+
+            if (TryGet(fallbackKey, out value))
+            {
+                _coreLog.Warning($"[Story][Battle]: Constant fallback, key = {constantKey}, fallbackKey = {fallbackKey}");
+
+                return value;
+            }
+
+            return Get(constantKey);
+        }
     }
 }

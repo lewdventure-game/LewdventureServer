@@ -121,5 +121,11 @@ namespace Server.Bonuses
         EquipmentSpellMultiplierPerk = 57,
         [EnumMember(Value = "equip_spell_multiplier_global")]
         EquipmentSpellMultiplierGlobal = 58,
+        [EnumMember(Value = "combo_2_multiplier_local")]
+        Combo2MultiplierLocal = 59,
+        [EnumMember(Value = "combo_2_multiplier_perk")]
+        Combo2MultiplierPerk = 60,
+        [EnumMember(Value = "combo_2_multiplier_global")]
+        Combo2MultiplierGlobal = 61,
     }
 }

@@ -287,12 +287,12 @@ namespace Server.Battles
                 return false;
 
             var statusType = statusMapper.StatusType;
-            var isBurn = burn && (statusType == StatusType.Burning || statusType == StatusType.BurningStrong);
+            var isBurn = burn && statusType == StatusType.Burning;
 
             if (isBurn)
                 return true;
 
-            var isPoison = poison && (statusType == StatusType.Poison || statusType == StatusType.PoisonStrong);
+            var isPoison = poison && statusType == StatusType.Poison;
 
             return isPoison;
         }

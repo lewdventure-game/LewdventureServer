@@ -8,7 +8,7 @@ namespace Tests.Unit.GameConfig
     {
         private const string FullCharacteristics =
             "armor:[10];evasion:[0];vampyrism:[0];healing_boost:[0];crit_chance:[0];crit_multiplier:[0];"
-            + "combo_1_chance:[0];combo_2_chance:[0];combo_multiplier:[0];counter_chance:[0];counter_multiplier:[0];"
+            + "combo_1_chance:[0];combo_2_chance:[0];combo_multiplier:[0];combo_2_multiplier:[0];counter_chance:[0];counter_multiplier:[0];"
             + "spell_multiplier:[0];energy:[0]";
 
         private readonly EnemyDataValidator _validator = new();
@@ -60,12 +60,19 @@ namespace Tests.Unit.GameConfig
         }
 
         [Test]
-        public void Collect_SeparateComboMultiplier_WarnsObsolete()
+        public void Collect_WithoutCombo2Multiplier_IsListedMissing()
         {
-            var warnings = Collect(FullCharacteristics + ";combo_2_multiplier:[1.5]");
+            var warnings = Collect(FullCharacteristics.Replace("combo_2_multiplier:[0];", string.Empty));
 
-            Assert.That(warnings, Has.Some.Contains("ключ combo_2_multiplier"));
-            Assert.That(warnings, Has.None.Contains("ключ combo_1_multiplier"));
+            Assert.That(warnings, Has.Some.Contains("combo_2_multiplier"));
+        }
+
+        [Test]
+        public void Collect_Combo2ChanceWithoutCombo2Multiplier_Warns()
+        {
+            var warnings = Collect(FullCharacteristics.Replace("combo_2_chance:[0]", "combo_2_chance:[0.5]").Replace("combo_multiplier:[0]", "combo_multiplier:[1.5]"));
+
+            Assert.That(warnings, Has.Some.Contains("combo_2_chance"));
         }
 
         [Test]

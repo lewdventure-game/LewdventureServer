@@ -2,20 +2,19 @@ namespace Server.Battles
 {
     internal sealed class BattleTurnState
     {
-        private readonly List<int> _abortedUnitIds = new();
-        private readonly List<int> _abortedUnitSlots = new();
-
         private IUnitState? _actingUnit;
+        private bool _isSideTurnAborted;
 
         public IUnitState? ActingUnit => _actingUnit;
 
         public int ActingUnitId => _actingUnit == null ? -1 : _actingUnit.Id;
 
+        public bool IsSideTurnAborted => _isSideTurnAborted;
+
         public void BeginSideTurn()
         {
-            _abortedUnitIds.Clear();
-            _abortedUnitSlots.Clear();
             _actingUnit = null;
+            _isSideTurnAborted = false;
         }
 
         public void SetActingUnit(IUnitState unit)
@@ -25,29 +24,12 @@ namespace Server.Battles
 
         public bool ShouldSkipRemainingActions(IUnitState unit)
         {
-            for (int i = 0; i < _abortedUnitIds.Count; i++)
-            {
-                if (_abortedUnitIds[i] != unit.Id)
-                    continue;
-
-                if (_abortedUnitSlots[i] != unit.SlotIndex)
-                    continue;
-
-                return true;
-            }
-
-            return false;
+            return _isSideTurnAborted;
         }
 
-        public bool AbortUnit(IUnitState unit)
+        public void AbortSideTurn()
         {
-            if (ShouldSkipRemainingActions(unit))
-                return false;
-
-            _abortedUnitIds.Add(unit.Id);
-            _abortedUnitSlots.Add(unit.SlotIndex);
-
-            return true;
+            _isSideTurnAborted = true;
         }
     }
 }

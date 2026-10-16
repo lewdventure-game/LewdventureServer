@@ -78,7 +78,7 @@
 { "requestId": "…", "characterId": 1, "equipment": { "body": "eq_…" }, "summons": [1, 2] }
 ```
 
-Ответ — профиль целиком.
+Ответ — профиль целиком. Во время активного забега (`story.currentRunId`) персонажа, саммонов и снаряжение менять нельзя: `400` с `errors` «Character / Summons / Equipment cannot be changed during run …» (саммоны и снаряжение — с 2026-10-16). Клиенту на время забега выключить смену экипировки. Во время забега прокачка тоже закрыта: уровень, мастерство и скиллы саммона, уровень, сброс и трансформация снаряжения, промоут персонажа отвечают `400` «Progression is locked during run …» (с 2026-10-16), поэтому бои забега идут на сетапе, с которым в него вошли; кнопки прокачки на это время тоже выключить.
 
 ### `GET /api/player/characteristics`
 
@@ -89,12 +89,14 @@
   "health": 2350, "maxHealth": 8400, "damage": 6, "attackMultiplier": 1,
   "armor": 7, "defence": 0.0205, "evasion": 0.05,
   "criticalChance": 0.15, "criticalMultiplier": 1.5,
-  "combo1Chance": 0.1, "combo2Chance": 0.05, "comboMultiplier": 0.5,
+  "combo1Chance": 0.1, "combo2Chance": 0.05, "comboMultiplier": 0.5, "combo2Multiplier": 0.6,
   "counterChance": 0.1, "counterMultiplier": 0.7,
   "energy": 0, "energyGain": 30, "maxEnergy": 100,
   "skillMultiplier": 1, "vampyrism": 0, "healingBoost": 1
 }
 ```
+
+`comboMultiplier` — КОМБО_1_МН, `combo2Multiplier` — КОМБО_2_МН (с 2026-10-16).
 
 То же самое клиент может посчитать локально через ядро: `ISharedCore.Battle.BuildCharacteristics(...)`.
 
@@ -152,6 +154,14 @@
 
 Все четыре отвечают профилем. Стоимость и лимиты берутся из конфигов (`Summon_levels`, `Summon_masteries`, `Skill_promotes`, уровни экипировки); при недостатке ресурсов или невыполненном условии — `400` с текстом.
 
+### `POST /api/player/character/promote`
+
+```json
+{ "characterId": 1, "requestId": "…" }
+```
+
+С 2026-10-16 промоут персонажа ручной: копии копятся в `characters[].copies`, сами тратятся только шаги с `copies_to_upgrade = 0` (открытие на уровень 1). Запрос списывает `copies_to_upgrade` следующего уровня `Character_promotes`, поднимает `promoteLevel` и выдаёт награды уровня; копии сверх максимального уровня превращаются в `character_overflow_resource`. Ответ — профиль. Повтор с тем же `requestId` ничего не меняет. Ошибки: `400` (персонаж не открыт, максимальный уровень, не хватает копий), `409` при параллельной записи профиля.
+
 Поля профиля: `characters[].promoteLevel` — уровень прокачки персонажа (с 1, при получении сразу 1), `summons[].skillLevels` — уровни скиллов саммона по порядку `Summons.skill_ids` (значения может не быть — тогда 1), `summons[].unlockedScenes` — сцены, открытые мастерством саммона.
 
 ## Сброс прогресса и удаление аккаунта
@@ -196,9 +206,9 @@
 { "runId": "run_…", "requestId": "…", "battleDelivery": "seed" }
 ```
 
-Продвигает забег на один этап: сервер решает событие, считает бой, начисляет опыт и награды.
+Продвигает забег на один этап: сервер решает событие, начисляет опыт и награды. На бою (с 2026-10-16) только считает его: в ответе бой и `battlePending: true`, наград и опыта нет, этап не сдвигается — результат применяет `battle/finish`. Пока бой отложен, `advance` и `choose` — `400` «Run waits for battle finish.».
 
-`requestId` здесь и в `choose` — новый на каждый шаг; при ретрае после обрыва связи отправлять тот же. Если шаг с этим `requestId` уже применён, сервер ничего не делает и отвечает текущим состоянием забега с `"replayed": true` и без `step` (бой и награды прошлого шага не повторяются) — клиенту достаточно показать актуальное состояние. Повтор работает и для последнего шага, который завершил забег, если передан `runId`.
+`requestId` здесь, в `choose` и в `battle/finish` — новый на каждый шаг; при ретрае после обрыва связи отправлять тот же. Если шаг с этим `requestId` уже применён, сервер ничего не делает и отвечает текущим состоянием забега с `"replayed": true` и без `step` (бой и награды прошлого шага не повторяются) — клиенту достаточно показать актуальное состояние. Повтор работает и для последнего шага, который завершил забег, если передан `runId`.
 
 Награды этапа выдаются один раз на этап забега независимо от `requestId`: повторное прохождение того же этапа, параллельные запросы и ретраи не дают вторую выдачу. Если параллельный запрос по тому же этапу ещё выполняется, сервер отвечает `409`, повторить запрос позже.
 
@@ -212,11 +222,21 @@
 
 Если перк выдаёт награды (`reward`, а также `rewards` у `action_reward`), они начисляются в момент выбора: ресурсы — в профиль, бонусы и статусы — в забег, опыт — в опыт прохождения. Шага при этом нет; профиль перечитывается по `profileRev` следующего шага или запросом профиля. Если выбор перка был последним действием забега, ответ приходит с шагом `eventType: "completed"` и `runCompleted: true`.
 
+### `POST /api/run/battle/finish`
+
+```json
+{ "runId": "run_…", "requestId": "…" }
+```
+
+С 2026-10-16. Звать после просмотра боя, а также при возобновлении, если `GET /api/run/current` вернул `battlePending: true` (шага там нет, бой заново не показывать). Применяет отложенный результат: поражение — `runFailed: true`, забег `failed`; победа — ХП, бонусы, награды этапа, опыт, этап пройден, возможно `runCompleted: true`. Шаг — `eventType: "fight"` с `appliedRewards`, `levelUps`, `battleDigest` / `battleStepCount`, без `battle` / `battleInput`. Без отложенного боя — `400` «Run has no pending battle.».
+
 ### `POST /api/run/abandon`
 
 ```json
 { "runId": "run_…", "requestId": "…" }
 ```
+
+Отложенный бой при сдаче отбрасывается: наград и опыта нет, этап в рекорд не идёт.
 
 ### Ответ забега
 
@@ -236,6 +256,7 @@
   "bonuses": [ { "bonusId": 5, "count": 1, "remainingBattles": 4 } ],
   "rewardTotals": [ { "type": "Resource", "id": 0, "rewardKey": "soft_money", "count": 350 } ],
   "isNewRecord": false,
+  "battlePending": false,
   "pendingChoice": { "kind": "perk", "options": [1, 4, 7], "choiceCount": 1 },
   "step": {
     "eventType": "fight",
@@ -263,7 +284,7 @@
 - `status` — `active`, `completed`, `failed`.
 - `step.eventType` — `default_event`, `fork_event`, `fight`, `completed`.
 - `pendingChoice.kind` — `perk` (выбрать перк из `options`) или `fork` (выбрать кнопку развилки: `picks: [1]` или `picks: [2]`, `options` всегда `[1, 2]`).
-- `appliedRewards[].type` — `Resource`, `Character`, `Summon`, `Equipment` (для `Resource` смысл несёт `rewardKey`, для остальных — `id`). Награды типов `Bonus` и `Status` в профиль не пишутся: они уходят в забег и видны в `run.bonuses`.
+- `appliedRewards[].type` — `Resource`, `Character`, `Summon`, `Equipment` (для `Resource` смысл несёт `rewardKey`, для остальных — `id`). Награды типов `Bonus` и `Status` в профиль не пишутся: они уходят в забег и видны в `run.bonuses`. С 2026-10-16 ещё `Perk` (перк сразу в `run.perks`, `count` — сколько копий добавлено) и `PerkGroup` (выбор из группы в очереди, придёт `pendingChoice.kind = "perk"`); тоже только в забеге.
 
 Развилка (`fork_event`):
 - Шаг, открывающий развилку, приходит с `eventType: "fork_event"`, `locKeyStart` (текст начала события), `locKey` — ключ кнопки 1 (`loc_key_button1`), `locKeyEnd` — ключ кнопки 2 (`loc_key_button2`), и `pendingChoice.kind = "fork"`.
@@ -279,7 +300,8 @@
 - `currentHealth` после боя — серверное, клиент его не считает. Целое; при смене МАКС.ХП между боями сервер пересчитывает его по пропорции.
 - `rewardTotals` — сумма наград за весь забег по типу, id и ключу ресурса; для блока наград итогового экрана (награды одного типа — одна плашка).
 - `isNewRecord` — после провала, сдачи или прохождения: забег прошёл больше этапов, чем лучший прошлый результат на уровне (надпись «новый рекорд» на экране поражения).
-- `runCompleted: true` приходит в шаге того действия, которое закрыло последний этап, — боя, обычного события, развилки или выбора перка. После него `advance` не звать.
+- `battlePending` — бой этапа посчитан, но не применён; клиент досматривает бой и зовёт `battle/finish`.
+- `runCompleted: true` приходит в шаге того действия, которое закрыло последний этап, — `battle/finish`, обычного события, развилки или выбора перка. После него `advance` не звать.
 
 ## Скрипт боя
 
@@ -333,7 +355,7 @@
 
 `UnitSnapshot`: `id`, `level`, `masteryLevel`, `equipments` (`id`, `level`), `equipmentIds`, `trainingLevel`, `artifactIds`, `aspectIds`, `activePerkIds`, `perkUsages` (`perkId`, `usedCount`), `activeSkillIds`, `activeStatusIds`, `activeBonuses` (`id`, `count`, `remainingBattles`), `slotIndex`, `currentHealth`, `skillLevels` (уровни скиллов саммона по порядку `Summons.skill_ids`).
 
-`BattleScriptResponse` кроме `steps` несёт `perkUsages` (`perkId`, `usedCount`, `remainingUses`) — расход перков с лимитом использований (сейчас воскрешение) — и `bonusGrants` (`id`, `count`, `remainingBattles`) — бонусы из наград, выданные персонажу в бою и живые после него. Для проигрывания боя эти поля не нужны, забег использует их сам.
+`BattleScriptResponse` кроме `steps` несёт `perkUsages` (`perkId`, `usedCount`, `remainingUses`) — расход перков с лимитом использований (сейчас воскрешение) — и `bonusGrants` (`id`, `count`, `remainingBattles`) — бонусы из наград (перки, статусы, `set_bonus` скиллов, `bonus_change`), выданные персонажу в бою и живые после него. Для проигрывания боя эти поля не нужны, забег использует их сам.
 
 Клиент этот объект не собирает: его строит сервер. Единственное применение на клиенте — передать в `ISharedCore.Battle.Replay(...)`.
 
@@ -375,7 +397,7 @@
   "Version": "sha256:53ab01b11f8f7653bf8977e3cf23f19599391240d496b2b52031bf114ed13031",
   "ShortVersion": "cfg-53ab01b11f8f",
   "Configs": [
-    { "Name": "Constants", "Content": "[{\"id\":\"health_base\",\"value\":\"600\"}]" },
+    { "Name": "Constants", "Content": "[{\"id\":\"max_health_base\",\"value\":\"600\"}]" },
     { "Name": "Characters", "Content": "[{\"id\":\"1\",\"is_melee\":\"1\"}]" }
   ]
 }
@@ -433,6 +455,7 @@
 | Экипировка | профиль (`equipment`, `loadout`), прокачка уровня — `POST /api/player/equipment/level`, сброс — `/equipment/level/reset`, трансформация — `/equipment/merge` |
 | Саммоны | профиль (`summons`), прокачка — `/summon/level`, `/summon/mastery`, `/summon/skill/level`; описания — `Configs.Summons`, `Configs.SummonLevels`, `Configs.SummonMasteries`, `Configs.SkillPromotes` |
 | Сюжет | `Configs.StoryLevels` / `StoryStages` / `StoryEvents` для текстов и визуала, прохождение — `/api/run/*` |
+| Персонаж | профиль (`characters[].copies`, `promoteLevel`), промоут — `POST /api/player/character/promote`; цены и награды — лист `Character_promotes` снапшота |
 | Награды | `step.appliedRewards` и `profileRev`, ресурсы — в профиле |
 | Опыт и уровни | `run.experience`, `run.experienceLevel`, `step.experienceGained`, `step.levelUps` |
 

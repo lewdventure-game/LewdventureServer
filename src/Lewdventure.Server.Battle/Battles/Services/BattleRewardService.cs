@@ -52,7 +52,7 @@ namespace Server.Battles
             List<BattleCommand> commands,
             int currentTurn)
         {
-            ApplyRewards(rewards, source, target, attacker, defender, commands, currentTurn, false);
+            ApplyRewards(rewards, source, target, attacker, defender, commands, currentTurn);
         }
 
         public void ApplyFromSkill(
@@ -64,7 +64,7 @@ namespace Server.Battles
             List<BattleCommand> commands,
             int currentTurn)
         {
-            ApplyRewards(rewards, source, target, attacker, defender, commands, currentTurn, true);
+            ApplyRewards(rewards, source, target, attacker, defender, commands, currentTurn);
         }
 
         private void ApplyRewards(
@@ -74,8 +74,7 @@ namespace Server.Battles
             ITeamSimulationState? attacker,
             ITeamSimulationState? defender,
             List<BattleCommand> commands,
-            int currentTurn,
-            bool isSkillSource)
+            int currentTurn)
         {
             if (rewards.Count == 0)
                 return;
@@ -89,7 +88,7 @@ namespace Server.Battles
                 switch (reward.Type)
                 {
                     case BattleRewardType.Bonus:
-                        ApplyBonus(reward, source, target, commands, currentTurn, isSkillSource);
+                        ApplyBonus(reward, target, commands, currentTurn);
                         break;
                     case BattleRewardType.Status:
                         ApplyStatus(reward, source, target, attacker, defender, commands, currentTurn);
@@ -150,11 +149,9 @@ namespace Server.Battles
 
         private void ApplyBonus(
             BattleReward reward,
-            IUnitState source,
             IUnitState target,
             List<BattleCommand> commands,
-            int currentTurn,
-            bool isSkillSource)
+            int currentTurn)
         {
             if (_configDistributor.Bonuses.TryGet(reward.Id, out _) == false)
             {
@@ -163,9 +160,7 @@ namespace Server.Battles
                 return;
             }
 
-            var sourceKey = isSkillSource
-                ? $"skill:{source.Side}:{(int)(source.Flags & UnitFlags.Summon)}:{source.SlotIndex}:{source.Id}:bonus:{reward.Id}"
-                : _battleBonusService.CreateFreeSourceKey(target, $"reward:bonus:{reward.Id}", 0);
+            var sourceKey = _battleBonusService.CreateFreeSourceKey(target, $"reward:bonus:{reward.Id}", 0);
 
             _battleBonusService.Grant(
                 target,
@@ -234,7 +229,7 @@ namespace Server.Battles
             List<BattleCommand> commands,
             int currentTurn)
         {
-            var sourceKey = $"status:{reward.Id}:bonus_change";
+            var sourceKey = _battleBonusService.CreateFreeSourceKey(bearer, $"reward:bonus:status:{reward.Id}", 0);
 
             _battleBonusService.GrantRewardBonuses(
                 bearer,

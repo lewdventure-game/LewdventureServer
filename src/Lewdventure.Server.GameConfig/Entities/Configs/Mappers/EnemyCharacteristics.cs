@@ -13,6 +13,7 @@ namespace Server.Entities
         private float _combo1Chance;
         private float _combo2Chance;
         private float _comboMultiplier;
+        private float _combo2Multiplier;
         private float _counterChance;
         private float _counterMultiplier;
         private float _spellMultiplier = 1f;
@@ -36,6 +37,8 @@ namespace Server.Entities
         public float Combo2Chance => _combo2Chance;
 
         public float ComboMultiplier => _comboMultiplier;
+
+        public float Combo2Multiplier => _combo2Multiplier;
 
         public float CounterChance => _counterChance;
 
@@ -102,8 +105,11 @@ namespace Server.Entities
                 _combo1Chance = value;
             else if (key.Equals("combo_2_chance", StringComparison.OrdinalIgnoreCase))
                 _combo2Chance = value;
-            else if (key.Equals("combo_multiplier", StringComparison.OrdinalIgnoreCase))
+            else if (key.Equals("combo_multiplier", StringComparison.OrdinalIgnoreCase)
+                || key.Equals("combo_1_multiplier", StringComparison.OrdinalIgnoreCase))
                 _comboMultiplier = value;
+            else if (key.Equals("combo_2_multiplier", StringComparison.OrdinalIgnoreCase))
+                _combo2Multiplier = value;
             else if (key.Equals("counter_chance", StringComparison.OrdinalIgnoreCase))
                 _counterChance = value;
             else if (key.Equals("counter_multiplier", StringComparison.OrdinalIgnoreCase))

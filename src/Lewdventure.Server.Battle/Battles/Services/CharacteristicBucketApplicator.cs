@@ -108,6 +108,15 @@ namespace Server.Battles
                 case BonusType.ComboMultiplierGlobal:
                     buckets.ComboMultiplierGlobal += value;
                     break;
+                case BonusType.Combo2MultiplierLocal:
+                    buckets.Combo2MultiplierLocal += value;
+                    break;
+                case BonusType.Combo2MultiplierPerk:
+                    buckets.Combo2MultiplierPerk += value;
+                    break;
+                case BonusType.Combo2MultiplierGlobal:
+                    buckets.Combo2MultiplierGlobal += value;
+                    break;
                 case BonusType.CounterChanceLocal:
                     buckets.CounterChanceLocal += value;
                     break;

@@ -17,6 +17,7 @@ namespace Server.Runs
         private const string RunIdPrefix = "run_";
         private const int MaxAttempts = 3;
         private const string StartPerkGroupsConstant = "start_perk_groups";
+        private const int MaxRewardPerkDepth = 4;
 
         private readonly IBattleBonusService _battleBonusService;
         private readonly IBattleParameterParser _battleParameterParser;
@@ -182,6 +183,9 @@ namespace Server.Runs
 
             run.LastRequestId = requestId;
 
+            if (run.PendingBattle != null)
+                return Failed("Run waits for battle finish.");
+
             if (run.PendingChoice != null)
                 return Failed("Run waits for a choice.");
 
@@ -224,6 +228,9 @@ namespace Server.Runs
 
             run.LastRequestId = requestId;
 
+            if (run.PendingBattle != null)
+                return Failed("Run waits for battle finish.");
+
             if (run.PendingChoice == null)
                 return Failed("Run has no pending choice.");
 
@@ -245,6 +252,10 @@ namespace Server.Runs
 
             var profile = await _playerProfileService.GetOrCreateAsync(userId, _configDistributor, cancellationToken);
 
+            if (run.PendingBattle != null)
+                _logger.LogInformation("[Run] pending battle discarded on abandon runId = {RunId} stage = {Stage}", run.Id, run.StageIndex);
+
+            run.PendingBattle = null;
             run.Status = RunDocument.AbandonedStatus;
             run.IsNewRecord = IsNewRecord(profile, run);
 
@@ -426,7 +437,6 @@ namespace Server.Runs
             }
 
             ApplyExperience(run, level, experience, outcome);
-            RollPendingChoices(run, level);
 
             if (await SaveAsync(run, cancellationToken) == false)
                 return Conflict();
@@ -481,10 +491,6 @@ namespace Server.Runs
                 Seed = _runRandomFactory.CreateBattleSeed(run.Seed, run.StageIndex, run.BattleSeedKey),
             };
             var script = _battleSimulatorService.Replay(replayData);
-
-            run.Statuses.Clear();
-            ApplyPerkUsages(run, script);
-
             var outcome = new RunStepOutcome
             {
                 EventType = "fight",
@@ -500,7 +506,67 @@ namespace Server.Runs
 
             _runAnalytics.TrackBattleFinished(run, stage.StageId, storyEvent.Id, script.OutcomeType.ToString(), script.Steps.Count);
 
-            if (script.OutcomeType != OutcomeType.TeamAWin)
+            run.PendingBattle = CreatePendingBattle(run, storyEvent.Id, script, profile.Loadout.CharacterId, outcome.BattleDigest);
+
+            if (await SaveAsync(run, cancellationToken) == false)
+                return Conflict();
+
+            _logger.LogInformation("[Run] battle pending userId = {UserId} runId = {RunId} stage = {Stage} outcome = {Outcome}", userId, run.Id, run.StageIndex, script.OutcomeType);
+
+            return new RunOperationResult(run, outcome, false, new List<string>());
+        }
+
+        public async Task<RunOperationResult> FinishBattleAsync(string userId, string runId, string requestId, CancellationToken cancellationToken)
+        {
+            var run = await LoadForStepAsync(userId, runId, cancellationToken);
+
+            if (run == null)
+                return Failed("No active run.");
+
+            if (IsReplay(run, requestId))
+                return Replayed(run);
+
+            if (IsActive(run) == false)
+                return Failed("No active run.");
+
+            run.LastRequestId = requestId;
+
+            var pending = run.PendingBattle;
+
+            if (pending == null)
+                return Failed("Run has no pending battle.");
+
+            if (pending.StageIndex != run.StageIndex || run.Stages.Count <= run.StageIndex)
+                return Failed("Pending battle does not match the current stage.");
+
+            if (_configDistributor.StoryLevels.TryGet(run.StoryLevelId, out var level) == false)
+                return Failed($"Story level {run.StoryLevelId} is missing in configs.");
+
+            var stage = run.Stages[run.StageIndex];
+
+            if (_configDistributor.StoryEvents.TryGet(stage.EventId, out var storyEvent) == false)
+                return Failed($"Story event {stage.EventId} is missing in configs.");
+
+            var parameters = new Dictionary<string, string>();
+
+            _battleParameterParser.ParseKeyValues(storyEvent.EventParameters, parameters);
+
+            var profile = await _playerProfileService.GetOrCreateAsync(userId, _configDistributor, cancellationToken);
+            var outcome = new RunStepOutcome
+            {
+                EventType = "fight",
+                EventId = storyEvent.Id,
+                StageId = stage.StageId,
+                LocKeyEnd = ReadString(parameters, RunEventKeys.LocKeyEnd),
+                BattleDigest = pending.BattleDigest,
+                BattleStepCount = pending.BattleStepCount,
+            };
+
+            run.PendingBattle = null;
+            run.Statuses.Clear();
+            ApplyPerkUsages(run, pending.PerkUsages);
+
+            if (pending.IsWin == false)
             {
                 run.Status = RunDocument.FailedStatus;
                 run.IsNewRecord = IsNewRecord(profile, run);
@@ -511,17 +577,17 @@ namespace Server.Runs
 
                 await ClearCurrentRunAsync(userId, run, cancellationToken);
                 _runAnalytics.TrackFinished(run);
-                _logger.LogInformation("[Run] failed userId = {UserId} runId = {RunId} stage = {Stage} outcome = {Outcome}", userId, run.Id, run.StageIndex, script.OutcomeType);
+                _logger.LogInformation("[Run] failed userId = {UserId} runId = {RunId} stage = {Stage}", userId, run.Id, run.StageIndex);
 
                 return new RunOperationResult(run, outcome, false, new List<string>());
             }
 
             var experience = storyEvent.LevelExperience;
 
-            run.CurrentHealth = NormalizeRunHealth(ReadFinalHealth(script, profile.Loadout.CharacterId, run.CurrentHealth));
+            run.CurrentHealth = NormalizeRunHealth(pending.FinalHealth);
 
             ConsumeBattleBonuses(run);
-            ApplyBattleBonusGrants(run, script);
+            ApplyBattleBonusGrants(run, pending.BonusGrants);
 
             run.CurrentHealthMaxReference = ReadMaxHealth(profile, run);
 
@@ -540,6 +606,41 @@ namespace Server.Runs
                 return Conflict();
 
             return await CompleteIfFinishedAsync(run, outcome, cancellationToken);
+        }
+
+        private RunPendingBattleDocument CreatePendingBattle(RunDocument run, int eventId, IBattleScriptResponse script, int characterId, string battleDigest)
+        {
+            var pending = new RunPendingBattleDocument
+            {
+                StageIndex = run.StageIndex,
+                EventId = eventId,
+                IsWin = script.OutcomeType == OutcomeType.TeamAWin,
+                FinalHealth = ReadFinalHealth(script, characterId, run.CurrentHealth),
+                BattleDigest = battleDigest,
+                BattleStepCount = script.Steps.Count,
+            };
+
+            for (int i = 0; i < script.BonusGrants.Count; i++)
+            {
+                var grant = script.BonusGrants[i];
+
+                if (grant == null)
+                    continue;
+
+                pending.BonusGrants.Add(new RunBonusDocument { BonusId = grant.Id, Count = grant.Count, RemainingBattles = grant.RemainingBattles });
+            }
+
+            for (int i = 0; i < script.PerkUsages.Count; i++)
+            {
+                var usage = script.PerkUsages[i];
+
+                if (usage == null)
+                    continue;
+
+                pending.PerkUsages.Add(new RunPendingPerkUsageDocument { PerkId = usage.PerkId, UsedCount = usage.UsedCount, RemainingUses = usage.RemainingUses });
+            }
+
+            return pending;
         }
 
         private bool IsFinished(RunDocument run)
@@ -610,12 +711,25 @@ namespace Server.Runs
             RunStepOutcome outcome,
             CancellationToken cancellationToken)
         {
+            return await ApplyRewardsAsync(userId, run, rewards, grantKey, outcome, 0, cancellationToken);
+        }
+
+        private async Task<RunRewardGrant> ApplyRewardsAsync(
+            string userId,
+            RunDocument run,
+            string rewards,
+            string grantKey,
+            RunStepOutcome outcome,
+            int perkDepth,
+            CancellationToken cancellationToken)
+        {
             if (string.IsNullOrWhiteSpace(rewards))
                 return new RunRewardGrant(0, false);
 
             var parsed = _battleRewardParser.Parse(rewards);
             var profileRewards = new List<BattleReward>(parsed.Count);
             var healthRewards = new List<BattleReward>();
+            var grantedPerks = new List<int>();
             var experience = 0;
 
             for (int i = 0; i < parsed.Count; i++)
@@ -651,6 +765,20 @@ namespace Server.Runs
                     continue;
                 }
 
+                if (reward.Type == BattleRewardType.Perk)
+                {
+                    AddRewardPerk(run, reward, grantedPerks, outcome);
+
+                    continue;
+                }
+
+                if (reward.Type == BattleRewardType.PerkGroup)
+                {
+                    AddRewardPerkGroup(run, reward, outcome);
+
+                    continue;
+                }
+
                 profileRewards.Add(reward);
             }
 
@@ -676,7 +804,77 @@ namespace Server.Runs
                     CollectAppliedRewards(run, profileRewards, result.Profile!, outcome);
             }
 
+            for (int i = 0; i < grantedPerks.Count; i++)
+            {
+                var perkId = grantedPerks[i];
+                var perkRewards = ReadPerkGrantRewards(perkId);
+
+                if (string.IsNullOrWhiteSpace(perkRewards))
+                    continue;
+
+                if (MaxRewardPerkDepth <= perkDepth)
+                {
+                    _logger.LogWarning("[Run] perk {PerkId} rewards skipped, nested perk rewards are too deep runId = {RunId}", perkId, run.Id);
+
+                    continue;
+                }
+
+                var perkKey = grantKey + ":perk:" + perkId.ToString(CultureInfo.InvariantCulture) + ":" + i.ToString(CultureInfo.InvariantCulture);
+                var perkGrant = await ApplyRewardsAsync(userId, run, perkRewards, perkKey, outcome, perkDepth + 1, cancellationToken);
+
+                if (perkGrant.IsConflict)
+                    return new RunRewardGrant(experience, true);
+
+                experience += perkGrant.Experience;
+            }
+
             return new RunRewardGrant(experience, false);
+        }
+
+        private void AddRewardPerk(RunDocument run, BattleReward reward, List<int> grantedPerks, RunStepOutcome outcome)
+        {
+            if (_configDistributor.Perks.TryGet(reward.Id, out _) == false)
+            {
+                _logger.LogWarning("[Run] reward perk {PerkId} is missing in configs runId = {RunId}", reward.Id, run.Id);
+
+                return;
+            }
+
+            var added = 0;
+
+            for (int count = 0; count < reward.Count; count++)
+            {
+                if (IsOfferable(run, reward.Id) == false)
+                {
+                    _logger.LogInformation("[Run] reward perk {PerkId} is already active and not repeatable runId = {RunId}", reward.Id, run.Id);
+
+                    break;
+                }
+
+                run.Perks.Add(reward.Id);
+                grantedPerks.Add(reward.Id);
+                added += 1;
+            }
+
+            if (added == 0)
+                return;
+
+            outcome.AppliedRewards.Add(new RunAppliedReward { Type = BattleRewardType.Perk.ToString(), Id = reward.Id, RewardKey = string.Empty, Count = added });
+        }
+
+        private void AddRewardPerkGroup(RunDocument run, BattleReward reward, RunStepOutcome outcome)
+        {
+            if (_configDistributor.PerkGroups.TryGet(reward.Id, out _) == false)
+            {
+                _logger.LogWarning("[Run] reward perk group {GroupId} is missing in configs runId = {RunId}", reward.Id, run.Id);
+
+                return;
+            }
+
+            for (int count = 0; count < reward.Count; count++)
+                run.PendingPerkGroups.Add(reward.Id);
+
+            outcome.AppliedRewards.Add(new RunAppliedReward { Type = BattleRewardType.PerkGroup.ToString(), Id = reward.Id, RewardKey = string.Empty, Count = reward.Count });
         }
 
         private string StageGrantKey(RunDocument run)
@@ -886,10 +1084,8 @@ namespace Server.Runs
             return rounded;
         }
 
-        private void ApplyBattleBonusGrants(RunDocument run, IBattleScriptResponse script)
+        private void ApplyBattleBonusGrants(RunDocument run, List<RunBonusDocument> grants)
         {
-            var grants = script.BonusGrants;
-
             for (int i = 0; i < grants.Count; i++)
             {
                 var grant = grants[i];
@@ -897,9 +1093,9 @@ namespace Server.Runs
                 if (grant.Count <= 0)
                     continue;
 
-                AddRunBonus(run, grant.Id, grant.Count, grant.RemainingBattles);
+                AddRunBonus(run, grant.BonusId, grant.Count, grant.RemainingBattles);
 
-                _logger.LogInformation("[Run] battle bonus kept runId = {RunId} bonusId = {BonusId} count = {Count} remainingBattles = {RemainingBattles}", run.Id, grant.Id, grant.Count, grant.RemainingBattles);
+                _logger.LogInformation("[Run] battle bonus kept runId = {RunId} bonusId = {BonusId} count = {Count} remainingBattles = {RemainingBattles}", run.Id, grant.BonusId, grant.Count, grant.RemainingBattles);
             }
         }
 
@@ -921,25 +1117,25 @@ namespace Server.Runs
 
         private void ApplyExperience(RunDocument run, IStoryLevelMapper level, int experience, RunStepOutcome outcome)
         {
-            if (experience <= 0)
-                return;
-
-            run.Experience += experience;
-
-            while (_configDistributor.ExperienceLevelPatterns.TryGet(level.ExperienceLevelId, run.ExperienceLevel, out var pattern))
+            if (0 < experience)
             {
-                if (pattern.ExperienceForNextLevel <= 0 || run.Experience < pattern.ExperienceForNextLevel)
-                    break;
+                run.Experience += experience;
 
-                run.Experience -= pattern.ExperienceForNextLevel;
-                run.ExperienceLevel += 1;
-                outcome.LevelUps.Add(run.ExperienceLevel);
+                var levelUps = 0;
+
+                while (_configDistributor.ExperienceLevelPatterns.TryGetOrLast(level.ExperienceLevelId, run.ExperienceLevel, out var pattern))
+                {
+                    if (pattern.ExperienceForNextLevel <= 0 || run.Experience < pattern.ExperienceForNextLevel)
+                        break;
+
+                    run.Experience -= pattern.ExperienceForNextLevel;
+                    run.ExperienceLevel += 1;
+                    levelUps += 1;
+                    outcome.LevelUps.Add(run.ExperienceLevel);
+                }
+
+                run.PendingLevelUps += levelUps;
             }
-
-            if (outcome.LevelUps.Count == 0)
-                return;
-
-            run.PendingLevelUps += outcome.LevelUps.Count;
 
             RollPendingChoices(run, level);
         }
@@ -965,13 +1161,26 @@ namespace Server.Runs
                     _logger.LogWarning("[Run] start perk group {GroupId} gave no perk choice runId = {RunId} pending = {Pending}", groupId, run.Id, run.PendingStartPerkGroups.Count);
             }
 
-            while (run.PendingChoice == null && 0 < run.PendingLevelUps)
+            while (run.PendingChoice == null && 0 < run.PendingPerkGroups.Count)
             {
-                run.PendingLevelUps -= 1;
-                run.PendingChoice = RollPerkChoice(run, level);
+                var groupId = run.PendingPerkGroups[0];
+
+                run.PendingPerkGroups.RemoveAt(0);
+                run.PendingChoice = RollGroupPerkChoice(run, groupId);
 
                 if (run.PendingChoice == null)
-                    _logger.LogWarning("[Run] level up gave no perk choice runId = {RunId} level = {Level} pending = {Pending}", run.Id, run.ExperienceLevel, run.PendingLevelUps);
+                    _logger.LogWarning("[Run] reward perk group {GroupId} gave no perk choice runId = {RunId} pending = {Pending}", groupId, run.Id, run.PendingPerkGroups.Count);
+            }
+
+            while (run.PendingChoice == null && 0 < run.PendingLevelUps)
+            {
+                var reachedLevel = run.ExperienceLevel - run.PendingLevelUps + 1;
+
+                run.PendingLevelUps -= 1;
+                run.PendingChoice = RollPerkChoice(run, level, reachedLevel);
+
+                if (run.PendingChoice == null)
+                    _logger.LogWarning("[Run] level up gave no perk choice runId = {RunId} level = {Level} pending = {Pending}", run.Id, reachedLevel, run.PendingLevelUps);
             }
         }
 
@@ -1011,16 +1220,11 @@ namespace Server.Runs
             return perkMapper.IsMultiplePicks;
         }
 
-        private void ApplyPerkUsages(RunDocument run, IBattleScriptResponse script)
+        private void ApplyPerkUsages(RunDocument run, List<RunPendingPerkUsageDocument> usages)
         {
-            var usages = script.PerkUsages;
-
             for (int i = 0; i < usages.Count; i++)
             {
                 var usage = usages[i];
-
-                if (usage == null)
-                    continue;
 
                 if (0 < usage.RemainingUses)
                 {
@@ -1063,9 +1267,9 @@ namespace Server.Runs
             }
         }
 
-        private RunPendingChoiceDocument? RollPerkChoice(RunDocument run, IStoryLevelMapper level)
+        private RunPendingChoiceDocument? RollPerkChoice(RunDocument run, IStoryLevelMapper level, int reachedLevel)
         {
-            if (_configDistributor.ExperienceLevelPatterns.TryGet(level.ExperienceLevelId, run.ExperienceLevel, out var pattern) == false)
+            if (_configDistributor.ExperienceLevelPatterns.TryGetOrLast(level.ExperienceLevelId, reachedLevel, out var pattern) == false)
                 return null;
 
             if (pattern.PerkPresetIds.Length == 0)

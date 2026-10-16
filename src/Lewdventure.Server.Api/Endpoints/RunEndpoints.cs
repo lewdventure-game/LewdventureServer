@@ -32,6 +32,7 @@ namespace Server.Api.Endpoints
             group.MapPost("/start", StartAsync);
             group.MapPost("/advance", AdvanceAsync);
             group.MapPost("/choose", ChooseAsync);
+            group.MapPost("/battle/finish", FinishBattleAsync);
             group.MapPost("/abandon", AbandonAsync);
         }
 
@@ -101,6 +102,23 @@ namespace Server.Api.Endpoints
             var result = await runService.ChooseAsync(userId, request.RunId, request.Picks, request.RequestId, httpContext.RequestAborted);
 
             return CreateResponse(result, runResponseFactory, StatusCodes.Status400BadRequest, request.BattleDelivery);
+        }
+
+        private async Task<IResult> FinishBattleAsync(
+            HttpContext httpContext,
+            [FromBody] RunActionRequest? request,
+            [FromServices] PlayerIdentityReader playerIdentityReader,
+            [FromServices] RunResponseFactory runResponseFactory,
+            [FromServices] RunService runService)
+        {
+            if (TryResolveUser(httpContext, playerIdentityReader, out var userId, out var failure) == false)
+                return failure;
+
+            var runId = request == null ? string.Empty : request.RunId;
+            var requestId = request == null ? string.Empty : request.RequestId;
+            var result = await runService.FinishBattleAsync(userId, runId, requestId, httpContext.RequestAborted);
+
+            return CreateResponse(result, runResponseFactory, StatusCodes.Status400BadRequest);
         }
 
         private async Task<IResult> AbandonAsync(

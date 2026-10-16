@@ -305,7 +305,7 @@ namespace Server.Battles
 
                 if (statusMapper.StatusType == StatusType.BonusChange)
                 {
-                    var bonusSourceKey = _battleBonusService.CreateFreeSourceKey(unitState, $"status:{statusId}", 0);
+                    var bonusSourceKey = _battleBonusService.CreateFreeSourceKey(unitState, $"reward:bonus:status:{statusId}", 0);
 
                     _battleBonusService.GrantRewardBonuses(unitState, parameters.Bonuses, 1, bonusSourceKey, commands, 0);
                     _coreLog.Debug($"[Story][Battle]: bonus_change seeded as bonuses, id = {statusId}, unitId = {unitState.Id}, bonuses = {parameters.Bonuses.Count}");

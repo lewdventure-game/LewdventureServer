@@ -50,6 +50,8 @@ namespace Server.Infrastructure.Mongo.Runs
 
         public List<int> PendingStartPerkGroups { get; set; } = new();
 
+        public List<int> PendingPerkGroups { get; set; } = new();
+
         public List<int> Perks { get; set; } = new();
 
         public List<int> Statuses { get; set; } = new();
@@ -63,5 +65,7 @@ namespace Server.Infrastructure.Mongo.Runs
         public bool IsNewRecord { get; set; }
 
         public RunPendingChoiceDocument? PendingChoice { get; set; }
+
+        public RunPendingBattleDocument? PendingBattle { get; set; }
     }
 }

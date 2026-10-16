@@ -9,6 +9,8 @@ namespace Server.Entities
 
         public string ArtName { get; }
 
+        public string SkinName { get; }
+
         public RarityType Rarity { get; }
 
         public float[] DamageOnLevels { get; }

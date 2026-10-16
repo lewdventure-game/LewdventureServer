@@ -86,7 +86,7 @@ Snapshot — вход для серверной сборки `UnitState`. Ито
 | `outcomeType` | `OutcomeType` as int | Результат боя (`Unknown=0`, `TeamAWin=1`, `TeamBWin=2`, `Timeout=3`, `Draw=4`) |
 | `steps` | `List<BattleStep>` | Пошаговый script |
 | `perkUsages` | `{ perkId, usedCount, remainingUses }[]` | Итог по перкам с лимитом использований у стороны A после боя. `remainingUses = 0` → перк исчерпан, забег удаляет его из своего списка и он снова может выпасть |
-| `bonusGrants` | `{ id, count, remainingBattles }[]` | Бонусы из наград (перки, статусы), выданные main-юнитам стороны A во время боя и живые после него: всё, кроме `end_of_battle`. `remainingBattles` — остаток `next_battles:N` после этого боя, иначе `0`. Забег после победы кладёт их в свои `bonuses`. Бонусы `set_bonus` скиллов сюда не попадают (открытый вопрос: складывать или обновлять) |
+| `bonusGrants` | `{ id, count, remainingBattles }[]` | Бонусы из наград (перки, статусы), выданные main-юнитам стороны A во время боя и живые после него: всё, кроме `end_of_battle`. `remainingBattles` — остаток `next_battles:N` после этого боя, иначе `0`. Забег после победы кладёт их в свои `bonuses`. С 2026-10-16 сюда попадают и бонусы `set_bonus` скиллов и `bonus_change`: каждая выдача — отдельный стак без обновления |
 
 Число отыгранных ходов клиент берёт из `steps` (`max(turn)`, либо `0` если script пуст). Отдельного поля `turnsPlayed` нет.
 
@@ -154,7 +154,7 @@ Snapshot — вход для серверной сборки `UnitState`. Ито
 
 ### Combo multiplier
 
-Множитель комбо один на оба удара (ответ геймдизайна 2026-10-11): константа `combo_multiplier_base`, бонусы `combo_multiplier_*`, у врага ключ `combo_multiplier` в `other_characteristics`. Шансы раздельные (`combo_1_chance_*`, `combo_2_chance_*`). Ключи врага `combo_1_multiplier` / `combo_2_multiplier` не читаются, публикация конфига предупреждает о них.
+Множители комбо раздельные (ГДД 2026-10-16, отменяет ответ 2026-10-11 про один множитель). КОМБО_1_МН: константа `combo_multiplier_base`, бонусы `combo_multiplier_*`, у врага `combo_multiplier` (синоним `combo_1_multiplier`) в `other_characteristics`. КОМБО_2_МН: константа `combo_2_multiplier_base` (нет в `Constants` — берётся `combo_multiplier_base` с предупреждением в логе), бонусы `combo_2_multiplier_local/perk/global` (`BonusType` 59/60/61), у врага `combo_2_multiplier`. Шансы раздельные (`combo_1_chance_*`, `combo_2_chance_*`). Публикация предупреждает, если у врага `combo_2_chance > 0` при `combo_2_multiplier = 0`.
 
 Combo2 roll выполняется **только** если Combo1 сработал (шанс прошёл).
 
@@ -323,7 +323,7 @@ Combo2 roll выполняется **только** если Combo1 сработ
 | D1 | Response = `BattleScriptResponse` + упорядоченные `steps` / `commands` | Accepted |
 | D2 | Request несёт **thin snapshot** (id/level/mastery/equipment+level/training/artifacts/aspects/perks/skills/statuses/slot + optional `stageId`); характеристики считает сервер | Accepted |
 | D11 | Meta-награды (`resource` / `character` / `summon` / `equipment`) эмитятся как `GrantReward` в script; аккаунт не мутируется. `bonus` / `status` — через существующие battle commands | Accepted |
-| D12 | Combo1 и Combo2 — раздельные множители; legacy singular `combo_multiplier_*` → fallback в оба. Combo2 только после успешного Combo1 | Accepted |
+| D12 | Combo1 и Combo2 — раздельные множители: Combo1 — `combo_multiplier_*`, Combo2 — `combo_2_multiplier_*` (ГДД 2026-10-16). Combo2 только после успешного Combo1 | Accepted |
 | D3 | `maxTurns` только на сервере (из `storyLevelId` / story config); клиент не шлёт `maxTurns` | Accepted |
 | D4 | `seed` в `/api/battle/simulate` генерирует только сервер; в request simulate **нет**. Replay/проверка: `POST /api/battle/replay` с тем же snapshot + `seed` | Accepted |
 | D5 | Identity = `(configId, slotIndex)`: step fields `actorId`/`actorSlotIndex`, `targetId`/`targetSlotIndex`; commands carry the same for unit ops (`KillUnit`/`SetHp`/…). Config id alone is ambiguous when team has duplicate enemy ids | Accepted |
@@ -356,7 +356,9 @@ Skills: `id` + `type` + `parameters` из Skills sheet (`C:F`). Factory без �
 
 Story level: `enemies_attack_multiplier` / `enemies_health_multiplier` применяются к итоговым damage/health врагов (после формулы 1 с бонусами, с математическим округлением, минимум 1) при build по `storyLevelId`; без них — общий `enemy_stats_multiplier`, без него — 1.
 Stage: при `stageId > 0` дополнительно умножается `StoryStage.EnemyStatsMultiplier` на итоговые health/damage врагов.
-Enemies `other_characteristics` (ГДД 2026-10-14): ключ брони `armor` (старый `defence` — синоним), ЗАЩИТА по формуле 5; `energy_max` необязателен.
+Enemies `other_characteristics` (ГДД 2026-10-14): ключ брони `armor` (старый `defence` — синоним), ЗАЩИТА по формуле 5; `energy_max` необязателен. С 2026-10-16 ожидается `combo_2_multiplier`.
+
+Константы базы (ГДД 2026-10-16): `max_health_base` и `armor_base`; без них сервер берёт старые `health_base` / `defence_base` с предупреждением в логе. БРОНЯ (формула 2) округляется вниз целиком (`-12.3` → `-13`); `replace`-бонус ставит значение как есть.
 Промоуты персонажа (`Character_promotes`) бонусов в бою не дают: их награды (`bonus:<id>`) выдаются на аккаунт в мете и приезжают в снапшоте через `activeBonuses`.
 
 Скиллы (с 2026-10-01): механика собирается из конфига `Skills` — колонки `triggers` и `actions`, аргументы перечисляются по уровням прокачки. Условия: `energy_needed`, `ally_health_lower` (ХП владельца скилла), `on_cooldown` (`is_start_available`, синоним `is_start_availiable`) (несколько = И). Действия: `damage` (без уклонения, без крита, ЗАЩИТА цели не применяется), `set_status`, `set_bonus`; порядок по `timing`, между действиями `Wait`. Цель: `0` союзник, `1`/`2` враг в слоте с откатом, `3` все враги. Уровень скилла персонажа — из `promote_to_skill_levels`. При `is_instant_activation` скилл может сработать вне очереди — проверка идёт после каждого удара и не тратит RNG. Подробности: [`docs/gdd/12-skills.md`](../../docs/gdd/12-skills.md).
@@ -367,7 +369,9 @@ Enemies `other_characteristics` (ГДД 2026-10-14): ключ брони `armor`
 
 Снаряжение (с 2026-10-02): бонусы берутся из `Equipments.bonus_ids`, значение выбирается по уровню предмета из списка `Bonuses.bonus_value` (`10;12;14;...`), скиллы — из `Equipments.skill_ids`. Стоимости уровней — лист `Equipment_promotes` по `promote_id`. Требования трансформации с количеством: `equipment_id:<id>:<n>`, `equipment_rarity:<редкость>:<n>`. Редкости — 15 значений, в `RarityType` добавлены в конец, сравнивать числом нельзя. Подробности: [`docs/gdd/07-equipment.md`](../../docs/gdd/07-equipment.md).
 
-Вампиризм (формула 6) начисляется только в фазах `NormalAttack`, `CounterAttack`, `Combo1Attack`, `Combo2Attack` — от атак персонажа (ответ геймдизайна 2026-10-11). Атака саммона, урон скиллов, перков и статусов лечение не дают. Итоговое УВЕЛИЧЕНИЕ_ЛЕЧЕНИЯ (формула 7) дробное и не округляется; округляется только итоговое лечение: `healing` / `healing_from_max` математически, вампиризм вверх.
+Вампиризм (формула 6) начисляется только в фазах `NormalAttack`, `CounterAttack`, `Combo1Attack`, `Combo2Attack` — от атак персонажа (ответ геймдизайна 2026-10-11). Атака саммона, урон скиллов, перков и статусов лечение не дают. С 2026-10-16 вампиризм считается от ХП, реально снятого с цели (после ЗАЩИТЫ, без урона сверх остатка ХП). Итоговое УВЕЛИЧЕНИЕ_ЛЕЧЕНИЯ (формула 7) дробное и не округляется; округляется только итоговое лечение: `healing` / `healing_from_max` математически, вампиризм вверх.
 
 Bonus `work_mode` — строка на mapper, parse через `BonusWorkModeParser`; battle apply (`operator` + `end_of_battle` / `first_turns` / `every_turn`) — `IBattleBonusService` + layered `CharacteristicBuckets` rebuild (формулы GDD 1/2/3/5/6/7; формула 5 со `|raw|` в знаменателе; шансы и множители по формуле 3, база из константы приводится как `constant - 1`, чтобы без бонусов итог равнялся константе). Status apply uses `status_target`; `enemy` вешается на цель удара (снаряд, атака, скилл), если это живой main противника; если цель убита этим же ударом, статус не вешается и на следующего врага не переходит. Если у награды нет цели-противника (перк `action_reward`, награда на себя), носитель — первый живой main противника; damage-over-time stacks aggregate into one presentation tick per `statusId` per turn, queue = attacking mains only.
+Воскрешение (перк): с 2026-10-16 ход заканчивает вся сторона, чей ход идёт — оставшиеся действия её юнитов пропускаются, начинается ход другой стороны. Damage-over-time статус от мёртвого наложившего продолжает тикать по его характеристикам (урон, крит). Перки воздуха и воды снимают только обычные `Burning` / `Poison`; усиленные остаются.
+
 Training / Artifact / Aspect sheets — data-only mappers + managers; grant в `UnitStateBuilder` из snapshot ids/levels. Пустые sheets = runtime no-op.

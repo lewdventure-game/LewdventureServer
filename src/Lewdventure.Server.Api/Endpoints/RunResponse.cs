@@ -32,6 +32,8 @@ namespace Server.Api.Endpoints
 
         public RunChoiceResponse? PendingChoice { get; set; }
 
+        public bool BattlePending { get; set; }
+
         public RunStepResponse? Step { get; set; }
 
         public bool Replayed { get; set; }

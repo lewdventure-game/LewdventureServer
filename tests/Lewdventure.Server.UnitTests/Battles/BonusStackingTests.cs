@@ -119,7 +119,7 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
-        public void SkillSetBonus_RecastRefreshesBonus()
+        public void SkillSetBonus_RecastStacksBonus()
         {
             var patched = WithCharacterSkill(_domains, "on_cooldown:[cooldown:{1},is_start_availiable:{1}]", "set_bonus:[bonus_id:{1},target:{0},timing:{0.1}]");
 
@@ -127,6 +127,7 @@ namespace Tests.Unit.Battles
 
             var script = CreateCore(patched).Replay(CreateReplayData(CreateUnitSnapshot()));
             var setBonusCount = 0;
+            var maxValue = 0f;
 
             for (int i = 0; i < script.Steps.Count; i++)
             {
@@ -140,12 +141,22 @@ namespace Tests.Unit.Battles
                         continue;
 
                     setBonusCount += 1;
-
-                    Assert.That(command.Parameters["value"]!.Value<float>(), Is.EqualTo(ActionRewardBonusValue).Within(0.0001f));
+                    maxValue = MathF.Max(maxValue, command.Parameters["value"]!.Value<float>());
                 }
             }
 
             Assert.That(1 < setBonusCount, Is.True, "скилл не кастовался повторно");
+            Assert.That(ActionRewardBonusValue * 2f - 0.0001f <= maxValue, Is.True, $"бонус скилла не сложился, максимум = {maxValue}");
+
+            var reportedStacks = 0;
+
+            for (int i = 0; i < script.BonusGrants.Count; i++)
+            {
+                if (script.BonusGrants[i].Id == ActionRewardBonusId)
+                    reportedStacks += script.BonusGrants[i].Count;
+            }
+
+            Assert.That(reportedStacks, Is.EqualTo(setBonusCount), "выдачи set_bonus с end_of_game/permanent не ушли в забег");
         }
 
         private bool IsStrongBurningOnEnemy(BattleCommand command)

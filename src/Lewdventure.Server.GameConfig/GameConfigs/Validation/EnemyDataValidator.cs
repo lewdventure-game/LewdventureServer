@@ -22,16 +22,11 @@ namespace Server.GameConfigs
             "combo_1_chance",
             "combo_2_chance",
             "combo_multiplier",
+            "combo_2_multiplier",
             "counter_chance",
             "counter_multiplier",
             "spell_multiplier",
             "energy",
-        };
-
-        private readonly string[] _obsoleteKeys =
-        {
-            "combo_1_multiplier",
-            "combo_2_multiplier",
         };
 
         public void Collect(ConfigSnapshotDomain domain, List<string> warnings)
@@ -69,7 +64,7 @@ namespace Server.GameConfigs
 
                 CollectChanceWithoutMultiplier(domain.Domain, id, "crit", packed.CriticalChance, packed.CriticalMultiplier, warnings);
                 CollectChanceWithoutMultiplier(domain.Domain, id, "combo_1", packed.Combo1Chance, packed.ComboMultiplier, warnings);
-                CollectChanceWithoutMultiplier(domain.Domain, id, "combo_2", packed.Combo2Chance, packed.ComboMultiplier, warnings);
+                CollectChanceWithoutMultiplier(domain.Domain, id, "combo_2", packed.Combo2Chance, packed.Combo2Multiplier, warnings);
                 CollectChanceWithoutMultiplier(domain.Domain, id, "counter", packed.CounterChance, packed.CounterMultiplier, warnings);
             }
         }
@@ -97,12 +92,6 @@ namespace Server.GameConfigs
 
         private void CollectObsoleteKeys(string domainName, string id, string raw, List<string> warnings)
         {
-            for (int i = 0; i < _obsoleteKeys.Length; i++)
-            {
-                if (raw.Contains(_obsoleteKeys[i], StringComparison.OrdinalIgnoreCase))
-                    warnings.Add($"Лист {domainName}, враг {id}: ключ {_obsoleteKeys[i]} в {CharacteristicsProperty} не читается — множитель комбо один на оба удара, укажите combo_multiplier.");
-            }
-
             if (raw.Contains(LegacyArmorKey, StringComparison.OrdinalIgnoreCase))
                 warnings.Add($"Лист {domainName}, враг {id}: ключ {LegacyArmorKey} в {CharacteristicsProperty} устарел — укажите armor, ЗАЩИТА считается из БРОНИ по формуле 5.");
         }

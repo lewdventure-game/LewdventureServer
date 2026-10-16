@@ -11,5 +11,7 @@ namespace Server.Battles
         Equipment = 6,
         Account = 7,
         Story = 8,
+        Perk = 9,
+        PerkGroup = 10,
     }
 }

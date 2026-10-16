@@ -77,8 +77,8 @@ Rewards in battle: `bonus` / `status` применяются в симуляци
 - Equipment `equip_bonus_type_*`: **bonus id** или техническое имя `BonusType`; `equip_bonus_values_*`: уровни через `,` или `;` (берётся более «длинный» split; при равенстве — `,`).
 - `IBattleBonusService` применяет `operator` (`add` / `replace`) и battle `work_mode`: `end_of_battle`, `first_turns:N`, `every_turn`, `next_battles:N` (RemainingBattles, decrement на battle end), `if_equipped`.
 - `current_health_local` + `replace` → set HP (clamp MaxHealth); `add` → delta.
-- Combo1 / Combo2 — раздельные множители; legacy `combo_multiplier_*` → fallback в оба. Combo2 только после успешного Combo1.
-- Vampyrism heal-back только после успешного strike (normal/counter/combo), не на elemental/skills.
+- Combo1 / Combo2 — раздельные множители (ГДД 2026-10-16): Combo1 — `combo_multiplier_*`, Combo2 — `combo_2_multiplier_*` (константа `combo_2_multiplier_base`, без неё — `combo_multiplier_base` с предупреждением). Combo2 только после успешного Combo1.
+- Vampyrism heal-back только после успешного strike (normal/counter/combo), не на elemental/skills; считается от ХП, реально снятого с цели (без overkill).
 - Healing effects: `healing` / `healing_from_max` — разово при grant.
 - После miss обычной атаки counter/combo **не** крутятся; energy skill всё равно, если бар полный.
 - Если обычка недоступна (`CanUseNormalAttack` = нет) — сразу energy skill, без Approach/Return/counter/combo.
@@ -95,9 +95,9 @@ Rewards in battle: `bonus` / `status` применяются в симуляци
 - `parameters`: `key:value;...` (`damage_ratio`, `flat_value`, `damage_length`, `max_stacks`, `bonuses`).
 - `activeBonuses` в snapshot: бонусы аккаунта (`remainingBattles = 0`) + бонусы забега; сервер грантит их через `IBattleBonusService.Grant` с `sourceKey run:{id}:{index}`.
 - Apply учитывает `status_target` (`caster` / `enemy`) относительно source/target reward: `enemy` вешается на цель удара, если она живой main противника; убитой этим ударом цели статус не достаётся и на следующего врага не переходит; без цели-противника — первый живой main противника.
-- Damage over time: side-wide queue by `proc_order`; tick damage = live `source.Damage * damage_ratio * (1-DEF)`; crit from live source. `sourceUnitId = -1` (статус из награды события или стартовый статус забега) → tick damage = `flat_value * (1-DEF)`, крита нет, roll крита не тратится; нет `flat_value` → Warning и урон 0.
+- Damage over time: side-wide queue by `proc_order`; tick damage = live `source.Damage * damage_ratio * (1-DEF)`; crit from live source; мёртвый source — его последние статы (2026-10-16). `sourceUnitId = -1` (статус из награды события или стартовый статус забега) → tick damage = `flat_value * (1-DEF)`, крита нет, roll крита не тратится; нет `flat_value` → Warning и урон 0.
 - Non–damage-over-time statuses expire at battle end (`bonus_change` lifecycle).
-- Resurrection perk: charges → 0 removes perk; death-time resurrect aborts remainder of current side-turn.
+- Resurrection perk: charges → 0 removes perk; death-time resurrect aborts remainder of current side-turn — оставшиеся действия всех юнитов стороны, чей ход идёт.
 
 ## Request
 
@@ -260,7 +260,7 @@ Handoff для ИИ (клиент целиком): [`gdd/10-client-battle-ai.md`
 
 Порядок хода выражен списком фаз (`IBattleTurnPhase`): статусы, перки, саммоны, действия главных юнитов — как в ГДД §3.2. Новая фаза добавляется объектом в список, симулятор править не нужно.
 
-Состояние боя живёт в `BattleTurnState` (действующий юнит и юниты, чьи действия прерваны воскрешением) и передаётся параметром: в сервисах боя нет изменяемых полей, поэтому бой можно считать параллельно и переносить в другой рантайм.
+Состояние боя живёт в `BattleTurnState` (действующий юнит и флаг «ход стороны прерван воскрешением») и передаётся параметром: в сервисах боя нет изменяемых полей, поэтому бой можно считать параллельно и переносить в другой рантайм.
 
 Сборка юнита разделена: `UnitBucketsFactory` считает базовые характеристики, `UnitBonusGranter` выдаёт бонусы шести источников, `UnitLoadoutBinder` привязывает перки, скиллы и статусы, `UnitStateBuilder` только координирует.
 

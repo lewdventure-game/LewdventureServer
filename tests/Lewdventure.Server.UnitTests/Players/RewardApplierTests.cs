@@ -46,6 +46,8 @@ namespace Tests.Unit.Players
 
             var character = profile.Characters[0];
 
+            PromoteWhilePossible(profile, character);
+
             Assert.That(character.PromoteLevel, Is.EqualTo(2));
             Assert.That(character.UnlockedSceneIds, Does.Contain(101));
         }
@@ -183,13 +185,28 @@ namespace Tests.Unit.Players
         }
 
         [Test]
-        public void Apply_EnoughCopies_PromotesCharacterAndGrantsPromoteRewards()
+        public void Apply_CharacterCopies_AreKeptUntilPromoteButton()
         {
             var profile = CreateProfile();
 
             _applier.Apply(profile, _parser.Parse("character:1:11"), _configDistributor, DateTime.UtcNow);
 
             var character = profile.Characters[0];
+
+            Assert.That(character.PromoteLevel, Is.EqualTo(1));
+            Assert.That(character.Copies, Is.EqualTo(10));
+        }
+
+        [Test]
+        public void PromoteCharacter_EnoughCopies_PromotesCharacterAndGrantsPromoteRewards()
+        {
+            var profile = CreateProfile();
+
+            _applier.Apply(profile, _parser.Parse("character:1:11"), _configDistributor, DateTime.UtcNow);
+
+            var character = profile.Characters[0];
+
+            PromoteWhilePossible(profile, character);
 
             Assert.That(character.PromoteLevel, Is.EqualTo(9));
             Assert.That(character.Copies, Is.EqualTo(0));
@@ -200,13 +217,15 @@ namespace Tests.Unit.Players
         }
 
         [Test]
-        public void Apply_CopiesOverLastPromote_ConvertToOverflowResource()
+        public void PromoteCharacter_CopiesOverLastPromote_ConvertToOverflowResource()
         {
             var profile = CreateProfile();
 
             _applier.Apply(profile, _parser.Parse("character:1:60"), _configDistributor, DateTime.UtcNow);
 
             var character = profile.Characters[0];
+
+            PromoteWhilePossible(profile, character);
 
             Assert.That(character.PromoteLevel, Is.EqualTo(20));
             Assert.That(character.Copies, Is.EqualTo(0));
@@ -277,6 +296,14 @@ namespace Tests.Unit.Players
             Assert.That(entries[2].Key, Is.EqualTo("1:1"));
             Assert.That(entries[3].Key, Is.EqualTo("harem_points"));
             Assert.That(entries[4].Type, Is.EqualTo("scene"));
+        }
+
+        private void PromoteWhilePossible(PlayerProfileDocument profile, PlayerCharacterDocument character)
+        {
+            Assert.That(_configDistributor.Characters.TryGet(character.ConfigId, out var mapper), Is.True);
+
+            while (_configDistributor.CharacterPromotes.TryGet(mapper!.PromoteId, character.PromoteLevel + 1, out var promote) && promote.CopiesToUpgrade <= character.Copies)
+                _applier.PromoteCharacter(profile, character, mapper, promote, _configDistributor, DateTime.UtcNow);
         }
 
         private PlayerProfileDocument CreateProfile()

@@ -360,7 +360,7 @@ namespace Server.Battles
 
             var actorCharacteristics = actor.CharacteristicState;
             var comboChance = comboNumber == 1 ? actorCharacteristics.Combo1Chance : actorCharacteristics.Combo2Chance;
-            var comboMultiplier = actorCharacteristics.ComboMultiplier;
+            var comboMultiplier = comboNumber == 1 ? actorCharacteristics.ComboMultiplier : actorCharacteristics.Combo2Multiplier;
             var phase = comboNumber == 1 ? BattlePhaseType.Combo1Attack : BattlePhaseType.Combo2Attack;
             var comboRoll = seededRandomService.GetRandomValue(RandomRollNames.Combo);
 
@@ -485,7 +485,7 @@ namespace Server.Battles
             commands.Add(_battleCommandFactory.SetHp(target.Id, target.SlotIndex, healthAfter));
 
             if (IsVampyrismPhase(phase))
-                ApplyVampyrism(commands, actor, damage);
+                ApplyVampyrism(commands, actor, healthBefore - healthAfter);
 
             _coreLog.Debug($"[Story][Battle]: Damage applied, phase = {phase}, actorId = {actor.Id}, targetId = {target.Id}, damage = {damage}, damageMultiplier = {damageMultiplier}, defence = {targetCharacteristics.Defence}, isCritical = {isCritical}, health = {healthAfter}");
 

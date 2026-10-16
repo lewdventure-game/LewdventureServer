@@ -117,7 +117,7 @@ Ops-порт (9090) никогда не публикуется наружу: н�
 - шанс механики больше нуля, а множитель равен нулю (`crit_chance = 0.2`, `crit_multiplier = 0`) — механика сработает, но урона не нанесёт;
 - встречается старый ключ `defence` — броня теперь `armor`, ЗАЩИТА считается из неё по формуле 5 (значение `defence` пока читается как `armor`).
 
-Ожидаемые ключи: `armor`, `evasion`, `vampyrism`, `healing_boost`, `crit_chance`, `crit_multiplier`, `combo_1_chance`, `combo_2_chance`, `combo_multiplier`, `counter_chance`, `counter_multiplier`, `spell_multiplier`, `energy`. `energy_max` необязателен: без него потолок энергии моба равен порогу его скилла за энергию.
+Ожидаемые ключи: `armor`, `evasion`, `vampyrism`, `healing_boost`, `crit_chance`, `crit_multiplier`, `combo_1_chance`, `combo_2_chance`, `combo_multiplier` (синоним `combo_1_multiplier`), `combo_2_multiplier`, `counter_chance`, `counter_multiplier`, `spell_multiplier`, `energy`. Публикация предупреждает, если шанс комбо больше 0, а его множитель 0 (`combo_2_chance` проверяется по `combo_2_multiplier`). `energy_max` необязателен: без него потолок энергии моба равен порогу его скилла за энергию.
 
 Связи между листами (тоже предупреждения):
 
@@ -177,15 +177,15 @@ DI: runtime доступ к конфигам **только** через `IConfi
 | Sheet | Manager property | Notes |
 | --- | --- | --- |
 | Constants | `Constants` | keyed by `constant_name` |
-| Characters | `Characters` | `id`, `is_melee`, `promote_id` (ссылка на набор в `Character_promotes`), `skill_ids` и `promote_to_skill_levels` — списки `;`, `art_name`. Бонусных колонок больше нет |
+| Characters | `Characters` | `id`, `is_melee`, `promote_id` (ссылка на набор в `Character_promotes`), `skill_ids` и `promote_to_skill_levels` — списки `;`, `art_name`, `skin_name` (id префаба боя в Unity, необязательная, с 2026-10-16). Бонусных колонок больше нет |
 | Character_promotes | `Character_promotes` | `id` = набор промоутов (ссылка из `Characters.promote_id`), `promote_level`, `frame_id`, `copies_to_upgrade`, награды тремя колонками `reward_types` / `reward_ids` / `reward_values` через `;` |
 | Bonuses | `Bonuses` | dictionary by id; `work_mode` — сырая строка на mapper, parse через `BonusWorkModeParser` |
 | Statuses | `Statuses` | |
-| Summons | `Summons` | `id`, `art_name`, `is_melee`, `rarity`, `dmg_on_lvls`, `attack_cooldown`, `mastery_id`, `level_pattern_id`, `skill_ids`, `mastery_for_skills`, `skill_upgrade_ids` (три последних — параллельные списки через `;`) |
+| Summons | `Summons` | `id`, `art_name`, `skin_name` (id префаба боя в Unity, необязательная, с 2026-10-16), `is_melee`, `rarity`, `dmg_on_lvls`, `attack_cooldown`, `mastery_id`, `level_pattern_id`, `skill_ids`, `mastery_for_skills`, `skill_upgrade_ids` (три последних — параллельные списки через `;`) |
 | Summon_levels | `SummonLevels` | `id`, `pattern_id`, `level` (уровень, на который переходит саммон), `resource_types/ids/values` |
 | Summon_masteries | `SummonMasteries` | composite key `id`+`mastery_level`; `copies_to_upgrade`, `dmg_multiplier`, `reward_types/ids/values`, `frame_id`. До 2026-10-04 лист назывался `Mastery` |
 | Skill_promotes | `SkillPromotes` | `id`, `pattern_id`, `level` (уровень, на который переходит скилл), `resource_types/ids/values`, `level_to_unlock` (уровень саммона) |
-| Enemies | `Enemies` | flat client columns **or** packed `other_characteristics` (`key:value;...`); packed overrides flat when non-empty; dual combo keys + legacy `combo_multiplier` |
+| Enemies | `Enemies` | flat client columns **or** packed `other_characteristics` (`key:value;...`); packed overrides flat when non-empty; `combo_multiplier` (= `combo_1_multiplier`) и `combo_2_multiplier` |
 | Equipments | `Equipments` | может быть пусто; `equip_bonus_type_*` = bonus **id** или имя `BonusType`; `equip_bonus_values_*` по уровню через `,` или `;`; `is_melee`; `skill_id` → inject known energy/skill into character build (unknown skipped) |
 | Trainings | `Trainings` | stub: sheet id не wired, manager empty после sync |
 | Artifacts | `Artifacts` | stub: sheet id не wired |
@@ -193,7 +193,7 @@ DI: runtime доступ к конфигам **только** через `IConfi
 | Story_levels | `StoryLevels` | `enemies_attack_multiplier`, `enemies_health_multiplier` (необязательные, без них берётся `enemy_stats_multiplier`) |
 | Story_stages | `StoryStages` | `enemy_stats_multiplier` применяется при `stageId > 0`; пустое значение считается 1 с предупреждением в логе |
 | Story_events | `StoryEvents` | load-only |
-| Exp_levels_patterns | `ExperienceLevelPatterns` | load-only |
+| Exp_levels_patterns | `ExperienceLevelPatterns` | load-only; за последней строкой набора забег повторяет последнюю (порог и пресеты перков) |
 | Perks | `Perks` | |
 | Perk_groups | `PerkGroups` | load-only |
 | Skills | `Skills` | `id` + `triggers` + `actions`; lookup по numeric id; строки старого формата (`type` / `parameters`) не поддерживаются |
@@ -217,7 +217,9 @@ Meta (`permanent` / `end_of_game`) в текущем бою живут как у
 
 Клиентский spawn HP обязан использовать **ту же** формулу (`BattleUnitHealthBuilder.BuildEnemyMaxHealth`). Если в `ConfigBundle` нет этих полей — UI baseline = raw Health, а wire `SetHp` будет «прыгать вверх» после первого удара. Канон значений — Sheets на сервере (пример stage 4 → ×1.3 → enemy 10101 max = 130).
 
-Constants: `combo_multiplier_base` — один множитель комбо на оба удара. У врага в `other_characteristics` — `combo_multiplier`; ключи `combo_1_multiplier` / `combo_2_multiplier` не читаются, публикация предупреждает. `start_perk_groups` — список id групп перков через запятую для стартового выбора перков забега; несуществующая группа или нечисловое значение — предупреждение при публикации.
+Constants (ГДД 2026-10-16): `combo_multiplier_base` — КОМБО_1_МН, `combo_2_multiplier_base` — КОМБО_2_МН (нет — берётся `combo_multiplier_base` с предупреждением в логе боя). Бонусы КОМБО_2_МН — `combo_2_multiplier_local/perk/global` (`BonusType` 59/60/61). База ХП и брони — `max_health_base` и `armor_base`; без них читаются старые `health_base` / `defence_base` с предупреждением в логе. `start_perk_groups` — список id групп перков `1;2;3` (`;` или `,`, `constant_type` Array или String) для стартового выбора перков забега; несуществующая группа или нечисловое значение — предупреждение при публикации.
+
+Награды (`тип:id:кол-во`): с 2026-10-16 к `resource`, `character`, `summon`, `equipment`, `account`, `bonus`, `status`, `story` добавлены `perk:<id>:<кол-во>` и `perk_group:<id>:<кол-во>` (`BattleRewardType` 9 / 10) — перк или выбор из группы в забег, см. [runs](runs.md).
 
 ## Logging
 

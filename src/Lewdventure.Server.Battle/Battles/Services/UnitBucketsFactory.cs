@@ -66,6 +66,7 @@ namespace Server.Battles
                 Combo1ChanceBase = enemyMapper.Combo1Chance,
                 Combo2ChanceBase = enemyMapper.Combo2Chance,
                 ComboMultiplierBase = enemyMapper.ComboMultiplier,
+                Combo2MultiplierBase = enemyMapper.Combo2Multiplier,
                 CounterChanceBase = enemyMapper.CounterChance,
                 CounterMultiplierBase = enemyMapper.CounterMultiplier,
                 SkillMultiplierBase = enemyMapper.SpellMultiplier,
@@ -197,16 +198,17 @@ namespace Server.Battles
 
         private void SeedBucketsFromConstants(CharacteristicBuckets buckets)
         {
-            buckets.HealthBase = _battleConstantsReader.Get(ConstantKeys.HealthBaseKey);
+            buckets.HealthBase = _battleConstantsReader.Get(ConstantKeys.HealthBaseKey, ConstantKeys.LegacyHealthBaseKey);
             buckets.DamageBase = _battleConstantsReader.Get(ConstantKeys.DamageBaseKey);
             buckets.AttackMultiplierBase = _battleConstantsReader.Get(ConstantKeys.AttackMultiplierBaseKey);
-            buckets.ArmorBase = _battleConstantsReader.Get(ConstantKeys.DefenceBaseKey);
+            buckets.ArmorBase = _battleConstantsReader.Get(ConstantKeys.ArmorBaseKey, ConstantKeys.LegacyArmorBaseKey);
             buckets.EvasionBase = _battleConstantsReader.Get(ConstantKeys.EvasionBaseKey);
             buckets.CriticalChanceBase = _battleConstantsReader.Get(ConstantKeys.CriticalChanceBaseKey);
             buckets.CriticalMultiplierBase = _battleConstantsReader.Get(ConstantKeys.CriticalMultiplierBaseKey);
             buckets.Combo1ChanceBase = _battleConstantsReader.Get(ConstantKeys.ComboOneChanceBaseKey);
             buckets.Combo2ChanceBase = _battleConstantsReader.Get(ConstantKeys.ComboTwoChanceBaseKey);
             buckets.ComboMultiplierBase = _battleConstantsReader.Get(ConstantKeys.ComboMultiplierBaseKey);
+            buckets.Combo2MultiplierBase = _battleConstantsReader.Get(ConstantKeys.ComboTwoMultiplierBaseKey, ConstantKeys.ComboMultiplierBaseKey);
             buckets.CounterChanceBase = _battleConstantsReader.Get(ConstantKeys.CounterChanceBaseKey);
             buckets.CounterMultiplierBase = _battleConstantsReader.Get(ConstantKeys.CounterMultiplierBaseKey);
             buckets.SkillMultiplierBase = _battleConstantsReader.Get(ConstantKeys.SkillMultiplierBaseKey);

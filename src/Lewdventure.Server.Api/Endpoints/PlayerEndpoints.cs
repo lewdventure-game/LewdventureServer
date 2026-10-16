@@ -62,6 +62,14 @@ namespace Server.Api.Endpoints
                 .Produces<PlayerProfileResponse>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status400BadRequest);
 
+            application.MapPost(ApiRoutes.PlayerCharacterPromote, PromoteCharacterAsync)
+                .RequireAuthorization(SecurityNames.PlayerPolicy)
+                .RequireRateLimiting(SecurityNames.PlayerRateLimitPolicy)
+                .WithMetadata(new GameConfigRequiredMetadata())
+                .Accepts<PlayerCharacterRequest>("application/json")
+                .Produces<PlayerProfileResponse>(StatusCodes.Status200OK)
+                .Produces(StatusCodes.Status400BadRequest);
+
             application.MapPost(ApiRoutes.PlayerSummonSkillLevel, UpgradeSummonSkillLevelAsync)
                 .RequireAuthorization(SecurityNames.PlayerPolicy)
                 .RequireRateLimiting(SecurityNames.PlayerRateLimitPolicy)
@@ -248,6 +256,7 @@ namespace Server.Api.Endpoints
                 Combo1Chance = characteristics.Combo1Chance,
                 Combo2Chance = characteristics.Combo2Chance,
                 ComboMultiplier = characteristics.ComboMultiplier,
+                Combo2Multiplier = characteristics.Combo2Multiplier,
                 CounterChance = characteristics.CounterChance,
                 CounterMultiplier = characteristics.CounterMultiplier,
                 Energy = characteristics.Energy,
@@ -423,6 +432,36 @@ namespace Server.Api.Endpoints
             [FromServices] PlayerResponseFactory playerResponseFactory)
         {
             return await UpgradeAsync(httpContext, request, configDistributor, playerIdentityReader, playerResponseFactory, false);
+        }
+
+        private async Task<IResult> PromoteCharacterAsync(
+            HttpContext httpContext,
+            [FromBody] PlayerCharacterRequest? request,
+            [FromServices] IConfigDistributor configDistributor,
+            [FromServices] PlayerIdentityReader playerIdentityReader,
+            [FromServices] PlayerResponseFactory playerResponseFactory)
+        {
+            if (_isMongoEnabled == false)
+                return Results.Problem(detail: StorageRequiredMessage, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+            var userId = playerIdentityReader.Read(httpContext.User);
+
+            if (string.IsNullOrEmpty(userId))
+                return Results.Unauthorized();
+
+            if (request == null || request.CharacterId <= 0)
+                return Results.BadRequest(new { error = "characterId is required." });
+
+            var progressionService = httpContext.RequestServices.GetRequiredService<PlayerProgressionService>();
+            var result = await progressionService.PromoteCharacterAsync(userId, request.CharacterId, request.RequestId, configDistributor, httpContext.RequestAborted);
+
+            if (result.Conflict)
+                return Results.Json(new { error = "Profile was changed by another request." }, statusCode: StatusCodes.Status409Conflict);
+
+            if (result.Succeeded == false)
+                return Results.BadRequest(new { errors = result.Errors });
+
+            return Results.Ok(playerResponseFactory.Create(result.Profile!));
         }
 
         private async Task<IResult> UpgradeAsync(

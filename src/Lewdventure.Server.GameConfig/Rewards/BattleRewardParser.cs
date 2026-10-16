@@ -186,6 +186,12 @@ namespace Server.Battles
             if (typeSpan.Equals("story", StringComparison.OrdinalIgnoreCase))
                 return BattleRewardType.Story;
 
+            if (typeSpan.Equals("perk", StringComparison.OrdinalIgnoreCase))
+                return BattleRewardType.Perk;
+
+            if (typeSpan.Equals("perk_group", StringComparison.OrdinalIgnoreCase))
+                return BattleRewardType.PerkGroup;
+
             return BattleRewardType.None;
         }
     }

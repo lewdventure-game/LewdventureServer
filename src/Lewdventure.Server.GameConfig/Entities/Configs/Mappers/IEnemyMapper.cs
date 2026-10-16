@@ -34,6 +34,8 @@ namespace Server.Entities
 
         public float ComboMultiplier { get; }
 
+        public float Combo2Multiplier { get; }
+
         public float CounterChance { get; }
 
         public float CounterMultiplier { get; }

@@ -199,15 +199,10 @@ namespace Server.Battles
                         _battleScriptBuilder) == false)
                     continue;
 
-                turnState.AbortUnit(unit);
-
-                var actingUnit = turnState.ActingUnit;
-
-                if (actingUnit != null)
-                    turnState.AbortUnit(actingUnit);
+                turnState.AbortSideTurn();
 
                 _coreLog.Information($"[Story][Battle]: Resurrected on death, unitId = {unit.Id}, perkId = {perk.Id}, turn = {currentTurn}");
-                _coreLog.Information($"[Story][Battle]: Abort remaining unit actions after resurrection, unitId = {unit.Id}, actingUnitId = {turnState.ActingUnitId}, turn = {currentTurn}");
+                _coreLog.Information($"[Story][Battle]: Abort side turn after resurrection, unitId = {unit.Id}, actingUnitId = {turnState.ActingUnitId}, turn = {currentTurn}");
 
                 return true;
             }

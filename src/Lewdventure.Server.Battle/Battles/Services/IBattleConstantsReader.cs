@@ -5,5 +5,7 @@ namespace Server.Battles
         public bool TryGet(string constantKey, out float value);
 
         public float Get(string constantKey);
+
+        public float Get(string constantKey, string fallbackKey);
     }
 }
