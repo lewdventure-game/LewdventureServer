@@ -33,6 +33,7 @@ namespace Server.Runs
         private readonly PlayerProfileRepository _playerProfileRepository;
         private readonly PlayerProfileService _playerProfileService;
         private readonly PlayerRewardService _playerRewardService;
+        private readonly RewardApplier _rewardApplier;
         private readonly RunAnalytics _runAnalytics;
         private readonly RunEventKeys _runEventKeys;
         private readonly RunRandomFactory _runRandomFactory;
@@ -56,6 +57,7 @@ namespace Server.Runs
             PlayerProfileRepository playerProfileRepository,
             PlayerProfileService playerProfileService,
             PlayerRewardService playerRewardService,
+            RewardApplier rewardApplier,
             RunAnalytics runAnalytics,
             RunEventKeys runEventKeys,
             RunRandomFactory runRandomFactory,
@@ -78,6 +80,7 @@ namespace Server.Runs
             _playerProfileRepository = playerProfileRepository;
             _playerProfileService = playerProfileService;
             _playerRewardService = playerRewardService;
+            _rewardApplier = rewardApplier;
             _runAnalytics = runAnalytics;
             _runEventKeys = runEventKeys;
             _runRandomFactory = runRandomFactory;
@@ -586,8 +589,16 @@ namespace Server.Runs
 
             run.CurrentHealth = NormalizeRunHealth(pending.FinalHealth);
 
+            var accountBonuses = new List<BattleReward>();
+
             ConsumeBattleBonuses(run);
-            ApplyBattleBonusGrants(run, pending.BonusGrants);
+            ApplyBattleBonusGrants(run, pending.BonusGrants, accountBonuses);
+
+            if (await GrantProfileRewardsAsync(userId, run, accountBonuses, StageGrantKey(run) + ":battle", outcome, cancellationToken) == false)
+                return Conflict();
+
+            if (0 < accountBonuses.Count)
+                profile = await _playerProfileService.GetOrCreateAsync(userId, _configDistributor, cancellationToken);
 
             run.CurrentHealthMaxReference = ReadMaxHealth(profile, run);
 
@@ -743,6 +754,13 @@ namespace Server.Runs
                     continue;
                 }
 
+                if (reward.Type == BattleRewardType.Bonus && IsAccountBonus(reward.Id))
+                {
+                    profileRewards.Add(reward);
+
+                    continue;
+                }
+
                 if (reward.Type == BattleRewardType.Bonus)
                 {
                     AddRunBonus(run, reward.Id, reward.Count);
@@ -789,20 +807,8 @@ namespace Server.Runs
                 ApplyHealthRewards(profile, run, healthRewards);
             }
 
-            if (0 < profileRewards.Count)
-            {
-                var source = "run:" + run.Id;
-                var stepKey = source + ":" + grantKey;
-                var result = await _playerRewardService.GrantAsync(userId, profileRewards, source, stepKey, _configDistributor, cancellationToken);
-
-                if (result.Conflict)
-                    return new RunRewardGrant(experience, true);
-
-                if (result.Succeeded == false)
-                    _logger.LogWarning("[Run] rewards not applied userId = {UserId} runId = {RunId} errors = {Errors}", userId, run.Id, string.Join("; ", result.Errors));
-                else
-                    CollectAppliedRewards(run, profileRewards, result.Profile!, outcome);
-            }
+            if (await GrantProfileRewardsAsync(userId, run, profileRewards, grantKey, outcome, cancellationToken) == false)
+                return new RunRewardGrant(experience, true);
 
             for (int i = 0; i < grantedPerks.Count; i++)
             {
@@ -829,6 +835,43 @@ namespace Server.Runs
             }
 
             return new RunRewardGrant(experience, false);
+        }
+
+        private async Task<bool> GrantProfileRewardsAsync(
+            string userId,
+            RunDocument run,
+            List<BattleReward> profileRewards,
+            string grantKey,
+            RunStepOutcome outcome,
+            CancellationToken cancellationToken)
+        {
+            if (profileRewards.Count == 0)
+                return true;
+
+            var source = "run:" + run.Id;
+            var stepKey = source + ":" + grantKey;
+            var result = await _playerRewardService.GrantAsync(userId, profileRewards, source, stepKey, _configDistributor, cancellationToken);
+
+            if (result.Conflict)
+                return false;
+
+            if (result.Succeeded == false)
+                _logger.LogWarning("[Run] rewards not applied userId = {UserId} runId = {RunId} errors = {Errors}", userId, run.Id, string.Join("; ", result.Errors));
+            else
+                CollectAppliedRewards(run, profileRewards, result.Profile!, outcome);
+
+            return true;
+        }
+
+        private bool IsAccountBonus(int bonusId)
+        {
+            if (_configDistributor.Bonuses.TryGet(bonusId, out var bonusMapper) == false)
+                return false;
+
+            if (_bonusWorkModeParser.TryParse(bonusMapper.WorkModeParameters, out var workMode) == false)
+                return false;
+
+            return _rewardApplier.IsAccountScoped(workMode);
         }
 
         private void AddRewardPerk(RunDocument run, BattleReward reward, List<int> grantedPerks, RunStepOutcome outcome)
@@ -1084,7 +1127,7 @@ namespace Server.Runs
             return rounded;
         }
 
-        private void ApplyBattleBonusGrants(RunDocument run, List<RunBonusDocument> grants)
+        private void ApplyBattleBonusGrants(RunDocument run, List<RunBonusDocument> grants, List<BattleReward> accountBonuses)
         {
             for (int i = 0; i < grants.Count; i++)
             {
@@ -1092,6 +1135,15 @@ namespace Server.Runs
 
                 if (grant.Count <= 0)
                     continue;
+
+                if (IsAccountBonus(grant.BonusId))
+                {
+                    accountBonuses.Add(new BattleReward(BattleRewardType.Bonus, grant.BonusId, grant.Count));
+
+                    _logger.LogInformation("[Run] battle bonus goes to account runId = {RunId} bonusId = {BonusId} count = {Count}", run.Id, grant.BonusId, grant.Count);
+
+                    continue;
+                }
 
                 AddRunBonus(run, grant.BonusId, grant.Count, grant.RemainingBattles);
 

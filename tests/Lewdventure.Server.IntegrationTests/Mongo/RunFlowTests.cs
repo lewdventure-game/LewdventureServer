@@ -291,7 +291,8 @@ namespace Tests.Integration.Mongo
             }
 
             Assert.That(fight, Is.Not.Null, "в забеге не дошли до боя");
-            Assert.That(fight!.BattleInput!.TeamA.MainUnits[0].ActiveStatusIds, Does.Contain(SeededStatusId));
+            Assert.That(fight!.BattleInput!.TeamB.MainUnits[0].ActiveStatusIds, Does.Contain(SeededStatusId), "статус с status_target = enemy из забега вешается на врага первого слота");
+            Assert.That(fight.BattleInput!.TeamA.MainUnits[0].ActiveStatusIds, Does.Not.Contain(SeededStatusId));
             AssertAccountBonusIsDelivered(fight.BattleInput!);
 
             var finishedFight = await runService.FinishBattleAsync(UserId, run.Id, "status-finish", CancellationToken.None);
@@ -313,6 +314,7 @@ namespace Tests.Integration.Mongo
             var repository = _environment.Services.GetRequiredService<RunRepository>();
             var run = await StartWithPerkChoiceAsync(new List<int> { RewardPerkId }, 1);
             var experienceBefore = run.Experience;
+            var accountBonusBefore = await CountAccountBonusAsync(RewardPerkBonusId);
 
             var chosen = await runService.ChooseAsync(UserId, run.Id, new List<int> { RewardPerkId }, "reward-perk-choice", CancellationToken.None);
 
@@ -321,7 +323,8 @@ namespace Tests.Integration.Mongo
             var afterChoice = await repository.GetAsync(run.Id, CancellationToken.None);
 
             Assert.That(afterChoice!.Perks, Does.Contain(RewardPerkId));
-            Assert.That(CountRunBonus(afterChoice, RewardPerkBonusId), Is.EqualTo(1), "бонус перка reward обязан лечь в забег");
+            Assert.That(CountRunBonus(afterChoice, RewardPerkBonusId), Is.EqualTo(0), "бонус с permanent не остаётся в забеге");
+            Assert.That(await CountAccountBonusAsync(RewardPerkBonusId), Is.EqualTo(accountBonusBefore + 1), "бонус с permanent из награды перка уходит на аккаунт");
             Assert.That(afterChoice.Experience + ExperienceSpentOnLevels(afterChoice), Is.EqualTo(experienceBefore + RewardPerkExperience), "опыт перка reward не выдан");
 
             await runService.AbandonAsync(UserId, run.Id, CancellationToken.None);
@@ -373,6 +376,20 @@ namespace Tests.Integration.Mongo
             {
                 if (run.Bonuses[i].BonusId == bonusId)
                     count += run.Bonuses[i].Count;
+            }
+
+            return count;
+        }
+
+        private async Task<int> CountAccountBonusAsync(int bonusId)
+        {
+            var profile = await _environment.Services.GetRequiredService<PlayerProfileService>().GetOrCreateAsync(UserId, CancellationToken.None);
+            var count = 0;
+
+            for (int i = 0; i < profile.Bonuses.Count; i++)
+            {
+                if (profile.Bonuses[i].BonusId == bonusId)
+                    count += profile.Bonuses[i].Count;
             }
 
             return count;

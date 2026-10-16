@@ -25,6 +25,7 @@ namespace Tests.Integration.Mongo
         private const int FightEventId = 903;
         private const int LastPatternLevel = 14;
         private const int ExperiencePerLevel = 20;
+        private const int PermanentBonusId = 1;
 
         private readonly FixturePaths _paths = new();
 
@@ -116,6 +117,8 @@ namespace Tests.Integration.Mongo
             Assert.That(step.Succeeded, Is.True, string.Join("; ", step.Errors));
 
             var isWin = step.Run!.PendingBattle!.IsWin;
+            var permanentGrants = CountGrants(step.Run.PendingBattle, PermanentBonusId);
+            var accountBefore = await CountAccountBonusAsync(PermanentBonusId);
             var finished = await RunService.FinishBattleAsync(UserId, run.Id, "finish-battle", CancellationToken.None);
 
             Assert.That(finished.Succeeded, Is.True, string.Join("; ", finished.Errors));
@@ -131,6 +134,10 @@ namespace Tests.Integration.Mongo
                 Assert.That(finished.Run.StageIndex, Is.EqualTo(1));
                 Assert.That(finished.Step.ExperienceGained, Is.GreaterThan(0));
                 Assert.That(finished.Run.Status, Is.EqualTo(RunDocument.CompletedStatus).Or.EqualTo(RunDocument.ActiveStatus));
+                Assert.That(await CountAccountBonusAsync(PermanentBonusId), Is.EqualTo(accountBefore + permanentGrants), "permanent-бонусы боя уходят на аккаунт");
+
+                for (int i = 0; i < finished.Run.Bonuses.Count; i++)
+                    Assert.That(finished.Run.Bonuses[i].BonusId, Is.Not.EqualTo(PermanentBonusId), "permanent-бонус не остаётся в забеге");
             }
             else
             {
@@ -186,6 +193,33 @@ namespace Tests.Integration.Mongo
         }
 
         private RunService RunService => _environment.Services.GetRequiredService<RunService>();
+
+        private int CountGrants(RunPendingBattleDocument pending, int bonusId)
+        {
+            var count = 0;
+
+            for (int i = 0; i < pending.BonusGrants.Count; i++)
+            {
+                if (pending.BonusGrants[i].BonusId == bonusId)
+                    count += pending.BonusGrants[i].Count;
+            }
+
+            return count;
+        }
+
+        private async Task<int> CountAccountBonusAsync(int bonusId)
+        {
+            var profile = await _environment.Services.GetRequiredService<PlayerProfileService>().GetOrCreateAsync(UserId, CancellationToken.None);
+            var count = 0;
+
+            for (int i = 0; i < profile.Bonuses.Count; i++)
+            {
+                if (profile.Bonuses[i].BonusId == bonusId)
+                    count += profile.Bonuses[i].Count;
+            }
+
+            return count;
+        }
 
         private async Task<RunDocument> InsertRunAsync(string runId, int eventId, int experienceLevel)
         {
