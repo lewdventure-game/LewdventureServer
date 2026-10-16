@@ -385,6 +385,28 @@ namespace Tests.Unit.Battles
         }
 
         [Test]
+        public void SummonsWithSkinNameInsteadOfArtName_PublishAndFallBack()
+        {
+            var patched = ReplaceDomain(_domains, "Summons", rows =>
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    var row = (JObject)rows[i];
+
+                    row["skin_name"] = "summon_skin_" + row["id"];
+                    row.Remove("art_name");
+                }
+            });
+
+            var result = new SharedCoreFactory().CreateFromDomains(patched, new SilentCoreLog());
+
+            Assert.That(result.Errors, Is.Empty);
+            Assert.That(result.SharedCore!.Configs.Summons.TryGet(1, out var summon), Is.True);
+            Assert.That(summon!.SkinName, Is.EqualTo("summon_skin_1"));
+            Assert.That(summon.ArtName, Is.EqualTo("summon_skin_1"));
+        }
+
+        [Test]
         public void BonusChangeStatusInSnapshot_GrantsItsBonuses()
         {
             var battleCore = CreateCore(_domains);

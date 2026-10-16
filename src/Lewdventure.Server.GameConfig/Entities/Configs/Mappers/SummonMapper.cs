@@ -6,11 +6,19 @@ namespace Server.Entities
 {
     internal sealed class SummonMapper : ISummonMapper
     {
+        private string _artName = string.Empty;
+
         [JsonProperty("id")]
         public int Id { get; init; }
 
         [JsonProperty("art_name")]
-        public string ArtName { get; init; } = string.Empty;
+        [OptionalColumn("без колонки берётся skin_name")]
+        private string ArtNameRaw
+        {
+            set { _artName = value ?? string.Empty; }
+        }
+
+        public string ArtName => string.IsNullOrEmpty(_artName) ? SkinName : _artName;
 
         [JsonProperty("skin_name")]
         [OptionalColumn("визуал боя: id префаба в Unity")]

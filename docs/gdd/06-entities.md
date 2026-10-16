@@ -82,7 +82,7 @@ Bundle id: `art_name`.
 
 ### Лист Summons
 
-`id`, `art_name`, `skin_name` (префаб боя, с 2026-10-16), `is_melee`, `rarity`, `dmg_on_lvls`, `attack_cooldown`, `mastery_id` (набор в `Summon_masteries`), `level_pattern_id` (набор в `Summon_levels`), `skill_ids`, `mastery_for_skills`, `skill_upgrade_ids` (наборы в `Skill_promotes`). Три последних — параллельные списки через `;`: i-е значение относится к i-му скиллу.
+`id`, `art_name` (необязательная, без неё — `skin_name`), `skin_name` (префаб боя, с 2026-10-16), `is_melee`, `rarity`, `dmg_on_lvls`, `attack_cooldown`, `mastery_id` (набор в `Summon_masteries`), `level_pattern_id` (набор в `Summon_levels`), `skill_ids`, `mastery_for_skills`, `skill_upgrade_ids` (наборы в `Skill_promotes`). Три последних — параллельные списки через `;`: i-е значение относится к i-му скиллу.
 
 ### Бой
 
