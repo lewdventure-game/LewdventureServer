@@ -18,6 +18,7 @@ namespace Tests.Integration.Mongo
         private const int StoryLevelId = 1;
         private const int CharacterId = 1;
         private const string StartPerkGroups = "1,2";
+        private const int LevelUpRewardPerkId = 1;
 
         private readonly FixturePaths _paths = new();
 
@@ -65,7 +66,7 @@ namespace Tests.Integration.Mongo
 
             Assert.That(blocked.Succeeded, Is.False, "пока стартовый выбор не сделан, advance обязан отказывать");
 
-            var first = await RunService.ChooseAsync(UserId, run.Id, new List<int> { run.PendingChoice.Options[0] }, "start-choice-1", CancellationToken.None);
+            var first = await RunService.ChooseAsync(UserId, run.Id, PickWithoutLevelUp(run.PendingChoice.Options, 1), "start-choice-1", CancellationToken.None);
 
             Assert.That(first.Succeeded, Is.True, string.Join("; ", first.Errors));
             Assert.That(first.Run!.PendingChoice, Is.Not.Null, "вторая стартовая группа обязана дать второй выбор");
@@ -73,7 +74,7 @@ namespace Tests.Integration.Mongo
             Assert.That(first.Run.PendingStartPerkGroups, Is.Empty);
 
             var options = first.Run.PendingChoice.Options;
-            var second = await RunService.ChooseAsync(UserId, run.Id, new List<int> { options[0], options[1] }, "start-choice-2", CancellationToken.None);
+            var second = await RunService.ChooseAsync(UserId, run.Id, PickWithoutLevelUp(options, 2), "start-choice-2", CancellationToken.None);
 
             Assert.That(second.Succeeded, Is.True, string.Join("; ", second.Errors));
             Assert.That(second.Run!.PendingChoice, Is.Null);
@@ -87,6 +88,21 @@ namespace Tests.Integration.Mongo
         }
 
         private RunService RunService => _environment.Services.GetRequiredService<RunService>();
+
+        private List<int> PickWithoutLevelUp(List<int> options, int count)
+        {
+            var picks = new List<int>(count);
+
+            for (int i = 0; i < options.Count && picks.Count < count; i++)
+            {
+                if (options[i] != LevelUpRewardPerkId)
+                    picks.Add(options[i]);
+            }
+
+            Assert.That(picks, Has.Count.EqualTo(count), "в предложении не хватило перков без опыта");
+
+            return picks;
+        }
 
         private GameConfigSnapshot CreateVariant(GameConfigSnapshot snapshot)
         {
