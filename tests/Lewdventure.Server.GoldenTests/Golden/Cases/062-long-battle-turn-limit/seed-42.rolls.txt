@@ -36,3 +36,5 @@
 35 combo 3e83ac8c
 36 evasion 3f24cf65
 37 critical 3f669e68
+38 counter 3f2ffca9
+39 combo 3f6b0809

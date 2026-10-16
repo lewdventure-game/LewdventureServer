@@ -152,4 +152,13 @@
 151 critical 3f05834d
 152 evasion 3f2b1536
 153 critical 3f4da638
-154 action_reward 3cec4ac0
+154 evasion 3cec4ac0
+155 critical 3e9ddb7a
+156 action_reward 3e62a08c
+157 evasion 3f3a20b9
+158 critical 3f6a2592
+159 action_reward 3e864476
+160 counter 3f51e048
+161 combo 3f04ded4
+162 critical 3f405531
+163 critical 3e1de744
