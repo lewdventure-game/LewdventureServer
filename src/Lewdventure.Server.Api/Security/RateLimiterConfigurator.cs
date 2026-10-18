@@ -26,6 +26,8 @@ namespace Server.Api.Security
             options.AddPolicy(SecurityNames.AdminRateLimitPolicy, CreateAdminLimiter);
             options.AddPolicy(SecurityNames.AuthRateLimitPolicy, CreateAuthLimiter);
             options.AddPolicy(SecurityNames.PlayerRateLimitPolicy, CreatePlayerLimiter);
+            options.AddPolicy(SecurityNames.AnalyticsRateLimitPolicy, CreateAnalyticsLimiter);
+            options.AddPolicy(SecurityNames.BundleRateLimitPolicy, CreateBundleLimiter);
         }
 
         private RateLimitPartition<string> CreateBattleLimiter(HttpContext context)
@@ -51,6 +53,16 @@ namespace Server.Api.Security
         private RateLimitPartition<string> CreatePlayerLimiter(HttpContext context)
         {
             return CreatePartition(context, "player", _rateLimitOptions.Player, ReadPlayerPartition(context));
+        }
+
+        private RateLimitPartition<string> CreateAnalyticsLimiter(HttpContext context)
+        {
+            return CreatePartition(context, "analytics", _rateLimitOptions.Analytics, ReadPlayerPartition(context));
+        }
+
+        private RateLimitPartition<string> CreateBundleLimiter(HttpContext context)
+        {
+            return CreatePartition(context, "bundle", _rateLimitOptions.Bundle, ReadPlayerPartition(context));
         }
 
         private string ReadPlayerPartition(HttpContext context)

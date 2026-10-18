@@ -23,7 +23,7 @@ namespace Server.Api.Endpoints
 
             builder
                 .RequireAuthorization(SecurityNames.PlayerPolicy)
-                .RequireRateLimiting(SecurityNames.PlayerRateLimitPolicy);
+                .RequireRateLimiting(SecurityNames.BundleRateLimitPolicy);
         }
 
         private IResult Get(

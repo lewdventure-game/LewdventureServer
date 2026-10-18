@@ -19,11 +19,13 @@ namespace Server.Api.Diagnostics
 
         private readonly RequestDelegate _next;
         private readonly int _maxBodyBytes;
+        private readonly bool _isTraceAllPlayers;
 
         public RequestTraceMiddleware(RequestDelegate next, IOptions<QaDiagnosticsOptions> options)
         {
             _next = next;
             _maxBodyBytes = options.Value.MaxBodyBytes;
+            _isTraceAllPlayers = options.Value.TraceAllPlayers;
         }
 
         public async Task InvokeAsync(
@@ -43,7 +45,7 @@ namespace Server.Api.Diagnostics
 
             var userId = playerIdentityReader.Read(context.User);
 
-            if (string.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(userId) || ShouldTracePlayer(context) == false)
             {
                 await _next(context);
 
@@ -93,6 +95,14 @@ namespace Server.Api.Diagnostics
                     Error = error,
                 });
             }
+        }
+
+        private bool ShouldTracePlayer(HttpContext context)
+        {
+            if (_isTraceAllPlayers)
+                return true;
+
+            return context.Items.TryGetValue(PlayerAccountItems.IsQaKey, out var isQa) && isQa is true;
         }
 
         private bool ShouldTrace(string path)

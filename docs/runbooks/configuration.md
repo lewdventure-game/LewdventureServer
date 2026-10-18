@@ -125,6 +125,7 @@ openssl rand -base64 48
 | Ключ | По умолчанию | Описание |
 | --- | --- | --- |
 | `QaDiagnostics:Enabled` | `false` | трасса запросов игроков и копия ошибок сервера в Mongo на 7 дней для админки; включено в Local, Development и Staging, в Production запрещено валидатором. Подробно — [qa-tools.md](../server/qa-tools.md#логи-и-баг-репорты) |
+| `QaDiagnostics:TraceAllPlayers` | `false` | трассировать запросы всех игроков, а не только тестовых аккаунтов (`users.qa`). Включать ненадолго: на живой нагрузке это запись в Mongo на каждый запрос и десятки ГБ трасс в сутки |
 | `QaDiagnostics:MaxBodyBytes` | `4096` | сколько байт тела запроса и ответа сохранять, 256–65536 |
 
 ## ConfigPublisher
@@ -144,9 +145,15 @@ openssl rand -base64 48
 | `RateLimit:Battle:PermitLimit` | `30` | запросов боя на IP за окно |
 | `RateLimit:Battle:WindowSeconds` | `10` | окно боя |
 | `RateLimit:Battle:QueueLimit` | `0` | очередь сверх лимита |
-| `RateLimit:BattleConcurrencyLimit` | `0` | одновременных боёв на процесс, `0` — без ограничения |
+| `RateLimit:BattleConcurrencyLimit` | `0` | одновременных боёв `/api/battle/*` на процесс, `0` — число ядер × 2 |
 | `RateLimit:Config:PermitLimit` / `WindowSeconds` / `QueueLimit` | `6` / `60` / `0` | лимит публикации конфигов |
 | `RateLimit:Admin:PermitLimit` / `WindowSeconds` / `QueueLimit` | `30` / `60` / `0` | лимит admin-эндпоинтов |
+| `RateLimit:Auth:PermitLimit` / `WindowSeconds` | `60` / `60` | вход и обновление токена (`/api/auth/*`) на IP: до входа игрок не известен; запас под NAT, основную защиту даёт Cloudflare |
+| `RateLimit:Player:PermitLimit` / `WindowSeconds` | `60` / `60` | игровые ручки (`/api/player/*`, `/api/run/*`) на игрока |
+| `RateLimit:Analytics:PermitLimit` / `WindowSeconds` | `30` / `60` | `/api/analytics/events` на игрока, отдельно от игровых ручек |
+| `RateLimit:Bundle:PermitLimit` / `WindowSeconds` | `10` / `60` | `/api/config/bundle` на игрока |
+
+Лимиты игрока считаются по `userId` из токена: лимитер стоит после авторизации, поэтому игроки за одним NAT не делят лимит. Без токена (вход, бой без авторизации) — по IP. До 2026-10-18 лимитер стоял до авторизации и всё считалось по IP.
 
 ## RequestLimits
 

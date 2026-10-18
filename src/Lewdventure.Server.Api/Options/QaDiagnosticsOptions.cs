@@ -8,6 +8,8 @@ namespace Server.Api.Options
 
         public bool Enabled { get; set; }
 
+        public bool TraceAllPlayers { get; set; }
+
         [Range(256, 65536)]
         public int MaxBodyBytes { get; set; } = 4096;
     }

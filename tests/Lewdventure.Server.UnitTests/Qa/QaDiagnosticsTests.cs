@@ -61,6 +61,34 @@ namespace Tests.Unit.Qa
         }
 
         [Test]
+        public async Task Middleware_RegularPlayer_IsNotTraced()
+        {
+            var queue = new QaDiagnosticsQueue();
+            var middleware = new RequestTraceMiddleware(WriteResponseAsync(400, "{}"), Microsoft.Extensions.Options.Options.Create(new QaDiagnosticsOptions()));
+            var context = CreateContext("/api/player/profile", string.Empty);
+
+            context.Items[PlayerAccountItems.IsQaKey] = false;
+
+            await middleware.InvokeAsync(context, new PlayerIdentityReader(), queue, TimeProvider.System);
+
+            Assert.That(queue.Traces.TryRead(out _), Is.False);
+        }
+
+        [Test]
+        public async Task Middleware_TraceAllPlayers_TracesRegularPlayer()
+        {
+            var queue = new QaDiagnosticsQueue();
+            var middleware = new RequestTraceMiddleware(WriteResponseAsync(400, "{}"), Microsoft.Extensions.Options.Options.Create(new QaDiagnosticsOptions { TraceAllPlayers = true }));
+            var context = CreateContext("/api/player/profile", string.Empty);
+
+            context.Items.Remove(PlayerAccountItems.IsQaKey);
+
+            await middleware.InvokeAsync(context, new PlayerIdentityReader(), queue, TimeProvider.System);
+
+            Assert.That(queue.Traces.TryRead(out _), Is.True);
+        }
+
+        [Test]
         public async Task Middleware_Anonymous_IsNotTraced()
         {
             var queue = new QaDiagnosticsQueue();
@@ -145,6 +173,7 @@ namespace Tests.Unit.Qa
             context.Request.ContentLength = bytes.Length;
             context.Response.Body = new MemoryStream();
             context.User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim("sub", UserId) }, "test"));
+            context.Items[PlayerAccountItems.IsQaKey] = true;
 
             return context;
         }

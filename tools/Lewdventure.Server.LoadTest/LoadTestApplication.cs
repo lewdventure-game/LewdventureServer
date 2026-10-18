@@ -12,7 +12,19 @@ namespace Server.LoadTest
             try
             {
                 settings = new LoadTestArgumentsParser().Parse(args);
+            }
+            catch (Exception exception) when (exception is ArgumentException || exception is FormatException)
+            {
+                Console.Error.WriteLine(exception.Message);
 
+                return 2;
+            }
+
+            if (settings.Scenario == "players")
+                return await new PlayerScenarioApplication().RunAsync(settings);
+
+            try
+            {
                 var caseLoader = new LoadTestCaseLoader();
                 var casesPath = caseLoader.ResolveCasesPath(settings.CasesPath);
 

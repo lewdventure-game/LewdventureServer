@@ -131,7 +131,13 @@ namespace Server.Api.Security
             }
 
             if (string.Equals(user.Status, UserDocument.ActiveStatus, StringComparison.Ordinal) == false)
+            {
                 context.Fail($"Account status is {user.Status}.");
+
+                return;
+            }
+
+            context.HttpContext.Items[PlayerAccountItems.IsQaKey] = user.Qa != null;
         }
 
         private string CreateSigningMaterial(string signingKey)

@@ -21,5 +21,21 @@ namespace Server.LoadTest
         public double MaxP95Milliseconds { get; set; }
 
         public bool Verify { get; set; } = true;
+
+        public string Scenario { get; set; } = "replay";
+
+        public int Players { get; set; } = 100;
+
+        public int RampSeconds { get; set; } = 30;
+
+        public int ThinkMilliseconds { get; set; } = 3000;
+
+        public int BattleWatchMilliseconds { get; set; } = 8000;
+
+        public int AnalyticsIntervalSeconds { get; set; } = 20;
+
+        public int StoryLevelId { get; set; } = 1;
+
+        public string DevicePrefix { get; set; } = "loadtest";
     }
 }

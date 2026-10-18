@@ -14,8 +14,12 @@ namespace Server.Api.Options
 
         public FixedWindowLimitOptions Admin { get; set; } = new() { PermitLimit = 30, WindowSeconds = 60 };
 
-        public FixedWindowLimitOptions Auth { get; set; } = new() { PermitLimit = 10, WindowSeconds = 60 };
+        public FixedWindowLimitOptions Auth { get; set; } = new() { PermitLimit = 60, WindowSeconds = 60 };
 
         public FixedWindowLimitOptions Player { get; set; } = new() { PermitLimit = 60, WindowSeconds = 60 };
+
+        public FixedWindowLimitOptions Analytics { get; set; } = new() { PermitLimit = 30, WindowSeconds = 60 };
+
+        public FixedWindowLimitOptions Bundle { get; set; } = new() { PermitLimit = 10, WindowSeconds = 60 };
     }
 }

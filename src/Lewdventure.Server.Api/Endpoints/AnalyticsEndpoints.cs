@@ -21,7 +21,7 @@ namespace Server.Api.Endpoints
 
             application.MapPost(ApiRoutes.AnalyticsEvents, AcceptAsync)
                 .RequireAuthorization(SecurityNames.PlayerPolicy)
-                .RequireRateLimiting(SecurityNames.PlayerRateLimitPolicy)
+                .RequireRateLimiting(SecurityNames.AnalyticsRateLimitPolicy)
                 .WithMetadata(new RequestSizeLimitAttribute(MaxRequestBodyBytes))
                 .Accepts<AnalyticsBatchRequest>("application/json")
                 .Produces(StatusCodes.Status202Accepted)

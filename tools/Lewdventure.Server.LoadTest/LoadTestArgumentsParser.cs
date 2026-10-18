@@ -53,6 +53,30 @@ namespace Server.LoadTest
                     case "--max-p95-ms":
                         settings.MaxP95Milliseconds = double.Parse(value, CultureInfo.InvariantCulture);
                         break;
+                    case "--scenario":
+                        settings.Scenario = ParseScenario(value);
+                        break;
+                    case "--players":
+                        settings.Players = ParsePositive(name, value);
+                        break;
+                    case "--ramp":
+                        settings.RampSeconds = ParseNonNegative(name, value);
+                        break;
+                    case "--think-ms":
+                        settings.ThinkMilliseconds = ParseNonNegative(name, value);
+                        break;
+                    case "--battle-watch-ms":
+                        settings.BattleWatchMilliseconds = ParseNonNegative(name, value);
+                        break;
+                    case "--analytics-every":
+                        settings.AnalyticsIntervalSeconds = ParseNonNegative(name, value);
+                        break;
+                    case "--story-level":
+                        settings.StoryLevelId = ParsePositive(name, value);
+                        break;
+                    case "--device-prefix":
+                        settings.DevicePrefix = value;
+                        break;
                     default:
                         throw new ArgumentException($"Unknown option {name}.");
                 }
@@ -62,6 +86,14 @@ namespace Server.LoadTest
                 settings.Verify = false;
 
             return settings;
+        }
+
+        private string ParseScenario(string value)
+        {
+            if (value == "replay" || value == "players")
+                return value;
+
+            throw new ArgumentException("Option --scenario must be replay or players.");
         }
 
         private string ParseEndpoint(string value)

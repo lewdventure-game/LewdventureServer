@@ -13,5 +13,7 @@ namespace Server.Api.Security
         public const string AdminRateLimitPolicy = "admin";
         public const string AuthRateLimitPolicy = "auth";
         public const string PlayerRateLimitPolicy = "player";
+        public const string AnalyticsRateLimitPolicy = "analytics";
+        public const string BundleRateLimitPolicy = "bundle";
     }
 }
