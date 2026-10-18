@@ -366,7 +366,7 @@ namespace Server.Infrastructure.Players
             return entries;
         }
 
-        private void ApplyCharacterCopiesOverflow(
+        public void ApplyCharacterCopiesOverflow(
             PlayerProfileDocument profile,
             PlayerCharacterDocument character,
             ICharacterMapper mapper,

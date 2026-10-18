@@ -130,6 +130,8 @@ namespace Server.Infrastructure.Qa
             for (int level = previousLevel + 1; level <= promoteLevel; level++)
                 entries.AddRange(_rewardApplier.ApplyCharacterPromoteRewards(profile, mapper, level, configDistributor, now));
 
+            _rewardApplier.ApplyCharacterCopiesOverflow(profile, character, mapper, configDistributor, entries);
+
             error = string.Empty;
 
             return true;

@@ -8,6 +8,8 @@ namespace Server.Infrastructure.Mongo.Runs
 
         public bool IsWin { get; set; }
 
+        public string Outcome { get; set; } = string.Empty;
+
         public float FinalHealth { get; set; }
 
         public List<RunBonusDocument> BonusGrants { get; set; } = new();

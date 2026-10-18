@@ -2,6 +2,7 @@
 @{
     var userId = Model.UserId;
     var run = Model.Run;
+    var catalog = Model.RunCatalog;
 }
 <section class="card">
     <h2>Забег</h2>
@@ -11,14 +12,50 @@
     }
     else
     {
+        var battle = run.PendingBattle;
+        var isBattlePending = battle != null;
         <dl class="facts">
             <dt>Забег</dt><dd><code>@run.RunId</code> · уровень @run.StoryLevelId</dd>
             <dt>Этап</dt><dd>@run.StageNumber из @run.Stages.Count</dd>
-            <dt>Здоровье</dt><dd>@run.CurrentHealth</dd>
-            <dt>Опыт</dt><dd>@run.Experience, уровень прохождения @run.ExperienceLevel@(run.PendingLevelUps == 0 ? string.Empty : ", ждёт выбора перков: " + run.PendingLevelUps)</dd>
-            <dt>Ожидает выбора</dt><dd>@(run.PendingChoice.Length == 0 ? "нет" : run.PendingChoice == "fork" ? "развилка" : "перки")</dd>
+            <dt>Здоровье</dt><dd>@run.CurrentHealth@(run.MaxHealth <= 0 ? string.Empty : " из " + run.MaxHealth)</dd>
+            <dt>Опыт</dt><dd>@run.Experience, уровень прохождения @run.ExperienceLevel@(run.PendingLevelUps == 0 ? string.Empty : ", ждёт выбора перков за уровни: " + run.PendingLevelUps)</dd>
+            <dt>Ожидает выбора</dt><dd>@(run.PendingChoice.Length == 0 ? "нет" : run.PendingChoice == "fork" ? "развилка" : "перки: " + string.Join(", ", run.PendingChoiceOptions))</dd>
+            <dt>Стартовые группы</dt><dd>@(run.PendingStartPerkGroups.Count == 0 ? "нет" : string.Join(", ", run.PendingStartPerkGroups))</dd>
+            <dt>Группы из наград</dt><dd>@(run.PendingPerkGroups.Count == 0 ? "нет" : string.Join(", ", run.PendingPerkGroups))</dd>
             <dt>Конфиги</dt><dd><code>@run.ConfigVersion</code></dd>
         </dl>
+        @if (battle != null)
+        {
+            <div class="alert">
+                <strong>Бой посчитан и ждёт подтверждения клиентом (<code>battle/finish</code>).</strong>
+                Этап @battle.StageNumber, событие @Model.DescribeItem(catalog.Events, battle.EventId), исход: @(battle.IsWin ? "победа" : "поражение") (@battle.Outcome), шагов @battle.StepCount, здоровье после боя @battle.FinalHealth.
+                @if (battle.BonusGrants.Count != 0)
+                {
+                    <div>
+                        Бонусы из боя:
+                        @foreach (var grant in battle.BonusGrants)
+                        {
+                            <span class="badge">@grant.BonusId × @grant.Count@(grant.RemainingBattles == 0 ? string.Empty : ", боёв " + grant.RemainingBattles)</span>
+                        }
+                    </div>
+                }
+                @if (battle.PerkUsages.Count != 0)
+                {
+                    <div>
+                        Использования перков:
+                        @foreach (var usage in battle.PerkUsages)
+                        {
+                            <span class="badge">@usage.PerkId: @usage.UsedCount, осталось @usage.RemainingUses</span>
+                        }
+                    </div>
+                }
+                <p class="muted">Пока бой не подтверждён, менять здоровье, перки, бонусы и статусы нельзя: бой уже посчитан, правка потерялась бы или посчиталась дважды. Награды, опыт и этап выдаст только <code>battle/finish</code> клиента; сдача забега бой отбрасывает.</p>
+                <form method="post" asp-page-handler="Run" asp-route-userId="@userId" class="inline" data-confirm="Снять посчитанный бой? Награды за него не выдадутся, этап останется непройденным, клиенту нужно перезайти в забег.">
+                    <input type="hidden" name="runAction" value="clear-battle">
+                    <button type="submit">Снять бой</button>
+                </form>
+            </div>
+        }
         <table class="table compact">
             <thead><tr><th>Этап</th><th>Событие</th><th></th><th>Поставить событие</th></tr></thead>
             <tbody>
@@ -26,7 +63,7 @@
             {
                 <tr class="@(stage.IsCurrent ? "highlight" : string.Empty)">
                     <td>@stage.Number@(stage.IsBoss ? " · босс" : string.Empty)@(stage.Resolved ? " · пройден" : string.Empty)@(stage.IsCurrent ? " · текущий" : string.Empty)</td>
-                    <td>@Model.DescribeItem(Model.Catalog.Events, stage.EventId)</td>
+                    <td>@Model.DescribeItem(catalog.Events, stage.EventId)</td>
                     <td>
                         @if (stage.IsCurrent == false)
                         {
@@ -45,11 +82,11 @@
                                     <optgroup label="Варианты этого этапа">
                                         @foreach (var eventId in stage.CandidateEventIds)
                                         {
-                                            <option value="@eventId" selected="@(eventId == stage.EventId)">@Model.DescribeItem(Model.Catalog.Events, eventId)</option>
+                                            <option value="@eventId" selected="@(eventId == stage.EventId)">@Model.DescribeItem(catalog.Events, eventId)</option>
                                         }
                                     </optgroup>
                                     <optgroup label="Все события">
-                                        @foreach (var item in Model.Catalog.Events)
+                                        @foreach (var item in catalog.Events)
                                         {
                                             <option value="@item.Id">@item.Id · @item.Name · @item.Details</option>
                                         }
@@ -63,15 +100,19 @@
             }
             </tbody>
         </table>
-        <p class="muted">«Перейти сюда» на пройденный бой повторяет тот же бой: seed боя зависит от забега и номера этапа.</p>
+        <p class="muted">«Перейти сюда» на пройденный бой повторяет тот же бой: seed боя зависит от забега и номера этапа. «Перейти сюда» и «Поставить событие» на текущем этапе снимают посчитанный бой: если клиент в этот момент показывает бой, его <code>battle/finish</code> получит 400 — клиенту нужно перезайти в забег.</p>
         <div class="grid">
             <div>
                 <h3>Здоровье</h3>
                 <form method="post" asp-page-handler="Run" asp-route-userId="@userId" class="inline">
                     <input type="hidden" name="runAction" value="health">
-                    <input type="number" name="value" value="@((int)run.CurrentHealth)" min="1" class="narrow">
-                    <button type="submit">Установить</button>
+                    <input type="number" name="value" value="@((int)Math.Round(run.CurrentHealth))" min="1" class="narrow" disabled="@isBattlePending">
+                    <button type="submit" disabled="@isBattlePending">Установить</button>
                 </form>
+                @if (0 < run.MaxHealth)
+                {
+                    <p class="muted">Максимум сейчас @run.MaxHealth; больше максимума бой срежет. Здоровье забега всегда целое.</p>
+                }
             </div>
             <div>
                 <h3>Перки</h3>
@@ -80,9 +121,9 @@
                     {
                         <li>
                             <form method="post" asp-page-handler="Run" asp-route-userId="@userId" class="inline">
-                                @Model.DescribeItem(Model.Catalog.Perks, perkId)
+                                @Model.DescribeItem(catalog.Perks, perkId)
                                 <input type="hidden" name="runAction" value="remove-perk"><input type="hidden" name="id" value="@perkId">
-                                <button type="submit" class="link">убрать</button>
+                                <button type="submit" class="link" disabled="@isBattlePending">убрать</button>
                             </form>
                         </li>
                     }
@@ -90,67 +131,80 @@
                 <form method="post" asp-page-handler="Run" asp-route-userId="@userId" class="inline">
                     <input type="hidden" name="runAction" value="perk">
                     <select name="id">
-                        @foreach (var item in Model.Catalog.Perks)
+                        @foreach (var item in catalog.Perks)
                         {
                             <option value="@item.Id">@item.Id · @item.Name · @item.Details</option>
                         }
                     </select>
-                    <button type="submit">Добавить перк</button>
+                    <button type="submit" disabled="@isBattlePending">Добавить перк</button>
                 </form>
+                <form method="post" asp-page-handler="Run" asp-route-userId="@userId" class="inline">
+                    <input type="hidden" name="runAction" value="perk-group">
+                    <select name="id">
+                        @foreach (var item in catalog.PerkGroups)
+                        {
+                            <option value="@item.Id">@item.Id · @item.Name · @item.Details</option>
+                        }
+                    </select>
+                    <input type="number" name="count" value="1" min="1" title="сколько выборов" class="narrow">
+                    <button type="submit">Добавить выбор из группы</button>
+                </form>
+                <p class="muted">Выбор из группы встаёт в очередь, как награда <code>perk_group</code>, и откроется после следующего шага забега.</p>
             </div>
             <div>
                 <h3>Бонусы забега</h3>
                 <ul class="plain">
                     @foreach (var bonus in run.Bonuses)
                     {
-                        <li>@Model.DescribeItem(Model.Catalog.RunBonuses, bonus.BonusId) × @bonus.Count · @(bonus.RemainingBattles == 0 ? "до конца забега" : "ещё боёв: " + bonus.RemainingBattles)</li>
+                        <li>@Model.DescribeItem(catalog.RunBonuses, bonus.BonusId) × @bonus.Count · @(bonus.RemainingBattles == 0 ? "до конца забега" : "ещё боёв: " + bonus.RemainingBattles)</li>
                     }
                 </ul>
                 <form method="post" asp-page-handler="Run" asp-route-userId="@userId" class="inline">
                     <input type="hidden" name="runAction" value="bonus">
                     <select name="id">
-                        @foreach (var item in Model.Catalog.RunBonuses)
+                        @foreach (var item in catalog.RunBonuses)
                         {
                             <option value="@item.Id">@item.Id · @item.Name · @item.Details</option>
                         }
                     </select>
                     <input type="number" name="count" value="1" min="1" title="сколько раз" class="narrow">
                     <input type="number" name="battles" value="0" min="0" title="на сколько боёв, 0 — до конца забега" class="narrow">
-                    <button type="submit">Добавить бонус</button>
+                    <button type="submit" disabled="@isBattlePending">Добавить бонус</button>
                 </form>
-                <p class="muted">Количество × бонус, на N боёв или 0 — до конца забега. «Лёгкий бой»: например, бонус на здоровье или урон × 20.</p>
+                <p class="muted">Количество × бонус, на N боёв или 0 — до конца забега. «Лёгкий бой»: например, бонус на здоровье или урон × 20. Бонусов с <code>permanent</code> / <code>if_equipped</code> здесь нет: в игре они уходят на аккаунт, выдайте их через «Выдать награду».</p>
             </div>
             <div>
                 <h3>Статусы на следующий бой</h3>
                 <ul class="plain">
                     @foreach (var statusId in run.Statuses)
                     {
-                        <li>@Model.DescribeItem(Model.Catalog.Statuses, statusId)</li>
+                        <li>@Model.DescribeItem(catalog.Statuses, statusId)</li>
                     }
                 </ul>
                 <form method="post" asp-page-handler="Run" asp-route-userId="@userId" class="inline">
                     <input type="hidden" name="runAction" value="status">
                     <select name="id">
-                        @foreach (var item in Model.Catalog.Statuses)
+                        @foreach (var item in catalog.Statuses)
                         {
                             <option value="@item.Id">@item.Id · @item.Name · @item.Details</option>
                         }
                     </select>
-                    <button type="submit">Добавить статус</button>
+                    <button type="submit" disabled="@isBattlePending">Добавить статус</button>
                 </form>
+                <p class="muted">Статусы расходуются, когда бой подтверждён (<code>battle/finish</code>).</p>
             </div>
         </div>
         <div class="actions">
             <form method="post" asp-page-handler="Run" asp-route-userId="@userId" data-confirm="Убрать все перки забега?">
-                <input type="hidden" name="runAction" value="clear-perks"><button type="submit">Очистить перки</button>
+                <input type="hidden" name="runAction" value="clear-perks"><button type="submit" disabled="@isBattlePending">Очистить перки</button>
             </form>
             <form method="post" asp-page-handler="Run" asp-route-userId="@userId" data-confirm="Убрать все бонусы забега?">
-                <input type="hidden" name="runAction" value="clear-bonuses"><button type="submit">Очистить бонусы</button>
+                <input type="hidden" name="runAction" value="clear-bonuses"><button type="submit" disabled="@isBattlePending">Очистить бонусы</button>
             </form>
             <form method="post" asp-page-handler="Run" asp-route-userId="@userId" data-confirm="Убрать статусы следующего боя?">
-                <input type="hidden" name="runAction" value="clear-statuses"><button type="submit">Очистить статусы</button>
+                <input type="hidden" name="runAction" value="clear-statuses"><button type="submit" disabled="@isBattlePending">Очистить статусы</button>
             </form>
         </div>
-        <p class="muted">Клиент увидит изменения после перезахода в забег (запрос текущего забега).</p>
+        <p class="muted">Клиент увидит изменения после перезахода в забег (запрос текущего забега). Справочники перков, бонусов, статусов и событий здесь — из конфигов забега <code>@(catalog.ConfigVersion.Length == 0 ? run.ConfigVersion : catalog.ConfigVersion)</code>.</p>
     }
 </section>

@@ -14,6 +14,8 @@ namespace Server.Admin.Backend.Models
 
         public List<PlayerEquipmentModel> Equipment { get; set; } = new();
 
+        public List<PlayerBonusModel> Bonuses { get; set; } = new();
+
         public PlayerLoadoutModel Loadout { get; set; } = new();
 
         public PlayerStoryModel Story { get; set; } = new();

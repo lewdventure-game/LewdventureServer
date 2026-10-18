@@ -16,6 +16,8 @@ namespace Server.Api.Endpoints
 
         public List<CheatCatalogItem> Perks { get; set; } = new();
 
+        public List<CheatCatalogItem> PerkGroups { get; set; } = new();
+
         public List<CheatCatalogItem> Statuses { get; set; } = new();
 
         public List<CheatCatalogItem> Events { get; set; } = new();

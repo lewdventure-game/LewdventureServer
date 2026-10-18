@@ -5,5 +5,7 @@ namespace Server.Admin.Accounts
         public int Failures { get; set; }
 
         public DateTimeOffset LockedUntil { get; set; }
+
+        public DateTimeOffset LastFailureAt { get; set; }
     }
 }

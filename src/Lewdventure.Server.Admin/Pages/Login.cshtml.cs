@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -16,13 +15,15 @@ namespace Server.Admin.Pages
         private readonly AdminAuditLog _auditLog;
         private readonly AdminLoginThrottle _loginThrottle;
         private readonly AdminPasswordHasher _passwordHasher;
+        private readonly AdminPrincipalFactory _principalFactory;
 
-        public LoginModel(AdminAccountStore accountStore, AdminAuditLog auditLog, AdminLoginThrottle loginThrottle, AdminPasswordHasher passwordHasher)
+        public LoginModel(AdminAccountStore accountStore, AdminAuditLog auditLog, AdminLoginThrottle loginThrottle, AdminPasswordHasher passwordHasher, AdminPrincipalFactory principalFactory)
         {
             _accountStore = accountStore;
             _auditLog = auditLog;
             _loginThrottle = loginThrottle;
             _passwordHasher = passwordHasher;
+            _principalFactory = principalFactory;
         }
 
         [BindProperty]
@@ -67,12 +68,7 @@ namespace Server.Admin.Pages
             _accountStore.Upsert(account);
             _auditLog.Append(account.Login, string.Empty, "login", string.Empty, true);
 
-            var identity = new ClaimsIdentity(CookieAuthenticationDefaults.AuthenticationScheme);
-
-            identity.AddClaim(new Claim(ClaimTypes.Name, account.Login));
-            identity.AddClaim(new Claim(ClaimTypes.Role, account.Role));
-
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, _principalFactory.Create(account));
 
             if (string.IsNullOrEmpty(ReturnUrl) == false && Url.IsLocalUrl(ReturnUrl))
                 return LocalRedirect(ReturnUrl);

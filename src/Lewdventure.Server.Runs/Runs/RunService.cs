@@ -507,8 +507,6 @@ namespace Server.Runs
                 BattleStepCount = script.Steps.Count,
             };
 
-            _runAnalytics.TrackBattleFinished(run, stage.StageId, storyEvent.Id, script.OutcomeType.ToString(), script.Steps.Count);
-
             run.PendingBattle = CreatePendingBattle(run, storyEvent.Id, script, profile.Loadout.CharacterId, outcome.BattleDigest);
 
             if (await SaveAsync(run, cancellationToken) == false)
@@ -564,6 +562,8 @@ namespace Server.Runs
                 BattleDigest = pending.BattleDigest,
                 BattleStepCount = pending.BattleStepCount,
             };
+
+            _runAnalytics.TrackBattleFinished(run, stage.StageId, storyEvent.Id, pending.Outcome, pending.BattleStepCount);
 
             run.PendingBattle = null;
             run.Statuses.Clear();
@@ -626,6 +626,7 @@ namespace Server.Runs
                 StageIndex = run.StageIndex,
                 EventId = eventId,
                 IsWin = script.OutcomeType == OutcomeType.TeamAWin,
+                Outcome = script.OutcomeType.ToString(),
                 FinalHealth = ReadFinalHealth(script, characterId, run.CurrentHealth),
                 BattleDigest = battleDigest,
                 BattleStepCount = script.Steps.Count,

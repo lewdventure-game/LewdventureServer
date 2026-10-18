@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Server.Admin.Accounts;
@@ -14,13 +16,15 @@ namespace Server.Admin.Pages
         private readonly AdminAuditLog _auditLog;
         private readonly AdminLoginThrottle _loginThrottle;
         private readonly AdminPasswordHasher _passwordHasher;
+        private readonly AdminPrincipalFactory _principalFactory;
 
-        public AccountModel(AdminAccountStore accountStore, AdminAuditLog auditLog, AdminLoginThrottle loginThrottle, AdminPasswordHasher passwordHasher)
+        public AccountModel(AdminAccountStore accountStore, AdminAuditLog auditLog, AdminLoginThrottle loginThrottle, AdminPasswordHasher passwordHasher, AdminPrincipalFactory principalFactory)
         {
             _accountStore = accountStore;
             _auditLog = auditLog;
             _loginThrottle = loginThrottle;
             _passwordHasher = passwordHasher;
+            _principalFactory = principalFactory;
         }
 
         [BindProperty]
@@ -44,7 +48,7 @@ namespace Server.Admin.Pages
         {
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync()
         {
             var account = _accountStore.Find(LoginName);
 
@@ -81,6 +85,9 @@ namespace Server.Admin.Pages
             _accountStore.Upsert(account);
             _loginThrottle.RegisterSuccess(account.Login);
             _auditLog.Append(account.Login, string.Empty, "account.password", string.Empty, true);
+
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, _principalFactory.Create(account));
+
             Message = "Пароль изменён.";
 
             return Page();

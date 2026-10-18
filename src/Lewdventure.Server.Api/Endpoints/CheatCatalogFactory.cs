@@ -38,6 +38,7 @@ namespace Server.Api.Endpoints
             AddEquipment(configDistributor, response.Equipment);
             AddBonuses(configDistributor, response.Bonuses, response.RunBonuses);
             AddPerks(configDistributor, response.Perks);
+            AddPerkGroups(configDistributor, response.PerkGroups);
             AddStatuses(configDistributor, response.Statuses);
             AddEvents(configDistributor, response.Events);
             AddStoryLevels(configDistributor, response.StoryLevels);
@@ -111,10 +112,10 @@ namespace Server.Api.Endpoints
                     Details = bonus.OperatorType + " " + bonus.BonusValue.ToString(CultureInfo.InvariantCulture) + " " + bonus.WorkModeParameters,
                 };
 
-                runItems.Add(item);
-
                 if (_bonusWorkModeParser.TryParse(bonus.WorkModeParameters, out var workMode) && _rewardApplier.IsAccountScoped(workMode))
                     accountItems.Add(item);
+                else
+                    runItems.Add(item);
             }
 
             accountItems.Sort(CompareById);
@@ -132,6 +133,25 @@ namespace Server.Api.Endpoints
                     Id = perks[i].Id,
                     Name = perks[i].PerkType.ToString(),
                     Details = perks[i].Rarity + " " + perks[i].PerkParameters,
+                });
+            }
+
+            items.Sort(CompareById);
+        }
+
+        private void AddPerkGroups(IConfigDistributor configDistributor, List<CheatCatalogItem> items)
+        {
+            var groups = configDistributor.PerkGroups.Collection;
+
+            for (int i = 0; i < groups.Count; i++)
+            {
+                var group = groups[i];
+
+                items.Add(new CheatCatalogItem
+                {
+                    Id = group.Id,
+                    Name = "перки " + string.Join(";", group.PerkIds),
+                    Details = "выбрать " + group.ChoiceCount.ToString(CultureInfo.InvariantCulture) + " из " + group.RandomPerksCount.ToString(CultureInfo.InvariantCulture),
                 });
             }
 

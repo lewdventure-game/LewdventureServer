@@ -16,6 +16,8 @@ namespace Server.Admin.Backend.Models
 
         public List<CheatCatalogItemModel> Perks { get; set; } = new();
 
+        public List<CheatCatalogItemModel> PerkGroups { get; set; } = new();
+
         public List<CheatCatalogItemModel> Statuses { get; set; } = new();
 
         public List<CheatCatalogItemModel> Events { get; set; } = new();

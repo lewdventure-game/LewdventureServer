@@ -15,7 +15,7 @@
 | `account_created` | первый `POST /api/auth/device` с новым устройством | `client_version` |
 | `experiment_assigned` | игрок попал в группу A/B | `experiment_id`, `group_id`, `new_player` |
 | `run_started` | `POST /api/run/start` | `run_id`, `story_level_id`, `stages` |
-| `battle_finished` | бой внутри `POST /api/run/advance` | `run_id`, `story_level_id`, `stage_index`, `stage_id`, `event_id`, `outcome`, `steps`, `health_before` |
+| `battle_finished` | бой забега подтверждён в `POST /api/run/battle/finish` (до 2026-10-16 — в `POST /api/run/advance`) | `run_id`, `story_level_id`, `stage_index`, `stage_id`, `event_id`, `outcome`, `steps`, `health_before` |
 | `run_finished` | забег пройден, проигран или брошен | `run_id`, `story_level_id`, `status`, `stage_index`, `stages`, `experience_level`, `perks`, `duration_seconds` |
 
 Ко **всем** событиям, и серверным, и клиентским, сервер сам дописывает `user_id`, страну, эксперимент и группу игрока и версию конфигов, на которой он играет. Клиенту про A/B в аналитике думать не нужно.

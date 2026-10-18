@@ -68,6 +68,8 @@ namespace Server.Admin.Hosting
             services.AddSingleton<AdminPasswordHasher>();
             services.AddSingleton<AdminRoles>();
             services.AddSingleton<AdminLoginThrottle>();
+            services.AddSingleton<AdminSessionValidator>();
+            services.AddSingleton<AdminPrincipalFactory>();
             services.AddSingleton<AdminEnvironmentSelector>();
             services.AddSingleton<GameAdminClient>();
             services.AddSingleton<ClickHouseQueryClient>();
@@ -110,6 +112,12 @@ namespace Server.Admin.Hosting
             cookie.AccessDeniedPath = "/Error";
             cookie.ExpireTimeSpan = TimeSpan.FromHours(options.SessionHours);
             cookie.SlidingExpiration = true;
+            cookie.Events.OnValidatePrincipal = ValidatePrincipalAsync;
+        }
+
+        private Task ValidatePrincipalAsync(CookieValidatePrincipalContext context)
+        {
+            return context.HttpContext.RequestServices.GetRequiredService<AdminSessionValidator>().ValidateAsync(context);
         }
 
         private void ConfigureForwardedHeaders(ForwardedHeadersOptions forwarded)

@@ -59,7 +59,7 @@ Bearer-токен игрока, лимит игрока по частоте, т�
 | `account_created` | создан аккаунт устройства | `client_version` |
 | `experiment_assigned` | игрок попал в группу | `experiment_id`, `group_id`, `new_player` |
 | `run_started` | старт забега | `run_id`, `story_level_id`, `stages` |
-| `battle_finished` | бой внутри забега | `run_id`, `story_level_id`, `stage_index`, `stage_id`, `event_id`, `outcome`, `steps`, `health_before` |
+| `battle_finished` | бой внутри забега подтверждён клиентом (`POST /api/run/battle/finish`); бой, снятый сдачей забега или читом, не пишется | `run_id`, `story_level_id`, `stage_index`, `stage_id`, `event_id`, `outcome`, `steps`, `health_before` |
 | `run_finished` | забег закончен | `run_id`, `story_level_id`, `status` (`completed`, `failed`, `abandoned`), `stage_index`, `stages`, `experience_level`, `perks`, `duration_seconds` |
 
 ## Хранение

@@ -1,12 +1,26 @@
+using Server.Bonuses;
 using Server.Infrastructure.Mongo.Runs;
+using Server.Infrastructure.Players;
 using Server.Services;
 
 namespace Server.Runs
 {
     internal sealed class RunCheatEditor
     {
+        private readonly IBonusWorkModeParser _bonusWorkModeParser;
+        private readonly RewardApplier _rewardApplier;
+
+        public RunCheatEditor(IBonusWorkModeParser bonusWorkModeParser, RewardApplier rewardApplier)
+        {
+            _bonusWorkModeParser = bonusWorkModeParser;
+            _rewardApplier = rewardApplier;
+        }
+
         public string Apply(RunDocument run, RunCheatCommand command, IConfigDistributor configDistributor)
         {
+            if (run.PendingBattle != null && IsBlockedByPendingBattle(command.Action))
+                return "Run waits for battle finish: the battle is already calculated, so this change would be lost or applied twice. Clear the pending battle or let the client finish it first.";
+
             switch (command.Action)
             {
                 case RunCheatCommand.StageAction:
@@ -36,9 +50,45 @@ namespace Server.Runs
                     run.Statuses.Clear();
 
                     return string.Empty;
+                case RunCheatCommand.ClearBattleAction:
+                    return ClearBattle(run);
+                case RunCheatCommand.AddPerkGroupAction:
+                    return AddPerkGroup(run, command.Id, command.Count, configDistributor);
                 default:
                     return $"Unknown run cheat action {command.Action}.";
             }
+        }
+
+        private bool IsBlockedByPendingBattle(string action)
+        {
+            return string.Equals(action, RunCheatCommand.StageAction, StringComparison.Ordinal) == false
+                && string.Equals(action, RunCheatCommand.EventAction, StringComparison.Ordinal) == false
+                && string.Equals(action, RunCheatCommand.ClearBattleAction, StringComparison.Ordinal) == false
+                && string.Equals(action, RunCheatCommand.AddPerkGroupAction, StringComparison.Ordinal) == false;
+        }
+
+        private string ClearBattle(RunDocument run)
+        {
+            if (run.PendingBattle == null)
+                return "Run has no pending battle.";
+
+            run.PendingBattle = null;
+
+            return string.Empty;
+        }
+
+        private string AddPerkGroup(RunDocument run, int groupId, int count, IConfigDistributor configDistributor)
+        {
+            if (configDistributor.PerkGroups.TryGet(groupId, out _) == false)
+                return $"Perk group {groupId} is missing in configs of the run.";
+
+            if (count < 1)
+                return "Perk group count must be at least 1.";
+
+            for (int i = 0; i < count; i++)
+                run.PendingPerkGroups.Add(groupId);
+
+            return string.Empty;
         }
 
         private string SetStage(RunDocument run, int stageNumber)
@@ -124,8 +174,11 @@ namespace Server.Runs
 
         private string AddBonus(RunDocument run, int bonusId, int count, int battles, IConfigDistributor configDistributor)
         {
-            if (configDistributor.Bonuses.TryGet(bonusId, out _) == false)
+            if (configDistributor.Bonuses.TryGet(bonusId, out var bonusMapper) == false)
                 return $"Bonus {bonusId} is missing in configs of the run.";
+
+            if (_bonusWorkModeParser.TryParse(bonusMapper.WorkModeParameters, out var workMode) && _rewardApplier.IsAccountScoped(workMode))
+                return $"Bonus {bonusId} is an account bonus ({bonusMapper.WorkModeParameters}): in the game it goes to the profile, grant it with the account reward instead.";
 
             if (count < 1)
                 return "Bonus count must be at least 1.";

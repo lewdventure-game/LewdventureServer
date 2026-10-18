@@ -52,6 +52,14 @@ namespace Server.Admin.Pages.Players
 
         public QaRunModel? Run { get; private set; }
 
+        public CheatCatalogModel RunCatalog { get; private set; } = new();
+
+        public PlayerCharacteristicsModel? Characteristics { get; private set; }
+
+        public string CharacteristicsError { get; private set; } = string.Empty;
+
+        public bool IsInRun => Profile != null && string.IsNullOrEmpty(Profile.Story.CurrentRunId) == false;
+
         public List<RequestTraceModel> Requests { get; private set; } = new();
 
         public List<ExperimentModel> RunningExperiments { get; } = new();
@@ -128,6 +136,16 @@ namespace Server.Admin.Pages.Players
 
             if (CheatsEnabled)
                 Run = await LoadOptionalAsync<QaRunModel>("/admin/qa/players/" + Escape(UserId) + "/run");
+
+            if (Run != null)
+            {
+                var runCatalog = await LoadOptionalAsync<CheatCatalogModel>("/admin/qa/players/" + Escape(UserId) + "/run/catalog");
+
+                RunCatalog = runCatalog ?? Catalog;
+            }
+
+            if (Profile != null)
+                await LoadCharacteristicsAsync();
 
             if (CheatsEnabled && Account != null && Account.IsQa)
                 await LoadRunningExperimentsAsync();
@@ -322,6 +340,13 @@ namespace Server.Admin.Pages.Players
             return RedirectToPage(new { userId });
         }
 
+        public async Task<IActionResult> OnPostPromoteAsync(string userId, int characterId)
+        {
+            await ExecuteCheatAsync(userId, "/character/" + characterId + "/promote", new { }, "cheat.promote", characterId.ToString(), "Персонаж промоучен за копии, как кнопкой в игре.");
+
+            return RedirectToPage(new { userId });
+        }
+
         public async Task<IActionResult> OnPostSummonAsync(string userId, int summonId, int? level, int? masteryLevel, int? skillLevel)
         {
             var body = new { level, masteryLevel, skillLevel };
@@ -471,6 +496,16 @@ namespace Server.Admin.Pages.Players
             ErrorMessage = result.IsSuccess ? $"По «{value}» нашлось {(result.Data == null ? 0 : result.Data.Count)} игроков, нужен ровно один." : string.Join("; ", result.Errors);
 
             return string.Empty;
+        }
+
+        private async Task LoadCharacteristicsAsync()
+        {
+            var result = await GameAdminClient.GetAsync<PlayerCharacteristicsModel>(CurrentEnvironment, "/admin/qa/players/" + Escape(UserId) + "/characteristics", LoginName, HttpContext.RequestAborted);
+
+            if (result.IsSuccess)
+                Characteristics = result.Data;
+            else
+                CharacteristicsError = string.Join("; ", result.Errors);
         }
 
         private async Task LoadRunningExperimentsAsync()

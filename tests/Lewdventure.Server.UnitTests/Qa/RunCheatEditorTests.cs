@@ -17,8 +17,7 @@ namespace Tests.Unit.Qa
     [TestFixture]
     public sealed class RunCheatEditorTests
     {
-        private readonly RunCheatEditor _editor = new();
-
+        private RunCheatEditor _editor = null!;
         private IConfigDistributor _configDistributor = null!;
         private CheatProfileEditor _profileEditor = null!;
 
@@ -38,6 +37,7 @@ namespace Tests.Unit.Qa
             var rewardApplier = new RewardApplier(parser, new BonusWorkModeParser(new SilentCoreLog()), NullLogger<RewardApplier>.Instance);
 
             _configDistributor = builder.Build(snapshot, "test").ConfigSet!.Distributor;
+            _editor = new RunCheatEditor(new BonusWorkModeParser(new SilentCoreLog()), rewardApplier);
             _profileEditor = new CheatProfileEditor(new ProgressionLimits(), rewardApplier);
         }
 
@@ -129,11 +129,64 @@ namespace Tests.Unit.Qa
         {
             var run = CreateRun();
 
-            var error = _editor.Apply(run, new RunCheatCommand { Action = RunCheatCommand.AddBonusAction, Id = 1, Count = 20, Battles = 2 }, _configDistributor);
+            var error = _editor.Apply(run, new RunCheatCommand { Action = RunCheatCommand.AddBonusAction, Id = 3, Count = 20, Battles = 2 }, _configDistributor);
 
             Assert.That(error, Is.Empty);
             Assert.That(run.Bonuses[0].Count, Is.EqualTo(20));
             Assert.That(run.Bonuses[0].RemainingBattles, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void Bonus_AccountScoped_IsRejected()
+        {
+            var run = CreateRun();
+
+            var error = _editor.Apply(run, new RunCheatCommand { Action = RunCheatCommand.AddBonusAction, Id = 1, Count = 1 }, _configDistributor);
+
+            Assert.That(error, Does.Contain("account bonus"));
+            Assert.That(run.Bonuses, Is.Empty);
+        }
+
+        [TestCase(RunCheatCommand.HealthAction)]
+        [TestCase(RunCheatCommand.AddPerkAction)]
+        [TestCase(RunCheatCommand.RemovePerkAction)]
+        [TestCase(RunCheatCommand.AddBonusAction)]
+        [TestCase(RunCheatCommand.AddStatusAction)]
+        [TestCase(RunCheatCommand.ClearPerksAction)]
+        [TestCase(RunCheatCommand.ClearBonusesAction)]
+        [TestCase(RunCheatCommand.ClearStatusesAction)]
+        public void PendingBattle_BlocksChangesLostOnFinish(string action)
+        {
+            var run = CreateRun();
+
+            run.PendingBattle = new RunPendingBattleDocument { StageIndex = 0, EventId = 1 };
+
+            var error = _editor.Apply(run, new RunCheatCommand { Action = action, Id = 3, Value = 50f, Count = 1 }, _configDistributor);
+
+            Assert.That(error, Does.Contain("waits for battle finish"));
+        }
+
+        [Test]
+        public void ClearBattle_DropsPendingBattle()
+        {
+            var run = CreateRun();
+
+            Assert.That(_editor.Apply(run, new RunCheatCommand { Action = RunCheatCommand.ClearBattleAction }, _configDistributor), Is.Not.Empty);
+
+            run.PendingBattle = new RunPendingBattleDocument { StageIndex = 0, EventId = 1 };
+
+            Assert.That(_editor.Apply(run, new RunCheatCommand { Action = RunCheatCommand.ClearBattleAction }, _configDistributor), Is.Empty);
+            Assert.That(run.PendingBattle, Is.Null);
+        }
+
+        [Test]
+        public void PerkGroup_QueuesChoiceAndRejectsUnknown()
+        {
+            var run = CreateRun();
+
+            Assert.That(_editor.Apply(run, new RunCheatCommand { Action = RunCheatCommand.AddPerkGroupAction, Id = 1, Count = 2 }, _configDistributor), Is.Empty);
+            Assert.That(_editor.Apply(run, new RunCheatCommand { Action = RunCheatCommand.AddPerkGroupAction, Id = 999, Count = 1 }, _configDistributor), Is.Not.Empty);
+            Assert.That(run.PendingPerkGroups, Is.EqualTo(new[] { 1, 1 }));
         }
 
         [Test]

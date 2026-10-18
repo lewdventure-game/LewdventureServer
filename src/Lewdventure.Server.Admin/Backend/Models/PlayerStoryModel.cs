@@ -5,5 +5,7 @@ namespace Server.Admin.Backend.Models
         public List<int> CompletedLevelIds { get; set; } = new();
 
         public string CurrentRunId { get; set; } = string.Empty;
+
+        public List<PlayerStoryRecordModel> Records { get; set; } = new();
     }
 }

@@ -66,6 +66,8 @@ namespace Server.Api.Endpoints
             group.MapPost("/templates", SaveTemplateAsync);
             group.MapDelete("/templates/{templateId}", DeleteTemplateAsync);
             group.MapGet("/players/{userId}/run", GetRunAsync);
+            group.MapGet("/players/{userId}/run/catalog", GetRunCatalogAsync);
+            group.MapGet("/players/{userId}/characteristics", GetCharacteristicsAsync);
 
             var cheats = group.MapGroup("/players/{userId}/cheats");
 
@@ -73,6 +75,7 @@ namespace Server.Api.Endpoints
             cheats.MapPost("/resource", SetResourceAsync);
             cheats.MapPost("/flag", SetFlagAsync);
             cheats.MapPost("/character/{characterId:int}", SetCharacterAsync).WithMetadata(new GameConfigRequiredMetadata());
+            cheats.MapPost("/character/{characterId:int}/promote", PromoteCharacterAsync).WithMetadata(new GameConfigRequiredMetadata());
             cheats.MapPost("/summon/{summonId:int}", SetSummonAsync).WithMetadata(new GameConfigRequiredMetadata());
             cheats.MapPost("/equipment/{instanceId}", SetEquipmentAsync).WithMetadata(new GameConfigRequiredMetadata());
             cheats.MapPost("/max", MaxOutAsync).WithMetadata(new GameConfigRequiredMetadata());
@@ -224,6 +227,19 @@ namespace Server.Api.Endpoints
             return ToResult(result, playerResponseFactory);
         }
 
+        private async Task<IResult> PromoteCharacterAsync(
+            HttpContext httpContext,
+            string userId,
+            int characterId,
+            [FromServices] IConfigDistributor configDistributor,
+            [FromServices] PlayerProgressionService playerProgressionService,
+            [FromServices] PlayerResponseFactory playerResponseFactory)
+        {
+            var result = await playerProgressionService.PromoteCharacterAsync(userId, characterId, "cheat-promote-" + Guid.NewGuid().ToString("N"), configDistributor, httpContext.RequestAborted);
+
+            return ToResult(result, playerResponseFactory);
+        }
+
         private async Task<IResult> SetSummonAsync(
             HttpContext httpContext,
             string userId,
@@ -307,6 +323,37 @@ namespace Server.Api.Endpoints
             var configSet = await runCheatService.ResolveConfigsAsync(run, httpContext.RequestAborted);
 
             return Results.Ok(qaResponseFactory.CreateRun(run, configSet.Distributor));
+        }
+
+        private async Task<IResult> GetRunCatalogAsync(
+            HttpContext httpContext,
+            string userId,
+            [FromServices] CheatCatalogFactory cheatCatalogFactory,
+            [FromServices] RunCheatService runCheatService,
+            [FromServices] RunRepository runRepository)
+        {
+            var run = await runRepository.GetActiveAsync(userId, httpContext.RequestAborted);
+
+            if (run == null)
+                return Results.NotFound(new { error = "Player has no active run." });
+
+            var configSet = await runCheatService.ResolveConfigsAsync(run, httpContext.RequestAborted);
+
+            return Results.Ok(cheatCatalogFactory.Create(configSet.Version, configSet.Distributor));
+        }
+
+        private async Task<IResult> GetCharacteristicsAsync(
+            HttpContext httpContext,
+            string userId,
+            [FromServices] PlayerCharacteristicsResponseFactory playerCharacteristicsResponseFactory,
+            [FromServices] PlayerCharacteristicsService playerCharacteristicsService)
+        {
+            var result = await playerCharacteristicsService.GetAsync(userId, httpContext.RequestAborted);
+
+            if (result.Succeeded == false)
+                return Results.BadRequest(new { error = result.Error });
+
+            return Results.Ok(playerCharacteristicsResponseFactory.Create(result.Characteristics!));
         }
 
         private async Task<IResult> ChangeRunAsync(

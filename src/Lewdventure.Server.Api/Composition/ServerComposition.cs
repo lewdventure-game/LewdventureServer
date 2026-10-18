@@ -51,6 +51,7 @@ namespace Server.Api.Composition
             services.AddSingleton<ClientCountryReader>();
             services.AddSingleton<ExperimentResponseFactory>();
             services.AddSingleton<PlayerResponseFactory>();
+            services.AddSingleton<PlayerCharacteristicsResponseFactory>();
             services.AddSingleton<RunResponseFactory>();
             services.AddSingleton(new BattleJsonSettingsFactory().Create());
         }

@@ -224,6 +224,7 @@ namespace Server.Api.Endpoints
 
         private async Task<IResult> GetCharacteristicsAsync(
             HttpContext httpContext,
+            [FromServices] PlayerCharacteristicsResponseFactory playerCharacteristicsResponseFactory,
             [FromServices] PlayerCharacteristicsService playerCharacteristicsService,
             [FromServices] PlayerIdentityReader playerIdentityReader)
         {
@@ -242,30 +243,7 @@ namespace Server.Api.Endpoints
 
             var characteristics = result.Characteristics!;
 
-            return Results.Ok(new PlayerCharacteristicsResponse
-            {
-                Health = characteristics.Health,
-                MaxHealth = characteristics.MaxHealth,
-                Damage = characteristics.Damage,
-                AttackMultiplier = characteristics.AttackMultiplier,
-                Armor = characteristics.Armor,
-                Defence = characteristics.Defence,
-                Evasion = characteristics.Evasion,
-                CriticalChance = characteristics.CriticalChance,
-                CriticalMultiplier = characteristics.CriticalMultiplier,
-                Combo1Chance = characteristics.Combo1Chance,
-                Combo2Chance = characteristics.Combo2Chance,
-                ComboMultiplier = characteristics.ComboMultiplier,
-                Combo2Multiplier = characteristics.Combo2Multiplier,
-                CounterChance = characteristics.CounterChance,
-                CounterMultiplier = characteristics.CounterMultiplier,
-                Energy = characteristics.Energy,
-                EnergyGain = characteristics.EnergyGain,
-                MaxEnergy = characteristics.MaxEnergy,
-                SkillMultiplier = characteristics.SkillMultiplier,
-                Vampyrism = characteristics.Vampyrism,
-                HealingBoost = characteristics.HealingBoost,
-            });
+            return Results.Ok(playerCharacteristicsResponseFactory.Create(characteristics));
         }
 
         private async Task<IResult> UpgradeEquipmentLevelAsync(

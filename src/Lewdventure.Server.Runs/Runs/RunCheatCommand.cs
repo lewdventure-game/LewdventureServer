@@ -12,6 +12,8 @@ namespace Server.Runs
         public const string ClearPerksAction = "clear-perks";
         public const string ClearBonusesAction = "clear-bonuses";
         public const string ClearStatusesAction = "clear-statuses";
+        public const string ClearBattleAction = "clear-battle";
+        public const string AddPerkGroupAction = "perk-group";
 
         public string Action { get; set; } = string.Empty;
 

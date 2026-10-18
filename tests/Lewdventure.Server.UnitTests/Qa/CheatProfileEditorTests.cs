@@ -117,6 +117,20 @@ namespace Tests.Unit.Qa
         }
 
         [Test]
+        public void SetCharacterPromote_ToMaxWithCopies_ConvertsCopiesToOverflow()
+        {
+            var profile = CreateProfile();
+            var entries = new List<PlayerLedgerEntryDocument>();
+
+            _editor.SetCharacterPromote(profile, CharacterId, 1, _configDistributor, DateTime.UtcNow, entries, out _);
+            profile.Characters[0].Copies = 7;
+
+            Assert.That(_editor.SetCharacterPromote(profile, CharacterId, 20, _configDistributor, DateTime.UtcNow, entries, out var error), Is.True, error);
+            Assert.That(profile.Characters[0].Copies, Is.EqualTo(0), "на максимуме лишние копии уходят в overflow, как при обычном промоуте");
+            Assert.That(profile.Resources.ContainsKey("hard_money"), Is.True);
+        }
+
+        [Test]
         public void SetCharacterPromote_Lowering_KeepsRewards()
         {
             var profile = CreateProfile();

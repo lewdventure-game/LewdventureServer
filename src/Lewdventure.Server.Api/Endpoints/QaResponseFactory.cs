@@ -16,10 +16,15 @@ namespace Server.Api.Endpoints
                 Status = run.Status,
                 StageNumber = run.StageIndex + 1,
                 CurrentHealth = run.CurrentHealth,
+                MaxHealth = run.CurrentHealthMaxReference,
                 Experience = run.Experience,
                 ExperienceLevel = run.ExperienceLevel,
                 PendingLevelUps = run.PendingLevelUps,
                 PendingChoice = run.PendingChoice == null ? string.Empty : run.PendingChoice.Kind,
+                PendingChoiceOptions = run.PendingChoice == null ? new List<int>() : new List<int>(run.PendingChoice.Options),
+                PendingStartPerkGroups = new List<int>(run.PendingStartPerkGroups),
+                PendingPerkGroups = new List<int>(run.PendingPerkGroups),
+                PendingBattle = CreatePendingBattle(run.PendingBattle),
                 Perks = new List<int>(run.Perks),
                 Statuses = new List<int>(run.Statuses),
             };
@@ -73,8 +78,40 @@ namespace Server.Api.Endpoints
                 SourceUserId = template.SourceUserId,
                 ConfigVersion = template.ConfigVersion,
                 UpdatedAt = template.UpdatedAt,
-                Summary = $"персонажей {profile.Characters.Count}, саммонов {profile.Summons.Count}, снаряжения {profile.Equipment.Count}, ресурсов {profile.Resources.Count}, пройдены уровни: {levels}",
+                Summary = $"персонажей {profile.Characters.Count}, саммонов {profile.Summons.Count}, снаряжения {profile.Equipment.Count}, ресурсов {profile.Resources.Count}, бонусов аккаунта {profile.Bonuses.Count}, пройдены уровни: {levels}",
             };
+        }
+
+        private QaPendingBattleResponse? CreatePendingBattle(RunPendingBattleDocument? pending)
+        {
+            if (pending == null)
+                return null;
+
+            var response = new QaPendingBattleResponse
+            {
+                StageNumber = pending.StageIndex + 1,
+                EventId = pending.EventId,
+                IsWin = pending.IsWin,
+                Outcome = pending.Outcome,
+                FinalHealth = pending.FinalHealth,
+                StepCount = pending.BattleStepCount,
+            };
+
+            for (int i = 0; i < pending.BonusGrants.Count; i++)
+            {
+                var grant = pending.BonusGrants[i];
+
+                response.BonusGrants.Add(new RunBonusResponse { BonusId = grant.BonusId, Count = grant.Count, RemainingBattles = grant.RemainingBattles });
+            }
+
+            for (int i = 0; i < pending.PerkUsages.Count; i++)
+            {
+                var usage = pending.PerkUsages[i];
+
+                response.PerkUsages.Add(new QaPerkUsageResponse { PerkId = usage.PerkId, UsedCount = usage.UsedCount, RemainingUses = usage.RemainingUses });
+            }
+
+            return response;
         }
     }
 }

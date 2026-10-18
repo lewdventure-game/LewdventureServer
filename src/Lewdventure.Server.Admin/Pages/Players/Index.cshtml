@@ -170,10 +170,17 @@ else if (Model.UserId.Length != 0 && Model.Profile == null)
             <h2>Профиль</h2>
             <dl class="facts">
                 <dt>Ревизия</dt><dd>@profile.Rev</dd>
-                <dt>Персонаж</dt><dd>@profile.Loadout.CharacterId</dd>
+                <dt>Персонаж</dt><dd>@Model.DescribeCharacter(profile.Loadout.CharacterId)</dd>
+                <dt>Саммоны</dt><dd>@(profile.Loadout.Summons.Count == 0 ? "нет" : string.Join(", ", profile.Loadout.Summons))</dd>
+                <dt>Снаряжение</dt><dd>@(profile.Loadout.Equipment.Count == 0 ? "нет" : string.Join(", ", profile.Loadout.Equipment))</dd>
                 <dt>Пройдено уровней</dt><dd>@string.Join(", ", profile.Story.CompletedLevelIds)</dd>
+                <dt>Рекорды</dt><dd>@(profile.Story.Records.Count == 0 ? "нет" : string.Join(", ", profile.Story.Records.ConvertAll(record => "уровень " + record.StoryLevelId + ": этап " + record.BestStageIndex)))</dd>
                 <dt>Текущий забег</dt><dd>@(string.IsNullOrEmpty(profile.Story.CurrentRunId) ? "нет" : profile.Story.CurrentRunId)</dd>
             </dl>
+            @if (Model.IsInRun)
+            {
+                <p class="muted">Во время забега игрок не может менять сетап (персонаж, саммоны, снаряжение) и прокачиваться: сервер отвечает «cannot be changed during run» / «Progression is locked during run».</p>
+            }
             <h3>Ресурсы</h3>
             @if (Model.CheatsEnabled)
             {
@@ -266,13 +273,59 @@ else if (Model.UserId.Length != 0 && Model.Profile == null)
                     <button type="submit">Выдать</button>
                 </form>
             </details>
-            <p class="muted">Выдача идёт как обычная награда: копии персонажей и саммонов тратятся на прокачку, награды уровней выдаются.</p>
+            <p class="muted">Выдача идёт как обычная награда аккаунта: копии персонажей и саммонов копятся (промоут и мастерство — кнопкой в игре, на максимуме копии уходят в overflow-ресурс), награды первого открытия выдаются. Награды <code>perk</code> / <code>perk_group</code> действуют только в забеге и здесь ничего не дадут — для забега есть «Добавить перк» и «Добавить выбор из группы» в карточке забега.</p>
+        </section>
+        <section class="card">
+            <h2>Бонусы аккаунта</h2>
+            @if (profile.Bonuses.Count == 0)
+            {
+                <p class="muted">Нет.</p>
+            }
+            else
+            {
+                <ul class="plain">
+                    @foreach (var bonus in profile.Bonuses)
+                    {
+                        <li>@Model.DescribeItem(Model.Catalog.Bonuses, bonus.Id) × @bonus.Count</li>
+                    }
+                </ul>
+            }
+            <p class="muted">Бонусы с <code>permanent</code> / <code>if_equipped</code>: из наград аккаунта, промоутов и мастерства, а также из событий забега и боёв. Действуют во всех боях.</p>
+        </section>
+        <section class="card">
+            <h2>Характеристики</h2>
+            @if (Model.Characteristics == null)
+            {
+                <p class="muted">@(Model.CharacteristicsError.Length == 0 ? "Нет данных." : Model.CharacteristicsError)</p>
+            }
+            else
+            {
+                var stats = Model.Characteristics;
+                <dl class="facts">
+                    <dt>ХП</dt><dd>@stats.Health из @stats.MaxHealth</dd>
+                    <dt>Урон · атака</dt><dd>@stats.Damage · ×@stats.AttackMultiplier</dd>
+                    <dt>Броня · защита</dt><dd>@stats.Armor · @stats.Defence</dd>
+                    <dt>Уклонение</dt><dd>@stats.Evasion</dd>
+                    <dt>Крит</dt><dd>шанс @stats.CriticalChance, ×@stats.CriticalMultiplier</dd>
+                    <dt>Комбо 1</dt><dd>шанс @stats.Combo1Chance, ×@stats.ComboMultiplier</dd>
+                    <dt>Комбо 2</dt><dd>шанс @stats.Combo2Chance, ×@stats.Combo2Multiplier</dd>
+                    <dt>Контратака</dt><dd>шанс @stats.CounterChance, ×@stats.CounterMultiplier</dd>
+                    <dt>Энергия</dt><dd>@stats.Energy из @stats.MaxEnergy, +@stats.EnergyGain за атаку</dd>
+                    <dt>Скиллы</dt><dd>×@stats.SkillMultiplier</dd>
+                    <dt>Вампиризм · лечение</dt><dd>@stats.Vampyrism · ×@stats.HealingBoost</dd>
+                </dl>
+                <p class="muted">Персонаж из лоадаута с бонусами аккаунта и снаряжением, без бонусов забега, по текущим конфигам.</p>
+            }
         </section>
     </div>
     @if (Model.CheatsEnabled)
     {
         <section class="card">
             <h2>Быстрые читы</h2>
+            @if (Model.IsInRun)
+            {
+                <div class="alert alert-error">Идёт забег @profile.Story.CurrentRunId. Читы профиля работают в обход блокировки прокачки: изменения персонажа, саммонов и снаряжения сразу повлияют на следующий бой забега.</div>
+            }
             <div class="actions">
                 <form method="post" asp-page-handler="Preset" asp-route-userId="@userId" data-confirm="Открыть всех персонажей?">
                     <input type="hidden" name="preset" value="characters"><input type="hidden" name="amount" value="1">
@@ -316,7 +369,7 @@ else if (Model.UserId.Length != 0 && Model.Profile == null)
         <section class="card">
             <h2>Персонажи</h2>
             <table class="table compact">
-                <thead><tr><th>Персонаж</th><th>Копии</th><th>Промоут</th></tr></thead>
+                <thead><tr><th>Персонаж</th><th>Копии</th><th>Промоут</th><th>Сцены</th></tr></thead>
                 <tbody>
                 @foreach (var unit in profile.Characters)
                 {
@@ -332,12 +385,17 @@ else if (Model.UserId.Length != 0 && Model.Profile == null)
                                     <span class="muted">из @Model.FindMaxLevel(Model.Catalog.Characters, unit.Id)</span>
                                     <button type="submit">OK</button>
                                 </form>
+                                <form method="post" asp-page-handler="Promote" asp-route-userId="@userId" class="inline">
+                                    <input type="hidden" name="characterId" value="@unit.Id">
+                                    <button type="submit" class="link" title="как кнопка в игре: списывает копии следующего уровня">промоут за копии</button>
+                                </form>
                             }
                             else
                             {
                                 @unit.PromoteLevel
                             }
                         </td>
+                        <td>@string.Join(", ", unit.UnlockedScenes)</td>
                     </tr>
                 }
                 </tbody>
@@ -354,12 +412,13 @@ else if (Model.UserId.Length != 0 && Model.Profile == null)
                     <input type="number" name="promoteLevel" value="1" min="1" class="narrow">
                     <button type="submit">Открыть / выставить промоут</button>
                 </form>
+                <p class="muted">«OK» выставляет уровень промоута без траты копий и выдаёт награды уровней; на максимуме лишние копии уходят в overflow-ресурс. «Промоут за копии» идёт тем же путём, что кнопка в игре: списывает копии, во время забега недоступен.</p>
             }
         </section>
         <section class="card">
             <h2>Саммоны</h2>
             <table class="table compact">
-                <thead><tr><th>Саммон</th><th>Копии</th><th>Уровень · мастерство · скиллы</th></tr></thead>
+                <thead><tr><th>Саммон</th><th>Копии</th><th>Уровень · мастерство · скиллы</th><th>Сцены</th></tr></thead>
                 <tbody>
                 @foreach (var unit in profile.Summons)
                 {
@@ -382,6 +441,7 @@ else if (Model.UserId.Length != 0 && Model.Profile == null)
                                 @unit.Level <text>·</text> @unit.MasteryLevel <text>·</text> @string.Join("/", unit.SkillLevels)
                             }
                         </td>
+                        <td>@string.Join(", ", unit.UnlockedScenes)</td>
                     </tr>
                 }
                 </tbody>
