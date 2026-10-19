@@ -1,0 +1,422 @@
+@model Server.Admin.Pages.Balance.IndexModel
+@using Server.Admin.Pages.Balance
+@using Server.Admin.Backend.Models
+@if (Model.Job != null)
+{
+    var job = Model.Job;
+    if (Model.JobPending)
+    {
+        <section class="card result">
+            <h2>@Model.JobTitle() · @(job.Status == "queued" ? "в очереди" : "считается")</h2>
+            <progress max="100" value="@Model.JobPercent()"></progress>
+            <p class="muted">@job.Done из @(job.Total == 0 ? "…" : job.Total.ToString()) · страница обновляется сама. Можно уйти и вернуться по ссылке — результат попадёт в историю.</p>
+        </section>
+    }
+}
+
+@if (Model.Layers.Count != 0)
+{
+    var stats = new (string Name, string Hint, Func<PlayerCharacteristicsModel, float> Read)[]
+    {
+        ("Здоровье", "МАКС.ХП", c => c.MaxHealth),
+        ("Урон", "ДМГ", c => c.Damage),
+        ("Множитель атаки", "АТК_МН", c => c.AttackMultiplier),
+        ("Броня", "БРОНЯ", c => c.Armor),
+        ("Защита", "ЗАЩИТА", c => c.Defence),
+        ("Уклонение", "УКЛОНЕНИЕ", c => c.Evasion),
+        ("Шанс крита", "КРИТ", c => c.CriticalChance),
+        ("Сила крита", "КРИТ_МН", c => c.CriticalMultiplier),
+        ("Шанс комбо 1", "КОМБО 1", c => c.Combo1Chance),
+        ("Сила комбо 1", "КОМБО_1_МН", c => c.ComboMultiplier),
+        ("Шанс комбо 2", "КОМБО 2", c => c.Combo2Chance),
+        ("Сила комбо 2", "КОМБО_2_МН", c => c.Combo2Multiplier),
+        ("Шанс контратаки", "КОНТР", c => c.CounterChance),
+        ("Сила контратаки", "КОНТР_МН", c => c.CounterMultiplier),
+        ("Сила скиллов", "СПЕЛЛ_МН", c => c.SkillMultiplier),
+        ("Энергия за атаку", "", c => c.EnergyGain),
+        ("Энергия макс", "", c => c.MaxEnergy),
+        ("Вампиризм", "ВАМПИРИЗМ", c => c.Vampyrism),
+        ("Усиление лечения", "УВЕЛИЧЕНИЕ_ЛЕЧЕНИЯ", c => c.HealingBoost),
+    };
+    var final = Model.Layers[Model.Layers.Count - 1].Characteristics;
+    <section class="card result">
+        <h2>Характеристики героя</h2>
+        <div class="tiles">
+            <div class="tile"><div class="tile-value">@Model.Number(final.MaxHealth)</div><div class="tile-label">здоровье</div></div>
+            <div class="tile"><div class="tile-value">@Model.Number(final.Damage)</div><div class="tile-label">урон</div></div>
+            <div class="tile"><div class="tile-value">@Model.Percent(final.CriticalChance)</div><div class="tile-label">шанс крита</div></div>
+            <div class="tile"><div class="tile-value">@Model.Percent(final.Evasion)</div><div class="tile-label">уклонение</div></div>
+        </div>
+        <details class="more" open>
+            <summary>Откуда что взялось</summary>
+            <table class="table compact" data-csv="характеристики">
+                <thead><tr><th></th>@foreach (var layer in Model.Layers) { <th>@layer.Name</th> }</tr></thead>
+                <tbody>
+                @foreach (var stat in stats)
+                {
+                    <tr>
+                        <td title="@stat.Hint">@stat.Name</td>
+                        @for (int i = 0; i < Model.Layers.Count; i++)
+                        {
+                            var value = stat.Read(Model.Layers[i].Characteristics);
+                            var changed = i != 0 && Math.Abs(value - stat.Read(Model.Layers[i - 1].Characteristics)) > 0.0001f;
+                            <td class="@(changed ? "changed" : string.Empty)">@Model.Number(value)</td>
+                        }
+                    </tr>
+                }
+                </tbody>
+            </table>
+            <p class="hint">Каждый столбец добавляет к предыдущему следующий источник; выделено то, что он изменил. Множители уровня и этапа действуют на врагов, не на героя.</p>
+        </details>
+    </section>
+}
+
+@if (Model.Battle != null)
+{
+    var battle = Model.Battle;
+    var healthShare = battle.HeroHealthStart <= 0 ? 0f : battle.HeroHealthEnd / battle.HeroHealthStart;
+    <section class="card result" data-result-tab="@IndexModel.BattleTab" hidden="@(Model.IsTab(IndexModel.BattleTab) == false)">
+        <div class="verdict @(battle.IsWin ? "verdict-good" : "verdict-bad")">
+            <div class="verdict-value">@(battle.IsWin ? "Победа" : "Поражение")</div>
+            <div class="verdict-text">
+                @if (battle.IsWin)
+                {
+                    <span>за @battle.Turns ходов, у героя осталось @Model.Number(battle.HeroHealthEnd) ХП из @Model.Number(battle.HeroHealthStart) (@Model.Percent(healthShare)).</span>
+                }
+                else
+                {
+                    <span>на @battle.Turns-м ходу. Герой нанёс @Model.Number(battle.DamageDealt) урона.</span>
+                }
+                <span class="muted">Сид @battle.Seed — это один из возможных исходов; для вероятности посчитайте сотни боёв.</span>
+            </div>
+        </div>
+        <dl class="facts">
+            <dt>Нанесено урона</dt><dd>@Model.Number(battle.DamageDealt) · в ход @Model.Number(battle.Turns == 0 ? 0 : battle.DamageDealt / battle.Turns) · критов @battle.CriticalHits · промахов @battle.Misses</dd>
+            <dt>Получено урона</dt><dd>@Model.Number(battle.DamageTaken) · вылечено @Model.Number(battle.Healing)</dd>
+        </dl>
+        <details class="more">
+            <summary>Откуда урон</summary>
+            <table class="table compact" data-csv="бой-источники">
+                <thead><tr><th>Источник</th><th>Урон</th><th>Доля</th></tr></thead>
+                <tbody>
+                @foreach (var pair in battle.DamageBySource)
+                {
+                    <tr><td>@pair.Key</td><td>@Model.Number(pair.Value)</td><td>@Model.Percent(battle.DamageDealt <= 0 ? 0 : pair.Value / battle.DamageDealt)</td></tr>
+                }
+                </tbody>
+            </table>
+        </details>
+        <details class="more">
+            <summary>Бой по ходам (@battle.Log.Count)</summary>
+            <table class="table compact" data-csv="бой-лог">
+                <thead><tr><th>Ход</th><th>Фаза</th><th>Что произошло</th></tr></thead>
+                <tbody>
+                @foreach (var entry in battle.Log)
+                {
+                    <tr><td>@entry.Turn</td><td>@entry.Phase</td><td>@entry.Text</td></tr>
+                }
+                </tbody>
+            </table>
+        </details>
+    </section>
+}
+
+@if (Model.Series != null)
+{
+    var series = Model.Series;
+    var verdict = Model.Verdict(series.WinRate, "Бой");
+    var rows = new (string Name, BalanceDistributionModel Value)[]
+    {
+        ("Ходов в бою", series.Turns),
+        ("Ходов, когда победил", series.TurnsOnWin),
+        ("ХП героя после победы", series.HeroHealthEndOnWin),
+        ("Урон героя в ход", series.DamagePerTurn),
+        ("Получено урона за бой", series.DamageTaken),
+    };
+    <section class="card result" data-result-tab="@IndexModel.BattleTab" hidden="@(Model.IsTab(IndexModel.BattleTab) == false)">
+        <div class="verdict verdict-@verdict.Tone">
+            <div class="verdict-value">@Model.Percent(series.WinRate)</div>
+            <div class="verdict-text">
+                <strong>@verdict.Title</strong>
+                <span>побед @series.Wins из @series.Battles. Обычно бой длится @Model.Number(series.Turns.Median) ходов@(series.Wins == 0 ? "." : ", после победы остаётся около " + Model.Number(series.HeroHealthEndOnWin.Median) + " ХП.")</span>
+            </div>
+        </div>
+        @if (series.RunId.Length != 0)
+        {
+            <p class="muted">Ссылка на этот прогон: <a href="@Model.RunLink(series.RunId)">открыть</a></p>
+        }
+        @if (series.LossSeeds.Count != 0)
+        {
+            <p class="muted">
+                Посмотреть проигранный бой по ходам:
+                @foreach (var seed in series.LossSeeds)
+                {
+                    if (series.RunId.Length == 0)
+                    {
+                        <span class="seed">@seed</span>
+                    }
+                    else
+                    {
+                        <a class="seed" href="@Model.BattleLink(series.RunId, seed)">@seed</a>
+                    }
+                }
+            </p>
+        }
+        <details class="more">
+            <summary>Разброс по боям</summary>
+            <table class="table compact" data-csv="серия">
+                <thead><tr><th></th><th title="сколько боёв попало в выборку">боёв</th><th>мин</th><th>среднее</th><th title="половина боёв ниже, половина выше">медиана</th><th title="9 из 10 боёв не больше этого">p90</th><th>макс</th></tr></thead>
+                <tbody>
+                @foreach (var row in rows)
+                {
+                    <tr><td>@row.Name</td><td>@row.Value.Count</td><td>@Model.Number(row.Value.Min)</td><td>@Model.Number(row.Value.Average)</td><td>@Model.Number(row.Value.Median)</td><td>@Model.Number(row.Value.P90)</td><td>@Model.Number(row.Value.Max)</td></tr>
+                }
+                </tbody>
+            </table>
+            <p class="hint">Критов за бой в среднем @Model.Number(series.CriticalHitsPerBattle), промахов @Model.Number(series.MissesPerBattle).</p>
+        </details>
+        <details class="more">
+            <summary>Откуда урон</summary>
+            <table class="table compact" data-csv="серия-источники">
+                <thead><tr><th>Источник</th><th>Доля урона</th></tr></thead>
+                <tbody>
+                @foreach (var pair in series.DamageShareBySource)
+                {
+                    <tr><td>@pair.Key</td><td>@Model.Percent(pair.Value)</td></tr>
+                }
+                </tbody>
+            </table>
+        </details>
+    </section>
+}
+
+@if (Model.Level != null)
+{
+    var level = Model.Level;
+    var verdict = Model.Verdict(level.CompletionRate, "Уровень");
+    var deadliest = Model.DeadliestStage(level);
+    var distributions = new (string Name, BalanceDistributionModel Value)[]
+    {
+        ("Пройдено этапов", level.StagesCleared),
+        ("Уровень опыта в конце", level.FinalExperienceLevel),
+        ("Перков за забег", level.PerksPerRun),
+    };
+    <section class="card result" data-result-tab="@IndexModel.LevelTab" hidden="@(Model.IsTab(IndexModel.LevelTab) == false)">
+        <div class="verdict verdict-@verdict.Tone">
+            <div class="verdict-value">@Model.Percent(level.CompletionRate)</div>
+            <div class="verdict-text">
+                <strong>@verdict.Title</strong>
+                <span>прошли @level.Completed из @level.Runs; в среднем проходят @Model.Number(level.StagesCleared.Average) этапов из @level.Stages.Count.</span>
+                @if (deadliest != null)
+                {
+                    <span>Чаще всего умирают на этапе @(deadliest.StageIndex + 1): @deadliest.Deaths из @deadliest.Reached дошедших (@Model.Percent(deadliest.DeathRate)).</span>
+                }
+            </div>
+        </div>
+        @if (level.RunId.Length != 0)
+        {
+            <p class="muted">Ссылка на этот прогон: <a href="@Model.RunLink(level.RunId)">открыть</a></p>
+        }
+        <table class="table compact stages" data-csv="уровень-этапы">
+            <thead><tr><th>Этап</th><th>Дошли</th><th>Погибли</th><th>Смертность</th><th title="среднее у тех, кто этап прошёл">ХП после</th><th>Уровень опыта</th></tr></thead>
+            <tbody>
+            @foreach (var stage in level.Stages)
+            {
+                <tr class="@(0.2f <= stage.DeathRate ? "danger-row" : string.Empty)">
+                    <td>@(stage.StageIndex + 1)<span class="muted"> · id @string.Join(", ", stage.StageIds)</span></td>
+                    <td>@stage.Reached</td>
+                    <td>@stage.Deaths</td>
+                    <td><span class="bar" data-width="@((int)Math.Round(stage.DeathRate * 100))"></span> @Model.Percent(stage.DeathRate)</td>
+                    @if (stage.Cleared == 0)
+                    {
+                        <td class="muted">никто не прошёл</td>
+                        <td class="muted">—</td>
+                    }
+                    else
+                    {
+                        <td>@Model.Percent(stage.HealthShareAfter) <span class="muted">(@Model.Number(stage.HealthAfter))</span></td>
+                        <td>@Model.Number(stage.ExperienceLevelAfter)</td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p class="hint">Красным — этапы, где погибает каждый пятый и больше.</p>
+        <details class="more">
+            <summary>Разброс по прогонам</summary>
+            <table class="table compact" data-csv="уровень">
+                <thead><tr><th></th><th>прогонов</th><th>мин</th><th>среднее</th><th>медиана</th><th>p90</th><th>макс</th></tr></thead>
+                <tbody>
+                @foreach (var row in distributions)
+                {
+                    <tr><td>@row.Name</td><td>@row.Value.Count</td><td>@Model.Number(row.Value.Min)</td><td>@Model.Number(row.Value.Average)</td><td>@Model.Number(row.Value.Median)</td><td>@Model.Number(row.Value.P90)</td><td>@Model.Number(row.Value.Max)</td></tr>
+                }
+                </tbody>
+            </table>
+            <p class="hint">Боёв @level.Battles, побед @level.BattlesWon.@(level.FailedSeeds.Count == 0 ? string.Empty : " Сиды проваленных прогонов: " + string.Join(", ", level.FailedSeeds) + ".")</p>
+        </details>
+        @if (level.Perks.Count != 0)
+        {
+            <details class="more">
+                <summary>Какие перки брал бот</summary>
+                <table class="table compact" data-csv="уровень-перки">
+                    <thead><tr><th>Перк</th><th>Предлагался</th><th>Взят</th><th>Доля</th></tr></thead>
+                    <tbody>
+                    @foreach (var perk in level.Perks)
+                    {
+                        <tr><td>@Model.DescribeItem(Model.Catalog.Items.Perks, perk.PerkId)</td><td>@perk.Offered</td><td>@perk.Picked</td><td>@Model.Percent(perk.PickRate)</td></tr>
+                    }
+                    </tbody>
+                </table>
+            </details>
+        }
+    </section>
+}
+
+@if (Model.Compare != null)
+{
+    var compare = Model.Compare;
+    <section class="card result" data-result-tab="@IndexModel.CompareTab" hidden="@(Model.IsTab(IndexModel.CompareTab) == false)">
+        @if (compare.SeriesA != null && compare.SeriesB != null)
+        {
+            var a = compare.SeriesA;
+            var b = compare.SeriesB;
+            var delta = b.WinRate - a.WinRate;
+            var rows = new (string Name, float A, float B, bool Percent)[]
+            {
+                ("Процент побед", a.WinRate, b.WinRate, true),
+                ("Ходов в бою, медиана", a.Turns.Median, b.Turns.Median, false),
+                ("ХП после победы, медиана", a.HeroHealthEndOnWin.Median, b.HeroHealthEndOnWin.Median, false),
+                ("Урон героя в ход", a.DamagePerTurn.Average, b.DamagePerTurn.Average, false),
+                ("Получено урона за бой", a.DamageTaken.Average, b.DamageTaken.Average, false),
+            };
+            <div class="verdict @(Math.Abs(delta) < 0.02f ? "verdict-fair" : delta > 0 ? "verdict-good" : "verdict-bad")">
+                <div class="verdict-value">@(delta >= 0 ? "+" : "−")@Model.Percent(Math.Abs(delta))</div>
+                <div class="verdict-text">
+                    <strong>@(Math.Abs(delta) < 0.02f ? "Почти без разницы" : delta > 0 ? "В варианте B бой проходится чаще" : "В варианте B бой проходится реже")</strong>
+                    <span>побед: A @Model.Percent(a.WinRate), B @Model.Percent(b.WinRate).</span>
+                </div>
+            </div>
+            <table class="table compact" data-csv="сравнение">
+                <thead><tr><th></th><th>A</th><th>B</th><th>B − A</th></tr></thead>
+                <tbody>
+                @foreach (var row in rows)
+                {
+                    <tr><td>@row.Name</td><td>@(row.Percent ? Model.Percent(row.A) : Model.Number(row.A))</td><td>@(row.Percent ? Model.Percent(row.B) : Model.Number(row.B))</td><td class="@(Math.Abs(row.B - row.A) > 0.0001f ? "changed" : string.Empty)">@(row.Percent ? Model.Percent(row.B - row.A) : Model.Number(row.B - row.A))</td></tr>
+                }
+                </tbody>
+            </table>
+        }
+        @if (compare.LevelA != null && compare.LevelB != null)
+        {
+            var a = compare.LevelA;
+            var b = compare.LevelB;
+            var delta = b.CompletionRate - a.CompletionRate;
+            var rows = new (string Name, float A, float B, bool Percent)[]
+            {
+                ("Прошли уровень", a.CompletionRate, b.CompletionRate, true),
+                ("Пройдено этапов, среднее", a.StagesCleared.Average, b.StagesCleared.Average, false),
+                ("Уровень опыта в конце", a.FinalExperienceLevel.Average, b.FinalExperienceLevel.Average, false),
+                ("Перков за забег", a.PerksPerRun.Average, b.PerksPerRun.Average, false),
+            };
+            <div class="verdict @(Math.Abs(delta) < 0.02f ? "verdict-fair" : delta > 0 ? "verdict-good" : "verdict-bad")">
+                <div class="verdict-value">@(delta >= 0 ? "+" : "−")@Model.Percent(Math.Abs(delta))</div>
+                <div class="verdict-text">
+                    <strong>@(Math.Abs(delta) < 0.02f ? "Почти без разницы" : delta > 0 ? "В варианте B уровень проходят чаще" : "В варианте B уровень проходят реже")</strong>
+                    <span>прошли: A @Model.Percent(a.CompletionRate), B @Model.Percent(b.CompletionRate).</span>
+                </div>
+            </div>
+            <table class="table compact" data-csv="сравнение">
+                <thead><tr><th></th><th>A</th><th>B</th><th>B − A</th></tr></thead>
+                <tbody>
+                @foreach (var row in rows)
+                {
+                    <tr><td>@row.Name</td><td>@(row.Percent ? Model.Percent(row.A) : Model.Number(row.A))</td><td>@(row.Percent ? Model.Percent(row.B) : Model.Number(row.B))</td><td class="@(Math.Abs(row.B - row.A) > 0.0001f ? "changed" : string.Empty)">@(row.Percent ? Model.Percent(row.B - row.A) : Model.Number(row.B - row.A))</td></tr>
+                }
+                </tbody>
+            </table>
+            <details class="more" open>
+                <summary>Смертность по этапам</summary>
+                <table class="table compact" data-csv="сравнение-этапы">
+                    <thead><tr><th>Этап</th><th>A</th><th>B</th></tr></thead>
+                    <tbody>
+                    @for (int i = 0; i < Math.Max(a.Stages.Count, b.Stages.Count); i++)
+                    {
+                        var stageA = i < a.Stages.Count ? a.Stages[i] : null;
+                        var stageB = i < b.Stages.Count ? b.Stages[i] : null;
+                        <tr><td>@(i + 1)</td><td>@(stageA == null ? "—" : Model.Percent(stageA.DeathRate) + " из " + stageA.Reached)</td><td>@(stageB == null ? "—" : Model.Percent(stageB.DeathRate) + " из " + stageB.Reached)</td></tr>
+                    }
+                    </tbody>
+                </table>
+            </details>
+        }
+        <p class="hint">A: <code>@compare.VersionA</code><br>B: <code>@compare.VersionB</code></p>
+        @if (compare.RunId.Length != 0)
+        {
+            <p class="muted">Ссылка на это сравнение: <a href="@Model.RunLink(compare.RunId)">открыть</a></p>
+        }
+    </section>
+}
+
+@if (Model.Sweep != null)
+{
+    var sweep = Model.Sweep;
+    var isLevel = sweep.Kind == "level";
+    Func<BalanceSweepPointModel, float> rate = isLevel ? p => p.CompletionRate : p => p.WinRate;
+    <section class="card result" data-result-tab="@IndexModel.SweepTab" hidden="@(Model.IsTab(IndexModel.SweepTab) == false)">
+        <h2>@sweep.Axis.Sheet · @sweep.Axis.Row · @sweep.Axis.Column</h2>
+        <p><strong>@Model.SweepThreshold()</strong></p>
+        <div class="chart sweep-chart">
+            <svg viewBox="-44 -10 690 250" role="img" aria-label="график перебора">
+                <line class="grid" x1="0" y1="0" x2="600" y2="0"></line>
+                <line class="grid" x1="0" y1="100" x2="600" y2="100"></line>
+                <line class="grid" x1="0" y1="200" x2="600" y2="200"></line>
+                <polyline class="line sweep-line" points="@Model.ChartPoints(rate, 600, 200)"></polyline>
+                @Html.Raw(Model.ChartLabels(600, 200))
+            </svg>
+        </div>
+        <p class="hint">По горизонтали — значение @sweep.Axis.Column, по вертикали — @(isLevel ? "доля прошедших уровень" : "процент побед").</p>
+        <details class="more">
+            <summary>Все точки</summary>
+            <table class="table compact" data-csv="перебор">
+                <thead>
+                    <tr>
+                        <th>@sweep.Axis.Column</th>
+                        @if (isLevel)
+                        {
+                            <th>прошли уровень</th><th>этапов в среднем</th><th>уровень опыта</th>
+                        }
+                        else
+                        {
+                            <th>побед</th><th>ходов в среднем</th><th>ХП после победы</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var point in sweep.Points)
+                {
+                    <tr>
+                        <td>@point.Value</td>
+                        @if (point.Error.Length != 0)
+                        {
+                            <td colspan="3" class="error">@point.Error</td>
+                        }
+                        else if (isLevel)
+                        {
+                            <td>@Model.Percent(point.CompletionRate)</td><td>@Model.Number(point.StagesClearedAverage)</td><td>@Model.Number(point.ExperienceLevelAverage)</td>
+                        }
+                        else
+                        {
+                            <td>@Model.Percent(point.WinRate)</td><td>@Model.Number(point.TurnsAverage)</td><td>@Model.Number(point.HeroHealthOnWin)</td>
+                        }
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </details>
+        @if (sweep.RunId.Length != 0)
+        {
+            <p class="muted">Ссылка на этот перебор: <a href="@Model.RunLink(sweep.RunId)">открыть</a></p>
+        }
+    </section>
+}

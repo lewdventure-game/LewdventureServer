@@ -7,5 +7,7 @@ namespace Server.Admin.Backend.Models
         public List<BalanceStoryLevelModel> StoryLevels { get; set; } = new();
 
         public List<BalanceEnemyModel> Enemies { get; set; } = new();
+
+        public List<BalanceSheetModel> Sheets { get; set; } = new();
     }
 }

@@ -8,6 +8,18 @@ document.addEventListener("submit", function (event) {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
+    var selects = document.querySelectorAll("[data-sheet-select]");
+
+    for (var s = 0; s < selects.length; s++) {
+        applySheet(selects[s]);
+    }
+
+    var bars = document.querySelectorAll("[data-width]");
+
+    for (var b = 0; b < bars.length; b++) {
+        bars[b].style.width = (Number(bars[b].getAttribute("data-width")) * 0.6) + "px";
+    }
+
     var tables = document.querySelectorAll("table[data-csv]");
 
     for (var i = 0; i < tables.length; i++) {
@@ -20,6 +32,24 @@ document.addEventListener("DOMContentLoaded", function () {
         button.setAttribute("data-action", "export-csv");
         button.setAttribute("data-index", String(i));
         tables[i].parentNode.insertBefore(button, tables[i]);
+    }
+});
+
+document.addEventListener("change", function (event) {
+    if (event.target.matches("[data-sheet-select]")) {
+        applySheet(event.target);
+    }
+});
+
+document.addEventListener("input", function (event) {
+    var input = event.target;
+
+    if (input.classList.contains("chip-input")) {
+        var chips = input.parentNode.querySelectorAll(".chip");
+
+        for (var i = 0; i < chips.length; i++) {
+            chips[i].classList.toggle("active", chips[i].getAttribute("data-value") === input.value);
+        }
     }
 });
 
@@ -48,6 +78,14 @@ document.addEventListener("click", function (event) {
         removeGroup(button);
     } else if (action === "export-csv") {
         exportCsv(button);
+    } else if (action === "tab") {
+        showTab(button);
+    } else if (action === "set-value") {
+        setValue(button);
+    } else if (action === "add-edit") {
+        addEdit(button);
+    } else if (action === "clear-edit") {
+        clearEdit(button);
     }
 });
 
@@ -116,4 +154,87 @@ function csvValue(text) {
     }
 
     return value;
+}
+
+function showTab(button) {
+    var tab = button.getAttribute("data-tab");
+    var form = button.closest("form");
+    var tabs = form.querySelectorAll("[data-action='tab']");
+    var panels = form.querySelectorAll("[data-tab-panel]");
+
+    for (var i = 0; i < tabs.length; i++) {
+        tabs[i].classList.toggle("active", tabs[i] === button);
+    }
+
+    for (var j = 0; j < panels.length; j++) {
+        panels[j].hidden = panels[j].getAttribute("data-tab-panel") !== tab;
+    }
+
+    var results = form.querySelectorAll("[data-result-tab]");
+
+    for (var k = 0; k < results.length; k++) {
+        results[k].hidden = results[k].getAttribute("data-result-tab") !== tab;
+    }
+
+    form.querySelector("[data-tab-input]").value = tab;
+}
+
+function setValue(button) {
+    var container = button.parentNode;
+    var input = container.querySelector("input[name='" + button.getAttribute("data-target") + "']");
+    var chips = container.querySelectorAll(".chip");
+
+    input.value = button.getAttribute("data-value");
+
+    for (var i = 0; i < chips.length; i++) {
+        chips[i].classList.toggle("active", chips[i] === button);
+    }
+}
+
+function addEdit(button) {
+    var container = button.closest("[data-edits]");
+    var prefix = container.getAttribute("data-edits");
+    var rows = container.querySelectorAll("[data-edit-row]");
+    var template = rows[rows.length - 1];
+    var row = template.cloneNode(true);
+    var index = rows.length;
+    var fields = row.querySelectorAll("input, select");
+
+    for (var i = 0; i < fields.length; i++) {
+        var name = fields[i].getAttribute("name");
+
+        fields[i].setAttribute("name", name.replace(new RegExp("^" + prefix + "\\[\\d+\\]"), prefix + "[" + index + "]"));
+
+        if (fields[i].tagName === "INPUT") {
+            fields[i].value = "";
+        }
+    }
+
+    container.insertBefore(row, button);
+    applySheet(row.querySelector("[data-sheet-select]"));
+    row.querySelector("[data-row-input]").focus();
+}
+
+function clearEdit(button) {
+    var inputs = button.closest("[data-edit-row]").querySelectorAll("input");
+
+    for (var i = 0; i < inputs.length; i++) {
+        inputs[i].value = "";
+    }
+}
+
+function applySheet(select) {
+    var row = select.closest(".edit-row");
+
+    if (row === null || select.selectedIndex < 0) {
+        return;
+    }
+
+    var option = select.options[select.selectedIndex];
+    var key = option.getAttribute("data-key");
+    var column = row.querySelector("[data-column-input]");
+    var rowInput = row.querySelector("[data-row-input]");
+
+    column.setAttribute("list", "balance-columns-" + select.value);
+    rowInput.placeholder = key ? key + "=…" : "#номер строки";
 }

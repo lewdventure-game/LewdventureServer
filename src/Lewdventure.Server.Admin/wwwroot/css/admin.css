@@ -578,3 +578,418 @@ button.link {
     padding: 2px 8px;
     font-size: 12px;
 }
+
+.balance-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.balance-head h1 {
+    margin-bottom: 4px;
+}
+
+.balance-head p {
+    margin: 0;
+}
+
+.scenario-menu {
+    position: relative;
+}
+
+.scenario-menu > summary {
+    cursor: pointer;
+    list-style: none;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+
+.scenario-menu > summary::-webkit-details-marker {
+    display: none;
+}
+
+.scenario-panel {
+    position: absolute;
+    right: 0;
+    z-index: 10;
+    width: min(460px, 90vw);
+    margin-top: 6px;
+    padding: 12px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.balance label,
+.balance-setup label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0 0 10px;
+    color: var(--muted);
+}
+
+.balance label .inline,
+.balance label input,
+.balance label select {
+    color: var(--text);
+}
+
+.balance-layout {
+    display: grid;
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+    margin-top: 12px;
+}
+
+@media (max-width: 900px) {
+    .balance-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .balance-setup {
+        position: static;
+        max-height: none;
+    }
+
+    .verdict {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .table.compact {
+        display: block;
+        overflow-x: auto;
+    }
+}
+
+.balance-setup {
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.setup-summary {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    background: var(--bg);
+    line-height: 1.4;
+}
+
+.setup-summary-title,
+.field-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin: 4px 0 6px;
+}
+
+.setup-section {
+    border-top: 1px solid var(--line);
+    padding: 8px 0;
+}
+
+.setup-section > summary,
+.more > summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 2px 0;
+}
+
+.setup-section[open] > summary {
+    margin-bottom: 8px;
+}
+
+.count {
+    display: inline-block;
+    min-width: 20px;
+    padding: 0 6px;
+    margin-left: 4px;
+    border-radius: 999px;
+    background: var(--line);
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.slot {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.slot-numbers {
+    display: flex;
+    gap: 8px;
+}
+
+.balance .slot-numbers label {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 12px;
+}
+
+.slot-numbers input {
+    width: 72px;
+}
+
+.hint {
+    color: var(--muted);
+    font-size: 12px;
+    margin: 4px 0 8px;
+}
+
+.reference {
+    margin-top: 6px;
+    font-size: 12px;
+}
+
+.reference ul {
+    max-height: 220px;
+    overflow-y: auto;
+    margin-top: 6px;
+}
+
+.wide-button {
+    width: 100%;
+    margin-top: 8px;
+}
+
+.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    border-bottom: 1px solid var(--line);
+}
+
+.tab {
+    border: 1px solid transparent;
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    background: none;
+    color: var(--muted);
+    padding: 8px 14px;
+    margin-bottom: -1px;
+}
+
+.tab.active {
+    background: var(--panel);
+    border-color: var(--line);
+    color: var(--text);
+    font-weight: 600;
+}
+
+.tab-panel {
+    margin-top: 0;
+    border-top-left-radius: 0;
+}
+
+.tab-panel h2 {
+    font-size: 18px;
+    margin-bottom: 12px;
+}
+
+.tab-panel select,
+.tab-panel input {
+    max-width: 640px;
+}
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.chip {
+    border-radius: 999px;
+    padding: 4px 14px;
+}
+
+.chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+}
+
+.chip-input {
+    width: 110px;
+}
+
+.segmented {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 10px;
+}
+
+.balance .segmented label {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    color: var(--text);
+}
+
+.segmented input {
+    width: auto;
+}
+
+.compare-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+}
+
+.compare-side {
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.edits {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.edit-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.8fr) auto;
+    gap: 4px;
+    align-items: center;
+}
+
+.sweep-cell {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    max-width: 640px;
+    margin-bottom: 10px;
+}
+
+.balance-setup .edit-row,
+.compare-side .edit-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.balance-layout > * {
+    min-width: 0;
+}
+
+.balance-setup .edit-row .icon-button,
+.compare-side .edit-row .icon-button {
+    justify-self: start;
+    grid-column: 2;
+    margin-top: -2px;
+}
+
+.icon-button {
+    padding: 2px 8px;
+    line-height: 1.2;
+}
+
+.link-button {
+    border: 0;
+    background: none;
+    color: var(--accent);
+    padding: 0;
+    text-align: left;
+}
+
+.result {
+    margin-top: 12px;
+}
+
+.verdict {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    background: var(--bg);
+    border-left: 6px solid var(--line);
+}
+
+.verdict-value {
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.verdict-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.verdict-good {
+    border-left-color: #2f9e5b;
+}
+
+.verdict-fair {
+    border-left-color: #d9a227;
+}
+
+.verdict-hard {
+    border-left-color: #e0752f;
+}
+
+.verdict-bad {
+    border-left-color: var(--danger);
+}
+
+.table td.changed {
+    background: var(--ok-bg);
+    color: var(--ok-text);
+    font-weight: 600;
+}
+
+.table tr.danger-row td {
+    background: var(--error-bg);
+}
+
+.bar {
+    display: inline-block;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--danger);
+    vertical-align: middle;
+}
+
+.seed {
+    display: inline-block;
+    margin: 0 4px;
+}
+
+.sweep-line {
+    stroke: var(--accent);
+}
+
+.chart .axis {
+    fill: var(--muted);
+    font-size: 11px;
+}
+
+progress {
+    width: 100%;
+    height: 12px;
+}

@@ -61,5 +61,11 @@ namespace Server.Admin.Backend.Models
         public string SweepTo { get; set; } = string.Empty;
 
         public string SweepStep { get; set; } = string.Empty;
+
+        public string Tab { get; set; } = string.Empty;
+
+        public List<BalanceConfigEditModel> Edits { get; set; } = new();
+
+        public List<BalanceConfigEditModel> EditsB { get; set; } = new();
     }
 }

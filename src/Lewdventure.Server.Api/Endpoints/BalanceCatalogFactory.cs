@@ -1,4 +1,6 @@
 using System.Globalization;
+using Newtonsoft.Json.Linq;
+using Server.GameConfigs;
 using Server.Battles;
 using Server.Logging;
 using Server.Runs;
@@ -9,6 +11,10 @@ namespace Server.Api.Endpoints
 {
     internal sealed class BalanceCatalogFactory
     {
+        private const string IdColumn = "id";
+        private const string NameColumn = "name";
+        private const string ConstantNameColumn = "constant_name";
+
         private readonly CheatCatalogFactory _cheatCatalogFactory;
 
         public BalanceCatalogFactory(CheatCatalogFactory cheatCatalogFactory)
@@ -16,7 +22,7 @@ namespace Server.Api.Endpoints
             _cheatCatalogFactory = cheatCatalogFactory;
         }
 
-        public BalanceCatalogResponse Create(string configVersion, IConfigDistributor configDistributor)
+        public BalanceCatalogResponse Create(string configVersion, IConfigDistributor configDistributor, GameConfigSnapshot snapshot)
         {
             var parameterParser = new BattleComposition(configDistributor, new SilentCoreLog()).BattleParameterParser;
             var response = new BalanceCatalogResponse { Items = _cheatCatalogFactory.Create(configVersion, configDistributor) };
@@ -42,7 +48,33 @@ namespace Server.Api.Endpoints
                 });
             }
 
+            for (int i = 0; i < snapshot.Domains.Count; i++)
+                response.Sheets.Add(CreateSheet(snapshot.Domains[i]));
+
             return response;
+        }
+
+        private BalanceSheetResponse CreateSheet(ConfigSnapshotDomain domain)
+        {
+            var sheet = new BalanceSheetResponse { Name = domain.Domain };
+            var rows = JArray.Parse(domain.RowsJson);
+
+            sheet.Rows = rows.Count;
+
+            if (rows.Count == 0 || rows[0] is not JObject first)
+                return sheet;
+
+            foreach (var property in first.Properties())
+            {
+                if (string.Equals(property.Name, NameColumn, StringComparison.Ordinal))
+                    continue;
+
+                sheet.Columns.Add(property.Name);
+            }
+
+            sheet.RowKey = first.ContainsKey(ConstantNameColumn) ? ConstantNameColumn : first.ContainsKey(IdColumn) ? IdColumn : string.Empty;
+
+            return sheet;
         }
 
         private BalanceStoryLevelResponse CreateLevel(IStoryLevelMapper level, IConfigDistributor configDistributor, IBattleParameterParser parameterParser)

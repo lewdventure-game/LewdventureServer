@@ -1,0 +1,20 @@
+@model Server.Admin.Pages.Balance.BalanceEditsEditor
+<div class="edits" data-edits="@Model.Prefix">
+    @for (int i = 0; i < Model.Rows.Count; i++)
+    {
+        var row = Model.Rows[i];
+        <div class="edit-row" data-edit-row>
+            <select name="@(Model.Prefix)[@i].Sheet" data-sheet-select aria-label="лист">
+                @foreach (var sheet in Model.Sheets)
+                {
+                    <option value="@sheet.Name" data-key="@sheet.RowKey" selected="@(string.Equals(sheet.Name, row.Sheet, StringComparison.OrdinalIgnoreCase))">@sheet.Name</option>
+                }
+            </select>
+            <input name="@(Model.Prefix)[@i].Row" value="@row.Row" placeholder="id=10101" aria-label="строка" title="Какую строку менять: колонка=значение (несколько через ;) или номер строки #3" data-row-input>
+            <input name="@(Model.Prefix)[@i].Column" value="@row.Column" placeholder="колонка" aria-label="колонка" data-column-input>
+            <input name="@(Model.Prefix)[@i].Value" value="@row.Value" placeholder="новое значение" aria-label="значение">
+            <button type="button" class="icon-button" data-action="clear-edit" title="Убрать правку" aria-label="Убрать правку">×</button>
+        </div>
+    }
+    <button type="button" class="link-button" data-action="add-edit">+ ещё правка</button>
+</div>

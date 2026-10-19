@@ -1,0 +1,164 @@
+@model Server.Admin.Pages.Balance.IndexModel
+@{
+    var items = Model.Catalog.Items;
+}
+<aside class="balance-setup">
+    <div class="setup-summary">
+        <div class="setup-summary-title">Герой</div>
+        <div>@Model.SetupSummary()</div>
+        <div class="muted">@Model.ConfigSummary()</div>
+    </div>
+
+    <details class="setup-section">
+        <summary>Взять готовый сетап</summary>
+        <label>У игрока по userId
+            <span class="inline">
+                <input name="LoadUserId" value="@Model.LoadUserId" placeholder="usr_…">
+                <button type="submit" asp-page-handler="LoadPlayer">Взять</button>
+            </span>
+        </label>
+        <label>Типичный игрок, который прошёл уровень
+            <span class="inline">
+                <select name="ProgressLevelId">
+                    @foreach (var level in Model.Catalog.StoryLevels)
+                    {
+                        <option value="@level.Id" selected="@(level.Id == Model.ProgressLevelId)">@level.Id</option>
+                    }
+                </select>
+                <button type="submit" asp-page-handler="Progress">Подставить</button>
+            </span>
+        </label>
+        <p class="hint">«У игрока» берёт лоадаут, прокачку и бонусы, а если идёт забег — ещё ХП, перки, бонусы и статусы забега. «Типичный игрок» — реальный игрок с медианной силой героя среди тех, кто прошёл уровень, но не следующий.</p>
+        @if (Model.Progress != null)
+        {
+            var progress = Model.Progress;
+            <p class="hint">Таких игроков @progress.Players, взят @progress.UserId. Медианы: промоут @Model.Number(progress.PromoteLevel.Median), уровень саммонов @Model.Number(progress.SummonLevel.Median), снаряжения @Model.Number(progress.EquipmentLevel.Median), бонусов аккаунта @Model.Number(progress.AccountBonuses.Median).</p>
+        }
+    </details>
+
+    <details class="setup-section" open>
+        <summary>Персонаж</summary>
+        <label>Персонаж
+            <select name="CharacterId">
+                @foreach (var item in items.Characters)
+                {
+                    <option value="@item.Id" selected="@(item.Id == Model.CharacterId)">@Model.Label(item, "Персонаж")</option>
+                }
+            </select>
+        </label>
+        <label>Уровень промоута
+            <input type="number" name="PromoteLevel" value="@Model.PromoteLevel" min="1">
+        </label>
+    </details>
+
+    <details class="setup-section" open="@(Model.CountFilled(Model.Summons) != 0)">
+        <summary>Саммоны <span class="count">@Model.CountFilled(Model.Summons)</span></summary>
+        @for (int i = 0; i < Model.Summons.Count; i++)
+        {
+            var summon = Model.Summons[i];
+            <div class="slot">
+                <select name="Summons[@i].Id" aria-label="саммон @(i + 1)">
+                    <option value="0">— пусто —</option>
+                    @foreach (var item in items.Summons)
+                    {
+                        <option value="@item.Id" selected="@(item.Id == summon.Id)">@Model.Label(item, "Саммон")</option>
+                    }
+                </select>
+                <span class="slot-numbers">
+                    <label>ур. <input type="number" name="Summons[@i].Level" value="@summon.Level" min="1"></label>
+                    <label>мастерство <input type="number" name="Summons[@i].MasteryLevel" value="@summon.MasteryLevel" min="1"></label>
+                </span>
+                @for (int skill = 0; skill < summon.SkillLevels.Count; skill++)
+                {
+                    <input type="hidden" name="Summons[@i].SkillLevels[@skill]" value="@summon.SkillLevels[skill]">
+                }
+            </div>
+        }
+    </details>
+
+    <details class="setup-section" open="@(Model.CountFilledEquipment(Model.Equipment) != 0)">
+        <summary>Снаряжение <span class="count">@Model.CountFilledEquipment(Model.Equipment)</span></summary>
+        @for (int i = 0; i < Model.Equipment.Count; i++)
+        {
+            var equipment = Model.Equipment[i];
+            <div class="slot">
+                <select name="Equipment[@i].ConfigId" aria-label="предмет @(i + 1)">
+                    <option value="0">— пусто —</option>
+                    @foreach (var item in items.Equipment)
+                    {
+                        <option value="@item.Id" selected="@(item.Id == equipment.ConfigId)">@Model.Label(item, "Предмет")</option>
+                    }
+                </select>
+                <span class="slot-numbers">
+                    <label>ур. <input type="number" name="Equipment[@i].Level" value="@equipment.Level" min="1"></label>
+                </span>
+            </div>
+        }
+    </details>
+
+    <details class="setup-section" open="@(Model.AccountBonusesText.Length != 0)">
+        <summary>Бонусы аккаунта</summary>
+        <input name="AccountBonusesText" value="@Model.AccountBonusesText" placeholder="id:кол-во — например 1:2, 7:10">
+        <details class="reference">
+            <summary>Какие бывают</summary>
+            <ul class="plain">
+                @foreach (var item in items.Bonuses)
+                {
+                    <li><code>@item.Id</code> @item.Name <span class="muted">@item.Details</span></li>
+                }
+            </ul>
+        </details>
+    </details>
+
+    <details class="setup-section" open="@Model.HasRunState()">
+        <summary>Состояние забега @if (Model.HasRunState()) { <span class="count">есть</span> }</summary>
+        <p class="hint">Для одного боя и серии: как будто герой уже идёт по забегу. Прогон уровня всегда начинает забег с нуля.</p>
+        <label>ХП сейчас <span class="muted">(0 — полное)</span>
+            <input type="number" name="CurrentHealth" value="@Model.Number(Model.CurrentHealth)" min="0" step="any">
+        </label>
+        <label>Перки
+            <input name="RunPerksText" value="@Model.RunPerksText" placeholder="id через запятую">
+        </label>
+        <label>Бонусы забега
+            <input name="RunBonusesText" value="@Model.RunBonusesText" placeholder="id:кол-во:боёв, 0 — до конца забега">
+        </label>
+        <label>Статусы на начало боя
+            <input name="RunStatusesText" value="@Model.RunStatusesText" placeholder="id через запятую">
+        </label>
+        <details class="reference">
+            <summary>Перки, бонусы забега, статусы</summary>
+            <ul class="plain">
+                @foreach (var item in items.Perks)
+                {
+                    <li>перк <code>@item.Id</code> @item.Name <span class="muted">@item.Details</span></li>
+                }
+                @foreach (var item in items.RunBonuses)
+                {
+                    <li>бонус <code>@item.Id</code> @item.Name <span class="muted">@item.Details</span></li>
+                }
+                @foreach (var item in items.Statuses)
+                {
+                    <li>статус <code>@item.Id</code> @item.Name <span class="muted">@item.Details</span></li>
+                }
+            </ul>
+        </details>
+    </details>
+
+    <details class="setup-section" open="@(Model.Version.Length != 0 || Model.EditRows(Model.Edits).Count > 1)">
+        <summary>Конфиги и правки «что если»</summary>
+        <label>Версия конфигов
+            <select name="Version">
+                <option value="" selected="@(Model.Version.Length == 0)">мастер — то, что сейчас у игроков</option>
+                @foreach (var version in Model.Versions)
+                {
+                    <option value="@version.Version" selected="@(version.Version == Model.Version)">@version.ShortVersion · @version.CreatedAt.ToString("dd.MM HH:mm")@(version.IsActive ? " · мастер" : string.Empty)</option>
+                }
+            </select>
+        </label>
+        <div class="field-title">Правки поверх версии</div>
+        <partial name="_EditsEditor" model="Model.EditsEditor()" />
+        <p class="hint">Меняют ячейку только в песочнице — ничего не публикуется. Пример: лист Enemies, строка <code>id=10101</code>, колонка <code>health</code>, значение <code>900</code>.</p>
+    </details>
+
+    <button type="submit" asp-page-handler="Characteristics" class="wide-button">Показать характеристики героя</button>
+</aside>

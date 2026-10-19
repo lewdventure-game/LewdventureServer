@@ -7,5 +7,7 @@ namespace Server.Api.Endpoints
         public List<BalanceStoryLevelResponse> StoryLevels { get; set; } = new();
 
         public List<BalanceEnemyResponse> Enemies { get; set; } = new();
+
+        public List<BalanceSheetResponse> Sheets { get; set; } = new();
     }
 }

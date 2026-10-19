@@ -99,7 +99,7 @@ namespace Server.Api.Endpoints
             if (configSet == null)
                 return VersionMissing(version);
 
-            return Results.Ok(balanceCatalogFactory.Create(configSet.Version, configSet.Distributor));
+            return Results.Ok(balanceCatalogFactory.Create(configSet.Version, configSet.Distributor, configSet.Snapshot));
         }
 
         private async Task<IResult> FindProgressAsync(

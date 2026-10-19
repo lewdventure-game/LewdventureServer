@@ -198,7 +198,7 @@ namespace Server.Api.Balance
                 ? await _balanceSweepRunner.RunLevelAsync(configSet, request.Edits, request.Axis, values, request.Setup, request.StoryLevelId, request.Seed, request.Runs, policy, progress, cancellationToken)
                 : _balanceSweepRunner.RunSeries(configSet, request.Edits, request.Axis, values, request.Setup, request.Target, (ulong)request.Seed, request.Battles, progress, cancellationToken);
             var axis = result.Axis;
-            var summary = $"перебор {result.Kind} {axis.Sheet} / {axis.Row} / {axis.Column} от {axis.From.ToString(CultureInfo.InvariantCulture)} до {axis.To.ToString(CultureInfo.InvariantCulture)}: {result.Points.Count} точек";
+            var summary = $"перебор ({(IsLevel(request.Kind) ? "уровень" : "бой")}) {axis.Sheet} / {axis.Row} / {axis.Column} от {axis.From.ToString(CultureInfo.InvariantCulture)} до {axis.To.ToString(CultureInfo.InvariantCulture)}: {result.Points.Count} точек";
 
             return new BalanceExecution(result, string.Empty, StatusCodes.Status200OK, configSet.Version, request.Edits.Count, summary, request.Scenario);
         }
