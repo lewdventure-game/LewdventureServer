@@ -14,6 +14,7 @@ using Server.Bonuses;
 using Server.GameConfigs;
 using Server.Infrastructure.GameConfigs;
 using Server.Infrastructure.Mongo.ConfigSnapshots;
+using Server.Infrastructure.Mongo.Balance;
 using Server.Infrastructure.Mongo.Experiments;
 using Server.Infrastructure.Mongo.Players;
 using Server.Runs;
@@ -151,9 +152,11 @@ namespace Server.Api.Composition
             new ConfigSnapshotStoreRegistrar().Register(services);
             new PlayerStoreRegistrar().Register(services);
             new ExperimentStoreRegistrar().Register(services);
+            new BalanceStoreRegistrar().Register(services);
             new RunServicesRegistrar().Register(services);
 
             services.AddSingleton<BalanceCatalogFactory>();
+            services.AddSingleton<BalanceHistoryRecorder>();
             services.AddSingleton<CheatCatalogFactory>();
             services.AddSingleton<QaResponseFactory>();
             services.AddHostedService<ExperimentRegistryWatcher>();

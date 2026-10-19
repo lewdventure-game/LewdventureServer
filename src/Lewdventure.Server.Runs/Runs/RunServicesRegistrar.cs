@@ -7,10 +7,12 @@ namespace Server.Runs
     {
         public void Register(IServiceCollection services)
         {
+            services.AddSingleton<BalanceConfigDrafts>();
             services.AddSingleton<BalanceLevelSimulator>();
             services.AddSingleton<BalanceService>();
             services.AddSingleton<BalanceSnapshotFactory>();
             services.AddSingleton<BalanceStatistics>();
+            services.AddSingleton<BalanceSweepRunner>();
             services.AddSingleton<BattleScriptAnalyzer>();
             services.AddSingleton<RunAnalytics>();
             services.AddSingleton<RunCheatEditor>();

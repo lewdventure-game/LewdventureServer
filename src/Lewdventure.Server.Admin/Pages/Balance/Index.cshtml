@@ -7,6 +7,24 @@
 <h1>Баланс · @Model.CurrentEnvironment</h1>
 <partial name="_Messages" model="Model" />
 <form method="post" class="card">
+    <h2>Сценарий</h2>
+    <div class="inline">
+        <select name="ScenarioId">
+            <option value="">— сохранённые сценарии —</option>
+            @foreach (var scenario in Model.Scenarios)
+            {
+                <option value="@scenario.Id" selected="@(scenario.Id == Model.ScenarioId)">@scenario.Name · @scenario.UpdatedBy · @scenario.UpdatedAt.ToString("yyyy-MM-dd HH:mm")</option>
+            }
+        </select>
+        <button type="submit" asp-page-handler="LoadScenario">Загрузить</button>
+        @if (Model.IsAdmin)
+        {
+            <button type="submit" asp-page-handler="DeleteScenario" onclick="return confirm('Удалить сценарий?')">Удалить</button>
+        }
+        <input name="ScenarioName" value="@Model.ScenarioName" placeholder="название, например «босс 1-5 после нерфа»">
+        <button type="submit" asp-page-handler="SaveScenario">Сохранить сценарий</button>
+    </div>
+    <p class="muted">Сценарий хранит всю форму: версию, сетап, правки, бой, уровень, сравнение и перебор. Сохранение под тем же названием перезаписывает сценарий.</p>
     <h2>Игрок</h2>
     <div class="inline">
         <input name="LoadUserId" value="@Model.LoadUserId" placeholder="userId игрока, чтобы взять его сетап" class="wide">
@@ -109,6 +127,9 @@
             </details>
         </div>
     </div>
+    <h2>Черновые правки конфигов</h2>
+    <textarea name="EditsText" rows="4" class="wide" placeholder="Enemies | id=10101 | health | 900&#10;Constants | constant_name=max_health_base | constant_value | 700&#10;Exp_levels_patterns | id=1;exp_level=3 | exp_for_next_lvl | 30">@Model.EditsText</textarea>
+    <p class="muted">По строке на правку: <code>лист | строка | колонка | значение</code>. Строка — <code>колонка=значение</code> (несколько через <code>;</code>, правка ляжет на все подходящие строки) или номер строки листа <code>#3</code>. Правки ложатся поверх выбранной версии только в песочнице, ничего не публикуется; черновик проходит ту же проверку, что и публикация. Действуют во всех кнопках ниже.</p>
     <h2>Бой</h2>
     <div class="inline">
         <select name="Fight">
@@ -169,6 +190,48 @@
     <div class="actions">
         <button type="submit" asp-page-handler="Level" class="primary">Прогнать уровень</button>
     </div>
+    <h2>Сравнение A/B</h2>
+    <div class="inline">
+        <label>Что сравнивать
+            <select name="CompareKind">
+                <option value="series" selected="@(Model.CompareKind == "series")">серию боёв (бой выше)</option>
+                <option value="level" selected="@(Model.CompareKind == "level")">прогон уровня</option>
+            </select>
+        </label>
+        <label>Версия B
+            <select name="VersionB">
+                <option value="" selected="@(Model.VersionB.Length == 0)">мастер (активная версия)</option>
+                @foreach (var version in Model.Versions)
+                {
+                    <option value="@version.Version" selected="@(version.Version == Model.VersionB)">@version.ShortVersion · @version.CreatedAt.ToString("yyyy-MM-dd HH:mm")@(version.IsActive ? " · активна" : string.Empty)</option>
+                }
+            </select>
+        </label>
+    </div>
+    <textarea name="EditsBText" rows="3" class="wide" placeholder="правки варианта B в том же формате">@Model.EditsBText</textarea>
+    <div class="actions">
+        <button type="submit" asp-page-handler="Compare" class="primary">Сравнить A и B</button>
+    </div>
+    <p class="muted">A — версия и правки из формы выше, B — версия B и правки B. Сетап, бой, уровень и сиды одинаковые, поэтому разница — только от конфигов.</p>
+    <h2>Перебор параметра</h2>
+    <div class="inline">
+        <input name="SweepSheet" value="@Model.SweepSheet" placeholder="лист: Enemies" class="narrow">
+        <input name="SweepRow" value="@Model.SweepRow" placeholder="строка: id=10101">
+        <input name="SweepColumn" value="@Model.SweepColumn" placeholder="колонка: health">
+        <label>от <input name="SweepFrom" value="@Model.SweepFrom" class="narrow"></label>
+        <label>до <input name="SweepTo" value="@Model.SweepTo" class="narrow"></label>
+        <label>шаг <input name="SweepStep" value="@Model.SweepStep" class="narrow"></label>
+        <label>что считать
+            <select name="SweepKind">
+                <option value="series" selected="@(Model.SweepKind == "series")">серию боёв</option>
+                <option value="level" selected="@(Model.SweepKind == "level")">прогон уровня</option>
+            </select>
+        </label>
+    </div>
+    <div class="actions">
+        <button type="submit" asp-page-handler="Sweep" class="primary">Перебрать</button>
+    </div>
+    <p class="muted">Ячейка меняется от «от» до «до» с шагом поверх версии и правок формы; в каждой точке — серия (боёв в серии) или прогон уровня (прогонов). Не больше 25 точек; общий объём ограничен на сервере.</p>
     <p class="muted">Забег с нуля тем же движком, что у игроков: этапы, события, награды, опыт, выбор перков, ХП между боями. Берутся персонаж, промоут, саммоны, снаряжение и бонусы аккаунта; перки, бонусы, статусы и ХП забега из сетапа не используются. Сиды прогонов — подряд с поля «Сид».</p>
 </form>
 @if (Model.Layers.Count != 0)
@@ -348,5 +411,150 @@
         {
             <p class="muted">Сиды проваленных прогонов (до 20): @string.Join(", ", level.FailedSeeds).</p>
         }
+    </section>
+}
+@if (Model.Compare != null)
+{
+    var compare = Model.Compare;
+    <section class="card">
+        <h2>Сравнение A/B</h2>
+        <p class="muted">A: @compare.VersionA · B: @compare.VersionB</p>
+        @if (compare.SeriesA != null && compare.SeriesB != null)
+        {
+            var a = compare.SeriesA;
+            var b = compare.SeriesB;
+            var rows = new (string Name, float A, float B, bool Percent)[]
+            {
+                ("Процент побед", a.WinRate, b.WinRate, true),
+                ("Ходов, медиана", a.Turns.Median, b.Turns.Median, false),
+                ("Ходов в победах, медиана", a.TurnsOnWin.Median, b.TurnsOnWin.Median, false),
+                ("ХП после победы, среднее", a.HeroHealthEndOnWin.Average, b.HeroHealthEndOnWin.Average, false),
+                ("Урон в ход, среднее", a.DamagePerTurn.Average, b.DamagePerTurn.Average, false),
+                ("Получено урона, среднее", a.DamageTaken.Average, b.DamageTaken.Average, false),
+                ("Критов в бою", a.CriticalHitsPerBattle, b.CriticalHitsPerBattle, false),
+            };
+            <table class="table compact">
+                <thead><tr><th></th><th>A</th><th>B</th><th>B − A</th></tr></thead>
+                <tbody>
+                @foreach (var row in rows)
+                {
+                    <tr><td>@row.Name</td><td>@(row.Percent ? Model.Percent(row.A) : Model.Number(row.A))</td><td>@(row.Percent ? Model.Percent(row.B) : Model.Number(row.B))</td><td class="@(Math.Abs(row.B - row.A) > 0.0001f ? "highlight" : string.Empty)">@(row.Percent ? Model.Percent(row.B - row.A) : Model.Number(row.B - row.A))</td></tr>
+                }
+                </tbody>
+            </table>
+        }
+        @if (compare.LevelA != null && compare.LevelB != null)
+        {
+            var a = compare.LevelA;
+            var b = compare.LevelB;
+            var rows = new (string Name, float A, float B, bool Percent)[]
+            {
+                ("Прошли уровень", a.CompletionRate, b.CompletionRate, true),
+                ("Пройдено этапов, среднее", a.StagesCleared.Average, b.StagesCleared.Average, false),
+                ("Уровень опыта в конце, среднее", a.FinalExperienceLevel.Average, b.FinalExperienceLevel.Average, false),
+                ("Перков за забег, среднее", a.PerksPerRun.Average, b.PerksPerRun.Average, false),
+            };
+            <table class="table compact">
+                <thead><tr><th></th><th>A</th><th>B</th><th>B − A</th></tr></thead>
+                <tbody>
+                @foreach (var row in rows)
+                {
+                    <tr><td>@row.Name</td><td>@(row.Percent ? Model.Percent(row.A) : Model.Number(row.A))</td><td>@(row.Percent ? Model.Percent(row.B) : Model.Number(row.B))</td><td class="@(Math.Abs(row.B - row.A) > 0.0001f ? "highlight" : string.Empty)">@(row.Percent ? Model.Percent(row.B - row.A) : Model.Number(row.B - row.A))</td></tr>
+                }
+                </tbody>
+            </table>
+            <h3>Смертность по этапам</h3>
+            <table class="table compact">
+                <thead><tr><th>Этап</th><th>A</th><th>B</th></tr></thead>
+                <tbody>
+                @for (int i = 0; i < Math.Max(a.Stages.Count, b.Stages.Count); i++)
+                {
+                    var stageA = i < a.Stages.Count ? a.Stages[i] : null;
+                    var stageB = i < b.Stages.Count ? b.Stages[i] : null;
+                    <tr><td>@(i + 1)</td><td>@(stageA == null ? "—" : Model.Percent(stageA.DeathRate) + " из " + stageA.Reached)</td><td>@(stageB == null ? "—" : Model.Percent(stageB.DeathRate) + " из " + stageB.Reached)</td></tr>
+                }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+@if (Model.Sweep != null)
+{
+    var sweep = Model.Sweep;
+    var isLevel = sweep.Kind == "level";
+    Func<Server.Admin.Backend.Models.BalanceSweepPointModel, float> rate = isLevel ? p => p.CompletionRate : p => p.WinRate;
+    <section class="card">
+        <h2>Перебор · @sweep.Axis.Sheet / @sweep.Axis.Row / @sweep.Axis.Column</h2>
+        <svg viewBox="-40 -10 680 250" width="100%" height="260" role="img" aria-label="график перебора">
+            <line x1="0" y1="200" x2="600" y2="200" stroke="currentColor" stroke-opacity="0.4"></line>
+            <line x1="0" y1="0" x2="0" y2="200" stroke="currentColor" stroke-opacity="0.4"></line>
+            <line x1="0" y1="100" x2="600" y2="100" stroke="currentColor" stroke-opacity="0.15"></line>
+            <polyline points="@Model.ChartPoints(rate, 1f, 600, 200)" fill="none" stroke="#3b82f6" stroke-width="2.5"></polyline>
+            @Html.Raw(Model.ChartLabels(600, 200))
+        </svg>
+        <p class="muted">Линия — @(isLevel ? "доля прошедших уровень" : "процент побед") по значению ячейки.</p>
+        <table class="table compact">
+            <thead>
+                <tr>
+                    <th>@sweep.Axis.Column</th>
+                    @if (isLevel)
+                    {
+                        <th>прошли уровень</th><th>этапов в среднем</th><th>уровень опыта</th>
+                    }
+                    else
+                    {
+                        <th>побед</th><th>ходов в среднем</th><th>ХП после победы</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var point in sweep.Points)
+            {
+                <tr>
+                    <td>@point.Value</td>
+                    @if (point.Error.Length != 0)
+                    {
+                        <td colspan="3" class="error">@point.Error</td>
+                    }
+                    else if (isLevel)
+                    {
+                        <td>@Model.Percent(point.CompletionRate)</td><td>@Model.Number(point.StagesClearedAverage)</td><td>@Model.Number(point.ExperienceLevelAverage)</td>
+                    }
+                    else
+                    {
+                        <td>@Model.Percent(point.WinRate)</td><td>@Model.Number(point.TurnsAverage)</td><td>@Model.Number(point.HeroHealthOnWin)</td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+    </section>
+}
+@if (Model.History.Count != 0)
+{
+    <section class="card">
+        <h2>История прогонов</h2>
+        <table class="table compact">
+            <thead><tr><th>Когда (UTC)</th><th>Кто</th><th>Что</th><th>Версия</th><th>Правок</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var run in Model.History)
+            {
+                <tr>
+                    <td>@run.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@run.Actor</td>
+                    <td>@run.Summary</td>
+                    <td><code>@run.ConfigVersion</code></td>
+                    <td>@run.Edits</td>
+                    <td>
+                        <form method="post" asp-page-handler="OpenHistory" class="inline">
+                            <input type="hidden" name="HistoryId" value="@run.Id">
+                            <button type="submit">В форму</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p class="muted">Серии, прогоны уровня, сравнения и переборы за последние 90 дней. «В форму» подставляет сетап того прогона; запустите его снова, чтобы увидеть результат.</p>
     </section>
 }

@@ -2,7 +2,7 @@
 
 Branch: master
 Created: 2026-10-19
-Status: этапы 1 и 2 готовы
+Status: этапы 1–3 готовы
 
 ## Settings
 

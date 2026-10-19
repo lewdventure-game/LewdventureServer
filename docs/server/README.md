@@ -18,7 +18,7 @@ GDD: [../gdd/README.md](../gdd/README.md).
 | [client-analytics.md](client-analytics.md) | для клиентской команды: какие события слать, как реализовать очередь, каталог событий, что важно для A/B |
 | [client-qa.md](client-qa.md) | для клиентской команды: показать `userId` и `correlationId`, заголовок версии клиента |
 | [qa-tools.md](qa-tools.md) | инструменты QA: тестовые аккаунты, поиск игрока, читы, сброс прогресса, admin API |
-| [balance-sandbox.md](balance-sandbox.md) | песочница баланса в админке: сетап игрока, характеристики по слоям, бой, серия боёв и прогон уровня на любой версии конфигов, admin API |
+| [balance-sandbox.md](balance-sandbox.md) | песочница баланса в админке: сетап игрока, характеристики по слоям, бой, серия боёв и прогон уровня на любой версии конфигов, черновые правки, сравнение A/B, перебор параметра, сценарии и история, admin API |
 | [analytics.md](analytics.md) | аналитика: формат событий для клиента, серверные события, хранение в ClickHouse, дашборд |
 
 Канон protocol: [`.ai-factory/specs/battle-simulation.md`](../../.ai-factory/specs/battle-simulation.md).

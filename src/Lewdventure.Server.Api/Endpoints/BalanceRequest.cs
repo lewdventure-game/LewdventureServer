@@ -6,6 +6,8 @@ namespace Server.Api.Endpoints
     {
         public string Version { get; set; } = string.Empty;
 
+        public List<BalanceConfigEdit> Edits { get; set; } = new();
+
         public BalanceSetup Setup { get; set; } = new();
 
         public BalanceTarget Target { get; set; } = new();
@@ -15,5 +17,7 @@ namespace Server.Api.Endpoints
         public int Battles { get; set; } = 200;
 
         public bool IncludeLog { get; set; } = true;
+
+        public string Scenario { get; set; } = string.Empty;
     }
 }

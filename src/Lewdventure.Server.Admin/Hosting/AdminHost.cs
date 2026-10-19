@@ -51,6 +51,7 @@ namespace Server.Admin.Hosting
             services.AddAuthorizationBuilder()
                 .AddPolicy(AdminRoles.AdminPolicy, policy => policy.RequireRole(AdminRoles.Admin));
 
+            services.AddMemoryCache();
             services.AddRazorPages(pages =>
             {
                 pages.Conventions.AuthorizeFolder("/");
