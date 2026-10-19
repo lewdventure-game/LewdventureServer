@@ -120,6 +120,13 @@ openssl rand -base64 48
 | --- | --- | --- |
 | `Cheats:Enabled` | `false` | читы QA в `/admin/qa/players/{userId}/cheats/*`; включено в Local, Development и Staging, в Production запрещено валидатором — сервер не стартует. Без флага эндпоинты читов не регистрируются. Подробно — [qa-tools.md](../server/qa-tools.md) |
 
+## Balance
+
+| Ключ | По умолчанию | Описание |
+| --- | --- | --- |
+| `Balance:Enabled` | `false` | песочница баланса `/admin/balance/*` (нужны `Admin:Enabled` и `Mongo:Enabled`); включено в Local, Development и Staging, в Production запрещено валидатором — сервер не стартует. Подробно — [balance-sandbox.md](../server/balance-sandbox.md) |
+| `Balance:MaxSeriesBattles` | `2000` | максимум боёв в одной серии, 1–100000 |
+
 ## QaDiagnostics
 
 | Ключ | По умолчанию | Описание |

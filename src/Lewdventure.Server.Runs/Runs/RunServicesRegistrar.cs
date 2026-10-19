@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Server.Balance;
 
 namespace Server.Runs
 {
@@ -6,6 +7,9 @@ namespace Server.Runs
     {
         public void Register(IServiceCollection services)
         {
+            services.AddSingleton<BalanceService>();
+            services.AddSingleton<BalanceSnapshotFactory>();
+            services.AddSingleton<BattleScriptAnalyzer>();
             services.AddSingleton<RunAnalytics>();
             services.AddSingleton<RunCheatEditor>();
             services.AddSingleton<RunCheatService>();

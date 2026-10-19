@@ -130,6 +130,7 @@ namespace Server.Api.Hosting
             new AdminPlayerEndpoints().Map(application);
             new AdminExperimentEndpoints().Map(application);
             new AdminQaEndpoints().Map(application);
+            new AdminBalanceEndpoints().Map(application);
             new AuthEndpoints().Map(application);
             new PlayerEndpoints().Map(application);
             new RunEndpoints().Map(application);

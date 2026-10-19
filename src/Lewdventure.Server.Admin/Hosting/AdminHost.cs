@@ -60,7 +60,7 @@ namespace Server.Admin.Hosting
 
             services.Configure<ForwardedHeadersOptions>(ConfigureForwardedHeaders);
             services.Configure<WebEncoderOptions>(encoder => encoder.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All));
-            services.AddHttpClient(GameAdminClient.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(20));
+            services.AddHttpClient(GameAdminClient.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(60));
             services.AddHttpClient(ClickHouseQueryClient.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(60));
 
             services.AddSingleton(TimeProvider.System);

@@ -1,0 +1,262 @@
+@page
+@model Server.Admin.Pages.Balance.IndexModel
+@{
+    ViewData["Title"] = "Баланс";
+    var items = Model.Catalog.Items;
+}
+<h1>Баланс · @Model.CurrentEnvironment</h1>
+<partial name="_Messages" model="Model" />
+<form method="post" class="card">
+    <h2>Игрок</h2>
+    <div class="inline">
+        <input name="LoadUserId" value="@Model.LoadUserId" placeholder="userId игрока, чтобы взять его сетап" class="wide">
+        <button type="submit" asp-page-handler="LoadPlayer">Взять у игрока</button>
+    </div>
+    <div class="grid">
+        <div>
+            <h3>Конфиги</h3>
+            <select name="Version">
+                <option value="" selected="@(Model.Version.Length == 0)">мастер (активная версия)</option>
+                @foreach (var version in Model.Versions)
+                {
+                    <option value="@version.Version" selected="@(version.Version == Model.Version)">@version.ShortVersion · @version.CreatedAt.ToString("yyyy-MM-dd HH:mm") · @version.CreatedBy@(version.IsActive ? " · активна" : string.Empty)</option>
+                }
+            </select>
+            <h3>Персонаж</h3>
+            <select name="CharacterId">
+                @foreach (var item in items.Characters)
+                {
+                    <option value="@item.Id" selected="@(item.Id == Model.CharacterId)">@item.Id · @item.Name (промоут до @item.MaxLevel)</option>
+                }
+            </select>
+            <label>Промоут <input type="number" name="PromoteLevel" value="@Model.PromoteLevel" min="1" class="narrow"></label>
+            <label>ХП забега <input type="number" name="CurrentHealth" value="@Model.Number(Model.CurrentHealth)" min="0" step="any" class="narrow" title="0 — полное здоровье"></label>
+        </div>
+        <div>
+            <h3>Саммоны</h3>
+            @for (int i = 0; i < Model.Summons.Count; i++)
+            {
+                var summon = Model.Summons[i];
+                <div class="inline">
+                    <select name="Summons[@i].Id">
+                        <option value="0">—</option>
+                        @foreach (var item in items.Summons)
+                        {
+                            <option value="@item.Id" selected="@(item.Id == summon.Id)">@item.Id · @item.Name · @item.Details</option>
+                        }
+                    </select>
+                    <input type="number" name="Summons[@i].Level" value="@summon.Level" min="1" title="уровень" class="narrow">
+                    <input type="number" name="Summons[@i].MasteryLevel" value="@summon.MasteryLevel" min="1" title="мастерство" class="narrow">
+                    @for (int skill = 0; skill < summon.SkillLevels.Count; skill++)
+                    {
+                        <input type="number" name="Summons[@i].SkillLevels[@skill]" value="@summon.SkillLevels[skill]" min="1" title="уровень скилла @(skill + 1)" class="narrow">
+                    }
+                </div>
+            }
+            <p class="muted">Уровень · мастерство · уровни скиллов (если взяты у игрока).</p>
+            <h3>Снаряжение</h3>
+            @for (int i = 0; i < Model.Equipment.Count; i++)
+            {
+                var equipment = Model.Equipment[i];
+                <div class="inline">
+                    <select name="Equipment[@i].ConfigId">
+                        <option value="0">—</option>
+                        @foreach (var item in items.Equipment)
+                        {
+                            <option value="@item.Id" selected="@(item.Id == equipment.ConfigId)">@item.Id · @item.Name · @item.Details</option>
+                        }
+                    </select>
+                    <input type="number" name="Equipment[@i].Level" value="@equipment.Level" min="1" title="уровень" class="narrow">
+                </div>
+            }
+        </div>
+        <div>
+            <h3>Бонусы и забег</h3>
+            <label>Бонусы аккаунта <input name="AccountBonusesText" value="@Model.AccountBonusesText" placeholder="id:кол-во, например 1:2, 7:10" class="wide"></label>
+            <label>Перки забега <input name="RunPerksText" value="@Model.RunPerksText" placeholder="id через запятую" class="wide"></label>
+            <label>Бонусы забега <input name="RunBonusesText" value="@Model.RunBonusesText" placeholder="id:кол-во:боёв, 0 — до конца" class="wide"></label>
+            <label>Статусы на бой <input name="RunStatusesText" value="@Model.RunStatusesText" placeholder="id через запятую" class="wide"></label>
+            <details>
+                <summary>Справочник</summary>
+                <p class="muted">Бонусы аккаунта (<code>permanent</code> / <code>if_equipped</code>):</p>
+                <ul class="plain">
+                    @foreach (var item in items.Bonuses)
+                    {
+                        <li>@item.Id · @item.Name · @item.Details</li>
+                    }
+                </ul>
+                <p class="muted">Бонусы забега:</p>
+                <ul class="plain">
+                    @foreach (var item in items.RunBonuses)
+                    {
+                        <li>@item.Id · @item.Name · @item.Details</li>
+                    }
+                </ul>
+                <p class="muted">Перки:</p>
+                <ul class="plain">
+                    @foreach (var item in items.Perks)
+                    {
+                        <li>@item.Id · @item.Name · @item.Details</li>
+                    }
+                </ul>
+                <p class="muted">Статусы:</p>
+                <ul class="plain">
+                    @foreach (var item in items.Statuses)
+                    {
+                        <li>@item.Id · @item.Name · @item.Details</li>
+                    }
+                </ul>
+            </details>
+        </div>
+    </div>
+    <h2>Бой</h2>
+    <div class="inline">
+        <select name="Fight">
+            @foreach (var level in Model.Catalog.StoryLevels)
+            {
+                <optgroup label="Уровень @level.Id · лимит @level.MaxBattleTurns ходов · мобы ХП ×@Model.Number(level.EnemiesHealthMultiplier), урон ×@Model.Number(level.EnemiesAttackMultiplier)">
+                    @for (int stageIndex = 0; stageIndex < level.Stages.Count; stageIndex++)
+                    {
+                        var stage = level.Stages[stageIndex];
+                        @foreach (var storyEvent in stage.Events)
+                        {
+                            if (storyEvent.EnemyIds.Count == 0)
+                                continue;
+                            var value = Model.FightValue(level.Id, stage.Id, storyEvent.Id);
+                            <option value="@value" selected="@(value == Model.Fight)">этап @(stageIndex + 1) (id @stage.Id@(stage.IsBoss ? ", босс" : string.Empty), ×@Model.Number(stage.EnemyStatsMultiplier)) · событие @storyEvent.Id · враги @string.Join(", ", storyEvent.EnemyIds)</option>
+                        }
+                    }
+                </optgroup>
+            }
+        </select>
+        <input name="EnemiesText" value="@Model.EnemiesText" placeholder="свои враги: 10101, 10102" title="если заполнено — вместо врагов события; уровень и этап остаются для множителей">
+    </div>
+    <div class="inline">
+        <label>Сид <input type="number" name="Seed" value="@Model.Seed" min="0" class="narrow"></label>
+        <label>Боёв в серии <input type="number" name="Battles" value="@Model.Battles" min="1" class="narrow"></label>
+    </div>
+    <div class="actions">
+        <button type="submit" asp-page-handler="Characteristics">Характеристики</button>
+        <button type="submit" asp-page-handler="Battle" class="primary">Один бой</button>
+        <button type="submit" asp-page-handler="Series" class="primary">Серия боёв</button>
+    </div>
+    <p class="muted">Бой считает то же ядро, что игру, на выбранной версии конфигов; профиль и забеги игроков не меняются. Одинаковые сетап, версия и сид дают одинаковый бой. Серия — сиды подряд, начиная с указанного.</p>
+</form>
+@if (Model.Layers.Count != 0)
+{
+    var stats = new (string Name, Func<Server.Admin.Backend.Models.PlayerCharacteristicsModel, float> Read)[]
+    {
+        ("МАКС.ХП", c => c.MaxHealth),
+        ("ДМГ", c => c.Damage),
+        ("АТК_МН", c => c.AttackMultiplier),
+        ("БРОНЯ", c => c.Armor),
+        ("ЗАЩИТА", c => c.Defence),
+        ("УКЛОНЕНИЕ", c => c.Evasion),
+        ("КРИТ шанс", c => c.CriticalChance),
+        ("КРИТ_МН", c => c.CriticalMultiplier),
+        ("КОМБО 1 шанс", c => c.Combo1Chance),
+        ("КОМБО_1_МН", c => c.ComboMultiplier),
+        ("КОМБО 2 шанс", c => c.Combo2Chance),
+        ("КОМБО_2_МН", c => c.Combo2Multiplier),
+        ("КОНТР шанс", c => c.CounterChance),
+        ("КОНТР_МН", c => c.CounterMultiplier),
+        ("СПЕЛЛ_МН", c => c.SkillMultiplier),
+        ("Энергия за атаку", c => c.EnergyGain),
+        ("Энергия макс", c => c.MaxEnergy),
+        ("ВАМПИРИЗМ", c => c.Vampyrism),
+        ("УВЕЛИЧЕНИЕ_ЛЕЧЕНИЯ", c => c.HealingBoost),
+    };
+    <section class="card">
+        <h2>Характеристики по слоям</h2>
+        <table class="table compact">
+            <thead><tr><th></th>@foreach (var layer in Model.Layers) { <th>@layer.Name</th> }</tr></thead>
+            <tbody>
+            @foreach (var stat in stats)
+            {
+                <tr>
+                    <td>@stat.Name</td>
+                    @for (int i = 0; i < Model.Layers.Count; i++)
+                    {
+                        var value = stat.Read(Model.Layers[i].Characteristics);
+                        var changed = 0 < i && Math.Abs(value - stat.Read(Model.Layers[i - 1].Characteristics)) > 0.0001f;
+                        <td class="@(changed ? "highlight" : string.Empty)">@Model.Number(value)</td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p class="muted">Каждый столбец добавляет к предыдущему следующий источник; подсвечено то, что он изменил. Множители уровня и этапа на героя не действуют.</p>
+    </section>
+}
+@if (Model.Battle != null)
+{
+    var battle = Model.Battle;
+    <section class="card">
+        <h2>Бой · сид @battle.Seed · @(battle.IsWin ? "победа" : "поражение")</h2>
+        <dl class="facts">
+            <dt>Исход</dt><dd>@battle.Outcome, ходов @battle.Turns, шагов @battle.Steps</dd>
+            <dt>ХП героя</dt><dd>@Model.Number(battle.HeroHealthStart) → @Model.Number(battle.HeroHealthEnd)</dd>
+            <dt>Нанесено</dt><dd>@Model.Number(battle.DamageDealt), в ход @Model.Number(battle.Turns == 0 ? 0 : battle.DamageDealt / battle.Turns), критов @battle.CriticalHits, промахов @battle.Misses</dd>
+            <dt>Получено</dt><dd>@Model.Number(battle.DamageTaken), лечение @Model.Number(battle.Healing)</dd>
+        </dl>
+        <table class="table compact">
+            <thead><tr><th>Источник урона</th><th>Урон</th><th>Доля</th></tr></thead>
+            <tbody>
+            @foreach (var pair in battle.DamageBySource)
+            {
+                <tr><td>@pair.Key</td><td>@Model.Number(pair.Value)</td><td>@Model.Percent(battle.DamageDealt <= 0 ? 0 : pair.Value / battle.DamageDealt)</td></tr>
+            }
+            </tbody>
+        </table>
+        <details>
+            <summary>Пошаговый лог (@battle.Log.Count)</summary>
+            <table class="table compact">
+                <thead><tr><th>Ход</th><th>Фаза</th><th>Что</th></tr></thead>
+                <tbody>
+                @foreach (var entry in battle.Log)
+                {
+                    <tr><td>@entry.Turn</td><td>@entry.Phase</td><td>@entry.Text</td></tr>
+                }
+                </tbody>
+            </table>
+        </details>
+    </section>
+}
+@if (Model.Series != null)
+{
+    var series = Model.Series;
+    var rows = new (string Name, Server.Admin.Backend.Models.BalanceDistributionModel Value)[]
+    {
+        ("Ходов", series.Turns),
+        ("Ходов в победах", series.TurnsOnWin),
+        ("ХП героя после победы", series.HeroHealthEndOnWin),
+        ("Урон в ход", series.DamagePerTurn),
+        ("Получено урона", series.DamageTaken),
+    };
+    <section class="card">
+        <h2>Серия · @series.Battles боёв с сида @series.FirstSeed</h2>
+        <p><strong>Победы: @series.Wins из @series.Battles (@Model.Percent(series.WinRate))</strong> · критов в бою @Model.Number(series.CriticalHitsPerBattle) · промахов @Model.Number(series.MissesPerBattle)</p>
+        <table class="table compact">
+            <thead><tr><th></th><th>боёв</th><th>мин</th><th>среднее</th><th>медиана</th><th>p90</th><th>макс</th></tr></thead>
+            <tbody>
+            @foreach (var row in rows)
+            {
+                <tr><td>@row.Name</td><td>@row.Value.Count</td><td>@Model.Number(row.Value.Min)</td><td>@Model.Number(row.Value.Average)</td><td>@Model.Number(row.Value.Median)</td><td>@Model.Number(row.Value.P90)</td><td>@Model.Number(row.Value.Max)</td></tr>
+            }
+            </tbody>
+        </table>
+        <table class="table compact">
+            <thead><tr><th>Источник урона</th><th>Доля</th></tr></thead>
+            <tbody>
+            @foreach (var pair in series.DamageShareBySource)
+            {
+                <tr><td>@pair.Key</td><td>@Model.Percent(pair.Value)</td></tr>
+            }
+            </tbody>
+        </table>
+        @if (series.LossSeeds.Count != 0)
+        {
+            <p class="muted">Сиды поражений (до 20): @string.Join(", ", series.LossSeeds). Поставьте сид и нажмите «Один бой», чтобы посмотреть бой пошагово.</p>
+        }
+    </section>
+}

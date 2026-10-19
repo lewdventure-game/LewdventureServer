@@ -79,6 +79,13 @@ namespace Server.Api.Composition
 
             services.AddSingleton<IValidateOptions<CheatOptions>, CheatOptionsValidator>();
 
+            services.AddOptions<BalanceOptions>()
+                .Bind(_configuration.GetSection(BalanceOptions.SectionName))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
+            services.AddSingleton<IValidateOptions<BalanceOptions>, BalanceOptionsValidator>();
+
             services.AddOptions<QaDiagnosticsOptions>()
                 .Bind(_configuration.GetSection(QaDiagnosticsOptions.SectionName))
                 .ValidateDataAnnotations()
@@ -146,6 +153,7 @@ namespace Server.Api.Composition
             new ExperimentStoreRegistrar().Register(services);
             new RunServicesRegistrar().Register(services);
 
+            services.AddSingleton<BalanceCatalogFactory>();
             services.AddSingleton<CheatCatalogFactory>();
             services.AddSingleton<QaResponseFactory>();
             services.AddHostedService<ExperimentRegistryWatcher>();
