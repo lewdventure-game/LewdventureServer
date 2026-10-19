@@ -17,5 +17,6 @@ namespace Server.Infrastructure.Mongo
         public const string QaServerErrors = "qa_server_errors";
         public const string BalanceScenarios = "balance_scenarios";
         public const string BalanceRuns = "balance_runs";
+        public const string BalanceJobs = "balance_jobs";
     }
 }

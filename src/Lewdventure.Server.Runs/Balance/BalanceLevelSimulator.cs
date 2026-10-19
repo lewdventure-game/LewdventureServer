@@ -56,6 +56,20 @@ namespace Server.Balance
             IConfigDistributor configDistributor,
             CancellationToken cancellationToken)
         {
+            return await RunAsync(setup, storyLevelId, firstSeed, runs, policy, configVersion, configDistributor, new BalanceSilentProgress(), cancellationToken);
+        }
+
+        public async Task<BalanceLevelRun> RunAsync(
+            BalanceSetup setup,
+            int storyLevelId,
+            long firstSeed,
+            int runs,
+            BalanceLevelPolicy policy,
+            string configVersion,
+            IConfigDistributor configDistributor,
+            IBalanceProgress progress,
+            CancellationToken cancellationToken)
+        {
             if (configDistributor.StoryLevels.TryGet(storyLevelId, out var level) == false)
                 return new BalanceLevelRun(null, $"Story level {storyLevelId} is missing in configs.");
 
@@ -83,6 +97,8 @@ namespace Server.Balance
 
                 if (error.Length != 0)
                     return new BalanceLevelRun(null, $"Seed {seed}: {error}");
+
+                progress.Report(i + 1, runs);
             }
 
             return new BalanceLevelRun(CreateResult(storyLevelId, firstSeed, runs, tally), string.Empty);

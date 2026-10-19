@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
+using Server.Api.Balance;
 using Server.Api.Options;
 using Server.Api.Security;
 using Server.Balance;
@@ -21,8 +23,6 @@ namespace Server.Api.Endpoints
         private const int MaxScenarioNameLength = 80;
         private const int MaxScenarioPayloadLength = 65536;
         private const string BusyError = "Another balance run is in progress, try again in a moment.";
-
-        private readonly SemaphoreSlim _heavyGate = new(1, 1);
 
         private BalanceOptions _options = new();
 
@@ -44,6 +44,7 @@ namespace Server.Api.Endpoints
 
             group.MapGet("/versions", ListVersionsAsync);
             group.MapGet("/catalog", GetCatalogAsync);
+            group.MapGet("/progress", FindProgressAsync);
             group.MapPost("/characteristics", BuildCharacteristicsAsync);
             group.MapPost("/battle", RunBattleAsync);
             group.MapPost("/series", RunSeriesAsync);
@@ -56,6 +57,8 @@ namespace Server.Api.Endpoints
             group.MapDelete("/scenarios/{scenarioId}", DeleteScenarioAsync);
             group.MapGet("/history", ListHistoryAsync);
             group.MapGet("/history/{runId}", GetHistoryAsync);
+            group.MapPost("/jobs", CreateJobAsync);
+            group.MapGet("/jobs/{jobId}", GetJobAsync);
         }
 
         private async Task<IResult> ListVersionsAsync(
@@ -99,24 +102,42 @@ namespace Server.Api.Endpoints
             return Results.Ok(balanceCatalogFactory.Create(configSet.Version, configSet.Distributor));
         }
 
+        private async Task<IResult> FindProgressAsync(
+            HttpContext httpContext,
+            [FromQuery] int? storyLevelId,
+            [FromQuery] string? version,
+            [FromServices] BalanceProgressService balanceProgressService,
+            [FromServices] BalanceRunExecutor balanceRunExecutor)
+        {
+            var configSet = await balanceRunExecutor.ResolveAsync(version, httpContext.RequestAborted);
+
+            if (configSet == null)
+                return VersionMissing(version);
+
+            var levelId = storyLevelId ?? 0;
+
+            if (configSet.Distributor.StoryLevels.TryGet(levelId, out _) == false)
+                return Results.BadRequest(new { error = $"Story level {levelId} is missing in configs." });
+
+            return Results.Ok(await balanceProgressService.FindTypicalAsync(levelId, configSet.Distributor, httpContext.RequestAborted));
+        }
+
         private async Task<IResult> BuildCharacteristicsAsync(
             HttpContext httpContext,
             [FromBody] BalanceRequest? request,
             [FromServices] BalanceService balanceService,
-            [FromServices] BalanceConfigDrafts balanceConfigDrafts,
-            [FromServices] GameConfigSetCache gameConfigSetCache,
-            [FromServices] IGameConfigSetProvider gameConfigSetProvider,
+            [FromServices] BalanceRunExecutor balanceRunExecutor,
             [FromServices] PlayerCharacteristicsResponseFactory playerCharacteristicsResponseFactory)
         {
             if (request == null)
                 return BodyMissing();
 
-            var resolution = await ResolveDraftAsync(request.Version, request.Edits, balanceConfigDrafts, gameConfigSetCache, gameConfigSetProvider, httpContext.RequestAborted);
+            var resolution = await balanceRunExecutor.ResolveDraftAsync(request.Version, request.Edits, httpContext.RequestAborted);
 
-            if (resolution.Failure != null)
-                return resolution.Failure;
+            if (resolution.Draft == null)
+                return Failure(resolution.Failure!);
 
-            if (balanceService.TryBuildCharacteristics(request.Setup, request.Target, resolution.Draft!.Distributor!, out var layers, out var error) == false)
+            if (balanceService.TryBuildCharacteristics(request.Setup, request.Target, resolution.Draft.Distributor!, out var layers, out var error) == false)
                 return Results.BadRequest(new { error });
 
             var response = new List<BalanceCharacteristicsLayerResponse>(layers.Count);
@@ -131,19 +152,17 @@ namespace Server.Api.Endpoints
             HttpContext httpContext,
             [FromBody] BalanceRequest? request,
             [FromServices] BalanceService balanceService,
-            [FromServices] BalanceConfigDrafts balanceConfigDrafts,
-            [FromServices] GameConfigSetCache gameConfigSetCache,
-            [FromServices] IGameConfigSetProvider gameConfigSetProvider)
+            [FromServices] BalanceRunExecutor balanceRunExecutor)
         {
             if (request == null)
                 return BodyMissing();
 
-            var resolution = await ResolveDraftAsync(request.Version, request.Edits, balanceConfigDrafts, gameConfigSetCache, gameConfigSetProvider, httpContext.RequestAborted);
+            var resolution = await balanceRunExecutor.ResolveDraftAsync(request.Version, request.Edits, httpContext.RequestAborted);
 
-            if (resolution.Failure != null)
-                return resolution.Failure;
+            if (resolution.Draft == null)
+                return Failure(resolution.Failure!);
 
-            if (balanceService.TryRunBattle(request.Setup, request.Target, request.Seed, request.IncludeLog, resolution.Draft!.Distributor!, out var result, out var error) == false)
+            if (balanceService.TryRunBattle(request.Setup, request.Target, request.Seed, request.IncludeLog, resolution.Draft.Distributor!, out var result, out var error) == false)
                 return Results.BadRequest(new { error });
 
             return Results.Ok(result);
@@ -152,307 +171,169 @@ namespace Server.Api.Endpoints
         private async Task<IResult> RunSeriesAsync(
             HttpContext httpContext,
             [FromBody] BalanceRequest? request,
-            [FromServices] BalanceService balanceService,
-            [FromServices] BalanceConfigDrafts balanceConfigDrafts,
+            [FromServices] BalanceRunExecutor balanceRunExecutor,
+            [FromServices] BalanceRunGate balanceRunGate,
             [FromServices] BalanceHistoryRecorder balanceHistoryRecorder,
-            [FromServices] GameConfigSetCache gameConfigSetCache,
-            [FromServices] IGameConfigSetProvider gameConfigSetProvider,
             [FromServices] ILogger<AdminBalanceEndpoints> logger)
         {
             if (request == null)
                 return BodyMissing();
 
-            if (request.Battles < 1 || _options.MaxSeriesBattles < request.Battles)
-                return Results.BadRequest(new { error = $"Battles must be from 1 to {_options.MaxSeriesBattles}." });
-
-            if (MaxScenarioPayloadLength < request.Scenario.Length)
-                return ScenarioTooLarge();
-
-            var resolution = await ResolveDraftAsync(request.Version, request.Edits, balanceConfigDrafts, gameConfigSetCache, gameConfigSetProvider, httpContext.RequestAborted);
-
-            if (resolution.Failure != null)
-                return resolution.Failure;
-
-            var actor = ReadActor(httpContext);
-            var draft = resolution.Draft!;
-
-            if (await _heavyGate.WaitAsync(0, httpContext.RequestAborted) == false)
-                return Busy(logger, actor, "series");
-
-            try
-            {
-                var stopwatch = Stopwatch.StartNew();
-
-                if (balanceService.TryRunSeries(request.Setup, request.Target, request.Seed, request.Battles, draft.Distributor!, httpContext.RequestAborted, out var series, out var error) == false)
-                {
-                    logger.LogWarning("[Balance] series rejected actor = {Actor} version = {Version} error = {Error}", actor, draft.Version, error);
-
-                    return Results.BadRequest(new { error });
-                }
-
-                logger.LogInformation(
-                    "[Balance] series actor = {Actor} version = {Version} edits = {Edits} character = {CharacterId} level = {StoryLevelId} stage = {StageId} event = {EventId} battles = {Battles} wins = {Wins} elapsedMs = {ElapsedMs}",
-                    actor,
-                    draft.Version,
-                    request.Edits.Count,
-                    request.Setup.CharacterId,
-                    request.Target.StoryLevelId,
-                    request.Target.StageId,
-                    request.Target.EventId,
-                    series.Battles,
-                    series.Wins,
-                    stopwatch.ElapsedMilliseconds);
-
-                await balanceHistoryRecorder.RecordAsync(actor, BalanceSweepRunner.SeriesKind, draft.Version, request.Edits.Count, DescribeSeries(series), request.Scenario, httpContext.RequestAborted);
-
-                return Results.Ok(series);
-            }
-            finally
-            {
-                _heavyGate.Release();
-            }
+            return await RunHeavyAsync(httpContext, BalanceRunKinds.Series, balanceRunExecutor.ValidateSeries(request), (progress, token) => balanceRunExecutor.RunSeriesAsync(request, progress, token), balanceRunGate, balanceHistoryRecorder, logger);
         }
 
         private async Task<IResult> RunLevelAsync(
             HttpContext httpContext,
             [FromBody] BalanceLevelRequest? request,
-            [FromServices] BalanceLevelSimulator balanceLevelSimulator,
-            [FromServices] BalanceConfigDrafts balanceConfigDrafts,
+            [FromServices] BalanceRunExecutor balanceRunExecutor,
+            [FromServices] BalanceRunGate balanceRunGate,
             [FromServices] BalanceHistoryRecorder balanceHistoryRecorder,
-            [FromServices] GameConfigSetCache gameConfigSetCache,
-            [FromServices] IGameConfigSetProvider gameConfigSetProvider,
             [FromServices] ILogger<AdminBalanceEndpoints> logger)
         {
             if (request == null)
                 return BodyMissing();
 
-            if (request.Runs < 1 || _options.MaxLevelRuns < request.Runs)
-                return Results.BadRequest(new { error = $"Runs must be from 1 to {_options.MaxLevelRuns}." });
-
-            if (MaxScenarioPayloadLength < request.Scenario.Length)
-                return ScenarioTooLarge();
-
-            if (TryReadPolicy(request.PerkPolicy, request.PerkPriority, request.ForkPolicy, out var policy, out var policyError) == false)
-                return Results.BadRequest(new { error = policyError });
-
-            var resolution = await ResolveDraftAsync(request.Version, request.Edits, balanceConfigDrafts, gameConfigSetCache, gameConfigSetProvider, httpContext.RequestAborted);
-
-            if (resolution.Failure != null)
-                return resolution.Failure;
-
-            var actor = ReadActor(httpContext);
-            var draft = resolution.Draft!;
-
-            if (await _heavyGate.WaitAsync(0, httpContext.RequestAborted) == false)
-                return Busy(logger, actor, "level");
-
-            try
-            {
-                var stopwatch = Stopwatch.StartNew();
-                var levelRun = await balanceLevelSimulator.RunAsync(request.Setup, request.StoryLevelId, request.Seed, request.Runs, policy, draft.Version, draft.Distributor!, httpContext.RequestAborted);
-
-                if (levelRun.Result == null)
-                {
-                    logger.LogWarning("[Balance] level rejected actor = {Actor} version = {Version} error = {Error}", actor, draft.Version, levelRun.Error);
-
-                    return Results.BadRequest(new { error = levelRun.Error });
-                }
-
-                logger.LogInformation(
-                    "[Balance] level actor = {Actor} version = {Version} edits = {Edits} character = {CharacterId} level = {StoryLevelId} runs = {Runs} completed = {Completed} perkPolicy = {PerkPolicy} forkPolicy = {ForkPolicy} elapsedMs = {ElapsedMs}",
-                    actor,
-                    draft.Version,
-                    request.Edits.Count,
-                    request.Setup.CharacterId,
-                    request.StoryLevelId,
-                    levelRun.Result.Runs,
-                    levelRun.Result.Completed,
-                    policy.PerkPolicy,
-                    policy.ForkPolicy,
-                    stopwatch.ElapsedMilliseconds);
-
-                await balanceHistoryRecorder.RecordAsync(actor, BalanceSweepRunner.LevelKind, draft.Version, request.Edits.Count, DescribeLevel(levelRun.Result), request.Scenario, httpContext.RequestAborted);
-
-                return Results.Ok(levelRun.Result);
-            }
-            finally
-            {
-                _heavyGate.Release();
-            }
+            return await RunHeavyAsync(httpContext, BalanceRunKinds.Level, balanceRunExecutor.ValidateLevel(request), (progress, token) => balanceRunExecutor.RunLevelAsync(request, progress, token), balanceRunGate, balanceHistoryRecorder, logger);
         }
 
         private async Task<IResult> CompareAsync(
             HttpContext httpContext,
             [FromBody] BalanceCompareRequest? request,
-            [FromServices] BalanceService balanceService,
-            [FromServices] BalanceLevelSimulator balanceLevelSimulator,
-            [FromServices] BalanceConfigDrafts balanceConfigDrafts,
+            [FromServices] BalanceRunExecutor balanceRunExecutor,
+            [FromServices] BalanceRunGate balanceRunGate,
             [FromServices] BalanceHistoryRecorder balanceHistoryRecorder,
-            [FromServices] GameConfigSetCache gameConfigSetCache,
-            [FromServices] IGameConfigSetProvider gameConfigSetProvider,
             [FromServices] ILogger<AdminBalanceEndpoints> logger)
         {
             if (request == null)
                 return BodyMissing();
 
-            var isLevel = string.Equals(request.Kind, BalanceSweepRunner.LevelKind, StringComparison.OrdinalIgnoreCase);
-
-            if (isLevel == false && string.Equals(request.Kind, BalanceSweepRunner.SeriesKind, StringComparison.OrdinalIgnoreCase) == false)
-                return UnknownKind(request.Kind);
-
-            if (isLevel && (request.Runs < 1 || _options.MaxLevelRuns < request.Runs))
-                return Results.BadRequest(new { error = $"Runs must be from 1 to {_options.MaxLevelRuns}." });
-
-            if (isLevel == false && (request.Battles < 1 || _options.MaxSeriesBattles < request.Battles))
-                return Results.BadRequest(new { error = $"Battles must be from 1 to {_options.MaxSeriesBattles}." });
-
-            if (MaxScenarioPayloadLength < request.Scenario.Length)
-                return ScenarioTooLarge();
-
-            if (TryReadPolicy(request.PerkPolicy, request.PerkPriority, request.ForkPolicy, out var policy, out var policyError) == false)
-                return Results.BadRequest(new { error = policyError });
-
-            var resolutionA = await ResolveDraftAsync(request.A.Version, request.A.Edits, balanceConfigDrafts, gameConfigSetCache, gameConfigSetProvider, httpContext.RequestAborted);
-
-            if (resolutionA.Failure != null)
-                return resolutionA.Failure;
-
-            var resolutionB = await ResolveDraftAsync(request.B.Version, request.B.Edits, balanceConfigDrafts, gameConfigSetCache, gameConfigSetProvider, httpContext.RequestAborted);
-
-            if (resolutionB.Failure != null)
-                return resolutionB.Failure;
-
-            var actor = ReadActor(httpContext);
-            var draftA = resolutionA.Draft!;
-            var draftB = resolutionB.Draft!;
-            var response = new BalanceCompareResponse { Kind = isLevel ? BalanceSweepRunner.LevelKind : BalanceSweepRunner.SeriesKind, VersionA = draftA.Version, VersionB = draftB.Version };
-
-            if (await _heavyGate.WaitAsync(0, httpContext.RequestAborted) == false)
-                return Busy(logger, actor, "compare");
-
-            try
-            {
-                var stopwatch = Stopwatch.StartNew();
-                string summary;
-
-                if (isLevel)
-                {
-                    var levelA = await balanceLevelSimulator.RunAsync(request.A.Setup, request.StoryLevelId, request.Seed, request.Runs, policy, draftA.Version, draftA.Distributor!, httpContext.RequestAborted);
-
-                    if (levelA.Result == null)
-                        return Results.BadRequest(new { error = "A: " + levelA.Error });
-
-                    var levelB = await balanceLevelSimulator.RunAsync(request.B.Setup, request.StoryLevelId, request.Seed, request.Runs, policy, draftB.Version, draftB.Distributor!, httpContext.RequestAborted);
-
-                    if (levelB.Result == null)
-                        return Results.BadRequest(new { error = "B: " + levelB.Error });
-
-                    response.LevelA = levelA.Result;
-                    response.LevelB = levelB.Result;
-                    summary = $"сравнение уровня {request.StoryLevelId} x{request.Runs}: A {Percent(levelA.Result.CompletionRate)} / B {Percent(levelB.Result.CompletionRate)}";
-                }
-                else
-                {
-                    if (balanceService.TryRunSeries(request.A.Setup, request.Target, (ulong)request.Seed, request.Battles, draftA.Distributor!, httpContext.RequestAborted, out var seriesA, out var errorA) == false)
-                        return Results.BadRequest(new { error = "A: " + errorA });
-
-                    if (balanceService.TryRunSeries(request.B.Setup, request.Target, (ulong)request.Seed, request.Battles, draftB.Distributor!, httpContext.RequestAborted, out var seriesB, out var errorB) == false)
-                        return Results.BadRequest(new { error = "B: " + errorB });
-
-                    response.SeriesA = seriesA;
-                    response.SeriesB = seriesB;
-                    summary = $"сравнение серий x{request.Battles}: A {Percent(seriesA.WinRate)} / B {Percent(seriesB.WinRate)}";
-                }
-
-                logger.LogInformation(
-                    "[Balance] compare actor = {Actor} kind = {Kind} versionA = {VersionA} versionB = {VersionB} editsA = {EditsA} editsB = {EditsB} elapsedMs = {ElapsedMs}",
-                    actor,
-                    response.Kind,
-                    draftA.Version,
-                    draftB.Version,
-                    request.A.Edits.Count,
-                    request.B.Edits.Count,
-                    stopwatch.ElapsedMilliseconds);
-
-                await balanceHistoryRecorder.RecordAsync(actor, "compare", draftA.Version + " | " + draftB.Version, request.A.Edits.Count + request.B.Edits.Count, summary, request.Scenario, httpContext.RequestAborted);
-
-                return Results.Ok(response);
-            }
-            finally
-            {
-                _heavyGate.Release();
-            }
+            return await RunHeavyAsync(httpContext, BalanceRunKinds.Compare, balanceRunExecutor.ValidateCompare(request), (progress, token) => balanceRunExecutor.RunCompareAsync(request, progress, token), balanceRunGate, balanceHistoryRecorder, logger);
         }
 
         private async Task<IResult> SweepAsync(
             HttpContext httpContext,
             [FromBody] BalanceSweepRequest? request,
-            [FromServices] BalanceSweepRunner balanceSweepRunner,
+            [FromServices] BalanceRunExecutor balanceRunExecutor,
+            [FromServices] BalanceRunGate balanceRunGate,
             [FromServices] BalanceHistoryRecorder balanceHistoryRecorder,
-            [FromServices] GameConfigSetCache gameConfigSetCache,
-            [FromServices] IGameConfigSetProvider gameConfigSetProvider,
             [FromServices] ILogger<AdminBalanceEndpoints> logger)
         {
             if (request == null)
                 return BodyMissing();
 
-            var isLevel = string.Equals(request.Kind, BalanceSweepRunner.LevelKind, StringComparison.OrdinalIgnoreCase);
+            return await RunHeavyAsync(httpContext, BalanceRunKinds.Sweep, balanceRunExecutor.ValidateSweep(request), (progress, token) => balanceRunExecutor.RunSweepAsync(request, progress, token), balanceRunGate, balanceHistoryRecorder, logger);
+        }
 
-            if (isLevel == false && string.Equals(request.Kind, BalanceSweepRunner.SeriesKind, StringComparison.OrdinalIgnoreCase) == false)
-                return UnknownKind(request.Kind);
-
-            if (MaxScenarioPayloadLength < request.Scenario.Length)
-                return ScenarioTooLarge();
-
-            if (balanceSweepRunner.TryCreateValues(request.Axis, _options.MaxSweepPoints, out var values, out var axisError) == false)
-                return Results.BadRequest(new { error = axisError });
-
-            if (isLevel && (request.Runs < 1 || _options.MaxSweepRuns < request.Runs * values.Count))
-                return Results.BadRequest(new { error = $"Sweep runs ({values.Count} points x {request.Runs}) must be from 1 to {_options.MaxSweepRuns}." });
-
-            if (isLevel == false && (request.Battles < 1 || _options.MaxSweepBattles < request.Battles * values.Count))
-                return Results.BadRequest(new { error = $"Sweep battles ({values.Count} points x {request.Battles}) must be from 1 to {_options.MaxSweepBattles}." });
-
-            if (TryReadPolicy(request.PerkPolicy, request.PerkPriority, request.ForkPolicy, out var policy, out var policyError) == false)
-                return Results.BadRequest(new { error = policyError });
-
-            var configSet = await ResolveAsync(request.Version, gameConfigSetCache, gameConfigSetProvider, httpContext.RequestAborted);
-
-            if (configSet == null)
-                return VersionMissing(request.Version);
+        private async Task<IResult> RunHeavyAsync(
+            HttpContext httpContext,
+            string kind,
+            string validationError,
+            Func<IBalanceProgress, CancellationToken, Task<BalanceExecution>> run,
+            BalanceRunGate balanceRunGate,
+            BalanceHistoryRecorder balanceHistoryRecorder,
+            ILogger<AdminBalanceEndpoints> logger)
+        {
+            if (validationError.Length != 0)
+                return Results.BadRequest(new { error = validationError });
 
             var actor = ReadActor(httpContext);
 
-            if (await _heavyGate.WaitAsync(0, httpContext.RequestAborted) == false)
-                return Busy(logger, actor, "sweep");
+            if (await balanceRunGate.TryEnterAsync(httpContext.RequestAborted) == false)
+            {
+                logger.LogWarning("[Balance] {Kind} rejected busy actor = {Actor}", kind, actor);
+
+                return Results.Json(new { error = BusyError }, statusCode: StatusCodes.Status409Conflict);
+            }
 
             try
             {
                 var stopwatch = Stopwatch.StartNew();
-                var result = isLevel
-                    ? await balanceSweepRunner.RunLevelAsync(configSet, request.Edits, request.Axis, values, request.Setup, request.StoryLevelId, request.Seed, request.Runs, policy, httpContext.RequestAborted)
-                    : balanceSweepRunner.RunSeries(configSet, request.Edits, request.Axis, values, request.Setup, request.Target, (ulong)request.Seed, request.Battles, httpContext.RequestAborted);
+                var execution = await run(new BalanceSilentProgress(), httpContext.RequestAborted);
 
+                if (execution.Result == null)
+                {
+                    logger.LogWarning("[Balance] {Kind} rejected actor = {Actor} error = {Error}", kind, actor, execution.Error);
+
+                    return Results.Json(new { error = execution.Error }, statusCode: execution.StatusCode);
+                }
+
+                execution.Result.RunId = await balanceHistoryRecorder.RecordAsync(actor, kind, execution.ConfigVersion, execution.Edits, execution.Summary, execution.Scenario, httpContext.RequestAborted);
                 logger.LogInformation(
-                    "[Balance] sweep actor = {Actor} kind = {Kind} version = {Version} edits = {Edits} sheet = {Sheet} row = {Row} column = {Column} points = {Points} elapsedMs = {ElapsedMs}",
+                    "[Balance] {Kind} actor = {Actor} version = {Version} edits = {Edits} summary = {Summary} elapsedMs = {ElapsedMs}",
+                    kind,
                     actor,
-                    result.Kind,
-                    configSet.Version,
-                    request.Edits.Count,
-                    request.Axis.Sheet,
-                    request.Axis.Row,
-                    request.Axis.Column,
-                    result.Points.Count,
+                    execution.ConfigVersion,
+                    execution.Edits,
+                    execution.Summary,
                     stopwatch.ElapsedMilliseconds);
 
-                await balanceHistoryRecorder.RecordAsync(actor, "sweep", configSet.Version, request.Edits.Count, DescribeSweep(result), request.Scenario, httpContext.RequestAborted);
-
-                return Results.Ok(result);
+                return Results.Ok((object)execution.Result);
             }
             finally
             {
-                _heavyGate.Release();
+                balanceRunGate.Exit();
             }
+        }
+
+        private async Task<IResult> CreateJobAsync(
+            HttpContext httpContext,
+            [FromBody] BalanceJobRequest? request,
+            [FromServices] BalanceJobService balanceJobService,
+            [FromServices] ILogger<AdminBalanceEndpoints> logger)
+        {
+            if (request == null)
+                return BodyMissing();
+
+            if (_options.WorkerEnabled == false)
+                return Results.Json(new { error = "Balance worker is disabled, use the direct endpoints." }, statusCode: StatusCodes.Status409Conflict);
+
+            var actor = ReadActor(httpContext);
+            var creation = await balanceJobService.CreateAsync(request.Kind, request.Request, actor, httpContext.RequestAborted);
+
+            if (creation.JobId.Length == 0)
+            {
+                logger.LogWarning("[Balance] job rejected kind = {Kind} actor = {Actor} error = {Error}", request.Kind, actor, creation.Error);
+
+                return Results.Json(new { error = creation.Error }, statusCode: creation.StatusCode);
+            }
+
+            logger.LogInformation("[Balance] job queued job = {JobId} kind = {Kind} actor = {Actor}", creation.JobId, request.Kind, actor);
+
+            return Results.Accepted(ApiRoutes.AdminBalance + "/jobs/" + creation.JobId, new { id = creation.JobId, status = BalanceJobDocument.QueuedStatus });
+        }
+
+        private async Task<IResult> GetJobAsync(HttpContext httpContext, string jobId, [FromServices] BalanceJobRepository balanceJobRepository)
+        {
+            var document = await balanceJobRepository.GetAsync(jobId, httpContext.RequestAborted);
+
+            if (document == null)
+                return Results.NotFound(new { error = $"Balance job {jobId} is not found." });
+
+            var response = new BalanceJobResponse
+            {
+                Id = document.Id,
+                Kind = document.Kind,
+                Status = document.Status,
+                Actor = document.Actor,
+                Done = document.Done,
+                Total = document.Total,
+                Error = document.Error,
+                StatusCode = document.StatusCode,
+                RunId = document.RunId,
+                CreatedAt = document.CreatedAt,
+                StartedAt = document.StartedAt,
+                FinishedAt = document.FinishedAt,
+                Request = document.Request,
+            };
+
+            if (document.Result.Length != 0)
+            {
+                using var json = JsonDocument.Parse(document.Result);
+
+                response.Result = json.RootElement.Clone();
+            }
+
+            return Results.Ok(response);
         }
 
         private async Task<IResult> ListScenariosAsync(HttpContext httpContext, [FromServices] BalanceScenarioRepository balanceScenarioRepository)
@@ -579,84 +460,9 @@ namespace Server.Api.Endpoints
             };
         }
 
-        private bool TryReadPolicy(string perkPolicyText, List<int> perkPriority, string forkPolicyText, out BalanceLevelPolicy policy, out string error)
-        {
-            policy = new BalanceLevelPolicy { PerkPriority = new List<int>(perkPriority) };
-            error = string.Empty;
-
-            if (string.IsNullOrWhiteSpace(perkPolicyText) == false)
-            {
-                if (Enum.TryParse<BalancePerkPolicy>(perkPolicyText, true, out var perkPolicy) == false)
-                {
-                    error = $"Unknown perk policy {perkPolicyText}, use first, random or priority.";
-
-                    return false;
-                }
-
-                policy.PerkPolicy = perkPolicy;
-            }
-
-            if (string.IsNullOrWhiteSpace(forkPolicyText) == false)
-            {
-                if (Enum.TryParse<BalanceForkPolicy>(forkPolicyText, true, out var forkPolicy) == false)
-                {
-                    error = $"Unknown fork policy {forkPolicyText}, use firstButton, secondButton or random.";
-
-                    return false;
-                }
-
-                policy.ForkPolicy = forkPolicy;
-            }
-
-            return true;
-        }
-
-        private string DescribeSeries(BalanceSeriesResult series)
-        {
-            return $"серия x{series.Battles}: победы {series.Wins} ({Percent(series.WinRate)})";
-        }
-
-        private string DescribeLevel(BalanceLevelResult level)
-        {
-            return $"уровень {level.StoryLevelId} x{level.Runs}: прошли {level.Completed} ({Percent(level.CompletionRate)}), этапов в среднем {level.StagesCleared.Average.ToString("0.##", CultureInfo.InvariantCulture)}";
-        }
-
-        private string DescribeSweep(BalanceSweepResult result)
-        {
-            var axis = result.Axis;
-
-            return $"перебор {result.Kind} {axis.Sheet} / {axis.Row} / {axis.Column} от {axis.From.ToString(CultureInfo.InvariantCulture)} до {axis.To.ToString(CultureInfo.InvariantCulture)}: {result.Points.Count} точек";
-        }
-
-        private string Percent(float value)
-        {
-            return (value * 100f).ToString("0.#", CultureInfo.InvariantCulture) + " %";
-        }
-
         private string ReadActor(HttpContext httpContext)
         {
             return httpContext.RequestServices.GetRequiredService<AdminActorReader>().Read(httpContext);
-        }
-
-        private async Task<BalanceDraftResolution> ResolveDraftAsync(
-            string? version,
-            List<BalanceConfigEdit> edits,
-            BalanceConfigDrafts balanceConfigDrafts,
-            GameConfigSetCache gameConfigSetCache,
-            IGameConfigSetProvider gameConfigSetProvider,
-            CancellationToken cancellationToken)
-        {
-            var configSet = await ResolveAsync(version, gameConfigSetCache, gameConfigSetProvider, cancellationToken);
-
-            if (configSet == null)
-                return new BalanceDraftResolution(null, null, VersionMissing(version));
-
-            var draft = balanceConfigDrafts.Apply(configSet, edits ?? new List<BalanceConfigEdit>());
-
-            if (draft.Distributor == null)
-                return new BalanceDraftResolution(configSet, draft, Results.BadRequest(new { error = "Draft edits are invalid: " + string.Join("; ", draft.Errors) }));
-
-            return new BalanceDraftResolution(configSet, draft, null);
         }
 
         private async Task<GameConfigSet?> ResolveAsync(string? version, GameConfigSetCache gameConfigSetCache, IGameConfigSetProvider gameConfigSetProvider, CancellationToken cancellationToken)
@@ -667,26 +473,14 @@ namespace Server.Api.Endpoints
             return await gameConfigSetCache.GetAsync(version.Trim(), cancellationToken);
         }
 
-        private IResult Busy(ILogger<AdminBalanceEndpoints> logger, string actor, string kind)
+        private IResult Failure(BalanceExecution execution)
         {
-            logger.LogWarning("[Balance] {Kind} rejected busy actor = {Actor}", kind, actor);
-
-            return Results.Json(new { error = BusyError }, statusCode: StatusCodes.Status409Conflict);
+            return Results.Json(new { error = execution.Error }, statusCode: execution.StatusCode);
         }
 
         private IResult BodyMissing()
         {
             return Results.BadRequest(new { error = "Body is required." });
-        }
-
-        private IResult ScenarioTooLarge()
-        {
-            return Results.BadRequest(new { error = $"Scenario must be at most {MaxScenarioPayloadLength} characters." });
-        }
-
-        private IResult UnknownKind(string kind)
-        {
-            return Results.BadRequest(new { error = $"Unknown kind {kind}, use series or level." });
         }
 
         private IResult VersionMissing(string? version)

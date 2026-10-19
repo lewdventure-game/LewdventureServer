@@ -571,3 +571,10 @@ button.link {
 .account {
     max-width: 420px;
 }
+
+.csv-button {
+    float: right;
+    margin: 0 0 4px 8px;
+    padding: 2px 8px;
+    font-size: 12px;
+}

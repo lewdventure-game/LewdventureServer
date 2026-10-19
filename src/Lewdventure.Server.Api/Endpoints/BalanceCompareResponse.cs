@@ -2,7 +2,7 @@ using Server.Balance;
 
 namespace Server.Api.Endpoints
 {
-    internal sealed class BalanceCompareResponse
+    internal sealed class BalanceCompareResponse : IBalanceRunResult
     {
         public string Kind { get; set; } = string.Empty;
 
@@ -17,5 +17,7 @@ namespace Server.Api.Endpoints
         public BalanceLevelResult? LevelA { get; set; }
 
         public BalanceLevelResult? LevelB { get; set; }
+
+        public string RunId { get; set; } = string.Empty;
     }
 }

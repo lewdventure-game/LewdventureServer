@@ -71,9 +71,11 @@ namespace Server.Balance
             BalanceTarget target,
             ulong firstSeed,
             int battles,
+            IBalanceProgress progress,
             CancellationToken cancellationToken)
         {
             var result = new BalanceSweepResult { Kind = SeriesKind, Axis = axis };
+            var total = battles * values.Count;
 
             for (int i = 0; i < values.Count; i++)
             {
@@ -87,11 +89,12 @@ namespace Server.Balance
                 if (draft.Distributor == null)
                 {
                     point.Error = string.Join("; ", draft.Errors);
+                    progress.Report(battles * (i + 1), total);
 
                     continue;
                 }
 
-                if (_balanceService.TryRunSeries(setup, target, firstSeed, battles, draft.Distributor, cancellationToken, out var series, out var error) == false)
+                if (_balanceService.TryRunSeries(setup, target, firstSeed, battles, draft.Distributor, new BalanceOffsetProgress(progress, battles * i, total), cancellationToken, out var series, out var error) == false)
                 {
                     point.Error = error;
 
@@ -116,9 +119,11 @@ namespace Server.Balance
             long firstSeed,
             int runs,
             BalanceLevelPolicy policy,
+            IBalanceProgress progress,
             CancellationToken cancellationToken)
         {
             var result = new BalanceSweepResult { Kind = LevelKind, Axis = axis };
+            var total = runs * values.Count;
 
             for (int i = 0; i < values.Count; i++)
             {
@@ -132,11 +137,12 @@ namespace Server.Balance
                 if (draft.Distributor == null)
                 {
                     point.Error = string.Join("; ", draft.Errors);
+                    progress.Report(runs * (i + 1), total);
 
                     continue;
                 }
 
-                var levelRun = await _balanceLevelSimulator.RunAsync(setup, storyLevelId, firstSeed, runs, policy, draft.Version, draft.Distributor, cancellationToken);
+                var levelRun = await _balanceLevelSimulator.RunAsync(setup, storyLevelId, firstSeed, runs, policy, draft.Version, draft.Distributor, new BalanceOffsetProgress(progress, runs * i, total), cancellationToken);
 
                 if (levelRun.Result == null)
                 {

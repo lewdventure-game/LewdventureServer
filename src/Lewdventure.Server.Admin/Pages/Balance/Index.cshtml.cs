@@ -19,9 +19,15 @@ namespace Server.Admin.Pages.Balance
         private const int HistoryLimit = 30;
         private const int MaxChartPoints = 100;
         private const string CacheKeyPrefix = "balance:";
+        private const string QueuedStatus = "queued";
+        private const string RunningStatus = "running";
+        private const string DoneStatus = "done";
+        private const string FailedStatus = "failed";
+        private const string ScenarioField = "scenario";
         private const int VersionsLifetimeSeconds = 30;
         private const int PinnedCatalogLifetimeMinutes = 30;
 
+        private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
         private readonly IMemoryCache _memoryCache;
 
         public IndexModel(AdminAuditLog auditLog, AdminEnvironmentSelector environmentSelector, GameAdminClient gameAdminClient, IMemoryCache memoryCache)
@@ -30,7 +36,7 @@ namespace Server.Admin.Pages.Balance
             _memoryCache = memoryCache;
         }
 
-        [BindProperty]
+        [BindProperty(SupportsGet = true)]
         public string Version { get; set; } = string.Empty;
 
         [BindProperty]
@@ -132,6 +138,9 @@ namespace Server.Admin.Pages.Balance
         [BindProperty]
         public string HistoryId { get; set; } = string.Empty;
 
+        [BindProperty]
+        public int ProgressLevelId { get; set; }
+
         public List<BalanceVersionModel> Versions { get; private set; } = new();
 
         public BalanceCatalogModel Catalog { get; private set; } = new();
@@ -154,8 +163,24 @@ namespace Server.Admin.Pages.Balance
 
         public List<string> EditErrors { get; } = new();
 
-        public async Task OnGetAsync()
+        public BalanceJobModel? Job { get; private set; }
+
+        public BalanceProgressModel? Progress { get; private set; }
+
+        public bool JobPending => Job != null && (Job.Status == QueuedStatus || Job.Status == RunningStatus);
+
+        public async Task OnGetAsync(string? job, string? run, ulong? battleSeed)
         {
+            var loaded = false;
+
+            if (string.IsNullOrEmpty(job) == false)
+                loaded = await LoadJobAsync(job);
+            else if (string.IsNullOrEmpty(run) == false)
+                loaded = await LoadRunAsync(run);
+
+            if (loaded && battleSeed.HasValue)
+                Seed = battleSeed.Value;
+
             await LoadReferenceAsync();
 
             if (CharacterId == 0 && 0 < Catalog.Items.Characters.Count)
@@ -168,7 +193,34 @@ namespace Server.Admin.Pages.Balance
                 LevelId = Catalog.StoryLevels[0].Id;
 
             FillSlots();
-            await LoadListsAsync();
+
+            if (loaded && battleSeed.HasValue)
+            {
+                var battle = await ExecuteAsync<BalanceBattleResultModel>(HttpMethod.Post, "/admin/balance/battle", CreateRequest(), "balance.battle", DescribeSetup() + " seed " + Seed, "Бой с сидом " + Seed + " посчитан.");
+
+                Battle = battle.Data;
+            }
+
+            if (JobPending == false)
+                await LoadListsAsync();
+        }
+
+        public string RunLink(string runId)
+        {
+            return "/Balance?env=" + Escape(CurrentEnvironment) + "&run=" + Escape(runId);
+        }
+
+        public string BattleLink(string runId, ulong seed)
+        {
+            return RunLink(runId) + "&battleSeed=" + seed.ToString(CultureInfo.InvariantCulture);
+        }
+
+        public string JobPercent()
+        {
+            if (Job == null || Job.Total <= 0)
+                return "0";
+
+            return Math.Min(100, Job.Done * 100 / Job.Total).ToString(CultureInfo.InvariantCulture);
         }
 
         public async Task<IActionResult> OnPostCharacteristicsAsync()
@@ -217,13 +269,7 @@ namespace Server.Admin.Pages.Balance
             if (ReportEditErrors())
                 return await PageWithListsAsync();
 
-            var result = await ExecuteAsync<BalanceSeriesResultModel>(HttpMethod.Post, "/admin/balance/series", CreateRequest(), "balance.series", DescribeSetup() + " x" + Battles, "Серия посчитана.");
-
-            Series = result.Data;
-
-            FillSlots();
-
-            return await PageWithListsAsync();
+            return await SubmitJobAsync("series", CreateRequest(), "balance.series", DescribeSetup() + " x" + Battles);
         }
 
         public async Task<IActionResult> OnPostLevelAsync()
@@ -248,13 +294,7 @@ namespace Server.Admin.Pages.Balance
                 forkPolicy = ForkPolicy,
                 scenario = SerializeState(),
             };
-            var result = await ExecuteAsync<BalanceLevelResultModel>(HttpMethod.Post, "/admin/balance/level", request, "balance.level", DescribeSetup() + " level " + LevelId + " x" + LevelRuns + " " + PerkPolicy + "/" + ForkPolicy, "Прогон уровня посчитан.");
-
-            Level = result.Data;
-
-            FillSlots();
-
-            return await PageWithListsAsync();
+            return await SubmitJobAsync("level", request, "balance.level", DescribeSetup() + " level " + LevelId + " x" + LevelRuns + " " + PerkPolicy + "/" + ForkPolicy);
         }
 
         public async Task<IActionResult> OnPostCompareAsync()
@@ -283,13 +323,7 @@ namespace Server.Admin.Pages.Balance
                 forkPolicy = ForkPolicy,
                 scenario = SerializeState(),
             };
-            var result = await ExecuteAsync<BalanceCompareResultModel>(HttpMethod.Post, "/admin/balance/compare", request, "balance.compare", DescribeSetup() + " " + CompareKind + " A/B", "Сравнение посчитано.");
-
-            Compare = result.Data;
-
-            FillSlots();
-
-            return await PageWithListsAsync();
+            return await SubmitJobAsync("compare", request, "balance.compare", DescribeSetup() + " " + CompareKind + " A/B");
         }
 
         public async Task<IActionResult> OnPostSweepAsync()
@@ -318,13 +352,7 @@ namespace Server.Admin.Pages.Balance
                 axis = new { sheet = SweepSheet, row = SweepRow, column = SweepColumn, from = ParseDouble(SweepFrom), to = ParseDouble(SweepTo), step = ParseDouble(SweepStep) },
                 scenario = SerializeState(),
             };
-            var result = await ExecuteAsync<BalanceSweepResultModel>(HttpMethod.Post, "/admin/balance/sweep", request, "balance.sweep", DescribeSetup() + " " + SweepSheet + "/" + SweepRow + "/" + SweepColumn, "Перебор посчитан.");
-
-            Sweep = result.Data;
-
-            FillSlots();
-
-            return await PageWithListsAsync();
+            return await SubmitJobAsync("sweep", request, "balance.sweep", DescribeSetup() + " " + SweepSheet + "/" + SweepRow + "/" + SweepColumn);
         }
 
         public async Task<IActionResult> OnPostSaveScenarioAsync()
@@ -470,6 +498,32 @@ namespace Server.Admin.Pages.Balance
             return builder.ToString();
         }
 
+        public async Task<IActionResult> OnPostProgressAsync()
+        {
+            await LoadReferenceAsync();
+
+            var levelId = ProgressLevelId == 0 ? LevelId : ProgressLevelId;
+            var progress = await LoadAsync<BalanceProgressModel>("/admin/balance/progress?storyLevelId=" + levelId.ToString(CultureInfo.InvariantCulture) + (Version.Length == 0 ? string.Empty : "&version=" + Escape(Version)));
+
+            if (progress == null || progress.Players == 0)
+            {
+                ErrorMessage = "На окружении " + CurrentEnvironment + " нет игроков, у которых последний пройденный уровень — " + levelId + " (тестовые аккаунты не считаются).";
+                StatusMessage = null;
+                FillSlots();
+
+                return await PageWithListsAsync();
+            }
+
+            ApplySetup(progress.Setup);
+            Progress = progress;
+            ProgressLevelId = levelId;
+            StatusMessage = "Сетап типичного игрока после уровня " + levelId + " подставлен: " + progress.UserId + " из " + progress.Players + ".";
+            ErrorMessage = null;
+            FillSlots();
+
+            return await PageWithListsAsync();
+        }
+
         public async Task<IActionResult> OnPostLoadPlayerAsync()
         {
             await LoadReferenceAsync();
@@ -539,6 +593,101 @@ namespace Server.Admin.Pages.Balance
             if (catalog != null)
                 Catalog = catalog;
 
+        }
+
+        private async Task<IActionResult> SubmitJobAsync(string kind, object request, string action, string target)
+        {
+            var result = await ExecuteAsync<BalanceJobCreatedModel>(HttpMethod.Post, "/admin/balance/jobs", new { kind, request }, action, target, "Прогон поставлен в очередь.");
+
+            if (result.Data == null || result.Data.Id.Length == 0)
+            {
+                FillSlots();
+
+                return await PageWithListsAsync();
+            }
+
+            return Redirect("/Balance?env=" + Escape(CurrentEnvironment) + "&job=" + Escape(result.Data.Id));
+        }
+
+        private async Task<bool> LoadJobAsync(string jobId)
+        {
+            Job = await LoadAsync<BalanceJobModel>("/admin/balance/jobs/" + Escape(jobId));
+
+            if (Job == null)
+                return false;
+
+            var applied = ApplyState(ReadScenario(Job.Request));
+
+            if (Job.Status == FailedStatus)
+            {
+                ErrorMessage = "Прогон не удался: " + Job.Error;
+                StatusMessage = null;
+            }
+
+            if (Job.Status != DoneStatus || Job.Result.HasValue == false)
+                return applied;
+
+            var result = Job.Result.Value;
+
+            if (Job.Kind == "series")
+                Series = result.Deserialize<BalanceSeriesResultModel>(_jsonOptions);
+            else if (Job.Kind == "level")
+                Level = result.Deserialize<BalanceLevelResultModel>(_jsonOptions);
+            else if (Job.Kind == "compare")
+                Compare = result.Deserialize<BalanceCompareResultModel>(_jsonOptions);
+            else if (Job.Kind == "sweep")
+                Sweep = result.Deserialize<BalanceSweepResultModel>(_jsonOptions);
+
+            return applied;
+        }
+
+        private async Task<bool> LoadRunAsync(string runId)
+        {
+            var run = await LoadAsync<BalanceRunModel>("/admin/balance/history/" + Escape(runId));
+
+            if (run == null || ApplyState(run.Payload) == false)
+            {
+                ErrorMessage = "Прогон " + runId + " не найден в истории или в нём нет сетапа.";
+                StatusMessage = null;
+
+                return false;
+            }
+
+            return true;
+        }
+
+        private string ReadScenario(string request)
+        {
+            if (string.IsNullOrWhiteSpace(request))
+                return string.Empty;
+
+            try
+            {
+                using var json = JsonDocument.Parse(request);
+
+                if (json.RootElement.ValueKind == JsonValueKind.Object && json.RootElement.TryGetProperty(ScenarioField, out var scenario) && scenario.ValueKind == JsonValueKind.String)
+                    return scenario.GetString() ?? string.Empty;
+            }
+            catch (JsonException)
+            {
+            }
+
+            return string.Empty;
+        }
+
+        private void ApplySetup(BalanceSetupModel setup)
+        {
+            CharacterId = setup.CharacterId;
+            PromoteLevel = setup.PromoteLevel;
+            Summons = new List<BalanceSummonModel>(setup.Summons);
+            Equipment = new List<BalanceEquipmentModel>(setup.Equipment);
+
+            var bonuses = new List<string>(setup.AccountBonuses.Count);
+
+            for (int i = 0; i < setup.AccountBonuses.Count; i++)
+                bonuses.Add(setup.AccountBonuses[i].Id.ToString(CultureInfo.InvariantCulture) + ":" + setup.AccountBonuses[i].Count.ToString(CultureInfo.InvariantCulture));
+
+            AccountBonusesText = string.Join(", ", bonuses);
         }
 
         private async Task<T?> LoadCachedAsync<T>(string path, TimeSpan lifetime)

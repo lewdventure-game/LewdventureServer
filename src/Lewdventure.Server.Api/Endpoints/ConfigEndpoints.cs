@@ -28,6 +28,10 @@ namespace Server.Api.Endpoints
                 .RequireAuthorization(SecurityNames.ConfigPublisherPolicy)
                 .RequireRateLimiting(SecurityNames.ConfigRateLimitPolicy);
 
+            application.MapPost(ApiRoutes.ConfigCheck, CheckAsync)
+                .RequireAuthorization(SecurityNames.ConfigPublisherPolicy)
+                .RequireRateLimiting(SecurityNames.ConfigRateLimitPolicy);
+
             application.MapGet(ApiRoutes.ConfigSheets, GetSheetsAsync)
                 .RequireAuthorization(SecurityNames.ConfigPublisherPolicy)
                 .RequireRateLimiting(SecurityNames.ConfigRateLimitPolicy);
@@ -42,6 +46,25 @@ namespace Server.Api.Endpoints
             [FromBody] ConfigUploadRequest? request,
             [FromServices] ConfigResponseFactory responseFactory,
             [FromServices] UploadedSheetsSnapshotBuilder snapshotBuilder)
+        {
+            return await PublishUploadedAsync(httpContext, request, responseFactory, snapshotBuilder, true);
+        }
+
+        private async Task<IResult> CheckAsync(
+            HttpContext httpContext,
+            [FromBody] ConfigUploadRequest? request,
+            [FromServices] ConfigResponseFactory responseFactory,
+            [FromServices] UploadedSheetsSnapshotBuilder snapshotBuilder)
+        {
+            return await PublishUploadedAsync(httpContext, request, responseFactory, snapshotBuilder, false);
+        }
+
+        private async Task<IResult> PublishUploadedAsync(
+            HttpContext httpContext,
+            ConfigUploadRequest? request,
+            ConfigResponseFactory responseFactory,
+            UploadedSheetsSnapshotBuilder snapshotBuilder,
+            bool activate)
         {
             if (_isMongoEnabled == false)
                 return Results.Problem(detail: "Config upload requires Mongo storage.", statusCode: 503);
@@ -72,7 +95,7 @@ namespace Server.Api.Endpoints
             }
 
             var publishingService = httpContext.RequestServices.GetRequiredService<ConfigPublishingService>();
-            var result = await publishingService.PublishAsync(snapshot, CreateActor(httpContext), request.Reason, true, httpContext.RequestAborted);
+            var result = await publishingService.PublishAsync(snapshot, CreateActor(httpContext), request.Reason, activate, httpContext.RequestAborted);
 
             return responseFactory.CreatePublishResult(result);
         }

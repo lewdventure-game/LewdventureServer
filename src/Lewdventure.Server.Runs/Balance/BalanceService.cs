@@ -23,6 +23,29 @@ namespace Server.Balance
             _battleScriptAnalyzer = battleScriptAnalyzer;
         }
 
+        public List<float> MeasurePower(List<BalanceSetup> setups, int storyLevelId, IConfigDistributor configDistributor)
+        {
+            var powers = new List<float>(setups.Count);
+            var composition = new BattleComposition(configDistributor, new SilentCoreLog());
+            var target = new BalanceTarget { StoryLevelId = storyLevelId };
+
+            for (int i = 0; i < setups.Count; i++)
+            {
+                if (configDistributor.Characters.TryGet(setups[i].CharacterId, out _) == false)
+                {
+                    powers.Add(-1f);
+
+                    continue;
+                }
+
+                var state = BuildState(setups[i], target, configDistributor, composition);
+
+                powers.Add(state.MaxHealth * state.Damage * state.AttackMultiplier);
+            }
+
+            return powers;
+        }
+
         public bool TryBuildCharacteristics(BalanceSetup setup, BalanceTarget target, IConfigDistributor configDistributor, out List<BalanceCharacteristicsLayer> layers, out string error)
         {
             layers = new List<BalanceCharacteristicsLayer>();
@@ -75,6 +98,11 @@ namespace Server.Balance
 
         public bool TryRunSeries(BalanceSetup setup, BalanceTarget target, ulong firstSeed, int battles, IConfigDistributor configDistributor, CancellationToken cancellationToken, out BalanceSeriesResult series, out string error)
         {
+            return TryRunSeries(setup, target, firstSeed, battles, configDistributor, new BalanceSilentProgress(), cancellationToken, out series, out error);
+        }
+
+        public bool TryRunSeries(BalanceSetup setup, BalanceTarget target, ulong firstSeed, int battles, IConfigDistributor configDistributor, IBalanceProgress progress, CancellationToken cancellationToken, out BalanceSeriesResult series, out string error)
+        {
             series = new BalanceSeriesResult { FirstSeed = firstSeed };
 
             var composition = new BattleComposition(configDistributor, new SilentCoreLog());
@@ -119,6 +147,8 @@ namespace Server.Balance
                 {
                     series.LossSeeds.Add(result.Seed);
                 }
+
+                progress.Report(i + 1, battles);
             }
 
             series.WinRate = series.Battles == 0 ? 0f : (float)series.Wins / series.Battles;

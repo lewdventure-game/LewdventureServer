@@ -1,6 +1,6 @@
 using Server.Infrastructure.Mongo.Balance;
 
-namespace Server.Api.Endpoints
+namespace Server.Api.Balance
 {
     internal sealed class BalanceHistoryRecorder
     {
@@ -17,7 +17,7 @@ namespace Server.Api.Endpoints
             _timeProvider = timeProvider;
         }
 
-        public async Task RecordAsync(string actor, string kind, string configVersion, int edits, string summary, string scenario, CancellationToken cancellationToken)
+        public async Task<string> RecordAsync(string actor, string kind, string configVersion, int edits, string summary, string scenario, CancellationToken cancellationToken)
         {
             var now = _timeProvider.GetUtcNow().UtcDateTime;
             var document = new BalanceRunDocument
@@ -36,10 +36,14 @@ namespace Server.Api.Endpoints
             try
             {
                 await _balanceRunRepository.InsertAsync(document, cancellationToken);
+
+                return document.Id;
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
                 _logger.LogWarning("[Balance] history write failed actor = {Actor} kind = {Kind} error = {Error}", actor, kind, exception.Message);
+
+                return string.Empty;
             }
         }
     }

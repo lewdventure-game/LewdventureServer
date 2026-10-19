@@ -27,5 +27,7 @@ namespace Server.Admin.Backend.Models
         public List<BalancePerkStatsModel> Perks { get; set; } = new();
 
         public List<long> FailedSeeds { get; set; } = new();
+
+        public string RunId { get; set; } = string.Empty;
     }
 }

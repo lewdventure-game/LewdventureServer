@@ -67,6 +67,7 @@ Google Sheets
 | --- | --- | --- | --- |
 | `GET /api/config/bundle` | public | игровой токен (или открыт, если авторизация выключена) | активный снапшот в формате бандла для клиентского ядра боя; `ETag` + `If-None-Match` → `304` |
 | `POST /api/config/upload` | public | `X-Config-Key`, только если `ConfigPublisher:Enabled` (dev/stage/local) | приём строк листов от Apps Script → валидация → сохранение → активация; ключ Google не нужен |
+| `POST /api/config/check` | public | как `upload` | то же, но без активации: версия сохраняется для песочницы баланса, мастер не меняется (кнопка «Проверить баланс») |
 | `GET /api/config/sheets` | public | `X-Config-Key` | список доменов с id таблиц и диапазонами: Apps Script берёт его, чтобы не дублировать настройки |
 | `GET /api/config/status` | public | `X-Config-Key` | активная и загруженная версии |
 | `GET /admin/config/status` | ops | `X-Admin-Key` | состояние провайдера и Mongo |

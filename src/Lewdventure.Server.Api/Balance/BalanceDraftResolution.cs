@@ -1,11 +1,11 @@
 using Server.Balance;
 using Server.GameConfigs;
 
-namespace Server.Api.Endpoints
+namespace Server.Api.Balance
 {
     internal sealed class BalanceDraftResolution
     {
-        public BalanceDraftResolution(GameConfigSet? configSet, BalanceConfigDraft? draft, IResult? failure)
+        public BalanceDraftResolution(GameConfigSet? configSet, BalanceConfigDraft? draft, BalanceExecution? failure)
         {
             ConfigSet = configSet;
             Draft = draft;
@@ -16,6 +16,6 @@ namespace Server.Api.Endpoints
 
         public BalanceConfigDraft? Draft { get; }
 
-        public IResult? Failure { get; }
+        public BalanceExecution? Failure { get; }
     }
 }

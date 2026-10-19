@@ -22,5 +22,13 @@ namespace Server.Api.Options
 
         [Range(1, 100000)]
         public int MaxSweepRuns { get; set; } = 3000;
+
+        public bool WorkerEnabled { get; set; } = true;
+
+        [Range(1, 1000)]
+        public int MaxPendingJobs { get; set; } = 20;
+
+        [Range(10, 3600)]
+        public int JobStaleSeconds { get; set; } = 120;
     }
 }

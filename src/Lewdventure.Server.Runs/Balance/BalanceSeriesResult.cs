@@ -1,6 +1,6 @@
 namespace Server.Balance
 {
-    internal sealed class BalanceSeriesResult
+    internal sealed class BalanceSeriesResult : IBalanceRunResult
     {
         public int Battles { get; set; }
 
@@ -27,5 +27,7 @@ namespace Server.Balance
         public float MissesPerBattle { get; set; }
 
         public List<ulong> LossSeeds { get; set; } = new();
+
+        public string RunId { get; set; } = string.Empty;
     }
 }

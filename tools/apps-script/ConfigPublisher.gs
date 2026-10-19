@@ -1,5 +1,7 @@
 const BREAK = String.fromCharCode(10);
 
+const LEWDVENTURE_ADMIN_URL_PROPERTY = 'LEWDVENTURE_ADMIN_URL';
+
 const LEWDVENTURE_ENVIRONMENTS = {
   dev: { title: 'dev', urlProperty: 'LEWDVENTURE_DEV_URL', keyProperty: 'LEWDVENTURE_DEV_KEY' },
   stage: { title: 'stage', urlProperty: 'LEWDVENTURE_STAGE_URL', keyProperty: 'LEWDVENTURE_STAGE_KEY' },
@@ -10,6 +12,9 @@ function onOpen() {
     .createMenu('Lewdventure')
     .addItem('Опубликовать конфиги на dev', 'publishToDev')
     .addItem('Опубликовать конфиги на stage', 'publishToStage')
+    .addSeparator()
+    .addItem('Проверить баланс на dev', 'checkBalanceDev')
+    .addItem('Проверить баланс на stage', 'checkBalanceStage')
     .addSeparator()
     .addItem('Статус dev', 'statusDev')
     .addItem('Статус stage', 'statusStage')
@@ -22,6 +27,14 @@ function publishToDev() {
 
 function publishToStage() {
   publishConfigs_('stage');
+}
+
+function checkBalanceDev() {
+  checkBalance_('dev');
+}
+
+function checkBalanceStage() {
+  checkBalance_('stage');
 }
 
 function statusDev() {
@@ -69,6 +82,70 @@ function publishConfigs_(environmentName) {
     'Публикация на ' + environment.title,
     formatPublishResult_(response) + BREAK + BREAK + 'Прочитанные вкладки:' + BREAK + readSheets.join(BREAK),
     ui.ButtonSet.OK);
+}
+
+function checkBalance_(environmentName) {
+  const ui = SpreadsheetApp.getUi();
+  const environment = LEWDVENTURE_ENVIRONMENTS[environmentName];
+  const title = 'Проверка баланса на ' + environment.title;
+  const sheetsResponse = request_(environment, 'get', '/api/config/sheets', null);
+
+  if (sheetsResponse.code !== 200 || sheetsResponse.body === null) {
+    ui.alert(title, 'Не удалось получить список листов' + BREAK + 'HTTP ' + sheetsResponse.code + BREAK + sheetsResponse.text, ui.ButtonSet.OK);
+    return;
+  }
+
+  let payload;
+
+  try {
+    payload = collectSheets_(sheetsResponse.body.sheets, 'проверка баланса');
+  } catch (error) {
+    ui.alert(title, String(error), ui.ButtonSet.OK);
+    return;
+  }
+
+  delete payload.readSheets;
+
+  const response = request_(environment, 'post', '/api/config/check', payload);
+
+  if (response.body === null || !response.body.succeeded) {
+    ui.alert(title, formatPublishResult_(response), ui.ButtonSet.OK);
+    return;
+  }
+
+  const result = response.body;
+  const adminUrl = PropertiesService.getScriptProperties().getProperty(LEWDVENTURE_ADMIN_URL_PROPERTY);
+  const lines = [
+    'Версия ' + result.shortVersion + ' собрана и сохранена, мастер не менялся.',
+    'Изменений к мастеру: ' + countChanges_(result.changes) + '.',
+  ];
+  let html = '<p>' + lines.map(escapeHtml_).join('<br>') + '</p>';
+
+  if (adminUrl) {
+    const link = adminUrl.replace(/\/$/, '') + '/Balance?env=' + encodeURIComponent(environment.title) + '&Version=' + encodeURIComponent(result.version);
+
+    html += '<p><a href="' + escapeHtml_(link) + '" target="_blank">Открыть песочницу баланса с этой версией</a></p>';
+  } else {
+    html += '<p>Откройте админку → «Баланс» и выберите версию ' + escapeHtml_(result.shortVersion) + '. Чтобы здесь была ссылка, задайте Script Property ' + LEWDVENTURE_ADMIN_URL_PROPERTY + '.</p>';
+  }
+
+  html += '<p style="color:#666">Если версия понравится — опубликуйте её обычной кнопкой или сделайте мастером в админке → «Конфиги».</p>';
+
+  ui.showModalDialog(HtmlService.createHtmlOutput('<div style="font-family:sans-serif;font-size:14px">' + html + '</div>').setWidth(460).setHeight(220), title);
+}
+
+function countChanges_(changes) {
+  let total = 0;
+
+  (changes || []).forEach(function (change) {
+    total += change.added.length + change.removed.length + change.changed.length;
+  });
+
+  return total;
+}
+
+function escapeHtml_(text) {
+  return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function collectSheets_(sheets, reason) {

@@ -119,7 +119,7 @@ namespace Tests.Unit.Battles
             Assert.That(_sweepRunner.TryCreateValues(axis, 25, out var values, out var error), Is.True, error);
             Assert.That(values, Is.EqualTo(new List<double> { 10, 70, 130 }));
 
-            var result = _sweepRunner.RunSeries(_configSet, new List<BalanceConfigEdit>(), axis, values, new BalanceSetup { CharacterId = 1 }, new BalanceTarget { StoryLevelId = 1, StageId = 1, EventId = 2 }, 1, 20, CancellationToken.None);
+            var result = _sweepRunner.RunSeries(_configSet, new List<BalanceConfigEdit>(), axis, values, new BalanceSetup { CharacterId = 1 }, new BalanceTarget { StoryLevelId = 1, StageId = 1, EventId = 2 }, 1, 20, new BalanceSilentProgress(), CancellationToken.None);
 
             Assert.That(result.Points, Has.Count.EqualTo(3));
             Assert.That(result.Points[0].Error, Is.Empty);

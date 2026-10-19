@@ -9,7 +9,9 @@ namespace Server.Runs
         {
             services.AddSingleton<BalanceConfigDrafts>();
             services.AddSingleton<BalanceLevelSimulator>();
+            services.AddSingleton<BalanceProgressService>();
             services.AddSingleton<BalanceService>();
+            services.AddSingleton<BalanceSetupReader>();
             services.AddSingleton<BalanceSnapshotFactory>();
             services.AddSingleton<BalanceStatistics>();
             services.AddSingleton<BalanceSweepRunner>();

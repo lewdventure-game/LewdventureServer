@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.Extensions.Options;
 using Server.Logging;
+using Server.Api.Balance;
 using Server.Api.Diagnostics;
 using Server.Api.Endpoints;
 using Server.Api.Health;
@@ -157,6 +158,9 @@ namespace Server.Api.Composition
 
             services.AddSingleton<BalanceCatalogFactory>();
             services.AddSingleton<BalanceHistoryRecorder>();
+            services.AddSingleton<BalanceJobService>();
+            services.AddSingleton<BalanceRunExecutor>();
+            services.AddSingleton<BalanceRunGate>();
             services.AddSingleton<CheatCatalogFactory>();
             services.AddSingleton<QaResponseFactory>();
             services.AddHostedService<ExperimentRegistryWatcher>();
@@ -171,6 +175,14 @@ namespace Server.Api.Composition
                 services.AddSingleton<ILoggerProvider, QaErrorLoggerProvider>();
                 services.AddHostedService<QaDiagnosticsWriterService>();
             }
+
+            var balanceOptions = new BalanceOptions();
+
+            _configuration.GetSection(BalanceOptions.SectionName).Bind(balanceOptions);
+
+            if (balanceOptions.Enabled && balanceOptions.WorkerEnabled)
+                services.AddHostedService<BalanceJobWorker>();
+
             services.AddHealthChecks().AddCheck<MongoHealthCheck>("mongo", tags: new[] { HealthTags.Ready });
 
             var gameConfigOptions = new GameConfigOptions();

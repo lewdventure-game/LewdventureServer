@@ -12,6 +12,7 @@
     <title>@ViewData["Title"] · Lewdventure Admin</title>
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
     <script src="~/js/admin.js" asp-append-version="true" defer></script>
+    @await RenderSectionAsync("Head", required: false)
 </head>
 <body class="@(environment == "prod" ? "env-prod" : string.Empty)">
 @if (isAuthenticated)

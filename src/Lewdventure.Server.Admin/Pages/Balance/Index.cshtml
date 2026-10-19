@@ -6,6 +6,28 @@
 }
 <h1>Баланс · @Model.CurrentEnvironment</h1>
 <partial name="_Messages" model="Model" />
+@section Head {
+    @if (Model.JobPending)
+    {
+        <meta http-equiv="refresh" content="3">
+    }
+}
+@if (Model.Job != null)
+{
+    var job = Model.Job;
+    <section class="card">
+        <h2>Прогон @job.Kind · @(job.Status == "queued" ? "в очереди" : job.Status == "running" ? "считается" : job.Status == "done" ? "готово" : "ошибка")</h2>
+        @if (Model.JobPending)
+        {
+            <progress max="100" value="@Model.JobPercent()"></progress>
+            <p class="muted">@job.Done из @job.Total · страница обновляется сама каждые 3 секунды. Можно закрыть её и вернуться по ссылке позже — прогон досчитается и попадёт в историю.</p>
+        }
+        else if (job.Status == "done" && job.RunId.Length != 0)
+        {
+            <p class="muted">Ссылка на этот прогон: <a href="@Model.RunLink(job.RunId)">@Model.RunLink(job.RunId)</a></p>
+        }
+    </section>
+}
 <form method="post" class="card">
     <h2>Сценарий</h2>
     <div class="inline">
@@ -19,7 +41,7 @@
         <button type="submit" asp-page-handler="LoadScenario">Загрузить</button>
         @if (Model.IsAdmin)
         {
-            <button type="submit" asp-page-handler="DeleteScenario" onclick="return confirm('Удалить сценарий?')">Удалить</button>
+            <button type="submit" asp-page-handler="DeleteScenario" data-confirm="Удалить сценарий?">Удалить</button>
         }
         <input name="ScenarioName" value="@Model.ScenarioName" placeholder="название, например «босс 1-5 после нерфа»">
         <button type="submit" asp-page-handler="SaveScenario">Сохранить сценарий</button>
@@ -30,6 +52,20 @@
         <input name="LoadUserId" value="@Model.LoadUserId" placeholder="userId игрока, чтобы взять его сетап" class="wide">
         <button type="submit" asp-page-handler="LoadPlayer">Взять у игрока</button>
     </div>
+    <div class="inline">
+        <select name="ProgressLevelId">
+            @foreach (var level in Model.Catalog.StoryLevels)
+            {
+                <option value="@level.Id" selected="@(level.Id == Model.ProgressLevelId)">прошёл уровень @level.Id, но не дальше</option>
+            }
+        </select>
+        <button type="submit" asp-page-handler="Progress">Типичный игрок на этом прогрессе</button>
+    </div>
+    @if (Model.Progress != null)
+    {
+        var progress = Model.Progress;
+        <p class="muted">Игроков на этом прогрессе: @progress.Players (смотрим до 500 последних, без тестовых). Взят @progress.UserId — его сила героя (МАКС.ХП × ДМГ × АТК_МН) ближе всего к медиане. Медианы: промоут @Model.Number(progress.PromoteLevel.Median), уровень саммонов @Model.Number(progress.SummonLevel.Median), уровень снаряжения @Model.Number(progress.EquipmentLevel.Median), бонусов аккаунта @Model.Number(progress.AccountBonuses.Median).</p>
+    }
     <div class="grid">
         <div>
             <h3>Конфиги</h3>
@@ -260,7 +296,7 @@
     };
     <section class="card">
         <h2>Характеристики по слоям</h2>
-        <table class="table compact">
+        <table class="table compact" data-csv="характеристики">
             <thead><tr><th></th>@foreach (var layer in Model.Layers) { <th>@layer.Name</th> }</tr></thead>
             <tbody>
             @foreach (var stat in stats)
@@ -291,7 +327,7 @@
             <dt>Нанесено</dt><dd>@Model.Number(battle.DamageDealt), в ход @Model.Number(battle.Turns == 0 ? 0 : battle.DamageDealt / battle.Turns), критов @battle.CriticalHits, промахов @battle.Misses</dd>
             <dt>Получено</dt><dd>@Model.Number(battle.DamageTaken), лечение @Model.Number(battle.Healing)</dd>
         </dl>
-        <table class="table compact">
+        <table class="table compact" data-csv="бой-источники">
             <thead><tr><th>Источник урона</th><th>Урон</th><th>Доля</th></tr></thead>
             <tbody>
             @foreach (var pair in battle.DamageBySource)
@@ -302,7 +338,7 @@
         </table>
         <details>
             <summary>Пошаговый лог (@battle.Log.Count)</summary>
-            <table class="table compact">
+            <table class="table compact" data-csv="бой-лог">
                 <thead><tr><th>Ход</th><th>Фаза</th><th>Что</th></tr></thead>
                 <tbody>
                 @foreach (var entry in battle.Log)
@@ -327,8 +363,12 @@
     };
     <section class="card">
         <h2>Серия · @series.Battles боёв с сида @series.FirstSeed</h2>
+        @if (series.RunId.Length != 0 && Model.Job == null)
+        {
+            <p class="muted">Ссылка на этот прогон: <a href="@Model.RunLink(series.RunId)">открыть</a></p>
+        }
         <p><strong>Победы: @series.Wins из @series.Battles (@Model.Percent(series.WinRate))</strong> · критов в бою @Model.Number(series.CriticalHitsPerBattle) · промахов @Model.Number(series.MissesPerBattle)</p>
-        <table class="table compact">
+        <table class="table compact" data-csv="серия">
             <thead><tr><th></th><th>боёв</th><th>мин</th><th>среднее</th><th>медиана</th><th>p90</th><th>макс</th></tr></thead>
             <tbody>
             @foreach (var row in rows)
@@ -337,7 +377,7 @@
             }
             </tbody>
         </table>
-        <table class="table compact">
+        <table class="table compact" data-csv="серия-источники">
             <thead><tr><th>Источник урона</th><th>Доля</th></tr></thead>
             <tbody>
             @foreach (var pair in series.DamageShareBySource)
@@ -348,7 +388,21 @@
         </table>
         @if (series.LossSeeds.Count != 0)
         {
-            <p class="muted">Сиды поражений (до 20): @string.Join(", ", series.LossSeeds). Поставьте сид и нажмите «Один бой», чтобы посмотреть бой пошагово.</p>
+            <p class="muted">
+                Сиды поражений (до 20):
+                @foreach (var seed in series.LossSeeds)
+                {
+                    if (series.RunId.Length == 0)
+                    {
+                        <span>@seed</span>
+                    }
+                    else
+                    {
+                        <a href="@Model.BattleLink(series.RunId, seed)">@seed</a>
+                    }
+                }
+                — нажмите на сид, чтобы открыть этот бой пошагово; ссылку можно переслать.
+            </p>
         }
     </section>
 }
@@ -363,8 +417,12 @@
     };
     <section class="card">
         <h2>Уровень @level.StoryLevelId · @level.Runs прогонов с сида @level.FirstSeed</h2>
+        @if (level.RunId.Length != 0 && Model.Job == null)
+        {
+            <p class="muted">Ссылка на этот прогон: <a href="@Model.RunLink(level.RunId)">открыть</a></p>
+        }
         <p><strong>Прошли уровень: @level.Completed из @level.Runs (@Model.Percent(level.CompletionRate))</strong> · боёв @level.Battles, побед @level.BattlesWon</p>
-        <table class="table compact">
+        <table class="table compact" data-csv="уровень">
             <thead><tr><th></th><th>прогонов</th><th>мин</th><th>среднее</th><th>медиана</th><th>p90</th><th>макс</th></tr></thead>
             <tbody>
             @foreach (var row in distributions)
@@ -374,7 +432,7 @@
             </tbody>
         </table>
         <h3>По этапам</h3>
-        <table class="table compact">
+        <table class="table compact" data-csv="уровень-этапы">
             <thead><tr><th>Этап</th><th>id этапов</th><th>дошли</th><th>прошли</th><th>умерли</th><th>смертность</th><th>ХП после</th><th>доля ХП после</th><th>уровень опыта после</th></tr></thead>
             <tbody>
             @foreach (var stage in level.Stages)
@@ -397,7 +455,7 @@
         @if (level.Perks.Count != 0)
         {
             <h3>Перки</h3>
-            <table class="table compact">
+            <table class="table compact" data-csv="уровень-перки">
                 <thead><tr><th>Перк</th><th>предложен</th><th>взят</th><th>доля взятий</th></tr></thead>
                 <tbody>
                 @foreach (var perk in level.Perks)
@@ -433,7 +491,7 @@
                 ("Получено урона, среднее", a.DamageTaken.Average, b.DamageTaken.Average, false),
                 ("Критов в бою", a.CriticalHitsPerBattle, b.CriticalHitsPerBattle, false),
             };
-            <table class="table compact">
+            <table class="table compact" data-csv="сравнение">
                 <thead><tr><th></th><th>A</th><th>B</th><th>B − A</th></tr></thead>
                 <tbody>
                 @foreach (var row in rows)
@@ -454,7 +512,7 @@
                 ("Уровень опыта в конце, среднее", a.FinalExperienceLevel.Average, b.FinalExperienceLevel.Average, false),
                 ("Перков за забег, среднее", a.PerksPerRun.Average, b.PerksPerRun.Average, false),
             };
-            <table class="table compact">
+            <table class="table compact" data-csv="сравнение">
                 <thead><tr><th></th><th>A</th><th>B</th><th>B − A</th></tr></thead>
                 <tbody>
                 @foreach (var row in rows)
@@ -464,7 +522,7 @@
                 </tbody>
             </table>
             <h3>Смертность по этапам</h3>
-            <table class="table compact">
+            <table class="table compact" data-csv="сравнение-этапы">
                 <thead><tr><th>Этап</th><th>A</th><th>B</th></tr></thead>
                 <tbody>
                 @for (int i = 0; i < Math.Max(a.Stages.Count, b.Stages.Count); i++)
@@ -493,7 +551,7 @@
             @Html.Raw(Model.ChartLabels(600, 200))
         </svg>
         <p class="muted">Линия — @(isLevel ? "доля прошедших уровень" : "процент побед") по значению ячейки.</p>
-        <table class="table compact">
+        <table class="table compact" data-csv="перебор">
             <thead>
                 <tr>
                     <th>@sweep.Axis.Column</th>
@@ -534,8 +592,8 @@
 {
     <section class="card">
         <h2>История прогонов</h2>
-        <table class="table compact">
-            <thead><tr><th>Когда (UTC)</th><th>Кто</th><th>Что</th><th>Версия</th><th>Правок</th><th></th></tr></thead>
+        <table class="table compact" data-csv="история">
+            <thead><tr><th>Когда (UTC)</th><th>Кто</th><th>Что</th><th>Версия</th><th>Правок</th><th></th><th></th></tr></thead>
             <tbody>
             @foreach (var run in Model.History)
             {
@@ -551,6 +609,7 @@
                             <button type="submit">В форму</button>
                         </form>
                     </td>
+                    <td><a href="@Model.RunLink(run.Id)">ссылка</a></td>
                 </tr>
             }
             </tbody>

@@ -7,5 +7,7 @@ namespace Server.Admin.Backend.Models
         public BalanceSweepAxisModel Axis { get; set; } = new();
 
         public List<BalanceSweepPointModel> Points { get; set; } = new();
+
+        public string RunId { get; set; } = string.Empty;
     }
 }

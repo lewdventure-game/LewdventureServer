@@ -15,5 +15,7 @@ namespace Server.Admin.Backend.Models
         public BalanceLevelResultModel? LevelA { get; set; }
 
         public BalanceLevelResultModel? LevelB { get; set; }
+
+        public string RunId { get; set; } = string.Empty;
     }
 }

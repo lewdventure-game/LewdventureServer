@@ -8,7 +8,14 @@ namespace Server.Infrastructure.Mongo.Balance
         {
             services.AddSingleton<BalanceScenarioRepository>();
             services.AddSingleton<BalanceRunRepository>();
+            services.AddSingleton<BalanceJobRepository>();
             services.AddSingleton<IMongoIndexContributor>(ResolveBalanceRunRepository);
+            services.AddSingleton<IMongoIndexContributor>(ResolveBalanceJobRepository);
+        }
+
+        private BalanceJobRepository ResolveBalanceJobRepository(IServiceProvider serviceProvider)
+        {
+            return serviceProvider.GetRequiredService<BalanceJobRepository>();
         }
 
         private BalanceRunRepository ResolveBalanceRunRepository(IServiceProvider serviceProvider)

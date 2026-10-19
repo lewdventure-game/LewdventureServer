@@ -1,6 +1,6 @@
 namespace Server.Balance
 {
-    internal sealed class BalanceLevelResult
+    internal sealed class BalanceLevelResult : IBalanceRunResult
     {
         public int StoryLevelId { get; set; }
 
@@ -27,5 +27,7 @@ namespace Server.Balance
         public List<BalancePerkStats> Perks { get; set; } = new();
 
         public List<long> FailedSeeds { get; set; } = new();
+
+        public string RunId { get; set; } = string.Empty;
     }
 }
