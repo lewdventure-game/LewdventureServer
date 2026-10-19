@@ -33,7 +33,7 @@ namespace Tests.Unit.Battles
                 new SilentCoreLog());
 
             _configDistributor = builder.Build(snapshot, "test").ConfigSet!.Distributor;
-            _service = new BalanceService(new BalanceSnapshotFactory(new RunSnapshotBuilder()), new BattleScriptAnalyzer());
+            _service = new BalanceService(new BalanceSnapshotFactory(new RunSnapshotBuilder()), new BalanceStatistics(), new BattleScriptAnalyzer());
         }
 
         [Test]

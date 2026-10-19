@@ -62,6 +62,21 @@ namespace Server.Admin.Pages.Balance
         [BindProperty]
         public string LoadUserId { get; set; } = string.Empty;
 
+        [BindProperty]
+        public int LevelId { get; set; }
+
+        [BindProperty]
+        public int LevelRuns { get; set; } = 100;
+
+        [BindProperty]
+        public string PerkPolicy { get; set; } = "first";
+
+        [BindProperty]
+        public string PerkPriorityText { get; set; } = string.Empty;
+
+        [BindProperty]
+        public string ForkPolicy { get; set; } = "firstButton";
+
         public List<BalanceVersionModel> Versions { get; private set; } = new();
 
         public BalanceCatalogModel Catalog { get; private set; } = new();
@@ -72,6 +87,8 @@ namespace Server.Admin.Pages.Balance
 
         public BalanceSeriesResultModel? Series { get; private set; }
 
+        public BalanceLevelResultModel? Level { get; private set; }
+
         public async Task OnGetAsync()
         {
             await LoadReferenceAsync();
@@ -81,6 +98,9 @@ namespace Server.Admin.Pages.Balance
 
             if (Fight.Length == 0)
                 Fight = FirstFight();
+
+            if (LevelId == 0 && 0 < Catalog.StoryLevels.Count)
+                LevelId = Catalog.StoryLevels[0].Id;
 
             FillSlots();
         }
@@ -119,6 +139,30 @@ namespace Server.Admin.Pages.Balance
             var result = await ExecuteAsync<BalanceSeriesResultModel>(HttpMethod.Post, "/admin/balance/series", CreateRequest(), "balance.series", DescribeSetup() + " x" + Battles, "Серия посчитана.");
 
             Series = result.Data;
+
+            FillSlots();
+
+            return Page();
+        }
+
+        public async Task<IActionResult> OnPostLevelAsync()
+        {
+            await LoadReferenceAsync();
+
+            var request = new
+            {
+                version = Version,
+                setup = CreateSetup(),
+                storyLevelId = LevelId,
+                seed = (long)Seed,
+                runs = LevelRuns,
+                perkPolicy = PerkPolicy,
+                perkPriority = ParseIds(PerkPriorityText),
+                forkPolicy = ForkPolicy,
+            };
+            var result = await ExecuteAsync<BalanceLevelResultModel>(HttpMethod.Post, "/admin/balance/level", request, "balance.level", DescribeSetup() + " level " + LevelId + " x" + LevelRuns + " " + PerkPolicy + "/" + ForkPolicy, "Прогон уровня посчитан.");
+
+            Level = result.Data;
 
             FillSlots();
 
@@ -204,11 +248,27 @@ namespace Server.Admin.Pages.Balance
             Fight = Fight ?? string.Empty;
             EnemiesText = EnemiesText ?? string.Empty;
             LoadUserId = LoadUserId ?? string.Empty;
+            PerkPolicy = PerkPolicy ?? "first";
+            PerkPriorityText = PerkPriorityText ?? string.Empty;
+            ForkPolicy = ForkPolicy ?? "firstButton";
             Summons = Summons ?? new List<BalanceSummonModel>();
             Equipment = Equipment ?? new List<BalanceEquipmentModel>();
         }
 
         private object CreateRequest()
+        {
+            return new
+            {
+                version = Version,
+                setup = CreateSetup(),
+                target = CreateTarget(),
+                seed = Seed,
+                battles = Battles,
+                includeLog = true,
+            };
+        }
+
+        private BalanceSetupModel CreateSetup()
         {
             var setup = new BalanceSetupModel
             {
@@ -233,15 +293,7 @@ namespace Server.Admin.Pages.Balance
                     setup.Equipment.Add(Equipment[i]);
             }
 
-            return new
-            {
-                version = Version,
-                setup,
-                target = CreateTarget(),
-                seed = Seed,
-                battles = Battles,
-                includeLog = true,
-            };
+            return setup;
         }
 
         private BalanceTargetModel CreateTarget()

@@ -13,11 +13,13 @@ namespace Server.Balance
         private const string RunLayer = "+ забег: перки, бонусы, статусы";
 
         private readonly BalanceSnapshotFactory _balanceSnapshotFactory;
+        private readonly BalanceStatistics _balanceStatistics;
         private readonly BattleScriptAnalyzer _battleScriptAnalyzer;
 
-        public BalanceService(BalanceSnapshotFactory balanceSnapshotFactory, BattleScriptAnalyzer battleScriptAnalyzer)
+        public BalanceService(BalanceSnapshotFactory balanceSnapshotFactory, BalanceStatistics balanceStatistics, BattleScriptAnalyzer battleScriptAnalyzer)
         {
             _balanceSnapshotFactory = balanceSnapshotFactory;
+            _balanceStatistics = balanceStatistics;
             _battleScriptAnalyzer = battleScriptAnalyzer;
         }
 
@@ -120,11 +122,11 @@ namespace Server.Balance
             }
 
             series.WinRate = series.Battles == 0 ? 0f : (float)series.Wins / series.Battles;
-            series.Turns = Distribute(turns);
-            series.TurnsOnWin = Distribute(turnsOnWin);
-            series.HeroHealthEndOnWin = Distribute(healthOnWin);
-            series.DamagePerTurn = Distribute(damagePerTurn);
-            series.DamageTaken = Distribute(damageTaken);
+            series.Turns = _balanceStatistics.Distribute(turns);
+            series.TurnsOnWin = _balanceStatistics.Distribute(turnsOnWin);
+            series.HeroHealthEndOnWin = _balanceStatistics.Distribute(healthOnWin);
+            series.DamagePerTurn = _balanceStatistics.Distribute(damagePerTurn);
+            series.DamageTaken = _balanceStatistics.Distribute(damageTaken);
             series.CriticalHitsPerBattle = series.Battles == 0 ? 0f : (float)criticalHits / series.Battles;
             series.MissesPerBattle = series.Battles == 0 ? 0f : (float)misses / series.Battles;
 
@@ -181,29 +183,6 @@ namespace Server.Balance
             composition.UnitStateBuilder.ApplyTeamSummons(unitState, _balanceSnapshotFactory.CollectSummonIds(setup), unit);
 
             return unitState.CharacteristicState;
-        }
-
-        private BalanceDistribution Distribute(List<float> values)
-        {
-            var distribution = new BalanceDistribution { Count = values.Count };
-
-            if (values.Count == 0)
-                return distribution;
-
-            values.Sort();
-
-            var sum = 0f;
-
-            for (int i = 0; i < values.Count; i++)
-                sum += values[i];
-
-            distribution.Min = values[0];
-            distribution.Max = values[values.Count - 1];
-            distribution.Average = sum / values.Count;
-            distribution.Median = values[(values.Count - 1) / 2];
-            distribution.P90 = values[Math.Min(values.Count - 1, (int)Math.Ceiling(values.Count * 0.9) - 1)];
-
-            return distribution;
         }
     }
 }

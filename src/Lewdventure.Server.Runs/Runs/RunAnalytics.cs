@@ -28,18 +28,18 @@ namespace Server.Runs
             }));
         }
 
-        public void TrackBattleFinished(RunDocument run, int stageId, int eventId, string outcome, int steps)
+        public void TrackBattleFinished(RunDocument run, RunBattleFinish battleFinish)
         {
             _analyticsSink.TryEnqueue(_analyticsRowFactory.CreateServerEvent(BattleFinishedEvent, run.UserId, new Dictionary<string, object>
             {
                 ["run_id"] = run.Id,
                 ["story_level_id"] = run.StoryLevelId,
-                ["stage_index"] = run.StageIndex,
-                ["stage_id"] = stageId,
-                ["event_id"] = eventId,
-                ["outcome"] = outcome,
-                ["steps"] = steps,
-                ["health_before"] = run.CurrentHealth,
+                ["stage_index"] = battleFinish.StageIndex,
+                ["stage_id"] = battleFinish.StageId,
+                ["event_id"] = battleFinish.EventId,
+                ["outcome"] = battleFinish.Outcome,
+                ["steps"] = battleFinish.Steps,
+                ["health_before"] = battleFinish.HealthBefore,
             }));
         }
 

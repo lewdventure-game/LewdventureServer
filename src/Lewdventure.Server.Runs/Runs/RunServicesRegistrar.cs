@@ -7,16 +7,20 @@ namespace Server.Runs
     {
         public void Register(IServiceCollection services)
         {
+            services.AddSingleton<BalanceLevelSimulator>();
             services.AddSingleton<BalanceService>();
             services.AddSingleton<BalanceSnapshotFactory>();
+            services.AddSingleton<BalanceStatistics>();
             services.AddSingleton<BattleScriptAnalyzer>();
             services.AddSingleton<RunAnalytics>();
             services.AddSingleton<RunCheatEditor>();
             services.AddSingleton<RunCheatService>();
             services.AddSingleton<RunEventKeys>();
             services.AddSingleton<RunRandomFactory>();
+            services.AddSingleton<RunRecords>();
             services.AddSingleton<RunSnapshotBuilder>();
             services.AddSingleton<RunStageRoller>();
+            services.AddScoped<RunEngine>();
             services.AddScoped<RunService>();
             services.AddScoped<PlayerCharacteristicsService>();
         }

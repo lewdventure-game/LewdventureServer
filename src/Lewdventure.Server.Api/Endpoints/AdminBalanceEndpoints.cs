@@ -16,6 +16,7 @@ namespace Server.Api.Endpoints
 
         private readonly SemaphoreSlim _seriesGate = new(1, 1);
 
+        private int _maxLevelRuns;
         private int _maxSeriesBattles;
 
         public void Map(WebApplication application)
@@ -27,6 +28,7 @@ namespace Server.Api.Endpoints
             if (adminOptions.Enabled == false || mongoOptions.Enabled == false || balanceOptions.Enabled == false)
                 return;
 
+            _maxLevelRuns = balanceOptions.MaxLevelRuns;
             _maxSeriesBattles = balanceOptions.MaxSeriesBattles;
 
             var group = application.MapGroup(ApiRoutes.AdminBalance)
@@ -39,6 +41,7 @@ namespace Server.Api.Endpoints
             group.MapPost("/characteristics", BuildCharacteristicsAsync);
             group.MapPost("/battle", RunBattleAsync);
             group.MapPost("/series", RunSeriesAsync);
+            group.MapPost("/level", RunLevelAsync);
         }
 
         private async Task<IResult> ListVersionsAsync(
@@ -187,6 +190,101 @@ namespace Server.Api.Endpoints
             {
                 _seriesGate.Release();
             }
+        }
+
+        private async Task<IResult> RunLevelAsync(
+            HttpContext httpContext,
+            [FromBody] BalanceLevelRequest? request,
+            [FromServices] BalanceLevelSimulator balanceLevelSimulator,
+            [FromServices] GameConfigSetCache gameConfigSetCache,
+            [FromServices] IGameConfigSetProvider gameConfigSetProvider,
+            [FromServices] ILogger<AdminBalanceEndpoints> logger)
+        {
+            if (request == null)
+                return Results.BadRequest(new { error = "Body is required." });
+
+            if (request.Runs < 1 || _maxLevelRuns < request.Runs)
+                return Results.BadRequest(new { error = $"Runs must be from 1 to {_maxLevelRuns}." });
+
+            if (TryReadPolicy(request, out var policy, out var policyError) == false)
+                return Results.BadRequest(new { error = policyError });
+
+            var configSet = await ResolveAsync(request.Version, gameConfigSetCache, gameConfigSetProvider, httpContext.RequestAborted);
+
+            if (configSet == null)
+                return VersionMissing(request.Version);
+
+            var actor = ReadActor(httpContext);
+
+            if (await _seriesGate.WaitAsync(0, httpContext.RequestAborted) == false)
+            {
+                logger.LogWarning("[Balance] level rejected busy actor = {Actor} runs = {Runs}", actor, request.Runs);
+
+                return Results.Json(new { error = "Another balance series is running, try again in a moment." }, statusCode: StatusCodes.Status409Conflict);
+            }
+
+            try
+            {
+                var stopwatch = Stopwatch.StartNew();
+                var levelRun = await balanceLevelSimulator.RunAsync(request.Setup, request.StoryLevelId, request.Seed, request.Runs, policy, configSet.Version, configSet.Distributor, httpContext.RequestAborted);
+
+                if (levelRun.Result == null)
+                {
+                    logger.LogWarning("[Balance] level rejected actor = {Actor} version = {Version} error = {Error}", actor, configSet.Version, levelRun.Error);
+
+                    return Results.BadRequest(new { error = levelRun.Error });
+                }
+
+                logger.LogInformation(
+                    "[Balance] level actor = {Actor} version = {Version} character = {CharacterId} level = {StoryLevelId} runs = {Runs} completed = {Completed} perkPolicy = {PerkPolicy} forkPolicy = {ForkPolicy} elapsedMs = {ElapsedMs}",
+                    actor,
+                    configSet.Version,
+                    request.Setup.CharacterId,
+                    request.StoryLevelId,
+                    levelRun.Result.Runs,
+                    levelRun.Result.Completed,
+                    policy.PerkPolicy,
+                    policy.ForkPolicy,
+                    stopwatch.ElapsedMilliseconds);
+
+                return Results.Ok(levelRun.Result);
+            }
+            finally
+            {
+                _seriesGate.Release();
+            }
+        }
+
+        private bool TryReadPolicy(BalanceLevelRequest request, out BalanceLevelPolicy policy, out string error)
+        {
+            policy = new BalanceLevelPolicy { PerkPriority = new List<int>(request.PerkPriority) };
+            error = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(request.PerkPolicy) == false)
+            {
+                if (Enum.TryParse<BalancePerkPolicy>(request.PerkPolicy, true, out var perkPolicy) == false)
+                {
+                    error = $"Unknown perk policy {request.PerkPolicy}, use first, random or priority.";
+
+                    return false;
+                }
+
+                policy.PerkPolicy = perkPolicy;
+            }
+
+            if (string.IsNullOrWhiteSpace(request.ForkPolicy) == false)
+            {
+                if (Enum.TryParse<BalanceForkPolicy>(request.ForkPolicy, true, out var forkPolicy) == false)
+                {
+                    error = $"Unknown fork policy {request.ForkPolicy}, use firstButton, secondButton or random.";
+
+                    return false;
+                }
+
+                policy.ForkPolicy = forkPolicy;
+            }
+
+            return true;
         }
 
         private string ReadActor(HttpContext httpContext)

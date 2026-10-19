@@ -141,6 +141,35 @@
         <button type="submit" asp-page-handler="Series" class="primary">Серия боёв</button>
     </div>
     <p class="muted">Бой считает то же ядро, что игру, на выбранной версии конфигов; профиль и забеги игроков не меняются. Одинаковые сетап, версия и сид дают одинаковый бой. Серия — сиды подряд, начиная с указанного.</p>
+    <h2>Прогон уровня</h2>
+    <div class="inline">
+        <select name="LevelId">
+            @foreach (var level in Model.Catalog.StoryLevels)
+            {
+                <option value="@level.Id" selected="@(level.Id == Model.LevelId)">уровень @level.Id · этапов @level.Stages.Count</option>
+            }
+        </select>
+        <label>Прогонов <input type="number" name="LevelRuns" value="@Model.LevelRuns" min="1" class="narrow"></label>
+        <label>Перки
+            <select name="PerkPolicy">
+                <option value="first" selected="@(Model.PerkPolicy == "first")">первый из предложенных</option>
+                <option value="random" selected="@(Model.PerkPolicy == "random")">случайный</option>
+                <option value="priority" selected="@(Model.PerkPolicy == "priority")">по списку приоритетов</option>
+            </select>
+        </label>
+        <input name="PerkPriorityText" value="@Model.PerkPriorityText" placeholder="приоритет перков: 5, 2, 7" title="перки берутся в этом порядке, если предложены; остальное — первый из предложенных">
+        <label>Развилки
+            <select name="ForkPolicy">
+                <option value="firstButton" selected="@(Model.ForkPolicy == "firstButton")">кнопка 1</option>
+                <option value="secondButton" selected="@(Model.ForkPolicy == "secondButton")">кнопка 2</option>
+                <option value="random" selected="@(Model.ForkPolicy == "random")">случайно</option>
+            </select>
+        </label>
+    </div>
+    <div class="actions">
+        <button type="submit" asp-page-handler="Level" class="primary">Прогнать уровень</button>
+    </div>
+    <p class="muted">Забег с нуля тем же движком, что у игроков: этапы, события, награды, опыт, выбор перков, ХП между боями. Берутся персонаж, промоут, саммоны, снаряжение и бонусы аккаунта; перки, бонусы, статусы и ХП забега из сетапа не используются. Сиды прогонов — подряд с поля «Сид».</p>
 </form>
 @if (Model.Layers.Count != 0)
 {
@@ -257,6 +286,67 @@
         @if (series.LossSeeds.Count != 0)
         {
             <p class="muted">Сиды поражений (до 20): @string.Join(", ", series.LossSeeds). Поставьте сид и нажмите «Один бой», чтобы посмотреть бой пошагово.</p>
+        }
+    </section>
+}
+@if (Model.Level != null)
+{
+    var level = Model.Level;
+    var distributions = new (string Name, Server.Admin.Backend.Models.BalanceDistributionModel Value)[]
+    {
+        ("Пройдено этапов", level.StagesCleared),
+        ("Уровень опыта в конце", level.FinalExperienceLevel),
+        ("Перков за забег", level.PerksPerRun),
+    };
+    <section class="card">
+        <h2>Уровень @level.StoryLevelId · @level.Runs прогонов с сида @level.FirstSeed</h2>
+        <p><strong>Прошли уровень: @level.Completed из @level.Runs (@Model.Percent(level.CompletionRate))</strong> · боёв @level.Battles, побед @level.BattlesWon</p>
+        <table class="table compact">
+            <thead><tr><th></th><th>прогонов</th><th>мин</th><th>среднее</th><th>медиана</th><th>p90</th><th>макс</th></tr></thead>
+            <tbody>
+            @foreach (var row in distributions)
+            {
+                <tr><td>@row.Name</td><td>@row.Value.Count</td><td>@Model.Number(row.Value.Min)</td><td>@Model.Number(row.Value.Average)</td><td>@Model.Number(row.Value.Median)</td><td>@Model.Number(row.Value.P90)</td><td>@Model.Number(row.Value.Max)</td></tr>
+            }
+            </tbody>
+        </table>
+        <h3>По этапам</h3>
+        <table class="table compact">
+            <thead><tr><th>Этап</th><th>id этапов</th><th>дошли</th><th>прошли</th><th>умерли</th><th>смертность</th><th>ХП после</th><th>доля ХП после</th><th>уровень опыта после</th></tr></thead>
+            <tbody>
+            @foreach (var stage in level.Stages)
+            {
+                <tr class="@(0.2f <= stage.DeathRate ? "highlight" : string.Empty)">
+                    <td>@(stage.StageIndex + 1)</td>
+                    <td>@string.Join(", ", stage.StageIds)</td>
+                    <td>@stage.Reached</td>
+                    <td>@stage.Cleared</td>
+                    <td>@stage.Deaths</td>
+                    <td>@Model.Percent(stage.DeathRate)</td>
+                    <td>@Model.Number(stage.HealthAfter)</td>
+                    <td>@Model.Percent(stage.HealthShareAfter)</td>
+                    <td>@Model.Number(stage.ExperienceLevelAfter)</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <p class="muted">Подсвечены этапы со смертностью от 20 %. ХП и уровень опыта — среднее по тем, кто этап прошёл.</p>
+        @if (level.Perks.Count != 0)
+        {
+            <h3>Перки</h3>
+            <table class="table compact">
+                <thead><tr><th>Перк</th><th>предложен</th><th>взят</th><th>доля взятий</th></tr></thead>
+                <tbody>
+                @foreach (var perk in level.Perks)
+                {
+                    <tr><td>@Model.DescribeItem(Model.Catalog.Items.Perks, perk.PerkId)</td><td>@perk.Offered</td><td>@perk.Picked</td><td>@Model.Percent(perk.PickRate)</td></tr>
+                }
+                </tbody>
+            </table>
+        }
+        @if (level.FailedSeeds.Count != 0)
+        {
+            <p class="muted">Сиды проваленных прогонов (до 20): @string.Join(", ", level.FailedSeeds).</p>
         }
     </section>
 }

@@ -126,6 +126,7 @@ openssl rand -base64 48
 | --- | --- | --- |
 | `Balance:Enabled` | `false` | песочница баланса `/admin/balance/*` (нужны `Admin:Enabled` и `Mongo:Enabled`); включено в Local, Development и Staging, в Production запрещено валидатором — сервер не стартует. Подробно — [balance-sandbox.md](../server/balance-sandbox.md) |
 | `Balance:MaxSeriesBattles` | `2000` | максимум боёв в одной серии, 1–100000 |
+| `Balance:MaxLevelRuns` | `300` | максимум прогонов уровня за запрос, 1–10000 |
 
 ## QaDiagnostics
 
