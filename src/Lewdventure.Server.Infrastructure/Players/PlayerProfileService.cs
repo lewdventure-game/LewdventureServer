@@ -173,6 +173,9 @@ namespace Server.Infrastructure.Players
             {
                 var summonId = update.Summons[i];
 
+                if (summonId <= 0)
+                    continue;
+
                 if (seenSummons.Add(summonId) == false)
                     errors.Add($"Summon {summonId} is listed twice.");
 
