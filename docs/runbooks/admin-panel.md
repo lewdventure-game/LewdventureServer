@@ -90,9 +90,9 @@ ssh root@<vps>
 cd /opt/lewdventure/build
 git -C repo fetch ../server.bundle master && git -C repo checkout --detach FETCH_HEAD
 cd repo && TAG=sha-$(git rev-parse --short=12 HEAD) && R=ghcr.io/lewdventure-game
-docker build -f deploy/docker/Dockerfile --target api -t $R/lewdventure-server:$TAG .
-docker build -f deploy/docker/Dockerfile --target config-tool -t $R/lewdventure-config-tool:$TAG .
-docker build -f deploy/docker/Dockerfile --target admin -t $R/lewdventure-admin:$TAG .
+docker build --build-arg SOURCE_REVISION=$(git rev-parse HEAD) -f deploy/docker/Dockerfile --target api -t $R/lewdventure-server:$TAG .
+docker build --build-arg SOURCE_REVISION=$(git rev-parse HEAD) -f deploy/docker/Dockerfile --target config-tool -t $R/lewdventure-config-tool:$TAG .
+docker build --build-arg SOURCE_REVISION=$(git rev-parse HEAD) -f deploy/docker/Dockerfile --target admin -t $R/lewdventure-admin:$TAG .
 cp deploy/compose/compose.yaml deploy/compose/compose.vps.yaml deploy/compose/compose.dev.yaml /opt/lewdventure/dev/compose/
 cp deploy/scripts/*.sh /opt/lewdventure/dev/scripts/
 LEWD_LOCAL_IMAGE=1 DEPLOY_ACTOR=local-build /opt/lewdventure/dev/scripts/deploy.sh dev $TAG
