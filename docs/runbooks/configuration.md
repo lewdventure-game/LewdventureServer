@@ -161,7 +161,7 @@ openssl rand -base64 48
 | `RateLimit:Battle:QueueLimit` | `0` | очередь сверх лимита |
 | `RateLimit:BattleConcurrencyLimit` | `0` | одновременных боёв `/api/battle/*` на процесс, `0` — число ядер × 2 |
 | `RateLimit:Config:PermitLimit` / `WindowSeconds` / `QueueLimit` | `6` / `60` / `0` | лимит публикации конфигов |
-| `RateLimit:Admin:PermitLimit` / `WindowSeconds` / `QueueLimit` | `30` / `60` / `0` | лимит admin-эндпоинтов |
+| `RateLimit:Admin:PermitLimit` / `WindowSeconds` / `QueueLimit` | `600` / `60` / `0` | лимит admin-эндпоинтов на логин админки (`X-Admin-Actor`), без логина — на IP; страница игрока в админке — около 11 запросов |
 | `RateLimit:Auth:PermitLimit` / `WindowSeconds` | `60` / `60` | вход и обновление токена (`/api/auth/*`) на IP: до входа игрок не известен; запас под NAT, основную защиту даёт Cloudflare |
 | `RateLimit:Player:PermitLimit` / `WindowSeconds` | `60` / `60` | игровые ручки (`/api/player/*`, `/api/run/*`) на игрока |
 | `RateLimit:Analytics:PermitLimit` / `WindowSeconds` | `30` / `60` | `/api/analytics/events` на игрока, отдельно от игровых ручек |

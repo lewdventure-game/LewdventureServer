@@ -43,7 +43,7 @@ flowchart LR
 ```text
 POST /api/battle/replay
   → ForwardedHeaders → ExceptionHandler → CorrelationId → HttpLogging
-  → Routing → OpsPortGuard → RateLimiter → Authentication → Authorization
+  → Routing → GameConfigReady → OpsPortGuard → Authentication → Authorization → RateLimiter
   → BattleMetricsFilter → GameConfigReadyFilter (503 если конфиги не загружены)
   → scope: IConfigDistributor = IGameConfigSetProvider.Current.Distributor
   → BattleSimulatorService (scoped граф, свой RNG)

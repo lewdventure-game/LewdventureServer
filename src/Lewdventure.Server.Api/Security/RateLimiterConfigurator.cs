@@ -42,7 +42,7 @@ namespace Server.Api.Security
 
         private RateLimitPartition<string> CreateAdminLimiter(HttpContext context)
         {
-            return CreatePartition(context, "admin", _rateLimitOptions.Admin);
+            return CreatePartition(context, "admin", _rateLimitOptions.Admin, context.RequestServices.GetRequiredService<AdminActorReader>().Read(context));
         }
 
         private RateLimitPartition<string> CreateAuthLimiter(HttpContext context)
