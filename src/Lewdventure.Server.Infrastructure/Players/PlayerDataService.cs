@@ -54,7 +54,7 @@ namespace Server.Infrastructure.Players
             var idempotency = await _idempotencyRepository.DeleteByUserAsync(userId, cancellationToken);
             var profiles = await _playerProfileRepository.DeleteAsync(userId, cancellationToken);
 
-            _logger.LogWarning(
+            _logger.LogInformation(
                 "[Player] progress reset userId = {UserId} actor = {Actor} profile = {Profiles} runs = {Runs} ledger = {Ledger} idempotency = {Idempotency}",
                 userId,
                 actor,

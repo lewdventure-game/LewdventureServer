@@ -259,7 +259,7 @@ namespace Server.Battles
 
                 if (parameters.MaxStacks <= currentStacks)
                 {
-                    _coreLog.Warning($"[Story][Battle]: Reward status max stacks reached, id = {reward.Id}, maxStacks = {parameters.MaxStacks}");
+                    _coreLog.Information($"[Story][Battle]: Reward status max stacks reached, id = {reward.Id}, maxStacks = {parameters.MaxStacks}");
 
                     break;
                 }

@@ -25,6 +25,7 @@ RUN dotnet publish src/Lewdventure.Server.Api/Lewdventure.Server.Api.csproj -c R
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra AS api
 WORKDIR /app
 ENV ASPNETCORE_ENVIRONMENT=Production \
+    ASPNETCORE_HTTP_PORTS= \
     DOTNET_gcServer=1 \
     TZ=UTC
 COPY --from=build --chown=$APP_UID:$APP_UID /out/api .

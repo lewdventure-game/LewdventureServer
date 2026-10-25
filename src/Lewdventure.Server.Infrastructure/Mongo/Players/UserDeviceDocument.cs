@@ -6,6 +6,8 @@ namespace Server.Infrastructure.Mongo.Players
 
         public string RefreshTokenHash { get; set; } = string.Empty;
 
+        public string PreviousRefreshTokenHash { get; set; } = string.Empty;
+
         public DateTime RefreshExpiresAt { get; set; }
 
         public DateTime CreatedAt { get; set; }

@@ -10,6 +10,8 @@ namespace Server.Infrastructure.Players
         private const string UserIdPrefix = "usr_";
         private const string BannedError = "Account is banned.";
         private const string UnknownSessionError = "Refresh token is not valid.";
+        private const string ReusedTokenReason = "reused";
+        private const string UnknownTokenReason = "unknown";
 
         private readonly ExperimentAssignmentService _experimentAssignmentService;
         private readonly ILogger<PlayerAuthService> _logger;
@@ -69,7 +71,10 @@ namespace Server.Infrastructure.Players
 
             await _experimentAssignmentService.AssignAsync(user, isNewPlayer, country, now, cancellationToken);
 
-            return await IssueSessionAsync(user.Id, deviceIdHash, clientVersion, country, now, cancellationToken);
+            var existingDevice = FindDeviceById(user, deviceIdHash);
+            var previousRefreshTokenHash = existingDevice == null ? string.Empty : existingDevice.RefreshTokenHash;
+
+            return await IssueSessionAsync(user.Id, deviceIdHash, previousRefreshTokenHash, clientVersion, country, now, cancellationToken);
         }
 
         public async Task<AuthSessionResult> RefreshAsync(string userId, string refreshToken, string country, CancellationToken cancellationToken)
@@ -88,7 +93,9 @@ namespace Server.Infrastructure.Players
 
             if (device == null)
             {
-                _logger.LogWarning("[Auth] refresh token rejected userId = {UserId}", userId);
+                var reason = FindPreviousDevice(user, refreshTokenHash) == null ? UnknownTokenReason : ReusedTokenReason;
+
+                _logger.LogWarning("[Auth] refresh token rejected userId = {UserId} reason = {Reason}", userId, reason);
 
                 return new AuthSessionResult(false, string.Empty, string.Empty, DateTime.MinValue, UnknownSessionError);
             }
@@ -102,16 +109,17 @@ namespace Server.Infrastructure.Players
 
             await _experimentAssignmentService.AssignAsync(user, false, country, now, cancellationToken);
 
-            return await IssueSessionAsync(user.Id, device.DeviceIdHash, device.ClientVersion, country, now, cancellationToken);
+            return await IssueSessionAsync(user.Id, device.DeviceIdHash, device.RefreshTokenHash, device.ClientVersion, country, now, cancellationToken);
         }
 
-        private async Task<AuthSessionResult> IssueSessionAsync(string userId, string deviceIdHash, string clientVersion, string country, DateTime now, CancellationToken cancellationToken)
+        private async Task<AuthSessionResult> IssueSessionAsync(string userId, string deviceIdHash, string previousRefreshTokenHash, string clientVersion, string country, DateTime now, CancellationToken cancellationToken)
         {
             var refreshToken = _tokenGenerator.CreateToken();
             var device = new UserDeviceDocument
             {
                 DeviceIdHash = deviceIdHash,
                 RefreshTokenHash = _tokenGenerator.Hash(refreshToken),
+                PreviousRefreshTokenHash = previousRefreshTokenHash,
                 RefreshExpiresAt = now.AddDays(_options.RefreshTokenDays),
                 CreatedAt = now,
                 LastSeenAt = now,
@@ -128,6 +136,30 @@ namespace Server.Infrastructure.Players
             for (int i = 0; i < user.Devices.Count; i++)
             {
                 if (_tokenGenerator.AreEqual(user.Devices[i].RefreshTokenHash, refreshTokenHash))
+                    return user.Devices[i];
+            }
+
+            return null;
+        }
+
+        private UserDeviceDocument? FindPreviousDevice(UserDocument user, string refreshTokenHash)
+        {
+            for (int i = 0; i < user.Devices.Count; i++)
+            {
+                var previous = user.Devices[i].PreviousRefreshTokenHash;
+
+                if (previous.Length != 0 && _tokenGenerator.AreEqual(previous, refreshTokenHash))
+                    return user.Devices[i];
+            }
+
+            return null;
+        }
+
+        private UserDeviceDocument? FindDeviceById(UserDocument user, string deviceIdHash)
+        {
+            for (int i = 0; i < user.Devices.Count; i++)
+            {
+                if (string.Equals(user.Devices[i].DeviceIdHash, deviceIdHash, StringComparison.Ordinal))
                     return user.Devices[i];
             }
 
