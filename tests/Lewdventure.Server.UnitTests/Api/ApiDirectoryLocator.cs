@@ -23,7 +23,7 @@ namespace Tests.Unit.Api
         {
             var apiDirectory = Find();
 
-            return Path.GetFullPath(Path.Combine(apiDirectory, "..", "..", "tests", "Lewdventure.Server.GoldenTests", "Golden", "Fixtures", "config-snapshot.v1.json"));
+            return Path.GetFullPath(Path.Combine(apiDirectory, "..", "..", "tests", "Fixtures", "config-snapshot.tests.v1.json"));
         }
     }
 }

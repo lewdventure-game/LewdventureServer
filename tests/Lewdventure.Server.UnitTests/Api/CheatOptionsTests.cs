@@ -38,8 +38,7 @@ namespace Tests.Unit.Api
         [TestCase("Production", false)]
         public void AppSettings_CheatsAndDiagnosticsPerEnvironment(string environmentName, bool expectedEnabled)
         {
-            var directory = Path.GetDirectoryName(new ApiDirectoryLocator().FindFixture())!;
-            var apiDirectory = Path.GetFullPath(Path.Combine(directory, "..", "..", "..", "..", "src", "Lewdventure.Server.Api"));
+            var apiDirectory = new ApiDirectoryLocator().Find();
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(apiDirectory)
                 .AddJsonFile("appsettings.json", false)

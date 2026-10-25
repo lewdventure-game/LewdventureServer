@@ -68,7 +68,11 @@ LEWD_GOLDEN_UPDATE=1 dotnet test tests/Lewdventure.Server.GoldenTests -c Release
 2. Перегенерировать эталоны (`LEWD_GOLDEN_UPDATE=1`), просмотреть дифф.
 3. Отдельный коммит «Тесты: новая фикстура конфигов».
 
-Фикстурой пользуются также Benchmarks, LoadTest, CI smoke и docker smoke.
+Фикстурой эталонов пользуются также Benchmarks, LoadTest, CI smoke, docker smoke и интеграционный `MongoSourceBattleTests`.
+
+Юнит- и остальные интеграционные тесты стоят на своей фикстуре `tests/Fixtures/config-snapshot.tests.v1.json`: они проверяют конкретные id, уровни и награды, и ночная подмена конфигов с dev их ломала (с 2026-10-16 workflow падал каждый день и не открывал PR). Эта фикстура меняется только вручную, вместе с тестами, которые от неё зависят. Workflow `config-fixture` её не трогает.
+
+В режиме `LEWD_GOLDEN_UPDATE=1` `PublicFacade_ProducesSameTrace` пропускается: трассу `seed-42.rolls.txt` в этом же прогоне переписывает `Replay_KeepsNamedRollTrace`, сверка — в следующем обычном прогоне.
 
 ## Сценарии из ГДД в эталонах
 

@@ -73,6 +73,9 @@ namespace Tests.Golden
         [Test]
         public async Task PublicFacade_ProducesSameTrace()
         {
+            if (_host.Settings.IsUpdateMode)
+                Assert.Ignore("[Golden] trace is compared after update");
+
             var caseName = "001-baseline-1v1-vs-tank";
             var fileSource = _host.Services.GetRequiredService<FileConfigSnapshotSource>();
             var snapshot = await fileSource.LoadAsync(_host.Paths.FixturePath, CancellationToken.None);

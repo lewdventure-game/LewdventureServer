@@ -37,7 +37,9 @@ jobs:
       - name: golden tests
         run: dotnet test tests/Lewdventure.Server.GoldenTests -c Release --no-build --logger "trx;LogFileName=golden.trx" --results-directory TestResults
       - name: config tool smoke
-        run: dotnet run -c Release --no-build --project tools/Lewdventure.Server.ConfigTool -- hash --file tests/Lewdventure.Server.GoldenTests/Golden/Fixtures/config-snapshot.v1.json
+        run: |
+          dotnet run -c Release --no-build --project tools/Lewdventure.Server.ConfigTool -- hash --file tests/Lewdventure.Server.GoldenTests/Golden/Fixtures/config-snapshot.v1.json
+          dotnet run -c Release --no-build --project tools/Lewdventure.Server.ConfigTool -- hash --file tests/Fixtures/config-snapshot.tests.v1.json
       - name: config tool smoke with mongo services
         env:
           DOTNET_ENVIRONMENT: Development

@@ -15,7 +15,8 @@ namespace Tests.Integration.Mongo
             RepositoryDirectory = directory.FullName;
             ApiDirectory = Path.Combine(RepositoryDirectory, "src", "Lewdventure.Server.Api");
             GoldenDirectory = Path.Combine(RepositoryDirectory, "tests", "Lewdventure.Server.GoldenTests", "Golden");
-            FixturePath = Path.Combine(GoldenDirectory, "Fixtures", "config-snapshot.v1.json");
+            FixturePath = Path.Combine(RepositoryDirectory, "tests", "Fixtures", "config-snapshot.tests.v1.json");
+            GoldenFixturePath = Path.Combine(GoldenDirectory, "Fixtures", "config-snapshot.v1.json");
         }
 
         public string RepositoryDirectory { get; }
@@ -25,5 +26,7 @@ namespace Tests.Integration.Mongo
         public string GoldenDirectory { get; }
 
         public string FixturePath { get; }
+
+        public string GoldenFixturePath { get; }
     }
 }

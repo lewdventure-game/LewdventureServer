@@ -30,7 +30,7 @@ namespace Tests.Integration.Mongo
             await environment.StartAsync(new ConfigServicesRegistrar().Register);
             await environment.Services.GetRequiredService<MongoStartupInitializer>().InitializeAsync(CancellationToken.None);
 
-            var fixture = await environment.Services.GetRequiredService<FileConfigSnapshotSource>().LoadAsync(_paths.FixturePath, CancellationToken.None);
+            var fixture = await environment.Services.GetRequiredService<FileConfigSnapshotSource>().LoadAsync(_paths.GoldenFixturePath, CancellationToken.None);
             var publish = await environment.Services.GetRequiredService<ConfigPublishingService>().PublishAsync(fixture, "it", "seed", true, CancellationToken.None);
 
             Assert.That(publish.Succeeded, Is.True, string.Join("; ", publish.Errors));
