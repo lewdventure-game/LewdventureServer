@@ -6,10 +6,12 @@ namespace Server.Infrastructure.Mongo.Players
     internal sealed class UserRepository : IMongoIndexContributor
     {
         private readonly IMongoDatabaseAccessor _mongoDatabaseAccessor;
+        private readonly IMongoTransactionRunner _mongoTransactionRunner;
 
-        public UserRepository(IMongoDatabaseAccessor mongoDatabaseAccessor)
+        public UserRepository(IMongoDatabaseAccessor mongoDatabaseAccessor, IMongoTransactionRunner mongoTransactionRunner)
         {
             _mongoDatabaseAccessor = mongoDatabaseAccessor;
+            _mongoTransactionRunner = mongoTransactionRunner;
         }
 
         private IMongoCollection<UserDocument> Collection => _mongoDatabaseAccessor.GetCollection<UserDocument>(MongoCollectionNames.Users);
@@ -174,22 +176,120 @@ namespace Server.Infrastructure.Mongo.Players
             await Collection.InsertOneAsync(document, cancellationToken: cancellationToken);
         }
 
+        public async Task<bool> TryReplaceRefreshAsync(string userId, string expectedRefreshTokenHash, UserDeviceDocument device, string country, DateTime now, CancellationToken cancellationToken)
+        {
+            return await _mongoTransactionRunner.ExecuteAsync(
+                (session, token) => ReplaceRefreshAsync(session, userId, expectedRefreshTokenHash, device, country, now, token),
+                cancellationToken);
+        }
+
         public async Task<bool> UpsertDeviceAsync(string userId, UserDeviceDocument device, string country, DateTime now, CancellationToken cancellationToken)
         {
-            var removeFilter = Builders<UserDocument>.Filter.Eq(item => item.Id, userId);
-            var pull = Builders<UserDocument>.Update
-                .PullFilter(item => item.Devices, existing => existing.DeviceIdHash == device.DeviceIdHash)
+            return await _mongoTransactionRunner.ExecuteAsync(
+                (session, token) => UpsertDeviceCoreAsync(session, userId, device, country, now, token),
+                cancellationToken);
+        }
+
+        private async Task<bool> ReplaceRefreshAsync(IClientSessionHandle session, string userId, string expectedRefreshTokenHash, UserDeviceDocument device, string country, DateTime now, CancellationToken cancellationToken)
+        {
+            var user = await LoadUserAsync(session, userId, cancellationToken);
+
+            if (user == null || user.Devices == null)
+                return false;
+
+            var devices = user.Devices;
+            var index = FindRefreshIndex(devices, expectedRefreshTokenHash);
+
+            if (index < 0)
+                return false;
+
+            var stored = CopyDevice(device);
+
+            stored.PreviousRefreshTokenHash = expectedRefreshTokenHash;
+            devices[index] = stored;
+
+            return await SaveDevicesAsync(session, userId, devices, country, now, cancellationToken);
+        }
+
+        private async Task<bool> UpsertDeviceCoreAsync(IClientSessionHandle session, string userId, UserDeviceDocument device, string country, DateTime now, CancellationToken cancellationToken)
+        {
+            var user = await LoadUserAsync(session, userId, cancellationToken);
+
+            if (user == null)
+                return false;
+
+            var devices = user.Devices;
+
+            if (devices == null)
+                devices = new List<UserDeviceDocument>();
+
+            var stored = CopyDevice(device);
+            var replaced = false;
+
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var existing = devices[i];
+
+                if (string.Equals(existing.DeviceIdHash, stored.DeviceIdHash, StringComparison.Ordinal) == false)
+                    continue;
+
+                stored.PreviousRefreshTokenHash = existing.RefreshTokenHash;
+                devices[i] = stored;
+                replaced = true;
+
+                break;
+            }
+
+            if (replaced == false)
+                devices.Add(stored);
+
+            return await SaveDevicesAsync(session, userId, devices, country, now, cancellationToken);
+        }
+
+        private async Task<UserDocument?> LoadUserAsync(IClientSessionHandle session, string userId, CancellationToken cancellationToken)
+        {
+            var filter = Builders<UserDocument>.Filter.Eq(item => item.Id, userId);
+
+            return await Collection.Find(session, filter).FirstOrDefaultAsync(cancellationToken);
+        }
+
+        private async Task<bool> SaveDevicesAsync(IClientSessionHandle session, string userId, List<UserDeviceDocument> devices, string country, DateTime now, CancellationToken cancellationToken)
+        {
+            var filter = Builders<UserDocument>.Filter.Eq(item => item.Id, userId);
+            var update = Builders<UserDocument>.Update
+                .Set(item => item.Devices, devices)
                 .Set(item => item.LastCountry, country)
                 .Set(item => item.UpdatedAt, now);
-
-            await Collection.UpdateOneAsync(removeFilter, pull, cancellationToken: cancellationToken);
-
-            var push = Builders<UserDocument>.Update
-                .Push(item => item.Devices, device)
-                .Set(item => item.UpdatedAt, now);
-            var result = await Collection.UpdateOneAsync(removeFilter, push, cancellationToken: cancellationToken);
+            var result = await Collection.UpdateOneAsync(session, filter, update, cancellationToken: cancellationToken);
 
             return 0 < result.MatchedCount;
+        }
+
+        private UserDeviceDocument CopyDevice(UserDeviceDocument device)
+        {
+            return new UserDeviceDocument
+            {
+                DeviceIdHash = device.DeviceIdHash,
+                RefreshTokenHash = device.RefreshTokenHash,
+                PreviousRefreshTokenHash = device.PreviousRefreshTokenHash,
+                RefreshExpiresAt = device.RefreshExpiresAt,
+                CreatedAt = device.CreatedAt,
+                LastSeenAt = device.LastSeenAt,
+                ClientVersion = device.ClientVersion,
+            };
+        }
+
+        private int FindRefreshIndex(List<UserDeviceDocument> devices, string refreshTokenHash)
+        {
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var existing = devices[i];
+
+                if (string.Equals(existing.RefreshTokenHash, refreshTokenHash, StringComparison.Ordinal))
+                    return i;
+            }
+
+            return -1;
         }
 
         private FilterDefinition<UserDocument> CreateExperimentFilter(UserExperimentDocument? expected)

@@ -109,7 +109,7 @@ namespace Server.Infrastructure.Players
 
             await _experimentAssignmentService.AssignAsync(user, false, country, now, cancellationToken);
 
-            return await IssueSessionAsync(user.Id, device.DeviceIdHash, device.RefreshTokenHash, device.ClientVersion, country, now, cancellationToken);
+            return await RotateRefreshAsync(user.Id, device, country, now, cancellationToken);
         }
 
         private async Task<AuthSessionResult> IssueSessionAsync(string userId, string deviceIdHash, string previousRefreshTokenHash, string clientVersion, string country, DateTime now, CancellationToken cancellationToken)
@@ -126,9 +126,46 @@ namespace Server.Infrastructure.Players
                 ClientVersion = clientVersion,
             };
 
-            await _userRepository.UpsertDeviceAsync(userId, device, country, now, cancellationToken);
+            var saved = await _userRepository.UpsertDeviceAsync(userId, device, country, now, cancellationToken);
+
+            if (saved == false)
+                return new AuthSessionResult(false, string.Empty, string.Empty, DateTime.MinValue, UnknownSessionError);
 
             return new AuthSessionResult(true, userId, refreshToken, device.RefreshExpiresAt, string.Empty);
+        }
+
+        private async Task<AuthSessionResult> RotateRefreshAsync(string userId, UserDeviceDocument device, string country, DateTime now, CancellationToken cancellationToken)
+        {
+            var refreshToken = _tokenGenerator.CreateToken();
+            var expectedHash = device.RefreshTokenHash;
+            var next = new UserDeviceDocument
+            {
+                DeviceIdHash = device.DeviceIdHash,
+                RefreshTokenHash = _tokenGenerator.Hash(refreshToken),
+                PreviousRefreshTokenHash = expectedHash,
+                RefreshExpiresAt = now.AddDays(_options.RefreshTokenDays),
+                CreatedAt = now,
+                LastSeenAt = now,
+                ClientVersion = device.ClientVersion,
+            };
+            var replaced = await _userRepository.TryReplaceRefreshAsync(userId, expectedHash, next, country, now, cancellationToken);
+
+            if (replaced)
+                return new AuthSessionResult(true, userId, refreshToken, next.RefreshExpiresAt, string.Empty);
+
+            var latest = await _userRepository.GetAsync(userId, cancellationToken);
+
+            if (latest == null)
+                return new AuthSessionResult(false, string.Empty, string.Empty, DateTime.MinValue, UnknownSessionError);
+
+            if (string.Equals(latest.Status, UserDocument.ActiveStatus, StringComparison.Ordinal) == false)
+                return new AuthSessionResult(false, string.Empty, string.Empty, DateTime.MinValue, BannedError);
+
+            var reason = FindPreviousDevice(latest, expectedHash) == null ? UnknownTokenReason : ReusedTokenReason;
+
+            _logger.LogWarning("[Auth] refresh token rejected userId = {UserId} reason = {Reason}", userId, reason);
+
+            return new AuthSessionResult(false, string.Empty, string.Empty, DateTime.MinValue, UnknownSessionError);
         }
 
         private UserDeviceDocument? FindDevice(UserDocument user, string refreshTokenHash)

@@ -72,6 +72,89 @@ namespace Tests.Integration.Mongo
         }
 
         [Test]
+        public async Task Refresh_ParallelSameToken_KeepsWinnerAndPrevious()
+        {
+            var authService = _environment.Services.GetRequiredService<PlayerAuthService>();
+            var users = _environment.Services.GetRequiredService<UserRepository>();
+            var tokenGenerator = _environment.Services.GetRequiredService<TokenGenerator>();
+
+            for (int i = 0; i < 8; i++)
+            {
+                var session = await authService.AuthenticateDeviceAsync($"device-refresh-race-{i}", "1.0.0", "XX", CancellationToken.None);
+                var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var first = RefreshAfter(start, authService, session.UserId, session.RefreshToken);
+                var second = RefreshAfter(start, authService, session.UserId, session.RefreshToken);
+
+                start.SetResult();
+
+                var results = await Task.WhenAll(first, second);
+                var wins = 0;
+
+                if (results[0].Succeeded)
+                    ++wins;
+
+                if (results[1].Succeeded)
+                    ++wins;
+
+                Assert.That(wins, Is.EqualTo(1), $"iteration {i}");
+
+                var winner = results[0].Succeeded ? results[0] : results[1];
+                var user = await users.GetAsync(session.UserId, CancellationToken.None);
+
+                Assert.That(user, Is.Not.Null);
+                Assert.That(user!.Devices.Count, Is.EqualTo(1));
+                Assert.That(user.Devices[0].RefreshTokenHash, Is.EqualTo(tokenGenerator.Hash(winner.RefreshToken)));
+                Assert.That(user.Devices[0].PreviousRefreshTokenHash, Is.EqualTo(tokenGenerator.Hash(session.RefreshToken)));
+
+                var chained = await authService.RefreshAsync(winner.UserId, winner.RefreshToken, "XX", CancellationToken.None);
+
+                Assert.That(chained.Succeeded, Is.True, chained.Error);
+            }
+        }
+
+        [Test]
+        public async Task DeviceAuth_ParallelSameDevice_KeepsPreviousToken()
+        {
+            var authService = _environment.Services.GetRequiredService<PlayerAuthService>();
+            var users = _environment.Services.GetRequiredService<UserRepository>();
+            var tokenGenerator = _environment.Services.GetRequiredService<TokenGenerator>();
+
+            for (int i = 0; i < 8; i++)
+            {
+                var deviceId = $"device-login-race-{i}";
+
+                await authService.AuthenticateDeviceAsync(deviceId, "1.0.0", "XX", CancellationToken.None);
+
+                var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var first = DeviceAfter(start, authService, deviceId);
+                var second = DeviceAfter(start, authService, deviceId);
+
+                start.SetResult();
+
+                var results = await Task.WhenAll(first, second);
+
+                Assert.That(results[0].Succeeded, Is.True, results[0].Error);
+                Assert.That(results[1].Succeeded, Is.True, results[1].Error);
+                Assert.That(results[0].UserId, Is.EqualTo(results[1].UserId));
+
+                var user = await users.GetAsync(results[0].UserId, CancellationToken.None);
+
+                Assert.That(user, Is.Not.Null);
+                Assert.That(user!.Devices.Count, Is.EqualTo(1));
+
+                var currentHash = user.Devices[0].RefreshTokenHash;
+                var previousHash = user.Devices[0].PreviousRefreshTokenHash;
+                var leftHash = tokenGenerator.Hash(results[0].RefreshToken);
+                var rightHash = tokenGenerator.Hash(results[1].RefreshToken);
+                var leftIsCurrent = string.Equals(leftHash, currentHash, StringComparison.Ordinal);
+                var rightIsCurrent = string.Equals(rightHash, currentHash, StringComparison.Ordinal);
+
+                Assert.That(leftIsCurrent == rightIsCurrent, Is.False, $"iteration {i}");
+                Assert.That(previousHash, Is.EqualTo(leftIsCurrent ? rightHash : leftHash));
+            }
+        }
+
+        [Test]
         [Order(3)]
         public async Task Profile_IsCreatedOnFirstRead()
         {
@@ -325,6 +408,20 @@ namespace Tests.Integration.Mongo
             var staleRev = profile.Rev - 1;
 
             Assert.That(await repository.ReplaceAsync(profile, staleRev, CancellationToken.None), Is.False);
+        }
+
+        private async Task<AuthSessionResult> RefreshAfter(TaskCompletionSource start, PlayerAuthService authService, string userId, string refreshToken)
+        {
+            await start.Task;
+
+            return await authService.RefreshAsync(userId, refreshToken, "XX", CancellationToken.None);
+        }
+
+        private async Task<AuthSessionResult> DeviceAfter(TaskCompletionSource start, PlayerAuthService authService, string deviceId)
+        {
+            await start.Task;
+
+            return await authService.AuthenticateDeviceAsync(deviceId, "1.0.0", "XX", CancellationToken.None);
         }
 
         private async Task ReserveAsync(IdempotencyRepository idempotency, string userId, string requestId, DateTime updatedAt)
