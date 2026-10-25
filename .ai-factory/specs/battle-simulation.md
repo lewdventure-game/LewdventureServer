@@ -60,7 +60,7 @@ Seed RNG для `/api/battle/simulate` генерирует только сер�
 | `activeStatusIds` | `int[]` | Стартовые статусы (id из Statuses) |
 | `skillLevels` | `int[]` | Только саммон: уровни скиллов по порядку `Summons.skill_ids` (с 1; нет значения — 1). Скилл берёт значения с номером уровня; скилл ниже `mastery_for_skills` в бой не попадает |
 | `activeBonuses` | `{ id, count, remainingBattles }[]` | Бонусы персонажа A: сперва постоянные бонусы аккаунта из профиля (`remainingBattles = 0`), затем run-bonuses забега. Саммоны/враги — `[]`. `remainingBattles`: `0` = не сжигать по боям (`permanent` / `end_of_game` / `first_turns` / `every_turn`); `> 0` = осталось боёв (`end_of_battle` / `next_battles`) |
-| `slotIndex` | `int` | Позиция в команде (2 моба / слоты саммонов) |
+| `slotIndex` | `int` | Позиция в команде. Герой — 0, враги — 0…n, саммоны — 1…3 по позиции в сетапе (`loadout.summons[i]` → `i + 1`; слот 0 занят героем, иначе герой и саммон с одинаковым id в скрипте неразличимы). Команды скрипта адресуют юнит парой `unitId` + `slotIndex` |
 | `qa` | `UnitQaSnapshot?` | Только читы QA, обычный бой — нет поля. `strikeDamageMultiplier` (1) — множитель урона ударов юнита: обычная атака, комбо, контратака, атака саммона, урон скилла; статусы и перки не трогает. `healthMultiplier` (1, > 0) — множитель макс. ХП через `HealthEntityMultiplier`. `startHealth` (0 — не задано) — ХП на старте боя, не выше макс. `killAtStart` — юнит умирает на ходе 0 (`SetHp 0` + `KillUnit`, фаза `Death`) до первого хода. `actionRewardProgress` (0) — стартовое значение счётчиков перков `action_reward`. Все значения конечные и ≥ 0, иначе 400 |
 
 ### `EquipmentSnapshot`

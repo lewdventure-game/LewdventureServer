@@ -8,6 +8,8 @@ namespace Server.Runs
 {
     internal sealed class RunSnapshotBuilder
     {
+        private const int SummonSlotOffset = 1;
+
         public bool TryBuild(
             PlayerProfileDocument profile,
             RunDocument run,
@@ -244,7 +246,7 @@ namespace Server.Runs
                     Id = summon.ConfigId,
                     Level = summon.Level,
                     MasteryLevel = summon.MasteryLevel,
-                    SlotIndex = i,
+                    SlotIndex = i + SummonSlotOffset,
                     SkillLevels = new List<int>(summon.SkillLevels),
                 });
             }

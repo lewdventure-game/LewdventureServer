@@ -203,6 +203,7 @@ namespace Tests.Unit.Players
             Assert.That(hero.ActionRewardProgress, Is.EqualTo(99));
             Assert.That(hero.HealthMultiplier, Is.EqualTo(1f));
             Assert.That(data.TeamA.Summons[0].Qa!.StrikeDamageMultiplier, Is.EqualTo(2f));
+            Assert.That(data.TeamA.Summons[0].SlotIndex, Is.EqualTo(1), "слот 0 занят героем, саммоны с 1 по позиции в сетапе");
 
             for (int i = 0; i < data.TeamB.MainUnits.Count; i++)
             {
