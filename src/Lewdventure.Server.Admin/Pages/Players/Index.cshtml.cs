@@ -16,6 +16,7 @@ namespace Server.Admin.Pages.Players
         private const string RemovedStatus = "removed";
         private const char TargetSeparator = '|';
         private const int RequestLimit = 50;
+        private const int NotFoundCode = 404;
         private const long MaxImportBytes = 5 * 1024 * 1024;
 
         private readonly AnalyticsReportService _analyticsReportService;
@@ -37,6 +38,10 @@ namespace Server.Admin.Pages.Players
         public string UserId { get; private set; } = string.Empty;
 
         public PlayerProfileModel? Profile { get; private set; }
+
+        public bool IsProfileMissing { get; private set; }
+
+        public bool IsAccountMissing { get; private set; }
 
         public ExperimentPlayerModel? Assignment { get; private set; }
 
@@ -80,10 +85,7 @@ namespace Server.Admin.Pages.Players
         {
             ErrorsOnly = string.Equals(requests, ErrorsFilter, StringComparison.Ordinal);
 
-            var status = await LoadAsync<QaStatusModel>("/admin/qa/status");
-
-            if (status != null)
-                Status = status;
+            Status = await LoadQaStatusAsync();
 
             Query = query == null ? string.Empty : query.Trim();
             UserId = userId == null ? string.Empty : userId.Trim();
@@ -127,9 +129,16 @@ namespace Server.Admin.Pages.Players
             var ledger = await LoadAsync<List<PlayerLedgerModel>>(path + "/ledger?limit=50");
             var catalog = await LoadAsync<CheatCatalogModel>("/admin/qa/catalog");
 
-            Profile = await LoadOptionalAsync<PlayerProfileModel>(path);
+            var profile = await LoadOptionalResultAsync<PlayerProfileModel>(path);
+
+            Profile = profile.Data;
+            IsProfileMissing = profile.StatusCode == NotFoundCode;
             Assignment = await LoadAsync<ExperimentPlayerModel>("/admin/experiments/player/" + Escape(UserId));
-            Account = await LoadOptionalAsync<QaAccountModel>("/admin/qa/players/" + Escape(UserId));
+
+            var account = await LoadOptionalResultAsync<QaAccountModel>("/admin/qa/players/" + Escape(UserId));
+
+            Account = account.Data;
+            IsAccountMissing = account.StatusCode == NotFoundCode;
 
             if (catalog != null)
                 Catalog = catalog;
@@ -272,7 +281,7 @@ namespace Server.Admin.Pages.Players
                 requestId = Guid.NewGuid().ToString("N"),
             };
 
-            await ExecuteAsync<PlayerProfileModel>(HttpMethod.Post, "/admin/player/" + Escape(userId) + "/grant", body, "player.grant", userId + " " + body.rewards, "Награда выдана.");
+            await ExecuteAsync<PlayerProfileModel>(HttpMethod.Post, "/admin/player/" + Escape(userId) + "/grant", body, "player.grant", userId + " " + body.rewards, "Награда выдана: " + body.rewards + ".");
 
             return RedirectToPage(new { userId });
         }
@@ -524,12 +533,19 @@ namespace Server.Admin.Pages.Players
 
         private async Task<T?> LoadOptionalAsync<T>(string path)
         {
-            var result = await GameAdminClient.GetAsync<T>(CurrentEnvironment, path, LoginName, HttpContext.RequestAborted);
-
-            if (result.IsSuccess == false && result.StatusCode != 404)
-                LoadErrors.AddRange(result.Errors);
+            var result = await LoadOptionalResultAsync<T>(path);
 
             return result.Data;
+        }
+
+        private async Task<GameAdminResult<T>> LoadOptionalResultAsync<T>(string path)
+        {
+            var result = await GameAdminClient.GetAsync<T>(CurrentEnvironment, path, LoginName, HttpContext.RequestAborted);
+
+            if (result.IsSuccess == false && result.StatusCode != NotFoundCode)
+                AddLoadErrors(result.Errors);
+
+            return result;
         }
 
         private async Task ExecuteCheatAsync(string userId, string path, object body, string action, string details, string successMessage)

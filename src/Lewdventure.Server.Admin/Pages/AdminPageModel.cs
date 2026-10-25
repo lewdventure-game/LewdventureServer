@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -11,6 +12,8 @@ namespace Server.Admin.Pages
     {
         public const string EnvironmentKey = "Environment";
         public const string EnvironmentsKey = "Environments";
+
+        private const int RevisionLength = 7;
 
         private readonly AdminAuditLog _auditLog;
         private readonly AdminEnvironmentSelector _environmentSelector;
@@ -36,6 +39,8 @@ namespace Server.Admin.Pages
 
         public List<string> LoadErrors { get; } = new();
 
+        public string VersionWarning { get; private set; } = string.Empty;
+
         protected GameAdminClient GameAdminClient { get; }
 
         public override void OnPageHandlerExecuting(PageHandlerExecutingContext context)
@@ -50,9 +55,30 @@ namespace Server.Admin.Pages
             var result = await GameAdminClient.GetAsync<T>(CurrentEnvironment, path, LoginName, HttpContext.RequestAborted);
 
             if (result.IsSuccess == false)
-                LoadErrors.AddRange(result.Errors);
+                AddLoadErrors(result.Errors);
 
             return result.Data;
+        }
+
+        protected void AddLoadErrors(List<string> errors)
+        {
+            for (int i = 0; i < errors.Count; i++)
+            {
+                if (LoadErrors.Contains(errors[i]) == false)
+                    LoadErrors.Add(errors[i]);
+            }
+        }
+
+        protected async Task<QaStatusModel> LoadQaStatusAsync()
+        {
+            var status = await LoadAsync<QaStatusModel>("/admin/qa/status");
+
+            if (status == null)
+                return new QaStatusModel();
+
+            VersionWarning = DescribeVersionMismatch(status.Version);
+
+            return status;
         }
 
         protected async Task<GameAdminResult<T>> ExecuteAsync<T>(HttpMethod method, string path, object? body, string action, string target, string successMessage)
@@ -102,6 +128,36 @@ namespace Server.Admin.Pages
         protected string Escape(string value)
         {
             return Uri.EscapeDataString(value);
+        }
+
+        private string DescribeVersionMismatch(string serverVersion)
+        {
+            var adminRevision = ReadRevision(ReadAdminVersion());
+            var serverRevision = ReadRevision(serverVersion);
+
+            if (adminRevision.Length == 0 || serverRevision.Length == 0 || string.Equals(adminRevision, serverRevision, StringComparison.Ordinal))
+                return string.Empty;
+
+            return $"Админка собрана из {adminRevision}, сервер {CurrentEnvironment} — из {serverRevision}. Новые разделы админки могут не работать, пока сервер не обновят.";
+        }
+
+        private string ReadAdminVersion()
+        {
+            var attribute = typeof(AdminPageModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+
+            return attribute == null ? string.Empty : attribute.InformationalVersion;
+        }
+
+        private string ReadRevision(string version)
+        {
+            var separator = version.IndexOf('+');
+
+            if (separator < 0 || version.Length <= separator + 1)
+                return string.Empty;
+
+            var revision = version.Substring(separator + 1);
+
+            return RevisionLength < revision.Length ? revision.Substring(0, RevisionLength) : revision;
         }
     }
 }

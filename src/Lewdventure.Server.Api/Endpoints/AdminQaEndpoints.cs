@@ -89,13 +89,14 @@ namespace Server.Api.Endpoints
             cheats.MapPost("/run/abandon", AbandonRunAsync);
         }
 
-        private IResult GetStatus([FromServices] IHostEnvironment hostEnvironment)
+        private IResult GetStatus([FromServices] IHostEnvironment hostEnvironment, [FromServices] BuildInfo buildInfo)
         {
             return Results.Ok(new QaStatusResponse
             {
                 CheatsEnabled = _isCheatsEnabled,
                 DiagnosticsEnabled = _isDiagnosticsEnabled,
                 Environment = hostEnvironment.EnvironmentName,
+                Version = buildInfo.Version,
             });
         }
 

@@ -27,10 +27,7 @@ namespace Server.Admin.Pages.Errors
             UserId = userId == null ? string.Empty : userId.Trim();
             CorrelationId = correlationId == null ? string.Empty : correlationId.Trim();
 
-            var status = await LoadAsync<QaStatusModel>("/admin/qa/status");
-
-            if (status != null)
-                Status = status;
+            Status = await LoadQaStatusAsync();
 
             var errors = await LoadAsync<List<ServerErrorModel>>($"/admin/qa/errors?limit={Limit}&userId={Escape(UserId)}&correlationId={Escape(CorrelationId)}");
 

@@ -11,6 +11,8 @@
     --ok-text: #1e6b3a;
     --error-bg: #fdecea;
     --error-text: #8a1f17;
+    --warn-bg: #fff4dc;
+    --warn-text: #7a4b00;
     --prod: #b3261e;
 }
 
@@ -28,6 +30,8 @@
         --ok-text: #8fdcaa;
         --error-bg: #3a1d1b;
         --error-text: #f4a7a0;
+        --warn-bg: #3a2d14;
+        --warn-text: #f2cf86;
         --prod: #ef6b5f;
     }
 }
@@ -354,6 +358,11 @@ button.link {
 .alert-error {
     background: var(--error-bg);
     color: var(--error-text);
+}
+
+.alert-warn {
+    background: var(--warn-bg);
+    color: var(--warn-text);
 }
 
 .danger-zone {

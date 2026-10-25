@@ -11,6 +11,8 @@ namespace Server.Admin.Backend
 
         private const string AdminKeyHeader = "X-Admin-Key";
         private const string ActorHeader = "X-Admin-Actor";
+        private const int UnauthorizedCode = 401;
+        private const int TooManyRequestsCode = 429;
 
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<GameAdminClient> _logger;
@@ -57,6 +59,20 @@ namespace Server.Admin.Backend
                 result.StatusCode = (int)response.StatusCode;
                 result.IsSuccess = response.IsSuccessStatusCode;
 
+                if (result.StatusCode == TooManyRequestsCode)
+                {
+                    result.Errors.Add(DescribeTooManyRequests(environment, response));
+
+                    return result;
+                }
+
+                if (result.StatusCode == UnauthorizedCode)
+                {
+                    result.Errors.Add($"Сервер {environment} не принял ключ админки: проверьте ApiKey окружения в настройках админки.");
+
+                    return result;
+                }
+
                 if (result.IsSuccess && 0 < content.Length)
                     result.Data = JsonSerializer.Deserialize<T>(content, _jsonOptions);
 
@@ -74,6 +90,17 @@ namespace Server.Admin.Backend
             }
 
             return result;
+        }
+
+        private string DescribeTooManyRequests(string environment, HttpResponseMessage response)
+        {
+            var retryAfter = response.Headers.RetryAfter;
+            var delta = retryAfter == null ? null : retryAfter.Delta;
+
+            if (delta == null)
+                return $"Сервер {environment} ограничил частоту запросов админки. Повторите через минуту.";
+
+            return $"Сервер {environment} ограничил частоту запросов админки. Повторите через {(int)Math.Ceiling(delta.Value.TotalSeconds)} с.";
         }
 
         private AdminEnvironmentOptions? FindEnvironment(string environment)

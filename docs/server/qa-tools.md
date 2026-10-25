@@ -161,7 +161,7 @@
 
 | Эндпоинт | Метод | Тело | Что делает |
 | --- | --- | --- | --- |
-| `/admin/qa/status` | GET | — | `{cheatsEnabled, diagnosticsEnabled, environment}` |
+| `/admin/qa/status` | GET | — | `{cheatsEnabled, diagnosticsEnabled, environment, version}`, `version` — сборка сервера, `1.0.0+<коммит>` |
 | `/admin/qa/catalog` | GET | — | из мастер-конфигов: персонажи, саммоны, снаряжение с максимальными уровнями, бонусы аккаунта (`bonuses`), бонусы забега (`runBonuses`, без `permanent` / `if_equipped`), перки, группы перков, статусы, события, ключи ресурсов, уровни сюжета |
 | `/admin/qa/players/{userId}/run/catalog` | GET | — | тот же каталог из конфигов активного забега игрока или 404 |
 | `/admin/qa/players/{userId}/characteristics` | GET | — | характеристики персонажа из лоадаута, как `GET /api/player/characteristics` (с `combo2Multiplier`) |
