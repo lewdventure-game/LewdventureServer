@@ -220,6 +220,67 @@ namespace Tests.Unit.Qa
             Assert.That(error, Does.Contain("42"));
         }
 
+        [TestCase(RunCheatCommand.QaHeroDamageAction, 0f)]
+        [TestCase(RunCheatCommand.QaSummonDamageAction, 0f)]
+        [TestCase(RunCheatCommand.QaEnemyDamageAction, 2f)]
+        [TestCase(RunCheatCommand.QaEnemyHealthAction, 10f)]
+        [TestCase(RunCheatCommand.QaEnemyStartHealthAction, 1f)]
+        public void QaMultiplier_IsStoredOnRun(string action, float value)
+        {
+            var run = CreateRun();
+
+            var error = _editor.Apply(run, new RunCheatCommand { Action = action, Value = value }, _configDistributor);
+
+            Assert.That(error, Is.Empty);
+            Assert.That(run.Qa, Is.Not.Null);
+        }
+
+        [TestCase(RunCheatCommand.QaHeroDamageAction, -1f)]
+        [TestCase(RunCheatCommand.QaEnemyHealthAction, 0f)]
+        [TestCase(RunCheatCommand.QaEnemyStartHealthAction, float.NaN)]
+        [TestCase(RunCheatCommand.QaActionProgressAction, -1f)]
+        public void QaInvalidValue_Fails(string action, float value)
+        {
+            var run = CreateRun();
+
+            var error = _editor.Apply(run, new RunCheatCommand { Action = action, Value = value }, _configDistributor);
+
+            Assert.That(error, Is.Not.Empty);
+            Assert.That(run.Qa, Is.Null);
+        }
+
+        [Test]
+        public void QaKillAndProgress_AreSetAndClearQaRemovesEverything()
+        {
+            var run = CreateRun();
+
+            Assert.That(_editor.Apply(run, new RunCheatCommand { Action = RunCheatCommand.QaKillEnemiesAction, Value = 1f }, _configDistributor), Is.Empty);
+            Assert.That(_editor.Apply(run, new RunCheatCommand { Action = RunCheatCommand.QaKillHeroAction, Value = 1f }, _configDistributor), Is.Empty);
+            Assert.That(_editor.Apply(run, new RunCheatCommand { Action = RunCheatCommand.QaActionProgressAction, Value = 99f }, _configDistributor), Is.Empty);
+            Assert.That(run.Qa!.KillEnemies, Is.True);
+            Assert.That(run.Qa.KillHero, Is.True);
+            Assert.That(run.Qa.ActionRewardProgress, Is.EqualTo(99));
+
+            Assert.That(_editor.Apply(run, new RunCheatCommand { Action = RunCheatCommand.QaKillHeroAction, Value = 0f }, _configDistributor), Is.Empty);
+            Assert.That(run.Qa.KillHero, Is.False);
+
+            Assert.That(_editor.Apply(run, new RunCheatCommand { Action = RunCheatCommand.ClearQaAction }, _configDistributor), Is.Empty);
+            Assert.That(run.Qa, Is.Null);
+        }
+
+        [Test]
+        public void Qa_IsBlockedWhileBattleIsPending()
+        {
+            var run = CreateRun();
+
+            run.PendingBattle = new RunPendingBattleDocument();
+
+            var error = _editor.Apply(run, new RunCheatCommand { Action = RunCheatCommand.QaHeroDamageAction, Value = 0f }, _configDistributor);
+
+            Assert.That(error, Does.Contain("battle finish"));
+            Assert.That(run.Qa, Is.Null);
+        }
+
         private RunDocument CreateRun()
         {
             var run = new RunDocument { Id = "run_test", UserId = "usr_test", StoryLevelId = 1, CurrentHealth = 100f };

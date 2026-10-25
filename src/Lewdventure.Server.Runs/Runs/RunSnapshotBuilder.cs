@@ -76,6 +76,7 @@ namespace Server.Runs
             }
 
             AddEnemyRunStatuses(run, teamB, configDistributor);
+            ApplyQa(run.Qa, teamA, teamB);
 
             simulationData = new BattleSimulationData
             {
@@ -86,6 +87,36 @@ namespace Server.Runs
             };
 
             return true;
+        }
+
+        private void ApplyQa(RunQaDocument? qa, TeamSnapshot teamA, TeamSnapshot teamB)
+        {
+            if (qa == null)
+                return;
+
+            for (int i = 0; i < teamA.MainUnits.Count; i++)
+            {
+                teamA.MainUnits[i].Qa = new UnitQaSnapshot
+                {
+                    StrikeDamageMultiplier = qa.HeroDamageMultiplier,
+                    KillAtStart = qa.KillHero,
+                    ActionRewardProgress = qa.ActionRewardProgress,
+                };
+            }
+
+            for (int i = 0; i < teamA.Summons.Count; i++)
+                teamA.Summons[i].Qa = new UnitQaSnapshot { StrikeDamageMultiplier = qa.SummonDamageMultiplier };
+
+            for (int i = 0; i < teamB.MainUnits.Count; i++)
+            {
+                teamB.MainUnits[i].Qa = new UnitQaSnapshot
+                {
+                    StrikeDamageMultiplier = qa.EnemyDamageMultiplier,
+                    HealthMultiplier = qa.EnemyHealthMultiplier,
+                    StartHealth = qa.EnemyStartHealth,
+                    KillAtStart = qa.KillEnemies,
+                };
+            }
         }
 
         private void AddEnemyRunStatuses(RunDocument run, TeamSnapshot teamB, IConfigDistributor configDistributor)

@@ -54,6 +54,30 @@ namespace Server.Runs
                     return ClearBattle(run);
                 case RunCheatCommand.AddPerkGroupAction:
                     return AddPerkGroup(run, command.Id, command.Count, configDistributor);
+                case RunCheatCommand.QaHeroDamageAction:
+                    return SetMultiplier(command.Value, false, value => EnsureQa(run).HeroDamageMultiplier = value);
+                case RunCheatCommand.QaSummonDamageAction:
+                    return SetMultiplier(command.Value, false, value => EnsureQa(run).SummonDamageMultiplier = value);
+                case RunCheatCommand.QaEnemyDamageAction:
+                    return SetMultiplier(command.Value, false, value => EnsureQa(run).EnemyDamageMultiplier = value);
+                case RunCheatCommand.QaEnemyHealthAction:
+                    return SetMultiplier(command.Value, true, value => EnsureQa(run).EnemyHealthMultiplier = value);
+                case RunCheatCommand.QaEnemyStartHealthAction:
+                    return SetMultiplier(command.Value, false, value => EnsureQa(run).EnemyStartHealth = value);
+                case RunCheatCommand.QaKillEnemiesAction:
+                    EnsureQa(run).KillEnemies = 0f < command.Value;
+
+                    return string.Empty;
+                case RunCheatCommand.QaKillHeroAction:
+                    EnsureQa(run).KillHero = 0f < command.Value;
+
+                    return string.Empty;
+                case RunCheatCommand.QaActionProgressAction:
+                    return SetActionProgress(run, command.Value);
+                case RunCheatCommand.ClearQaAction:
+                    run.Qa = null;
+
+                    return string.Empty;
                 default:
                     return $"Unknown run cheat action {command.Action}.";
             }
@@ -131,6 +155,33 @@ namespace Server.Runs
 
             run.Stages[index].EventId = eventId;
             run.Stages[index].Resolved = false;
+
+            return string.Empty;
+        }
+
+        private RunQaDocument EnsureQa(RunDocument run)
+        {
+            run.Qa ??= new RunQaDocument();
+
+            return run.Qa;
+        }
+
+        private string SetMultiplier(float value, bool mustBePositive, Action<float> apply)
+        {
+            if (float.IsFinite(value) == false || value < 0f || (mustBePositive && value == 0f))
+                return mustBePositive ? "Value must be greater than 0." : "Value must be 0 or greater.";
+
+            apply(value);
+
+            return string.Empty;
+        }
+
+        private string SetActionProgress(RunDocument run, float value)
+        {
+            if (float.IsFinite(value) == false || value < 0f)
+                return "Value must be 0 or greater.";
+
+            EnsureQa(run).ActionRewardProgress = (int)value;
 
             return string.Empty;
         }

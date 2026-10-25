@@ -14,6 +14,15 @@ namespace Server.Runs
         public const string ClearStatusesAction = "clear-statuses";
         public const string ClearBattleAction = "clear-battle";
         public const string AddPerkGroupAction = "perk-group";
+        public const string QaHeroDamageAction = "qa-hero-damage";
+        public const string QaSummonDamageAction = "qa-summon-damage";
+        public const string QaEnemyDamageAction = "qa-enemy-damage";
+        public const string QaEnemyHealthAction = "qa-enemy-health";
+        public const string QaEnemyStartHealthAction = "qa-enemy-start-health";
+        public const string QaKillEnemiesAction = "qa-kill-enemies";
+        public const string QaKillHeroAction = "qa-kill-hero";
+        public const string QaActionProgressAction = "qa-action-progress";
+        public const string ClearQaAction = "clear-qa";
 
         public string Action { get; set; } = string.Empty;
 

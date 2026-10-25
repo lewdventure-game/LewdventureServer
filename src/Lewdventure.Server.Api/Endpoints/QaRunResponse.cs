@@ -39,5 +39,7 @@ namespace Server.Api.Endpoints
         public List<int> Statuses { get; set; } = new();
 
         public List<RunBonusResponse> Bonuses { get; set; } = new();
+
+        public QaRunCheatsResponse? Qa { get; set; }
     }
 }

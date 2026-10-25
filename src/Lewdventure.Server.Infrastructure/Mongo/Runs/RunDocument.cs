@@ -67,5 +67,7 @@ namespace Server.Infrastructure.Mongo.Runs
         public RunPendingChoiceDocument? PendingChoice { get; set; }
 
         public RunPendingBattleDocument? PendingBattle { get; set; }
+
+        public RunQaDocument? Qa { get; set; }
     }
 }

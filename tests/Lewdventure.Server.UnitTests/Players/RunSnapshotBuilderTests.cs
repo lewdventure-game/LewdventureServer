@@ -160,6 +160,61 @@ namespace Tests.Unit.Players
             Assert.That(error, Does.Contain("no enemies"));
         }
 
+        [Test]
+        public void TryBuild_WithoutQa_LeavesQaEmpty()
+        {
+            var run = CreateRun();
+
+            var built = _builder.TryBuild(CreateProfile(), run, run.Stages[0], new[] { EnemyId }, _configDistributor, out var data, out var error);
+
+            Assert.That(built, Is.True, error);
+            Assert.That(data.TeamA.MainUnits[0].Qa, Is.Null);
+            Assert.That(data.TeamB.MainUnits[0].Qa, Is.Null);
+        }
+
+        [Test]
+        public void TryBuild_MapsQaToHeroSummonsAndEnemies()
+        {
+            var profile = CreateProfile();
+            var run = CreateRun();
+
+            profile.Summons.Add(new PlayerSummonDocument { ConfigId = SummonId });
+            profile.Loadout.Summons.Add(SummonId);
+            run.Qa = new RunQaDocument
+            {
+                HeroDamageMultiplier = 0f,
+                SummonDamageMultiplier = 2f,
+                EnemyDamageMultiplier = 0.5f,
+                EnemyHealthMultiplier = 10f,
+                EnemyStartHealth = 7f,
+                KillEnemies = true,
+                KillHero = false,
+                ActionRewardProgress = 99,
+            };
+
+            var built = _builder.TryBuild(profile, run, run.Stages[0], new[] { EnemyId, EnemyId }, _configDistributor, out var data, out var error);
+
+            Assert.That(built, Is.True, error);
+
+            var hero = data.TeamA.MainUnits[0].Qa!;
+
+            Assert.That(hero.StrikeDamageMultiplier, Is.EqualTo(0f));
+            Assert.That(hero.KillAtStart, Is.False);
+            Assert.That(hero.ActionRewardProgress, Is.EqualTo(99));
+            Assert.That(hero.HealthMultiplier, Is.EqualTo(1f));
+            Assert.That(data.TeamA.Summons[0].Qa!.StrikeDamageMultiplier, Is.EqualTo(2f));
+
+            for (int i = 0; i < data.TeamB.MainUnits.Count; i++)
+            {
+                var enemy = data.TeamB.MainUnits[i].Qa!;
+
+                Assert.That(enemy.StrikeDamageMultiplier, Is.EqualTo(0.5f));
+                Assert.That(enemy.HealthMultiplier, Is.EqualTo(10f));
+                Assert.That(enemy.StartHealth, Is.EqualTo(7f));
+                Assert.That(enemy.KillAtStart, Is.True);
+            }
+        }
+
         private PlayerProfileDocument CreateProfile()
         {
             var profile = new PlayerProfileDocument { Id = "usr_unit", Rev = 1 };

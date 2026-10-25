@@ -27,6 +27,7 @@ namespace Server.Api.Endpoints
                 PendingBattle = CreatePendingBattle(run.PendingBattle),
                 Perks = new List<int>(run.Perks),
                 Statuses = new List<int>(run.Statuses),
+                Qa = CreateRunCheats(run.Qa),
             };
 
             for (int i = 0; i < run.Stages.Count; i++)
@@ -112,6 +113,24 @@ namespace Server.Api.Endpoints
             }
 
             return response;
+        }
+
+        private QaRunCheatsResponse? CreateRunCheats(RunQaDocument? qa)
+        {
+            if (qa == null)
+                return null;
+
+            return new QaRunCheatsResponse
+            {
+                HeroDamageMultiplier = qa.HeroDamageMultiplier,
+                SummonDamageMultiplier = qa.SummonDamageMultiplier,
+                EnemyDamageMultiplier = qa.EnemyDamageMultiplier,
+                EnemyHealthMultiplier = qa.EnemyHealthMultiplier,
+                EnemyStartHealth = qa.EnemyStartHealth,
+                KillEnemies = qa.KillEnemies,
+                KillHero = qa.KillHero,
+                ActionRewardProgress = qa.ActionRewardProgress,
+            };
         }
     }
 }

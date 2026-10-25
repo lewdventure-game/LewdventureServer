@@ -70,6 +70,72 @@ namespace Tests.Integration.Mongo
             Assert.That(JObject.Parse(repeatedBody)["rev"]!.Value<int>(), Is.EqualTo(JObject.Parse(firstBody)["rev"]!.Value<int>()));
         }
 
+        [Test]
+        public async Task RunCheats_OnlyForTestAccount_AndStoredOnActiveRun()
+        {
+            await using var environment = new MongoTestEnvironment();
+
+            await environment.StartAsync(new ConfigServicesRegistrar().Register);
+            await environment.Services.GetRequiredService<MongoStartupInitializer>().InitializeAsync(CancellationToken.None);
+
+            var fixture = await environment.Services.GetRequiredService<FileConfigSnapshotSource>().LoadAsync(_paths.FixturePath, CancellationToken.None);
+            var publish = await environment.Services.GetRequiredService<ConfigPublishingService>().PublishAsync(fixture, "it", "seed", true, CancellationToken.None);
+
+            Assert.That(publish.Succeeded, Is.True, string.Join("; ", publish.Errors));
+
+            using var factory = new QaApiFactory(_paths.ApiDirectory, environment.ConnectionString, environment.DatabaseName);
+            using var client = factory.CreateClient();
+            using var scope = factory.Services.CreateScope();
+
+            var session = await scope.ServiceProvider.GetRequiredService<PlayerAuthService>().AuthenticateDeviceAsync("device-qa-run", "it", "XX", CancellationToken.None);
+            var token = scope.ServiceProvider.GetRequiredService<AccessTokenIssuer>().Issue(session.UserId).Value;
+
+            using var regular = await SendAsync(client, token, HttpMethod.Post, "/api/qa/run", "{\"action\":\"qa-kill-enemies\",\"value\":1}");
+
+            Assert.That(regular.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden), "обычный аккаунт поменял забег");
+
+            var mark = await scope.ServiceProvider.GetRequiredService<QaAccountService>().MarkAsync(session.UserId, "qa-run", "admin:it", CancellationToken.None);
+
+            Assert.That(mark.Succeeded, Is.True, mark.Error);
+
+            using var withoutRun = await SendAsync(client, token, HttpMethod.Get, "/api/qa/run", null);
+
+            Assert.That(withoutRun.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+
+            using var profile = await SendAsync(client, token, HttpMethod.Get, "/api/player/profile", null);
+            using var start = await SendAsync(client, token, HttpMethod.Post, "/api/run/start", "{\"storyLevelId\":1,\"requestId\":\"run-start\"}");
+
+            Assert.That(start.StatusCode, Is.EqualTo(HttpStatusCode.OK), await start.Content.ReadAsStringAsync());
+
+            using var kill = await SendAsync(client, token, HttpMethod.Post, "/api/qa/run", "{\"action\":\"qa-kill-enemies\",\"value\":1}");
+            var killBody = await kill.Content.ReadAsStringAsync();
+
+            Assert.That(kill.StatusCode, Is.EqualTo(HttpStatusCode.OK), killBody);
+            Assert.That(JObject.Parse(killBody)["qa"]!["killEnemies"]!.Value<bool>(), Is.True);
+
+            using var invalid = await SendAsync(client, token, HttpMethod.Post, "/api/qa/run", "{\"action\":\"qa-enemy-health\",\"value\":0}");
+
+            Assert.That(invalid.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+
+            using var current = await SendAsync(client, token, HttpMethod.Get, "/api/qa/run", null);
+            var currentBody = await current.Content.ReadAsStringAsync();
+
+            Assert.That(current.StatusCode, Is.EqualTo(HttpStatusCode.OK), currentBody);
+            Assert.That(JObject.Parse(currentBody)["qa"]!["killEnemies"]!.Value<bool>(), Is.True);
+        }
+
+        private async Task<HttpResponseMessage> SendAsync(HttpClient client, string token, HttpMethod method, string path, string? body)
+        {
+            using var request = new HttpRequestMessage(method, path);
+
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            if (body != null)
+                request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+
+            return await client.SendAsync(request);
+        }
+
         private async Task<HttpResponseMessage> PostAsync(HttpClient client, string token, string requestId)
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, "/api/qa/grant");
