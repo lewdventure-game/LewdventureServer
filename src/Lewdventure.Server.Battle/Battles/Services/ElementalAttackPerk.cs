@@ -154,6 +154,26 @@ namespace Server.Battles
 
             damage = context.BattleDamageMath.RoundDamage(damage * defenceFactor);
 
+            if (context.BattleDamageMath.IsRecordingFormulas)
+            {
+                context.BattleDamageMath.RecordFormula(new BattleFormula
+                {
+                    Kind = BattleFormulaKinds.Perk,
+                    Phase = BattlePhaseType.PerkTrigger,
+                    ActorId = owner.Id,
+                    ActorSlot = owner.SlotIndex,
+                    TargetId = target.Id,
+                    TargetSlot = target.SlotIndex,
+                    SourceId = Id,
+                    BaseDamage = ownerCharacteristics.Damage,
+                    DamageMultiplier = _damageRatio,
+                    IsCritical = isCritical,
+                    CriticalMultiplier = ownerCharacteristics.CriticalMultiplier,
+                    Defence = targetCharacteristics.Defence,
+                    Result = damage,
+                });
+            }
+
             var healthAfter = targetCharacteristics.Health - damage;
 
             if (healthAfter < 0f)

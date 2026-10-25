@@ -341,11 +341,52 @@ namespace Server.Battles
             if (ValidateActiveBonuses(unit, out errorMessage) == false)
                 return false;
 
+            if (ValidateQa(unit, out errorMessage) == false)
+                return false;
+
             _coreLog.Debug($"[Story][Battle]: Unit snapshot resolved id = {unit.Id}, masteryLevel = {unit.MasteryLevel}, trainingLevel = {unit.TrainingLevel}, equipmentCount = {unit.Equipments.Count}, artifactCount = {unit.ArtifactIds.Count}, aspectCount = {unit.AspectIds.Count}, bonusCount = {unit.ActiveBonuses.Count}");
 
             errorMessage = string.Empty;
 
             return true;
+        }
+
+        private bool ValidateQa(IUnitSnapshot unit, out string errorMessage)
+        {
+            errorMessage = string.Empty;
+
+            var qa = unit.Qa;
+
+            if (qa == null)
+                return true;
+
+            if (IsNonNegativeFinite(qa.StrikeDamageMultiplier) == false || IsNonNegativeFinite(qa.HealthMultiplier) == false || IsNonNegativeFinite(qa.StartHealth) == false)
+            {
+                errorMessage = $"qa multipliers and startHealth must be finite and >= 0 for unit id = {unit.Id}.";
+
+                return false;
+            }
+
+            if (qa.HealthMultiplier == 0f)
+            {
+                errorMessage = $"qa healthMultiplier must be > 0 for unit id = {unit.Id}, use killAtStart to kill the unit.";
+
+                return false;
+            }
+
+            if (qa.ActionRewardProgress < 0)
+            {
+                errorMessage = $"qa actionRewardProgress must be >= 0 for unit id = {unit.Id}.";
+
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool IsNonNegativeFinite(float value)
+        {
+            return float.IsNaN(value) == false && float.IsInfinity(value) == false && 0f <= value;
         }
 
         private bool ValidateActiveBonuses(IUnitSnapshot unit, out string errorMessage)

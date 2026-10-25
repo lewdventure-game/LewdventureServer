@@ -29,6 +29,14 @@ namespace Server.Battles
             _coreLog = coreLog;
         }
 
+        public override void SeedActionProgress(int progress)
+        {
+            for (int i = 0; i < _actionThresholds.Count; i++)
+                _actionCounters[_actionThresholds[i].ActionType] = progress;
+
+            _coreLog.Debug($"[Story][Battle]: Perk action progress seeded, perkId = {Id}, progress = {progress}");
+        }
+
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public override bool CanTrigger(int currentTurn)
         {

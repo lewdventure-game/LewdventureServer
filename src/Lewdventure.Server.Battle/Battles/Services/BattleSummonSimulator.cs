@@ -248,7 +248,30 @@ namespace Server.Battles
                 if (isCritical)
                     damage *= critSourceCharacteristics.CriticalMultiplier;
 
+                if (summon.StrikeDamageMultiplier != 1f)
+                    damage *= summon.StrikeDamageMultiplier;
+
                 damage = _battleDamageMath.RoundDamage(damage * defenceFactor);
+
+                if (_battleDamageMath.IsRecordingFormulas)
+                {
+                    _battleDamageMath.RecordFormula(new BattleFormula
+                    {
+                        Kind = BattleFormulaKinds.Summon,
+                        Phase = BattlePhaseType.SummonAttack,
+                        ActorId = summon.Id,
+                        ActorSlot = summon.SlotIndex,
+                        TargetId = target.Id,
+                        TargetSlot = target.SlotIndex,
+                        SourceId = critSource.Id,
+                        BaseDamage = summon.CharacteristicState.Damage,
+                        QaMultiplier = summon.StrikeDamageMultiplier,
+                        IsCritical = isCritical,
+                        CriticalMultiplier = critSourceCharacteristics.CriticalMultiplier,
+                        Defence = targetCharacteristics.Defence,
+                        Result = damage,
+                    });
+                }
 
                 var healthAfter = targetCharacteristics.Health - damage;
 

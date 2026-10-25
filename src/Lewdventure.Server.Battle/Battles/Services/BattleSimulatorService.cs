@@ -87,6 +87,9 @@ namespace Server.Battles
             EmitInitialStatuses(steps, stateA, 0);
             EmitInitialStatuses(steps, stateB, 0);
 
+            EmitQaKills(steps, teamA, stateA);
+            EmitQaKills(steps, teamB, stateB);
+
             var currentTurn = 0;
             var turnState = new BattleTurnState();
 
@@ -144,6 +147,38 @@ namespace Server.Battles
             };
 
             return response;
+        }
+
+        private void EmitQaKills(List<BattleStep> steps, ITeamSnapshot teamSnapshot, ITeamSimulationState state)
+        {
+            var snapshots = teamSnapshot.MainUnits;
+            var mainUnits = state.MainUnits;
+
+            for (int i = 0; i < snapshots.Count && i < mainUnits.Count; i++)
+            {
+                var qa = snapshots[i].Qa;
+                var unit = mainUnits[i];
+
+                if (qa == null || qa.KillAtStart == false || unit.IsAlive() == false)
+                    continue;
+
+                unit.CharacteristicState.Health = 0f;
+
+                var commands = new List<BattleCommand>
+                {
+                    _battleCommandFactory.SetHp(unit.Id, unit.SlotIndex, 0f),
+                    _battleCommandFactory.KillUnit(unit.Id, unit.SlotIndex),
+                };
+
+                _battleScriptBuilder.Add(
+                    steps,
+                    0,
+                    BattlePhaseType.Death,
+                    unit,
+                    commands);
+
+                _coreLog.Information($"[Story][Battle]: Qa kill at start, unitId = {unit.Id}, slot = {unit.SlotIndex}, side = {unit.Side}");
+            }
         }
 
         private void EmitTurnLimitDeath(List<BattleStep> steps, ITeamSimulationState state, int currentTurn)

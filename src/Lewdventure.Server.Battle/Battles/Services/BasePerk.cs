@@ -29,6 +29,10 @@ namespace Server.Battles
         {
         }
 
+        public virtual void SeedActionProgress(int progress)
+        {
+        }
+
         public virtual bool CanTrigger(int currentTurn)
         {
             return true;

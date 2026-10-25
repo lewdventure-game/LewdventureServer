@@ -61,6 +61,7 @@ Seed RNG для `/api/battle/simulate` генерирует только сер�
 | `skillLevels` | `int[]` | Только саммон: уровни скиллов по порядку `Summons.skill_ids` (с 1; нет значения — 1). Скилл берёт значения с номером уровня; скилл ниже `mastery_for_skills` в бой не попадает |
 | `activeBonuses` | `{ id, count, remainingBattles }[]` | Бонусы персонажа A: сперва постоянные бонусы аккаунта из профиля (`remainingBattles = 0`), затем run-bonuses забега. Саммоны/враги — `[]`. `remainingBattles`: `0` = не сжигать по боям (`permanent` / `end_of_game` / `first_turns` / `every_turn`); `> 0` = осталось боёв (`end_of_battle` / `next_battles`) |
 | `slotIndex` | `int` | Позиция в команде (2 моба / слоты саммонов) |
+| `qa` | `UnitQaSnapshot?` | Только читы QA, обычный бой — нет поля. `strikeDamageMultiplier` (1) — множитель урона ударов юнита: обычная атака, комбо, контратака, атака саммона, урон скилла; статусы и перки не трогает. `healthMultiplier` (1, > 0) — множитель макс. ХП через `HealthEntityMultiplier`. `startHealth` (0 — не задано) — ХП на старте боя, не выше макс. `killAtStart` — юнит умирает на ходе 0 (`SetHp 0` + `KillUnit`, фаза `Death`) до первого хода. `actionRewardProgress` (0) — стартовое значение счётчиков перков `action_reward`. Все значения конечные и ≥ 0, иначе 400 |
 
 ### `EquipmentSnapshot`
 
@@ -313,6 +314,14 @@ Combo2 roll выполняется **только** если Combo1 сработ
 Поля добавлены в конец DTO, `protocolVersion` не меняется: старый клиент продолжает получать `battle` как раньше.
 
 Авторитет: сервер не принимает от клиента ни исход боя, ни скрипт. Итоги забега (`currentHealth`, `status`, `appliedRewards`, `profileRev`) приходят из ответа сервера, а не из скрипта.
+
+## Формулы урона (`IBattleFormulaRecorder`)
+
+Необязательный записыватель в ядре: `SharedCoreFactory.CreateFromBundle` / `CreateFromDomains` и `BattleCore` принимают `IBattleFormulaRecorder?`. По умолчанию запись выключена и ничего не создаёт. Готовая реализация — `BattleFormulaLog` (список, `Clear()` перед боем).
+
+На каждую команду `ShowDamage` ровно одна запись `BattleFormula`: `kind` (`attack` — удар героя или врага, `summon`, `skill`, `perk` — стихийный перк, `status` — тик статуса), `phase`, `actorId` / `actorSlot`, `targetId` / `targetSlot`, `sourceId` (перк, статус или источник крита саммона), `baseDamage`, `damageMultiplier`, `qaMultiplier`, `isCritical`, `criticalMultiplier`, `defence`, `result`. У статуса `terms` — слагаемые по стакам (`sourceUnitId`, `baseDamage`, `damageRatio`, `isCritical`, `criticalMultiplier`, `defence`, `damage`), `result` — сумма после округления.
+
+Формула удара: `round(baseDamage × damageMultiplier × (крит ? criticalMultiplier : 1) × qaMultiplier × max(0, 1 − defence))`. Порядок записей совпадает с порядком вычисления, а не всегда с порядком шагов скрипта: запись с командой сопоставляют по `(actorId, actorSlot, targetId, targetSlot, result)`. Запись на результат боя не влияет.
 
 ## Decisions
 

@@ -33,5 +33,7 @@ namespace Server.Battles
         public float CurrentHealth { get; set; }
 
         public List<int> SkillLevels { get; set; } = new();
+
+        public UnitQaSnapshot? Qa { get; set; }
     }
 }

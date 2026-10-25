@@ -7,10 +7,17 @@ namespace Server.Battles
         private readonly BattleComposition _battleComposition;
 
         public BattleCore(IConfigDistributor configDistributor, ICoreLog coreLog, IBattleRollRecorder? battleRollRecorder)
+            : this(configDistributor, coreLog, battleRollRecorder, null)
+        { }
+
+        public BattleCore(IConfigDistributor configDistributor, ICoreLog coreLog, IBattleRollRecorder? battleRollRecorder, IBattleFormulaRecorder? battleFormulaRecorder)
         {
-            _battleComposition = battleRollRecorder == null
-                ? new BattleComposition(configDistributor, coreLog)
-                : new BattleComposition(configDistributor, coreLog, new RecordingSeededRandomFactory(battleRollRecorder));
+            var seededRandomFactory = battleRollRecorder == null
+                ? (ISeededRandomFactory)new SeededRandomFactory()
+                : new RecordingSeededRandomFactory(battleRollRecorder);
+            var formulaRecorder = battleFormulaRecorder ?? new DisabledBattleFormulaRecorder();
+
+            _battleComposition = new BattleComposition(configDistributor, coreLog, seededRandomFactory, formulaRecorder);
         }
 
         public IBattleScriptResponse Simulate(IBattleSimulationData data)

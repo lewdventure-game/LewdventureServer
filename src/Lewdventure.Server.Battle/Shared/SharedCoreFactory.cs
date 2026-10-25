@@ -18,6 +18,11 @@ namespace Server.Shared
 
         public SharedCoreResult CreateFromDomains(IReadOnlyList<CoreConfigDomain> domains, ICoreLog coreLog, IBattleRollRecorder? battleRollRecorder)
         {
+            return CreateFromDomains(domains, coreLog, battleRollRecorder, null);
+        }
+
+        public SharedCoreResult CreateFromDomains(IReadOnlyList<CoreConfigDomain> domains, ICoreLog coreLog, IBattleRollRecorder? battleRollRecorder, IBattleFormulaRecorder? battleFormulaRecorder)
+        {
             var snapshotDomains = new List<ConfigSnapshotDomain>(domains.Count);
 
             for (int i = 0; i < domains.Count; i++)
@@ -32,7 +37,7 @@ namespace Server.Shared
                 return new SharedCoreResult(null, version, buildResult.Errors, buildResult.Warnings);
 
             var configSet = buildResult.ConfigSet!;
-            var battleCore = new BattleCore(configSet.Distributor, coreLog, battleRollRecorder);
+            var battleCore = new BattleCore(configSet.Distributor, coreLog, battleRollRecorder, battleFormulaRecorder);
 
             return new SharedCoreResult(new SharedCore(configSet, battleCore), version, buildResult.Errors, buildResult.Warnings);
         }
@@ -44,6 +49,11 @@ namespace Server.Shared
 
         public SharedCoreResult CreateFromBundle(string bundleJson, ICoreLog coreLog, IBattleRollRecorder? battleRollRecorder)
         {
+            return CreateFromBundle(bundleJson, coreLog, battleRollRecorder, null);
+        }
+
+        public SharedCoreResult CreateFromBundle(string bundleJson, ICoreLog coreLog, IBattleRollRecorder? battleRollRecorder, IBattleFormulaRecorder? battleFormulaRecorder)
+        {
             var domains = new List<CoreConfigDomain>();
             var errors = new List<string>();
 
@@ -52,7 +62,7 @@ namespace Server.Shared
             if (0 < errors.Count)
                 return new SharedCoreResult(null, string.Empty, errors, new List<string>());
 
-            return CreateFromDomains(domains, coreLog, battleRollRecorder);
+            return CreateFromDomains(domains, coreLog, battleRollRecorder, battleFormulaRecorder);
         }
 
         private void ReadBundle(string bundleJson, List<CoreConfigDomain> domains, List<string> errors)

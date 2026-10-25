@@ -24,13 +24,17 @@ namespace Server.Battles
         { }
 
         public BattleComposition(IConfigDistributor configDistributor, ICoreLog coreLog, ISeededRandomFactory seededRandomFactory)
+            : this(configDistributor, coreLog, seededRandomFactory, new DisabledBattleFormulaRecorder())
+        { }
+
+        public BattleComposition(IConfigDistributor configDistributor, ICoreLog coreLog, ISeededRandomFactory seededRandomFactory, IBattleFormulaRecorder battleFormulaRecorder)
         {
             var parserUtils = new ParserUtils(coreLog);
             var constantsReader = new BattleConstantsReader(configDistributor, coreLog);
             var teamQuery = new BattleTeamQuery();
             var statusClassifier = new StatusClassifier();
             var commandFactory = new BattleCommandFactory();
-            var damageMath = new BattleDamageMath();
+            var damageMath = new BattleDamageMath(battleFormulaRecorder);
             var scriptBuilder = new BattleScriptBuilder(coreLog);
             var bucketApplicator = new CharacteristicBucketApplicator(coreLog);
             var characteristicCalculator = new CharacteristicCalculator(coreLog);

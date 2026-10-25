@@ -87,6 +87,8 @@ namespace Server.Battles
             if (isSummon == false && battleSide == BattleSide.Defending)
                 ApplyEnemyEnergyMax(baseBuckets, skills, unitSnapshot.Id);
 
+            ApplyQaHealthMultiplier(baseBuckets, unitSnapshot);
+
             var characteristics = new CharacteristicState();
             _characteristicCalculator.ApplyToState(baseBuckets, characteristics, Array.Empty<ReplaceOverride>(), false, true);
 
@@ -123,6 +125,7 @@ namespace Server.Battles
 
             _unitLoadoutBinder.SeedActiveStatuses(unitState, unitSnapshot, isSummon);
             ApplySnapshotHealth(unitState, unitSnapshot);
+            ApplyQa(unitState, unitSnapshot);
 
             _coreLog.Debug($"[Story][Battle]: Built, id = {unitState.Id}, level = {unitState.Level}, slot = {unitState.SlotIndex}, hp = {characteristics.Health}/{characteristics.MaxHealth}, damage = {characteristics.Damage}, vampyrism = {characteristics.Vampyrism}, healingBoost = {characteristics.HealingBoost}, statuses = {unitState.ActiveStatuses.Count}, perks = {perks.Count}, skills = {skills.Count}, activeBonuses = {unitState.ActiveBonuses.Count}");
 
@@ -259,6 +262,43 @@ namespace Server.Battles
 
                 _coreLog.Debug($"[Story][Battle]: Summon skill level, unitId = {unitState.Id}, skillId = {skillId}, level = {skillLevel}");
             }
+        }
+
+        private void ApplyQaHealthMultiplier(CharacteristicBuckets baseBuckets, IUnitSnapshot unitSnapshot)
+        {
+            var qa = unitSnapshot.Qa;
+
+            if (qa == null || qa.HealthMultiplier == 1f)
+                return;
+
+            baseBuckets.HealthEntityMultiplier *= qa.HealthMultiplier;
+
+            _coreLog.Debug($"[Story][Battle]: Qa health multiplier, unitId = {unitSnapshot.Id}, slot = {unitSnapshot.SlotIndex}, multiplier = {qa.HealthMultiplier}");
+        }
+
+        private void ApplyQa(IUnitState unitState, IUnitSnapshot unitSnapshot)
+        {
+            var qa = unitSnapshot.Qa;
+
+            if (qa == null)
+                return;
+
+            unitState.SetStrikeDamageMultiplier(qa.StrikeDamageMultiplier);
+
+            var characteristics = unitState.CharacteristicState;
+
+            if (0f < qa.StartHealth)
+                characteristics.Health = characteristics.MaxHealth < qa.StartHealth ? characteristics.MaxHealth : qa.StartHealth;
+
+            if (0 < qa.ActionRewardProgress)
+            {
+                var perks = unitState.Perks;
+
+                for (int i = 0; i < perks.Count; i++)
+                    perks[i].SeedActionProgress(qa.ActionRewardProgress);
+            }
+
+            _coreLog.Debug($"[Story][Battle]: Qa applied, unitId = {unitState.Id}, slot = {unitState.SlotIndex}, strikeDamageMultiplier = {qa.StrikeDamageMultiplier}, health = {characteristics.Health}/{characteristics.MaxHealth}, killAtStart = {qa.KillAtStart}, actionRewardProgress = {qa.ActionRewardProgress}");
         }
 
         private void ApplySnapshotHealth(IUnitState unitState, IUnitSnapshot unitSnapshot)

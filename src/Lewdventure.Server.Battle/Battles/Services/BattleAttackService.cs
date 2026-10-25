@@ -472,8 +472,28 @@ namespace Server.Battles
 
             _coreLog.Debug($"[Story][Battle]: Strike, phase = {phase}, actorId = {actor.Id}, criticalRoll = {criticalRoll}, criticalChance = {actorCharacteristics.CriticalChance}, isCritical = {isCritical}");
 
-            var damage = CalculateStrikeDamage(actorCharacteristics, targetCharacteristics, damageMultiplier, isCritical);
+            var damage = CalculateStrikeDamage(actorCharacteristics, targetCharacteristics, damageMultiplier, isCritical, actor.StrikeDamageMultiplier);
             var healthBefore = targetCharacteristics.Health;
+
+            if (_battleDamageMath.IsRecordingFormulas)
+            {
+                _battleDamageMath.RecordFormula(new BattleFormula
+                {
+                    Kind = BattleFormulaKinds.Attack,
+                    Phase = phase,
+                    ActorId = actor.Id,
+                    ActorSlot = actor.SlotIndex,
+                    TargetId = target.Id,
+                    TargetSlot = target.SlotIndex,
+                    BaseDamage = actorCharacteristics.Damage,
+                    DamageMultiplier = damageMultiplier,
+                    QaMultiplier = actor.StrikeDamageMultiplier,
+                    IsCritical = isCritical,
+                    CriticalMultiplier = actorCharacteristics.CriticalMultiplier,
+                    Defence = targetCharacteristics.Defence,
+                    Result = damage,
+                });
+            }
             var healthAfter = healthBefore - damage;
 
             if (healthAfter < 0f)
@@ -527,7 +547,8 @@ namespace Server.Battles
             ICharacteristicState actor,
             ICharacteristicState target,
             float damageMultiplier,
-            bool isCritical)
+            bool isCritical,
+            float strikeDamageMultiplier)
         {
             var defenceFactor = 1f - target.Defence;
 
@@ -538,6 +559,9 @@ namespace Server.Battles
 
             if (isCritical)
                 damage *= actor.CriticalMultiplier;
+
+            if (strikeDamageMultiplier != 1f)
+                damage *= strikeDamageMultiplier;
 
             return _battleDamageMath.RoundDamage(damage * defenceFactor);
         }

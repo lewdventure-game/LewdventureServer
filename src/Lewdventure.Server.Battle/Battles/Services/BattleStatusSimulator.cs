@@ -274,6 +274,7 @@ namespace Server.Battles
             var totalDamage = 0f;
             var anyCritical = false;
             var activeStatuses = unitState.ActiveStatuses;
+            var formula = _battleDamageMath.IsRecordingFormulas ? new BattleFormula() : null;
 
             for (int i = 0; i < activeStatuses.Count; i++)
             {
@@ -291,6 +292,7 @@ namespace Server.Battles
                     opponentTeam,
                     activeStatus,
                     seededRandomService,
+                    formula,
                     out var isCritical);
                 totalDamage += stackDamage;
 
@@ -313,7 +315,10 @@ namespace Server.Battles
             };
 
             if (0f < totalDamage)
+            {
+                RecordStatusFormula(formula, unitState, statusId, totalDamage, anyCritical);
                 commands.Add(_battleCommandFactory.ShowDamage(unitState.Id, unitState.SlotIndex, unitState.Id, unitState.SlotIndex, totalDamage, anyCritical, false));
+            }
 
             if (healthAfter != healthBefore)
                 commands.Add(_battleCommandFactory.SetHp(unitState.Id, unitState.SlotIndex, healthAfter));
@@ -430,12 +435,49 @@ namespace Server.Battles
             return false;
         }
 
+        private void RecordStatusFormula(BattleFormula? formula, IUnitState unitState, int statusId, float totalDamage, bool anyCritical)
+        {
+            if (formula == null)
+                return;
+
+            formula.Kind = BattleFormulaKinds.Status;
+            formula.Phase = BattlePhaseType.StatusTrigger;
+            formula.ActorId = unitState.Id;
+            formula.ActorSlot = unitState.SlotIndex;
+            formula.TargetId = unitState.Id;
+            formula.TargetSlot = unitState.SlotIndex;
+            formula.SourceId = statusId;
+            formula.IsCritical = anyCritical;
+            formula.Defence = unitState.CharacteristicState.Defence;
+            formula.Result = totalDamage;
+
+            _battleDamageMath.RecordFormula(formula);
+        }
+
+        private void AddFormulaTerm(BattleFormula? formula, ActiveStatus activeStatus, float baseDamage, float damageRatio, bool isCritical, float criticalMultiplier, float defence, float damage)
+        {
+            if (formula == null)
+                return;
+
+            formula.Terms.Add(new BattleFormulaTerm
+            {
+                SourceUnitId = activeStatus.SourceUnitId,
+                BaseDamage = baseDamage,
+                DamageRatio = damageRatio,
+                IsCritical = isCritical,
+                CriticalMultiplier = criticalMultiplier,
+                Defence = defence,
+                Damage = damage,
+            });
+        }
+
         private float CalculateStackDamage(
             IUnitState unitState,
             ITeamSimulationState ownerTeam,
             ITeamSimulationState opponentTeam,
             ActiveStatus activeStatus,
             ISeededRandomService seededRandomService,
+            BattleFormula? formula,
             out bool isCritical)
         {
             isCritical = false;
@@ -476,6 +518,7 @@ namespace Server.Battles
 
             if (hasSource == false)
             {
+                AddFormulaTerm(formula, activeStatus, activeStatus.FlatValue, 1f, false, 1f, unitState.CharacteristicState.Defence, damage);
                 _coreLog.Debug($"[Story][Battle]: Damage over time flat stack, unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, flatValue = {activeStatus.FlatValue}, defence = {unitState.CharacteristicState.Defence}, damage = {damage}");
 
                 return damage;
@@ -487,6 +530,7 @@ namespace Server.Battles
             if (isCritical)
                 damage *= criticalMultiplier;
 
+            AddFormulaTerm(formula, activeStatus, sourceDamage, activeStatus.DamageRatio, isCritical, criticalMultiplier, unitState.CharacteristicState.Defence, damage);
             _coreLog.Debug($"[Story][Battle]: Damage over time stack, unitId = {unitState.Id}, statusId = {activeStatus.StatusId}, sourceId = {activeStatus.SourceUnitId}, sourceDamage = {sourceDamage}, damageRatio = {activeStatus.DamageRatio}, tickDamageBase = {tickDamageBase}, criticalRoll = {criticalRoll}, isCritical = {isCritical}, damage = {damage}");
 
             return damage;

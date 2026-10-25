@@ -16,6 +16,8 @@ namespace Server.Battles
 
         public void RestoreUsage(int usedCount);
 
+        public void SeedActionProgress(int progress);
+
         public bool CanTrigger(int currentTurn);
 
         public void Trigger(IPerkExecutionContext context);

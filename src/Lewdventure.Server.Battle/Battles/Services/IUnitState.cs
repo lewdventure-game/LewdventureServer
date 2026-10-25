@@ -22,6 +22,8 @@ namespace Server.Battles
 
         public BattleSide Side { get; }
 
+        public float StrikeDamageMultiplier { get; }
+
         public List<ActiveStatus> ActiveStatuses { get; }
 
         public IReadOnlyList<EquippedEntityRef> EquippedEntities { get; }
@@ -31,6 +33,8 @@ namespace Server.Battles
         public int GetSkillLevel(int skillId);
 
         public SkillRuntimeState GetSkillState(int skillId);
+
+        public void SetStrikeDamageMultiplier(float multiplier);
 
         public bool IsAlive();
 

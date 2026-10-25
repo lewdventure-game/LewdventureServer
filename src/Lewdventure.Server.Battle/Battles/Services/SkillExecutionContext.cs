@@ -104,7 +104,12 @@ namespace Server.Battles
         {
             var actorCharacteristics = _actor.CharacteristicState;
             var targetCharacteristics = target.CharacteristicState;
-            var damage = _battleDamageMath.RoundDamage(actorCharacteristics.Damage * damageMultiplier);
+            var rawDamage = actorCharacteristics.Damage * damageMultiplier;
+
+            if (_actor.StrikeDamageMultiplier != 1f)
+                rawDamage *= _actor.StrikeDamageMultiplier;
+
+            var damage = _battleDamageMath.RoundDamage(rawDamage);
 
             if (damage <= 0f)
             {
@@ -119,6 +124,23 @@ namespace Server.Battles
                 healthAfter = 0f;
 
             targetCharacteristics.Health = healthAfter;
+
+            if (_battleDamageMath.IsRecordingFormulas)
+            {
+                _battleDamageMath.RecordFormula(new BattleFormula
+                {
+                    Kind = BattleFormulaKinds.Skill,
+                    Phase = _phase,
+                    ActorId = _actor.Id,
+                    ActorSlot = _actor.SlotIndex,
+                    TargetId = target.Id,
+                    TargetSlot = target.SlotIndex,
+                    BaseDamage = actorCharacteristics.Damage,
+                    DamageMultiplier = damageMultiplier,
+                    QaMultiplier = _actor.StrikeDamageMultiplier,
+                    Result = damage,
+                });
+            }
 
             commands.Add(_battleCommandFactory.ShowDamage(_actor.Id, _actor.SlotIndex, target.Id, target.SlotIndex, damage, false, false));
             commands.Add(_battleCommandFactory.SetHp(target.Id, target.SlotIndex, healthAfter));

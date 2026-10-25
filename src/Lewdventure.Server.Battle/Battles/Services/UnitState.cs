@@ -20,6 +20,7 @@ namespace Server.Battles
         private readonly Dictionary<int, int> _skillLevelsBySkillId = new();
         private int _skillLevel;
         private int _nextAttackTurn;
+        private float _strikeDamageMultiplier = 1f;
 
         public int Id => _id;
 
@@ -40,6 +41,8 @@ namespace Server.Battles
         public int SlotIndex => _slotIndex;
 
         public BattleSide Side => _side;
+
+        public float StrikeDamageMultiplier => _strikeDamageMultiplier;
 
         public List<ActiveStatus> ActiveStatuses => _activeStatuses;
 
@@ -69,6 +72,11 @@ namespace Server.Battles
             _attackCooldownTurns = attackCooldownTurns;
             _slotIndex = slotIndex;
             _side = side;
+        }
+
+        public void SetStrikeDamageMultiplier(float multiplier)
+        {
+            _strikeDamageMultiplier = multiplier;
         }
 
         public bool IsAlive()
