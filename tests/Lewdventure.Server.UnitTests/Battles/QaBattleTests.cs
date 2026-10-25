@@ -190,6 +190,34 @@ namespace Tests.Unit.Battles
             Assert.That(recorded.ComputeDigest(recordedScript), Is.EqualTo(plain.ComputeDigest(plainScript)));
         }
 
+        [Test]
+        public void QaInBattleInputJson_RoundTripsToTheSameBattle()
+        {
+            var battleCore = CreateCore(_domains, null);
+            var hero = CreateHero();
+            var enemy = CreateEnemy();
+
+            hero.Qa = new UnitQaSnapshot { StrikeDamageMultiplier = 0f, ActionRewardProgress = 3 };
+            enemy.Qa = new UnitQaSnapshot { HealthMultiplier = 2f, StartHealth = 100f };
+
+            var data = CreateReplayData(hero, enemy);
+            var settings = new BattleJsonSettingsFactory().Create();
+            var json = Newtonsoft.Json.JsonConvert.SerializeObject(data, settings);
+            var restored = Newtonsoft.Json.JsonConvert.DeserializeObject<BattleReplayData>(json, settings)!;
+
+            Assert.That(json, Does.Contain("\"qa\""));
+            Assert.That(restored.TeamB.MainUnits[0].Qa!.HealthMultiplier, Is.EqualTo(2f));
+            Assert.That(battleCore.ComputeDigest(battleCore.Replay(restored)), Is.EqualTo(battleCore.ComputeDigest(battleCore.Replay(data))));
+        }
+
+        [Test]
+        public void NoQa_IsNotWrittenToBattleInputJson()
+        {
+            var json = Newtonsoft.Json.JsonConvert.SerializeObject(CreateReplayData(CreateHero(), CreateEnemy()), new BattleJsonSettingsFactory().Create());
+
+            Assert.That(json, Does.Not.Contain("\"qa\""));
+        }
+
         [TestCase(-1f, 1f, 0f, 0)]
         [TestCase(1f, 0f, 0f, 0)]
         [TestCase(1f, 1f, -1f, 0)]
