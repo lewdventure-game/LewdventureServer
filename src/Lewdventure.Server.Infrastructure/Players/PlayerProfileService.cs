@@ -173,7 +173,14 @@ namespace Server.Infrastructure.Players
             {
                 var summonId = update.Summons[i];
 
-                if (summonId <= 0)
+                if (summonId < 0)
+                {
+                    errors.Add($"Summon slot {i} has invalid id {summonId}, empty slot is 0.");
+
+                    continue;
+                }
+
+                if (summonId == 0)
                     continue;
 
                 if (seenSummons.Add(summonId) == false)

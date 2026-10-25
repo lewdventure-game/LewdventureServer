@@ -194,6 +194,36 @@ namespace Tests.Integration.Mongo
         }
 
         [Test]
+        [Order(5)]
+        public async Task Loadout_EmptySummonSlot_IsStoredAndNegativeIdIsRejected()
+        {
+            var repository = _environment.Services.GetRequiredService<PlayerProfileRepository>();
+            var profileService = _environment.Services.GetRequiredService<PlayerProfileService>();
+            var profile = await profileService.GetOrCreateAsync("usr_summon_slots", CancellationToken.None);
+
+            profile.Characters.Add(new PlayerCharacterDocument { ConfigId = 1, Copies = 1 });
+            profile.Summons.Add(new PlayerSummonDocument { ConfigId = 1, Copies = 1, Level = 1 });
+
+            var expectedRev = profile.Rev;
+
+            profile.Rev = expectedRev + 1;
+
+            Assert.That(await repository.ReplaceAsync(profile, expectedRev, CancellationToken.None), Is.True);
+
+            var withEmptySlot = new LoadoutUpdate(1, new Dictionary<string, string>(), new[] { 0, 1, 0 });
+            var stored = await profileService.UpdateLoadoutAsync("usr_summon_slots", withEmptySlot, "slots-1", _configDistributor, CancellationToken.None);
+
+            Assert.That(stored.Succeeded, Is.True, string.Join("; ", stored.Errors));
+            Assert.That(stored.Profile!.Loadout.Summons, Is.EqualTo(new[] { 0, 1, 0 }));
+
+            var withNegativeId = new LoadoutUpdate(1, new Dictionary<string, string>(), new[] { -1, 1 });
+            var rejected = await profileService.UpdateLoadoutAsync("usr_summon_slots", withNegativeId, "slots-2", _configDistributor, CancellationToken.None);
+
+            Assert.That(rejected.Succeeded, Is.False);
+            Assert.That(rejected.Errors, Has.Some.Contains("Summon slot 0 has invalid id -1"));
+        }
+
+        [Test]
         [Order(6)]
         public async Task Grant_AppliesRewardsOnceAndWritesLedger()
         {
