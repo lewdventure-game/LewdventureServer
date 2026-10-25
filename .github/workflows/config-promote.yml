@@ -64,7 +64,7 @@ jobs:
             echo "- domains: $(jq -r '[.domains[].domain] | join(", ")' snapshot.json)"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: config-snapshot
           path: snapshot.json

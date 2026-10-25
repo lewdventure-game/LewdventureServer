@@ -44,7 +44,7 @@ jobs:
           cd -
           cat out/unity-core/VERSION.txt >> "$GITHUB_STEP_SUMMARY"
       - name: upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: unity-core
           path: out/unity-core.zip
