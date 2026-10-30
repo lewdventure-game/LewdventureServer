@@ -721,7 +721,8 @@ namespace Server.Runs
                     Count = reward.Count,
                 });
 
-                AddRewardTotal(run, type, reward.Id, rewardKey, reward.Count);
+                if (reward.Type != BattleRewardType.Dialogue)
+                    AddRewardTotal(run, type, reward.Id, rewardKey, reward.Count);
             }
 
             outcome.ProfileRev = profile.Rev;

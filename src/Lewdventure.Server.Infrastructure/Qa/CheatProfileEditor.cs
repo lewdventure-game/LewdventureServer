@@ -17,6 +17,7 @@ namespace Server.Infrastructure.Qa
         private const string SkillEntry = "skill";
         private const string EquipmentLevelEntry = "equipment_level";
         private const string StoryEntry = "story_level";
+        private const string DialogueEntry = "dialogue";
         private const int MaxKeyLength = 64;
 
         private readonly ProgressionLimits _progressionLimits;
@@ -248,6 +249,21 @@ namespace Server.Infrastructure.Qa
             error = string.Empty;
 
             return true;
+        }
+
+        public void ResetDialogues(PlayerProfileDocument profile, List<PlayerLedgerEntryDocument> entries)
+        {
+            var pending = profile.Dialogues.Pending;
+            var completed = profile.Dialogues.Completed;
+
+            for (int i = 0; i < pending.Count; i++)
+                entries.Add(CreateEntry(DialogueEntry, pending[i].LaunchKey, -1));
+
+            for (int i = 0; i < completed.Count; i++)
+                entries.Add(CreateEntry(DialogueEntry, completed[i].LaunchKey, -1));
+
+            pending.Clear();
+            completed.Clear();
         }
 
         public bool SetCompletedLevels(

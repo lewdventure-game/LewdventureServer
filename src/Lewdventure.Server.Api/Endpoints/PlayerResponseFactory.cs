@@ -25,6 +25,13 @@ namespace Server.Api.Endpoints
                 },
             };
 
+            for (int i = 0; i < profile.Dialogues.Pending.Count; i++)
+            {
+                var launch = profile.Dialogues.Pending[i];
+
+                response.PendingDialogues.Add(new DialogueLaunchResponse { LaunchKey = launch.LaunchKey, DialogueId = launch.DialogueId });
+            }
+
             for (int i = 0; i < profile.Story.Records.Count; i++)
             {
                 var record = profile.Story.Records[i];

@@ -36,6 +36,8 @@ namespace Server.Api.Endpoints
 
         public RunStepResponse? Step { get; set; }
 
+        public List<DialogueLaunchResponse> PendingDialogues { get; set; } = new();
+
         public bool Replayed { get; set; }
     }
 }

@@ -151,6 +151,16 @@ namespace Server.Infrastructure.Qa
             }, cancellationToken);
         }
 
+        public async Task<PlayerUpdateResult> ResetDialoguesAsync(string userId, string actor, CancellationToken cancellationToken)
+        {
+            return await EditAsync(userId, actor, "dialogues", (profile, now, entries) =>
+            {
+                _cheatProfileEditor.ResetDialogues(profile, entries);
+
+                return string.Empty;
+            }, cancellationToken);
+        }
+
         public async Task<PlayerUpdateResult> MaxOutAsync(string userId, string actor, IConfigDistributor configDistributor, CancellationToken cancellationToken)
         {
             return await EditAsync(userId, actor, "max", (profile, now, entries) =>

@@ -429,6 +429,13 @@ namespace Server.Admin.Pages.Players
             return RedirectToPage(new { userId });
         }
 
+        public async Task<IActionResult> OnPostDialoguesResetAsync(string userId)
+        {
+            await ExecuteCheatAsync(userId, "/dialogues/reset", new { }, "cheat.dialogues", string.Empty, "Диалоги сброшены. Диалоги уровней покажутся снова, награды-диалоги из очереди убраны.");
+
+            return RedirectToPage(new { userId });
+        }
+
         public async Task<IActionResult> OnPostRunAsync(string userId, string? runAction, int stage, int id, int value, int count, int battles)
         {
             var body = new { action = runAction ?? string.Empty, stage, id, value = (float)value, count, battles };

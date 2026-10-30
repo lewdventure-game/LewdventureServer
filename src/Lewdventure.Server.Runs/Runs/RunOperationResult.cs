@@ -28,6 +28,8 @@ namespace Server.Runs
 
         public bool Replayed { get; }
 
+        public List<RunDialogueLaunch> Dialogues { get; } = new();
+
         public bool Succeeded => Conflict == false && Errors.Count == 0;
     }
 }

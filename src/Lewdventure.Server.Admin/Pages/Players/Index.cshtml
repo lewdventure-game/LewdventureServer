@@ -180,6 +180,7 @@ else if (Model.UserId.Length != 0 && Model.Profile == null)
                 <dt>Пройдено уровней</dt><dd>@string.Join(", ", profile.Story.CompletedLevelIds)</dd>
                 <dt>Рекорды</dt><dd>@(profile.Story.Records.Count == 0 ? "нет" : string.Join(", ", profile.Story.Records.ConvertAll(record => "уровень " + record.StoryLevelId + ": этап " + record.BestStageIndex)))</dd>
                 <dt>Текущий забег</dt><dd>@(string.IsNullOrEmpty(profile.Story.CurrentRunId) ? "нет" : profile.Story.CurrentRunId)</dd>
+                <dt>Диалоги в очереди</dt><dd>@(profile.PendingDialogues.Count == 0 ? "нет" : string.Join(", ", profile.PendingDialogues.ConvertAll(launch => "диалог " + launch.DialogueId)))</dd>
             </dl>
             @if (Model.IsInRun)
             {
@@ -360,6 +361,9 @@ else if (Model.UserId.Length != 0 && Model.Profile == null)
             <div class="actions">
                 <form method="post" asp-page-handler="Abandon" asp-route-userId="@userId" data-confirm="Прервать текущий забег игрока?">
                     <button type="submit">Прервать забег</button>
+                </form>
+                <form method="post" asp-page-handler="DialoguesReset" asp-route-userId="@userId" data-confirm="Сбросить просмотренные диалоги игрока? Диалоги уровней покажутся снова.">
+                    <button type="submit">Сбросить диалоги</button>
                 </form>
                 <form method="post" asp-page-handler="Reset" asp-route-userId="@userId" data-confirm="Сбросить весь прогресс игрока @userId? Аккаунт и устройство останутся, профиль, забеги и журнал удалятся.">
                     <button type="submit" class="danger">Сбросить прогресс</button>

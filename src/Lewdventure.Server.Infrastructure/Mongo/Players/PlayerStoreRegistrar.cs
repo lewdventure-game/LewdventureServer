@@ -27,6 +27,8 @@ namespace Server.Infrastructure.Mongo.Players
             services.AddSingleton<PlayerConfigVersionResolver>();
             services.AddSingleton<PlayerAuthService>();
             services.AddSingleton<PlayerProfileService>();
+            services.AddSingleton<DialogueAnalytics>();
+            services.AddSingleton<PlayerDialogueService>();
             services.AddSingleton<SummonProgressionRules>();
             services.AddSingleton<EquipmentProgressionRules>();
             services.AddSingleton<EquipmentMergeRules>();

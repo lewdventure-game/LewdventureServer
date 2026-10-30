@@ -24,6 +24,9 @@ namespace Server.Infrastructure.Players
         private const string BonusEntry = "bonus";
         private const string PromoteEntry = "promote";
         private const string SceneEntry = "scene";
+        private const string DialogueEntry = "dialogue";
+
+        private readonly DialogueLaunchKeys _dialogueLaunchKeys = new();
 
         private readonly IBattleRewardParser _battleRewardParser;
         private readonly IBonusWorkModeParser _bonusWorkModeParser;
@@ -198,6 +201,13 @@ namespace Server.Infrastructure.Players
                 return;
             }
 
+            if (reward.Type == BattleRewardType.Dialogue)
+            {
+                AddDialogue(profile, reward.Id, reward.Count, configDistributor, now, entries);
+
+                return;
+            }
+
             _logger.LogDebug("[Player] reward type {Type} is run scoped and does not change the profile", reward.Type);
         }
 
@@ -230,6 +240,32 @@ namespace Server.Infrastructure.Players
             entries.Add(CreateEntry(SceneEntry, $"{sceneOwner.Kind}:{sceneOwner.Id}:{sceneId}", 1));
 
             _logger.LogInformation("[Player] story scene {SceneId} unlocked for {Kind} {OwnerId}", sceneId, sceneOwner.Kind, sceneOwner.Id);
+        }
+
+        private void AddDialogue(
+            PlayerProfileDocument profile,
+            int dialogueId,
+            long count,
+            IConfigDistributor configDistributor,
+            DateTime now,
+            List<PlayerLedgerEntryDocument> entries)
+        {
+            if (configDistributor.Dialogues.Contains(dialogueId) == false)
+            {
+                _logger.LogWarning("[Player] dialogue reward {DialogueId} is missing in Dialogues and is skipped", dialogueId);
+
+                return;
+            }
+
+            for (long i = 0; i < count; i++)
+            {
+                var launchKey = _dialogueLaunchKeys.ForReward(dialogueId);
+
+                profile.Dialogues.Pending.Add(new PlayerDialogueLaunchDocument { LaunchKey = launchKey, DialogueId = dialogueId, CreatedAt = now });
+                entries.Add(CreateEntry(DialogueEntry, launchKey, 1));
+            }
+
+            _logger.LogInformation("[Player] dialogue {DialogueId} queued x{Count}", dialogueId, count);
         }
 
         private List<int>? FindSceneList(PlayerProfileDocument profile, in SceneOwner sceneOwner)

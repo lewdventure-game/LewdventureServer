@@ -28,6 +28,7 @@ namespace Server.Api.Endpoints
         public const string PlayerEquipmentLevelReset = "/api/player/equipment/level/reset";
         public const string PlayerEquipmentMerge = "/api/player/equipment/merge";
         public const string Run = "/api/run";
+        public const string DialogueComplete = "/api/dialogue/complete";
         public const string QaGrant = "/api/qa/grant";
         public const string QaRun = "/api/qa/run";
         public const string AdminConfig = "/admin/config";

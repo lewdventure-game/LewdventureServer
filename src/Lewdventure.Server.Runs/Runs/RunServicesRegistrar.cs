@@ -25,6 +25,7 @@ namespace Server.Runs
             services.AddSingleton<RunSnapshotBuilder>();
             services.AddSingleton<RunStageRoller>();
             services.AddScoped<RunEngine>();
+            services.AddScoped<RunDialogues>();
             services.AddScoped<RunService>();
             services.AddScoped<PlayerCharacteristicsService>();
         }

@@ -176,6 +176,9 @@ namespace Server.Api.Endpoints
 
             response.Replayed = result.Replayed;
 
+            for (int i = 0; i < result.Dialogues.Count; i++)
+                response.PendingDialogues.Add(new DialogueLaunchResponse { LaunchKey = result.Dialogues[i].LaunchKey, DialogueId = result.Dialogues[i].DialogueId });
+
             return Results.Ok(response);
         }
     }

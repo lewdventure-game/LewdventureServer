@@ -192,6 +192,9 @@ namespace Server.Battles
             if (typeSpan.Equals("perk_group", StringComparison.OrdinalIgnoreCase))
                 return BattleRewardType.PerkGroup;
 
+            if (typeSpan.Equals("dialogue", StringComparison.OrdinalIgnoreCase))
+                return BattleRewardType.Dialogue;
+
             return BattleRewardType.None;
         }
     }

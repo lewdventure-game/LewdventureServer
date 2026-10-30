@@ -306,6 +306,42 @@ namespace Tests.Unit.Players
                 _applier.PromoteCharacter(profile, character, mapper, promote, _configDistributor, DateTime.UtcNow);
         }
 
+        [Test]
+        public void Apply_DialogueReward_QueuesOneLaunchPerCount()
+        {
+            var profile = CreateProfile();
+
+            var entries = _applier.Apply(profile, _parser.Parse("dialogue:1:2"), _configDistributor, DateTime.UtcNow);
+
+            Assert.That(profile.Dialogues.Pending, Has.Count.EqualTo(2));
+            Assert.That(profile.Dialogues.Pending[0].DialogueId, Is.EqualTo(1));
+            Assert.That(profile.Dialogues.Pending[0].LaunchKey, Does.StartWith("reward:1:"));
+            Assert.That(profile.Dialogues.Pending[0].LaunchKey, Is.Not.EqualTo(profile.Dialogues.Pending[1].LaunchKey));
+            Assert.That(entries, Has.Count.EqualTo(2));
+            Assert.That(entries[0].Type, Is.EqualTo("dialogue"));
+        }
+
+        [Test]
+        public void Apply_DialogueRewardMissingInConfigs_IsSkipped()
+        {
+            var profile = CreateProfile();
+
+            var entries = _applier.Apply(profile, _parser.Parse("dialogue:77:1"), _configDistributor, DateTime.UtcNow);
+
+            Assert.That(profile.Dialogues.Pending, Is.Empty);
+            Assert.That(entries, Is.Empty);
+        }
+
+        [Test]
+        public void Apply_OldStoryReward_StillUnlocksScenesOnly()
+        {
+            var profile = CreateProfile();
+
+            _applier.Apply(profile, _parser.Parse("story:1:1"), _configDistributor, DateTime.UtcNow);
+
+            Assert.That(profile.Dialogues.Pending, Is.Empty);
+        }
+
         private PlayerProfileDocument CreateProfile()
         {
             return new PlayerProfileDocument { Id = "usr_unit", Rev = 1 };

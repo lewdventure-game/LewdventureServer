@@ -20,6 +20,8 @@ namespace Server.Admin.Backend.Models
 
         public PlayerStoryModel Story { get; set; } = new();
 
+        public List<PlayerDialogueLaunchModel> PendingDialogues { get; set; } = new();
+
         public Dictionary<string, int> Flags { get; set; } = new();
     }
 }

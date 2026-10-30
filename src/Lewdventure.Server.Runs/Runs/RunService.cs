@@ -19,6 +19,7 @@ namespace Server.Runs
         private readonly PlayerProfileService _playerProfileService;
         private readonly PlayerRewardService _playerRewardService;
         private readonly RunAnalytics _runAnalytics;
+        private readonly RunDialogues _runDialogues;
         private readonly RunEngine _runEngine;
         private readonly RunRandomFactory _runRandomFactory;
         private readonly RunRecords _runRecords;
@@ -33,6 +34,7 @@ namespace Server.Runs
             PlayerProfileService playerProfileService,
             PlayerRewardService playerRewardService,
             RunAnalytics runAnalytics,
+            RunDialogues runDialogues,
             RunEngine runEngine,
             RunRandomFactory runRandomFactory,
             RunRecords runRecords,
@@ -46,6 +48,7 @@ namespace Server.Runs
             _playerProfileService = playerProfileService;
             _playerRewardService = playerRewardService;
             _runAnalytics = runAnalytics;
+            _runDialogues = runDialogues;
             _runEngine = runEngine;
             _runRandomFactory = runRandomFactory;
             _runRecords = runRecords;
@@ -64,7 +67,11 @@ namespace Server.Runs
                 return Failed("No active run.");
             }
 
-            return new RunOperationResult(run, null, false, new List<string>());
+            var result = new RunOperationResult(run, null, false, new List<string>());
+
+            await _runDialogues.CollectCurrentAsync(result, cancellationToken);
+
+            return result;
         }
 
         public async Task<RunOperationResult> StartAsync(string userId, int storyLevelId, CancellationToken cancellationToken)
@@ -116,7 +123,7 @@ namespace Server.Runs
             _runAnalytics.TrackStarted(run);
             _logger.LogInformation("[Run] started userId = {UserId} runId = {RunId} level = {Level} stages = {Stages} config = {Config}", userId, run.Id, storyLevelId, run.Stages.Count, run.ConfigVersion);
 
-            return new RunOperationResult(run, null, false, new List<string>());
+            return await WithDialoguesAsync(new RunOperationResult(run, null, false, new List<string>()), RunDialogueMoment.Start, 0, cancellationToken);
         }
 
         public async Task<RunOperationResult> AdvanceAsync(string userId, string runId, string requestId, CancellationToken cancellationToken)
@@ -127,16 +134,19 @@ namespace Server.Runs
                 return Failed("No active run.");
 
             if (IsReplay(run, requestId))
-                return Replayed(run);
+                return await ReplayedAsync(run, cancellationToken);
 
             if (IsActive(run) == false)
                 return Failed("No active run.");
 
             run.LastRequestId = requestId;
 
+            var stageNumber = run.StageIndex + 1;
             var step = await _runEngine.AdvanceAsync(run, CreateProfileStore(userId), cancellationToken);
+            var result = await ApplyStepAsync(run, step, cancellationToken);
+            var moment = result.Step == null ? RunDialogueMoment.None : RunDialogueMoment.StageEntered;
 
-            return await ApplyStepAsync(run, step, cancellationToken);
+            return await WithDialoguesAsync(result, moment, stageNumber, cancellationToken);
         }
 
         public async Task<RunOperationResult> ChooseAsync(string userId, string runId, IReadOnlyList<int> picks, string requestId, CancellationToken cancellationToken)
@@ -147,7 +157,7 @@ namespace Server.Runs
                 return Failed("No active run.");
 
             if (IsReplay(run, requestId))
-                return Replayed(run);
+                return await ReplayedAsync(run, cancellationToken);
 
             if (IsActive(run) == false)
                 return Failed("No active run.");
@@ -155,8 +165,9 @@ namespace Server.Runs
             run.LastRequestId = requestId;
 
             var step = await _runEngine.ChooseAsync(run, picks, CreateProfileStore(userId), cancellationToken);
+            var result = await ApplyStepAsync(run, step, cancellationToken);
 
-            return await ApplyStepAsync(run, step, cancellationToken);
+            return await WithDialoguesAsync(result, RunDialogueMoment.None, 0, cancellationToken);
         }
 
         public async Task<RunOperationResult> FinishBattleAsync(string userId, string runId, string requestId, CancellationToken cancellationToken)
@@ -167,7 +178,7 @@ namespace Server.Runs
                 return Failed("No active run.");
 
             if (IsReplay(run, requestId))
-                return Replayed(run);
+                return await ReplayedAsync(run, cancellationToken);
 
             if (IsActive(run) == false)
                 return Failed("No active run.");
@@ -179,7 +190,9 @@ namespace Server.Runs
             if (step.BattleFinish != null)
                 _runAnalytics.TrackBattleFinished(run, step.BattleFinish);
 
-            return await ApplyStepAsync(run, step, cancellationToken);
+            var result = await ApplyStepAsync(run, step, cancellationToken);
+
+            return await WithDialoguesAsync(result, RunDialogueMoment.None, 0, cancellationToken);
         }
 
         public async Task<RunOperationResult> AbandonAsync(string userId, string runId, CancellationToken cancellationToken)
@@ -205,7 +218,7 @@ namespace Server.Runs
             _runAnalytics.TrackFinished(run);
             _logger.LogInformation("[Run] abandoned userId = {UserId} runId = {RunId} stage = {Stage}", userId, run.Id, run.StageIndex);
 
-            return new RunOperationResult(run, null, false, new List<string>());
+            return await WithDialoguesAsync(new RunOperationResult(run, null, false, new List<string>()), RunDialogueMoment.Loss, 0, cancellationToken);
         }
 
         private async Task<RunOperationResult> ApplyStepAsync(RunDocument run, RunEngineStep step, CancellationToken cancellationToken)
@@ -247,6 +260,13 @@ namespace Server.Runs
             }
 
             return await CompleteIfFinishedAsync(run, step.Outcome!, cancellationToken);
+        }
+
+        private async Task<RunOperationResult> WithDialoguesAsync(RunOperationResult result, RunDialogueMoment moment, int stageNumber, CancellationToken cancellationToken)
+        {
+            await _runDialogues.CollectAsync(result, moment, stageNumber, cancellationToken);
+
+            return result;
         }
 
         private RunProfileStore CreateProfileStore(string userId)
@@ -352,11 +372,15 @@ namespace Server.Runs
             return string.Equals(run.Status, RunDocument.ActiveStatus, StringComparison.Ordinal);
         }
 
-        private RunOperationResult Replayed(RunDocument run)
+        private async Task<RunOperationResult> ReplayedAsync(RunDocument run, CancellationToken cancellationToken)
         {
             _logger.LogInformation("[Run] step replay ignored userId = {UserId} runId = {RunId} stage = {Stage}", run.UserId, run.Id, run.StageIndex);
 
-            return new RunOperationResult(run, null, false, new List<string>(), true);
+            var result = new RunOperationResult(run, null, false, new List<string>(), true);
+
+            await _runDialogues.CollectCurrentAsync(result, cancellationToken);
+
+            return result;
         }
 
         private async Task<RunDocument?> LoadActiveAsync(string userId, string runId, CancellationToken cancellationToken)

@@ -20,6 +20,8 @@ namespace Server.Api.Endpoints
 
         public PlayerStoryResponse Story { get; set; } = new();
 
+        public List<DialogueLaunchResponse> PendingDialogues { get; set; } = new();
+
         public Dictionary<string, int> Flags { get; set; } = new();
     }
 }

@@ -13,5 +13,6 @@ namespace Server.Battles
         Story = 8,
         Perk = 9,
         PerkGroup = 10,
+        Dialogue = 11,
     }
 }

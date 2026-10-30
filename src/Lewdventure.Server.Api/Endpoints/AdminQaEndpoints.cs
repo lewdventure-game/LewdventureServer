@@ -80,6 +80,7 @@ namespace Server.Api.Endpoints
             cheats.MapPost("/equipment/{instanceId}", SetEquipmentAsync).WithMetadata(new GameConfigRequiredMetadata());
             cheats.MapPost("/max", MaxOutAsync).WithMetadata(new GameConfigRequiredMetadata());
             cheats.MapPost("/story", SetStoryAsync).WithMetadata(new GameConfigRequiredMetadata());
+            cheats.MapPost("/dialogues/reset", ResetDialoguesAsync);
             cheats.MapPost("/run", ChangeRunAsync);
             cheats.MapPost("/template", ApplyTemplateAsync);
             cheats.MapPost("/copy", CopyProfileAsync);
@@ -291,6 +292,17 @@ namespace Server.Api.Endpoints
             [FromServices] PlayerResponseFactory playerResponseFactory)
         {
             var result = await cheatService.MaxOutAsync(userId, ReadActor(httpContext), configDistributor, httpContext.RequestAborted);
+
+            return ToResult(result, playerResponseFactory);
+        }
+
+        private async Task<IResult> ResetDialoguesAsync(
+            HttpContext httpContext,
+            string userId,
+            [FromServices] CheatService cheatService,
+            [FromServices] PlayerResponseFactory playerResponseFactory)
+        {
+            var result = await cheatService.ResetDialoguesAsync(userId, ReadActor(httpContext), httpContext.RequestAborted);
 
             return ToResult(result, playerResponseFactory);
         }
