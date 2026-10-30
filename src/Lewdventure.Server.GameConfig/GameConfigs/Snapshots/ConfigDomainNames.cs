@@ -21,6 +21,7 @@ namespace Server.GameConfigs
         public const string PerkGroups = "Perk_groups";
         public const string Skills = "Skills";
         public const string SkillPromotes = "Skill_promotes";
+        public const string Dialogues = "Dialogues";
 
         private readonly string[] _ordered =
         {
@@ -43,11 +44,13 @@ namespace Server.GameConfigs
             PerkGroups,
             Skills,
             SkillPromotes,
+            Dialogues,
         };
 
         private readonly string[] _optional =
         {
             EquipmentPromotes,
+            Dialogues,
         };
 
         public IReadOnlyList<string> Ordered => _ordered;

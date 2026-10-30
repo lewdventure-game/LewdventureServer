@@ -218,6 +218,7 @@ namespace Server.Api.Composition
                 .AddSingleton<EffectParametersValidator>()
                 .AddSingleton<EnemyDataValidator>()
                 .AddSingleton<ProgressionDataValidator>()
+                .AddSingleton<DialogueDataValidator>()
                 .AddSingleton<SkillComponentRegistry>()
                 .AddSingleton<SkillComponentValidator>()
                 .AddSingleton<ConfigSnapshotValidator>()

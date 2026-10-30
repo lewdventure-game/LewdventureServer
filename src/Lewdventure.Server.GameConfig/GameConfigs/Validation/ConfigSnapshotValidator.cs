@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Server.Bonuses;
 using Server.Configs;
+using Server.Dialogues;
 using Server.Entities;
 using Server.Equipments;
 using Server.Perks;
@@ -19,6 +20,7 @@ namespace Server.GameConfigs
         private const string ServiceColumn = "is_off";
 
         private readonly ConfigDomainNames _configDomainNames;
+        private readonly DialogueDataValidator _dialogueDataValidator;
         private readonly EffectParametersValidator _effectParametersValidator;
         private readonly EnemyDataValidator _enemyDataValidator;
         private readonly ProgressionDataValidator _progressionDataValidator;
@@ -44,16 +46,19 @@ namespace Server.GameConfigs
             [ConfigDomainNames.PerkGroups] = typeof(PerkGroupMapper),
             [ConfigDomainNames.Skills] = typeof(SkillMapper),
             [ConfigDomainNames.SkillPromotes] = typeof(SkillPromoteMapper),
+            [ConfigDomainNames.Dialogues] = typeof(DialogueStepMapper),
         };
 
         public ConfigSnapshotValidator(
             ConfigDomainNames configDomainNames,
+            DialogueDataValidator dialogueDataValidator,
             EffectParametersValidator effectParametersValidator,
             EnemyDataValidator enemyDataValidator,
             ProgressionDataValidator progressionDataValidator,
             SkillComponentValidator skillComponentValidator)
         {
             _configDomainNames = configDomainNames;
+            _dialogueDataValidator = dialogueDataValidator;
             _effectParametersValidator = effectParametersValidator;
             _enemyDataValidator = enemyDataValidator;
             _progressionDataValidator = progressionDataValidator;
@@ -112,6 +117,7 @@ namespace Server.GameConfigs
                 warnings.Add("Config snapshot domain Bonuses has no rows.");
 
             _progressionDataValidator.Collect(distributor, warnings);
+            _dialogueDataValidator.Collect(distributor, errors, warnings);
         }
 
         private void CollectHeaderIssues(ConfigSnapshotDomain domain, List<string> errors, List<string> warnings)

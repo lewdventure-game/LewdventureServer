@@ -5,10 +5,22 @@ namespace Server.Configs
     internal sealed class DelimitedStringArrayConverter : JsonConverter
     {
         private readonly char _delimiter;
+        private readonly bool _keepEmpty;
 
-        public DelimitedStringArrayConverter(char delimiter = ';')
+        public DelimitedStringArrayConverter()
+            : this(';', false)
+        {
+        }
+
+        public DelimitedStringArrayConverter(char delimiter)
+            : this(delimiter, false)
+        {
+        }
+
+        public DelimitedStringArrayConverter(char delimiter, bool keepEmpty)
         {
             _delimiter = delimiter;
+            _keepEmpty = keepEmpty;
         }
 
         public override bool CanConvert(Type objectType)
@@ -40,7 +52,7 @@ namespace Server.Configs
                     {
                         var part = parts[i].Trim().Trim('"');
 
-                        if (string.IsNullOrWhiteSpace(part))
+                        if (string.IsNullOrWhiteSpace(part) && _keepEmpty == false)
                             continue;
 
                         values.Add(part);

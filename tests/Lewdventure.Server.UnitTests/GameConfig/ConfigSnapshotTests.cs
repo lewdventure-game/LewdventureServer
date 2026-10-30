@@ -29,7 +29,7 @@ namespace Tests.Unit.GameConfig
                 var reloaded = await source.LoadAsync(path, CancellationToken.None);
 
                 Assert.That(reloaded.Version, Is.EqualTo(snapshot.Version));
-                Assert.That(reloaded.Domains, Has.Count.EqualTo(19));
+                Assert.That(reloaded.Domains, Has.Count.EqualTo(20));
             }
             finally
             {
@@ -455,7 +455,7 @@ namespace Tests.Unit.GameConfig
             return new GameConfigSetBuilder(
                 new BonusWorkModeParser(new SilentCoreLog()),
                 new ConfigRowsParser(new ConfigRowLocator(new ConfigRangeReader())),
-                new ConfigSnapshotValidator(_domainNames, new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator(), new ProgressionDataValidator(), new SkillComponentValidator(new SkillComponentRegistry())),
+                new ConfigSnapshotValidator(_domainNames, new DialogueDataValidator(), new EffectParametersValidator(new EffectParameterRegistry()), new EnemyDataValidator(), new ProgressionDataValidator(), new SkillComponentValidator(new SkillComponentRegistry())),
                 new SilentCoreLog());
         }
     }

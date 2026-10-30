@@ -1,4 +1,5 @@
 using Server.Configs;
+using Server.Dialogues;
 
 namespace Server.Stories
 {
@@ -25,5 +26,9 @@ namespace Server.Stories
         public StoryLevelTriggerType[] TriggerTypes { get; }
 
         public int[] TriggerValues { get; }
+
+        public int[] DialogueIds { get; }
+
+        public DialogueTrigger[] DialogueTriggers { get; }
     }
 }

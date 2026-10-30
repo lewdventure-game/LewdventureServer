@@ -15,6 +15,7 @@ namespace Server.GameConfigs
             var configRowsParser = new ConfigRowsParser(configRowLocator);
             var configSnapshotValidator = new ConfigSnapshotValidator(
                 new ConfigDomainNames(),
+                new DialogueDataValidator(),
                 new EffectParametersValidator(new EffectParameterRegistry()),
                 new EnemyDataValidator(),
                 new ProgressionDataValidator(),

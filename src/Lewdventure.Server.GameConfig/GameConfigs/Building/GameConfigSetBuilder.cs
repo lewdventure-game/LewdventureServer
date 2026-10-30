@@ -1,6 +1,7 @@
 using Server.Collections;
 using Server.Bonuses;
 using Server.Configs;
+using Server.Dialogues;
 using Server.Entities;
 using Server.Equipments;
 using Server.Perks;
@@ -87,6 +88,7 @@ namespace Server.GameConfigs
             var tempPerkGroups = ParseDomain<PerkGroupMapper>(snapshot, ConfigDomainNames.PerkGroups, errors);
             var tempSkills = ParseDomain<SkillMapper>(snapshot, ConfigDomainNames.Skills, errors);
             var tempSkillPromotes = ParseDomain<SkillPromoteMapper>(snapshot, ConfigDomainNames.SkillPromotes, errors);
+            var tempDialogues = ParseDomain<DialogueStepMapper>(snapshot, ConfigDomainNames.Dialogues, errors);
 
             var distributor = new ConfigDistributor();
 
@@ -109,6 +111,7 @@ namespace Server.GameConfigs
             AddList(distributor.PerkGroups, tempPerkGroups, ConfigDomainNames.PerkGroups);
             AddList(distributor.Skills, tempSkills, ConfigDomainNames.Skills);
             AddList(distributor.SkillPromotes, tempSkillPromotes, ConfigDomainNames.SkillPromotes);
+            AddList(distributor.Dialogues, tempDialogues, ConfigDomainNames.Dialogues);
 
             if (distributor.CharacterPromotes.Collection.Count == 0)
                 _coreLog.Information("[Config] Character_promotes empty; sheet id not wired");

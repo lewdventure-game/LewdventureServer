@@ -19,6 +19,7 @@ namespace Tests.Integration.Mongo
                 .AddSingleton<EffectParametersValidator>()
                 .AddSingleton<EnemyDataValidator>()
                 .AddSingleton<ProgressionDataValidator>()
+                .AddSingleton<DialogueDataValidator>()
                 .AddSingleton<SkillComponentRegistry>()
                 .AddSingleton<SkillComponentValidator>()
                 .AddSingleton<ConfigSnapshotValidator>();

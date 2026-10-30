@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
 using Server.Configs;
+using Server.Dialogues;
 
 namespace Server.Stories
 {
@@ -43,5 +44,15 @@ namespace Server.Stories
         [JsonProperty("trigger_values")]
         [JsonConverter(typeof(DelimitedIntArrayConverter), ';')]
         public int[] TriggerValues { get; init; } = Array.Empty<int>();
+
+        [JsonProperty("dialogues_ids")]
+        [OptionalColumn("без колонки у уровня нет диалогов")]
+        [JsonConverter(typeof(DelimitedIntArrayConverter), ';')]
+        public int[] DialogueIds { get; init; } = Array.Empty<int>();
+
+        [JsonProperty("dialogues_triggers")]
+        [OptionalColumn("без колонки у уровня нет диалогов")]
+        [JsonConverter(typeof(DialogueTriggerArrayConverter))]
+        public DialogueTrigger[] DialogueTriggers { get; init; } = Array.Empty<DialogueTrigger>();
     }
 }

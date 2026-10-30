@@ -3,6 +3,7 @@ using Server.Aspects;
 using Server.Bonuses;
 using Server.Common;
 using Server.Configs;
+using Server.Dialogues;
 using Server.Entities;
 using Server.Equipments;
 using Server.Perks;
@@ -42,6 +43,8 @@ namespace Server.Services
         public ISkillMapperManager Skills { get; } = new SkillMapperManager();
 
         public ISkillPromoteMapperManager SkillPromotes { get; } = new SkillPromoteMapperManager();
+
+        public IDialogueStepMapperManager Dialogues { get; } = new DialogueStepMapperManager();
 
         public IStatusMapperManager Statuses { get; } = new StatusMapperManager();
 
