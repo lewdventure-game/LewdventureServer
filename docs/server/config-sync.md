@@ -191,12 +191,13 @@ DI: runtime доступ к конфигам **только** через `IConfi
 | Trainings | `Trainings` | stub: sheet id не wired, manager empty после sync |
 | Artifacts | `Artifacts` | stub: sheet id не wired |
 | Aspects | `Aspects` | stub: sheet id не wired |
-| Story_levels | `StoryLevels` | `enemies_attack_multiplier`, `enemies_health_multiplier` (необязательные, без них берётся `enemy_stats_multiplier`) |
+| Story_levels | `StoryLevels` | `enemies_attack_multiplier`, `enemies_health_multiplier` (необязательные, без них берётся `enemy_stats_multiplier`); `dialogues_ids` и `dialogues_triggers` (необязательные, [dialogues.md](dialogues.md)) |
 | Story_stages | `StoryStages` | `enemy_stats_multiplier` применяется при `stageId > 0`; пустое значение считается 1 с предупреждением в логе |
 | Story_events | `StoryEvents` | load-only |
 | Exp_levels_patterns | `ExperienceLevelPatterns` | load-only; за последней строкой набора забег повторяет последнюю (порог и пресеты перков) |
 | Perks | `Perks` | |
 | Perk_groups | `PerkGroups` | load-only |
+| Dialogues | `Dialogues` | необязательный лист; composite key `id`+`step`, граф шагов проверяется при публикации ([dialogues.md](dialogues.md)) |
 | Skills | `Skills` | `id` + `triggers` + `actions`; lookup по numeric id; строки старого формата (`type` / `parameters`) не поддерживаются |
 
 ## work_mode

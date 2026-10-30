@@ -60,9 +60,12 @@
   "bonuses": [ { "id": 1, "count": 2 } ],
   "loadout": { "characterId": 1, "equipment": { "body": "eq_…" }, "summons": [1, 2] },
   "story": { "completedLevelIds": [1], "currentRunId": "run_…", "records": [ { "storyLevelId": 1, "bestStageIndex": 4 } ] },
+  "pendingDialogues": [ { "launchKey": "reward:3:5f0c…", "dialogueId": 3 } ],
   "flags": { "tutorial_done": 1 }
 }
 ```
+
+`pendingDialogues` — диалоги, которые надо показать и подтвердить (см. [Диалоги](#диалоги)).
 
 `story.records` — лучший результат по каждому уровню сюжета: сколько этапов пройдено в лучшем забеге.
 
@@ -302,6 +305,7 @@
   "rewardTotals": [ { "type": "Resource", "id": 0, "rewardKey": "soft_money", "count": 350 } ],
   "isNewRecord": false,
   "battlePending": false,
+  "pendingDialogues": [ { "launchKey": "level:1:2:on_stage_entered:2", "dialogueId": 2 } ],
   "pendingChoice": { "kind": "perk", "options": [1, 4, 7], "choiceCount": 1 },
   "step": {
     "eventType": "fight",
@@ -329,7 +333,7 @@
 - `status` — `active`, `completed`, `failed`.
 - `step.eventType` — `default_event`, `fork_event`, `fight`, `completed`.
 - `pendingChoice.kind` — `perk` (выбрать перк из `options`) или `fork` (выбрать кнопку развилки: `picks: [1]` или `picks: [2]`, `options` всегда `[1, 2]`).
-- `appliedRewards[].type` — `Resource`, `Character`, `Summon`, `Equipment` (для `Resource` смысл несёт `rewardKey`, для остальных — `id`). Награды типов `Bonus` и `Status` в профиль не пишутся: они уходят в забег и видны в `run.bonuses`. С 2026-10-16 ещё `Perk` (перк сразу в `run.perks`, `count` — сколько копий добавлено) и `PerkGroup` (выбор из группы в очереди, придёт `pendingChoice.kind = "perk"`); тоже только в забеге.
+- `appliedRewards[].type` — `Resource`, `Character`, `Summon`, `Equipment`, `Dialogue` (для `Resource` смысл несёт `rewardKey`, для остальных — `id`; `Dialogue` — диалог встал в очередь, придёт в `pendingDialogues`). Награды типов `Bonus` и `Status` в профиль не пишутся: они уходят в забег и видны в `run.bonuses`. С 2026-10-16 ещё `Perk` (перк сразу в `run.perks`, `count` — сколько копий добавлено) и `PerkGroup` (выбор из группы в очереди, придёт `pendingChoice.kind = "perk"`); тоже только в забеге.
 
 Развилка (`fork_event`):
 - Шаг, открывающий развилку, приходит с `eventType: "fork_event"`, `locKeyStart` (текст начала события), `locKey` — ключ кнопки 1 (`loc_key_button1`), `locKeyEnd` — ключ кнопки 2 (`loc_key_button2`), и `pendingChoice.kind = "fork"`.
@@ -347,6 +351,32 @@
 - `isNewRecord` — после провала, сдачи или прохождения: забег прошёл больше этапов, чем лучший прошлый результат на уровне (надпись «новый рекорд» на экране поражения).
 - `battlePending` — бой этапа посчитан, но не применён; клиент досматривает бой и зовёт `battle/finish`.
 - `runCompleted: true` приходит в шаге того действия, которое закрыло последний этап, — `battle/finish`, обычного события, развилки или выбора перка. После него `advance` не звать.
+- `pendingDialogues` — диалоги, которые надо показать по порядку и подтвердить: сначала диалоги уровня, потом награды (см. [Диалоги](#диалоги)).
+
+## Диалоги
+
+Подробно — [dialogues.md](dialogues.md).
+
+Сервер решает, когда показать диалог, и кладёт его в `pendingDialogues` ответа забега или профиля: `{launchKey, dialogueId}`. Шаги диалога клиент берёт из снапшота конфигов (`Configs.Dialogues`, лист `Dialogues`).
+
+| Ответ | Что приходит |
+| --- | --- |
+| `run/start` | диалоги уровня `on_start` |
+| `run/advance` | `on_stage_entered:N` — этап N, в который вошли этим шагом |
+| шаг, закрывший забег | `on_win` |
+| `battle/finish` с поражением, `run/abandon` | `on_loss` |
+| `run/current`, повтор шага | `on_start` на первом этапе, `on_stage_entered:N`, пока этап не закрыт |
+| любой ответ забега, профиль | награды `dialogue:<id>:<n>` из очереди профиля |
+
+Диалог уровня показывается один раз на аккаунт. Пока показ не подтверждён, сервер присылает его снова.
+
+### `POST /api/dialogue/complete`
+
+```json
+{ "requestId": "…", "launchKey": "level:1:1:on_start", "picks": [1] }
+```
+
+После того как игрок дочитал диалог. `picks` — номера выбранных вариантов (с 1) по порядку шагов с выбором; без выборов — `[]`. Ответ — профиль. Повтор с тем же `launchKey` — `200` без изменений. `400` — неизвестный запуск или `picks` не проходят по графу диалога. `409` — повторить позже.
 
 ## Скрипт боя
 

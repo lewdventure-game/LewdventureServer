@@ -35,6 +35,7 @@
 | `/api/player/equipment/level/reset` | POST | Bearer | сбросить уровень снаряжения до первого с возвратом части ресурсов |
 | `/api/player/equipment/merge` | POST | Bearer | трансформация снаряжения по редкости |
 | `/api/player/characteristics` | GET | Bearer | итоговые характеристики, посчитанные сервером |
+| `/api/dialogue/complete` | POST | Bearer | подтвердить показ диалога, ответ — профиль ([dialogues.md](dialogues.md)) |
 
 Тело `loadout`: `{requestId, characterId, equipment: {слот: instanceId}, summons: [id]}`.
 
@@ -49,6 +50,7 @@
 | `resource:<ключ>:<n>` | прибавляет к `resources[ключ]` |
 | `character:<id>:<n>` | первая копия открывает персонажа на 1 уровне прокачки (строка `promote_level = 1` стоит 0 копий, её награды выдаются сразу), остальные копятся в `copies`; с 2026-10-16 автоматически применяются только шаги `Character_promotes` с `copies_to_upgrade = 0`, остальные — ручным промоутом (ниже). На максимальном уровне лишние копии конвертируются по константе `character_overflow_resource` |
 | `story:<id>:<n>` | открывает сцену владельца награды: из промоута персонажа — в `characters[].unlockedScenes`, из мастерства саммона — в `summons[].unlockedScenes`. Без владельца (например, в награде события) сервер пишет Warning и ничего не открывает |
+| `dialogue:<id>:<n>` | ставит диалог в очередь профиля `dialogues.pending` `n` раз, клиент видит его в `pendingDialogues` до подтверждения ([dialogues.md](dialogues.md)). До GDD_new9 эта награда называлась `story`, теперь `story` — только сцены |
 | `summon:<id>:<n>` | первая копия открывает саммона с уровнем 1 и мастерством 1 и выдаёт награды строки `mastery_level = 1` из `Summon_masteries`, остальные идут в `copies`; когда мастерство саммона уже максимальное, лишние копии конвертируются по константе редкости (`rare/epic/legendary/mythic_summon_overflow_resource`) |
 | `equipment:<id>:<n>` | создаёт `n` инстансов первого уровня с собственным `instanceId` |
 | `account:<флаг>:<n>` | прибавляет к `flags[флаг]`, например `start_perk_choice_single` |
