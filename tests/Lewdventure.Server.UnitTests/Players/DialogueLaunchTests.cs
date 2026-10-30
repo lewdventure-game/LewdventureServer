@@ -55,6 +55,15 @@ namespace Tests.Unit.Players
             Assert.That(_launchKeys.TryParseLevel(first, out _, out _, out _), Is.False);
         }
 
+        [TestCase("level:2:3:on_stage_entered:2", "on_stage_entered:2")]
+        [TestCase("level:1:1:on_win", "on_win")]
+        [TestCase("reward:1:5f0c", "reward")]
+        [TestCase("other:1", "")]
+        public void Trigger_IsReadFromLaunchKey(string launchKey, string trigger)
+        {
+            Assert.That(_launchKeys.ResolveTrigger(launchKey), Is.EqualTo(trigger));
+        }
+
         [TestCase("level:x:1:on_start")]
         [TestCase("level:1:1")]
         [TestCase("level:1:1:")]

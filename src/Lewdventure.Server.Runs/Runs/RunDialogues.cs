@@ -104,7 +104,7 @@ namespace Server.Runs
                 if (IsCompleted(profile, launchKey))
                     continue;
 
-                launches.Add(new RunDialogueLaunch(launchKey, dialogueId));
+                launches.Add(new RunDialogueLaunch(launchKey, dialogueId, _dialogueLaunchKeys.NormalizeTrigger(trigger.Source)));
             }
         }
 
@@ -138,7 +138,12 @@ namespace Server.Runs
             var pending = profile.Dialogues.Pending;
 
             for (int i = 0; i < pending.Count; i++)
-                launches.Add(new RunDialogueLaunch(pending[i].LaunchKey, pending[i].DialogueId));
+            {
+                var launch = pending[i];
+
+                if (_configDistributor.Dialogues.Contains(launch.DialogueId))
+                    launches.Add(new RunDialogueLaunch(launch.LaunchKey, launch.DialogueId, DialogueLaunchKeys.RewardTrigger));
+            }
         }
     }
 }

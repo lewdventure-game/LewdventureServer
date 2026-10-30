@@ -61,6 +61,7 @@ namespace Tests.Integration.Mongo
 
             Assert.That(started.Succeeded, Is.True, string.Join("; ", started.Errors));
             Assert.That(ReadKeys(started), Is.EqualTo(new[] { StartLaunchKey }));
+            Assert.That(started.Dialogues[0].Trigger, Is.EqualTo("on_start"));
 
             var current = await runService.GetCurrentAsync(UserId, CancellationToken.None);
 
@@ -112,8 +113,10 @@ namespace Tests.Integration.Mongo
             var profile = await repository.GetAsync(UserId, CancellationToken.None);
             var expectedRev = profile!.Rev;
             var launchKey = _launchKeys.ForReward(3);
+            var orphanKey = _launchKeys.ForReward(77);
 
             profile.Dialogues.Pending.Add(new PlayerDialogueLaunchDocument { LaunchKey = launchKey, DialogueId = 3, CreatedAt = DateTime.UtcNow });
+            profile.Dialogues.Pending.Add(new PlayerDialogueLaunchDocument { LaunchKey = orphanKey, DialogueId = 77, CreatedAt = DateTime.UtcNow });
             profile.Rev = expectedRev + 1;
 
             Assert.That(await repository.ReplaceAsync(profile, expectedRev, CancellationToken.None), Is.True);
@@ -121,11 +124,13 @@ namespace Tests.Integration.Mongo
             var offered = await runService.GetCurrentAsync(UserId, CancellationToken.None);
 
             Assert.That(ReadKeys(offered), Is.EqualTo(new[] { launchKey }));
+            Assert.That(offered.Dialogues[0].Trigger, Is.EqualTo("reward"));
 
             var completed = await CompleteAsync(launchKey, 1, 1, 4);
 
             Assert.That(completed.Succeeded, Is.True, string.Join("; ", completed.Errors));
-            Assert.That(completed.Profile!.Dialogues.Pending, Is.Empty);
+            Assert.That(completed.Profile!.Dialogues.Pending, Has.Count.EqualTo(1));
+            Assert.That(completed.Profile.Dialogues.Pending[0].LaunchKey, Is.EqualTo(orphanKey));
 
             var current = await runService.GetCurrentAsync(UserId, CancellationToken.None);
 

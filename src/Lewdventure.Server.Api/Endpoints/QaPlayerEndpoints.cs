@@ -156,7 +156,7 @@ namespace Server.Api.Endpoints
 
             logger.LogInformation("[Qa] self grant userId = {UserId} rewards = {Rewards}", userId, rewards);
 
-            return Results.Ok(playerResponseFactory.Create(result.Profile!));
+            return Results.Ok(playerResponseFactory.Create(result.Profile!, configDistributor));
         }
 
         private bool IsQaAccount(HttpContext httpContext)

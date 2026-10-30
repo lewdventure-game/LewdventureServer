@@ -139,7 +139,7 @@ namespace Server.Api.Endpoints
             var profileService = httpContext.RequestServices.GetRequiredService<PlayerProfileService>();
             var profile = await profileService.GetOrCreateAsync(userId, configDistributor, httpContext.RequestAborted);
 
-            return Results.Ok(playerResponseFactory.Create(profile));
+            return Results.Ok(playerResponseFactory.Create(profile, configDistributor));
         }
 
         private async Task<IResult> ResetProgressAsync(
@@ -162,7 +162,7 @@ namespace Server.Api.Endpoints
             var profileService = httpContext.RequestServices.GetRequiredService<PlayerProfileService>();
             var profile = await profileService.GetOrCreateAsync(userId, configDistributor, httpContext.RequestAborted);
 
-            return Results.Ok(playerResponseFactory.Create(profile));
+            return Results.Ok(playerResponseFactory.Create(profile, configDistributor));
         }
 
         private async Task<IResult> DeleteAccountAsync(
@@ -219,7 +219,7 @@ namespace Server.Api.Endpoints
             if (result.Succeeded == false)
                 return Results.BadRequest(new { errors = result.Errors });
 
-            return Results.Ok(playerResponseFactory.Create(result.Profile!));
+            return Results.Ok(playerResponseFactory.Create(result.Profile!, configDistributor));
         }
 
         private async Task<IResult> GetCharacteristicsAsync(
@@ -273,7 +273,7 @@ namespace Server.Api.Endpoints
             if (result.Succeeded == false)
                 return Results.BadRequest(new { errors = result.Errors });
 
-            return Results.Ok(playerResponseFactory.Create(result.Profile!));
+            return Results.Ok(playerResponseFactory.Create(result.Profile!, configDistributor));
         }
 
         private async Task<IResult> ResetSummonLevelAsync(
@@ -297,7 +297,7 @@ namespace Server.Api.Endpoints
             var progressionService = httpContext.RequestServices.GetRequiredService<PlayerProgressionService>();
             var result = await progressionService.ResetSummonLevelAsync(userId, request.SummonId, request.RequestId, configDistributor, httpContext.RequestAborted);
 
-            return CreateProgressionResult(result, playerResponseFactory);
+            return CreateProgressionResult(result, configDistributor, playerResponseFactory);
         }
 
         private async Task<IResult> UpgradeSummonSkillLevelAsync(
@@ -321,7 +321,7 @@ namespace Server.Api.Endpoints
             var progressionService = httpContext.RequestServices.GetRequiredService<PlayerProgressionService>();
             var result = await progressionService.UpgradeSummonSkillLevelAsync(userId, request.SummonId, request.SkillId, request.RequestId, configDistributor, httpContext.RequestAborted);
 
-            return CreateProgressionResult(result, playerResponseFactory);
+            return CreateProgressionResult(result, configDistributor, playerResponseFactory);
         }
 
         private async Task<IResult> ResetEquipmentLevelAsync(
@@ -345,7 +345,7 @@ namespace Server.Api.Endpoints
             var progressionService = httpContext.RequestServices.GetRequiredService<PlayerProgressionService>();
             var result = await progressionService.ResetEquipmentLevelAsync(userId, request.InstanceId, request.RequestId, configDistributor, httpContext.RequestAborted);
 
-            return CreateProgressionResult(result, playerResponseFactory);
+            return CreateProgressionResult(result, configDistributor, playerResponseFactory);
         }
 
         private async Task<IResult> MergeEquipmentAsync(
@@ -378,10 +378,10 @@ namespace Server.Api.Endpoints
                 configDistributor,
                 httpContext.RequestAborted);
 
-            return CreateProgressionResult(result, playerResponseFactory);
+            return CreateProgressionResult(result, configDistributor, playerResponseFactory);
         }
 
-        private IResult CreateProgressionResult(PlayerUpdateResult result, PlayerResponseFactory playerResponseFactory)
+        private IResult CreateProgressionResult(PlayerUpdateResult result, IConfigDistributor configDistributor, PlayerResponseFactory playerResponseFactory)
         {
             if (result.Conflict)
                 return Results.Json(new { error = "Profile was changed by another request." }, statusCode: StatusCodes.Status409Conflict);
@@ -389,7 +389,7 @@ namespace Server.Api.Endpoints
             if (result.Succeeded == false)
                 return Results.BadRequest(new { errors = result.Errors });
 
-            return Results.Ok(playerResponseFactory.Create(result.Profile!));
+            return Results.Ok(playerResponseFactory.Create(result.Profile!, configDistributor));
         }
 
         private async Task<IResult> UpgradeSummonLevelAsync(
@@ -439,7 +439,7 @@ namespace Server.Api.Endpoints
             if (result.Succeeded == false)
                 return Results.BadRequest(new { errors = result.Errors });
 
-            return Results.Ok(playerResponseFactory.Create(result.Profile!));
+            return Results.Ok(playerResponseFactory.Create(result.Profile!, configDistributor));
         }
 
         private async Task<IResult> UpgradeAsync(
@@ -472,7 +472,7 @@ namespace Server.Api.Endpoints
             if (result.Succeeded == false)
                 return Results.BadRequest(new { errors = result.Errors });
 
-            return Results.Ok(playerResponseFactory.Create(result.Profile!));
+            return Results.Ok(playerResponseFactory.Create(result.Profile!, configDistributor));
         }
     }
 }

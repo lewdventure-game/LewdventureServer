@@ -60,7 +60,7 @@
   "bonuses": [ { "id": 1, "count": 2 } ],
   "loadout": { "characterId": 1, "equipment": { "body": "eq_…" }, "summons": [1, 2] },
   "story": { "completedLevelIds": [1], "currentRunId": "run_…", "records": [ { "storyLevelId": 1, "bestStageIndex": 4 } ] },
-  "pendingDialogues": [ { "launchKey": "reward:3:5f0c…", "dialogueId": 3 } ],
+  "pendingDialogues": [ { "launchKey": "reward:3:5f0c…", "dialogueId": 3, "trigger": "reward" } ],
   "flags": { "tutorial_done": 1 }
 }
 ```
@@ -305,7 +305,7 @@
   "rewardTotals": [ { "type": "Resource", "id": 0, "rewardKey": "soft_money", "count": 350 } ],
   "isNewRecord": false,
   "battlePending": false,
-  "pendingDialogues": [ { "launchKey": "level:1:2:on_stage_entered:2", "dialogueId": 2 } ],
+  "pendingDialogues": [ { "launchKey": "level:1:2:on_stage_entered:2", "dialogueId": 2, "trigger": "on_stage_entered:2" } ],
   "pendingChoice": { "kind": "perk", "options": [1, 4, 7], "choiceCount": 1 },
   "step": {
     "eventType": "fight",
@@ -357,7 +357,7 @@
 
 Подробно — [dialogues.md](dialogues.md).
 
-Сервер решает, когда показать диалог, и кладёт его в `pendingDialogues` ответа забега или профиля: `{launchKey, dialogueId}`. Шаги диалога клиент берёт из снапшота конфигов (`Configs.Dialogues`, лист `Dialogues`).
+Сервер решает, когда показать диалог, и кладёт его в `pendingDialogues` ответа забега или профиля: `{launchKey, dialogueId, trigger}`. `trigger` — `on_start`, `on_stage_entered:N`, `on_win`, `on_loss` или `reward`. Шаги диалога клиент берёт из снапшота конфигов (`Configs.Dialogues`, лист `Dialogues`).
 
 | Ответ | Что приходит |
 | --- | --- |

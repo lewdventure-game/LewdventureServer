@@ -1,9 +1,30 @@
 using Server.Infrastructure.Mongo.Players;
+using Server.Infrastructure.Players;
+using Server.Services;
 
 namespace Server.Api.Endpoints
 {
     internal sealed class PlayerResponseFactory
     {
+        private readonly DialogueLaunchKeys _dialogueLaunchKeys = new();
+
+        public PlayerProfileResponse Create(PlayerProfileDocument profile, IConfigDistributor configDistributor)
+        {
+            var response = Create(profile);
+
+            response.PendingDialogues.Clear();
+
+            for (int i = 0; i < profile.Dialogues.Pending.Count; i++)
+            {
+                var launch = profile.Dialogues.Pending[i];
+
+                if (configDistributor.Dialogues.Contains(launch.DialogueId))
+                    response.PendingDialogues.Add(CreateLaunch(launch));
+            }
+
+            return response;
+        }
+
         public PlayerProfileResponse Create(PlayerProfileDocument profile)
         {
             var response = new PlayerProfileResponse
@@ -29,7 +50,7 @@ namespace Server.Api.Endpoints
             {
                 var launch = profile.Dialogues.Pending[i];
 
-                response.PendingDialogues.Add(new DialogueLaunchResponse { LaunchKey = launch.LaunchKey, DialogueId = launch.DialogueId });
+                response.PendingDialogues.Add(CreateLaunch(launch));
             }
 
             for (int i = 0; i < profile.Story.Records.Count; i++)
@@ -96,6 +117,16 @@ namespace Server.Api.Endpoints
             }
 
             return response;
+        }
+
+        private DialogueLaunchResponse CreateLaunch(PlayerDialogueLaunchDocument launch)
+        {
+            return new DialogueLaunchResponse
+            {
+                LaunchKey = launch.LaunchKey,
+                DialogueId = launch.DialogueId,
+                Trigger = _dialogueLaunchKeys.ResolveTrigger(launch.LaunchKey),
+            };
         }
     }
 }

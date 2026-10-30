@@ -1,5 +1,7 @@
 using Server.Infrastructure.Analytics;
+using Server.Infrastructure.Mongo.ConfigSnapshots;
 using Server.Infrastructure.Mongo.Players;
+using Server.Infrastructure.Mongo.Runs;
 using Server.Services;
 
 namespace Server.Infrastructure.Players
@@ -7,27 +9,34 @@ namespace Server.Infrastructure.Players
     internal sealed class PlayerDialogueService
     {
         private const int MaxAttempts = 3;
+        private const int LastRunCount = 1;
 
         private readonly DialogueLaunchKeys _dialogueLaunchKeys = new();
         private readonly DialoguePathValidator _dialoguePathValidator = new();
 
         private readonly DialogueAnalytics _dialogueAnalytics;
+        private readonly GameConfigSetCache _gameConfigSetCache;
         private readonly ILogger<PlayerDialogueService> _logger;
         private readonly PlayerProfileRepository _playerProfileRepository;
         private readonly PlayerProfileService _playerProfileService;
+        private readonly RunRepository _runRepository;
         private readonly TimeProvider _timeProvider;
 
         public PlayerDialogueService(
             DialogueAnalytics dialogueAnalytics,
+            GameConfigSetCache gameConfigSetCache,
             ILogger<PlayerDialogueService> logger,
             PlayerProfileRepository playerProfileRepository,
             PlayerProfileService playerProfileService,
+            RunRepository runRepository,
             TimeProvider timeProvider)
         {
             _dialogueAnalytics = dialogueAnalytics;
+            _gameConfigSetCache = gameConfigSetCache;
             _logger = logger;
             _playerProfileRepository = playerProfileRepository;
             _playerProfileService = playerProfileService;
+            _runRepository = runRepository;
             _timeProvider = timeProvider;
         }
 
@@ -45,10 +54,15 @@ namespace Server.Infrastructure.Players
                     return new PlayerUpdateResult(profile, false, new List<string>());
 
                 var pendingIndex = FindPending(profile, completion.LaunchKey);
-                var error = ResolveDialogueId(profile, completion.LaunchKey, pendingIndex, configDistributor, out var dialogueId);
+                var error = Validate(profile, completion, pendingIndex, configDistributor, out var dialogueId);
 
-                if (string.IsNullOrEmpty(error))
-                    error = _dialoguePathValidator.Validate(dialogueId, completion.Picks, configDistributor);
+                if (string.IsNullOrEmpty(error) == false)
+                {
+                    var lastRunConfigs = await FindLastRunConfigsAsync(userId, configDistributor, cancellationToken);
+
+                    if (lastRunConfigs != null && string.IsNullOrEmpty(Validate(profile, completion, pendingIndex, lastRunConfigs, out dialogueId)))
+                        error = string.Empty;
+                }
 
                 if (string.IsNullOrEmpty(error) == false)
                     return new PlayerUpdateResult(null, false, new List<string> { error });
@@ -79,6 +93,35 @@ namespace Server.Infrastructure.Players
             }
 
             return new PlayerUpdateResult(null, true, new List<string>());
+        }
+
+        private string Validate(
+            PlayerProfileDocument profile,
+            DialogueCompletion completion,
+            int pendingIndex,
+            IConfigDistributor configDistributor,
+            out int dialogueId)
+        {
+            var error = ResolveDialogueId(profile, completion.LaunchKey, pendingIndex, configDistributor, out dialogueId);
+
+            return string.IsNullOrEmpty(error) ? _dialoguePathValidator.Validate(dialogueId, completion.Picks, configDistributor) : error;
+        }
+
+        private async Task<IConfigDistributor?> FindLastRunConfigsAsync(string userId, IConfigDistributor current, CancellationToken cancellationToken)
+        {
+            var runs = await _runRepository.ListAsync(userId, LastRunCount, cancellationToken);
+
+            if (runs.Count == 0)
+                return null;
+
+            var configSet = await _gameConfigSetCache.GetAsync(runs[0].ConfigVersion, cancellationToken);
+
+            if (configSet == null || configSet.Distributor == current)
+                return null;
+
+            _logger.LogInformation("[Player] dialogue picks checked against last run configs userId = {UserId} config = {Config}", userId, runs[0].ConfigVersion);
+
+            return configSet.Distributor;
         }
 
         private string ResolveDialogueId(

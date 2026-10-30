@@ -65,7 +65,7 @@ namespace Server.Api.Endpoints
             if (result.Succeeded == false)
                 return Results.BadRequest(new { errors = result.Errors });
 
-            return Results.Ok(playerResponseFactory.Create(result.Profile!));
+            return Results.Ok(playerResponseFactory.Create(result.Profile!, configDistributor));
         }
     }
 }

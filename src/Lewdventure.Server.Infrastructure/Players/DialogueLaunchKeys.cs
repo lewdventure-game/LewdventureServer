@@ -4,6 +4,8 @@ namespace Server.Infrastructure.Players
 {
     internal sealed class DialogueLaunchKeys
     {
+        public const string RewardTrigger = "reward";
+
         private const string LevelPrefix = "level:";
         private const string RewardPrefix = "reward:";
         private const char Separator = ':';
@@ -29,6 +31,14 @@ namespace Server.Infrastructure.Players
                 + dialogueId.ToString(CultureInfo.InvariantCulture)
                 + Separator
                 + Guid.NewGuid().ToString("N");
+        }
+
+        public string ResolveTrigger(string launchKey)
+        {
+            if (IsReward(launchKey))
+                return RewardTrigger;
+
+            return TryParseLevel(launchKey, out _, out _, out var trigger) ? trigger : string.Empty;
         }
 
         public bool IsReward(string launchKey)
