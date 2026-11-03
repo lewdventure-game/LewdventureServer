@@ -118,6 +118,16 @@ namespace Server.GameConfigs
 
             _progressionDataValidator.Collect(distributor, warnings);
             _dialogueDataValidator.Collect(distributor, errors, warnings);
+            CollectBonusIcons(distributor, errors);
+        }
+
+        private void CollectBonusIcons(IConfigDistributor distributor, List<string> errors)
+        {
+            foreach (var bonus in distributor.Bonuses.Values)
+            {
+                if (bonus.IsDisplayed && string.IsNullOrWhiteSpace(bonus.IconName))
+                    errors.Add($"Лист Bonuses, бонус {bonus.Id}: is_displayed = true, но icon_name пустое.");
+            }
         }
 
         private void CollectHeaderIssues(ConfigSnapshotDomain domain, List<string> errors, List<string> warnings)

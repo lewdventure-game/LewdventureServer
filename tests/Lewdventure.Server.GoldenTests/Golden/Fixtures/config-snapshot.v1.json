@@ -1,7 +1,7 @@
 {
   "format": "lewdventure-config-snapshot",
   "formatVersion": 1,
-  "version": "sha256:28bac024ff44abd68930db565c97b1ca2ebc490d89762034a071960bdd652cc1",
+  "version": "sha256:3395efc3411c3f0009185dd5a970be390684a0a4210fddd76154e1f1523947ad",
   "createdAt": "2026-10-17T11:34:04.3400000Z",
   "sourceKind": "SheetsUpload",
   "domains": [
@@ -470,7 +470,7 @@
     {
       "domain": "Bonuses",
       "spreadsheetId": "1jrzVDp9dTRtJBjyFFP1adtkbcqMEHIfnWs3XsJuR2ac",
-      "range": "A1:G80",
+      "range": "A1:I80",
       "rows": [
         {
           "name": "",
@@ -479,7 +479,9 @@
           "operator": "add",
           "bonus_type": "max_health_perk",
           "bonus_value": "0.15",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": true,
+          "icon_name": "max_health"
         },
         {
           "name": "",
@@ -488,7 +490,9 @@
           "operator": "add",
           "bonus_type": "damage_local",
           "bonus_value": "5",
-          "work_modes": "if_equipped:characters:1;first_turns:3"
+          "work_modes": "if_equipped:characters:1;first_turns:3",
+          "is_displayed": false,
+          "icon_name": ""
         },
         {
           "name": "",

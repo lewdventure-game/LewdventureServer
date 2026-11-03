@@ -21,13 +21,13 @@
 
 | Файл | Что |
 | --- | --- |
-| `GameConfigs/Snapshots/ConfigDomainNames.cs` | константа `Dialogues`, лист обязательный (таблица уже есть) |
+| `GameConfigs/Snapshots/ConfigDomainNames.cs` | константа `Dialogues`, лист необязательный для совместимости со старыми снапшотами (решение подтверждено) |
 | `GameConfigs/Building/GameConfigSetBuilder.cs` | `ParseDomain<DialogueStepMapper>`, `AddList` |
 | `GameConfigs/Validation/ConfigSnapshotValidator.cs` | `_mapperTypes` |
 | `Services/ConfigDistributor/IConfigDistributor.cs`, `ConfigDistributor.cs` | `Dialogues` — клиент видит `Configs.Dialogues` |
 | `src/Lewdventure.Server.Api/appsettings.json` | `ConfigSheets:Sheets` — `Dialogues` + `1FDgmOrBTFPj2Tzf20r4Y87vKpl3Nxj45Fgr63XWykTU` |
 
-Валидация в `ProgressionDataValidator` (ошибки по-русски, «Лист Dialogues, id X шаг Y: …»):
+Валидация графа в `DialogueDataValidator`, наград — в `DialogueRewardValidator` (ошибки по-русски, «Лист Dialogues, id X шаг Y: …»):
 
 - `step` уникален в диалоге, первый шаг = 1;
 - `next_step` ссылается на шаги этого диалога;
@@ -50,8 +50,7 @@
 | `Rewards/BattleRewardType.cs` | `Dialogue` |
 | `Rewards/BattleRewardParser.cs` | `"dialogue"` → `Dialogue` |
 | `Infrastructure/Players/RewardApplier.cs` | ветка: запуск `reward:{ledgerId}` в `Dialogues.Pending` профиля, ledger-константа |
-| `Battles/Services/BattleRewardService.cs` | мета-награда, как `Character`/`Summon` |
-| `ProgressionDataValidator` | id диалога в наградах существует |
+| `GameConfigs/Validation/DialogueRewardValidator.cs` | id и количество диалога в наградах событий, промоутов, мастерства и констант |
 
 `RunEngine.ApplyRewardsAsync` отправит тип в `profileRewards` по умолчанию — проверить тестом.
 
@@ -72,18 +71,18 @@
 | `on_win` | шаг, закрывший забег победой (`CompleteAsync`) |
 | `on_loss` | `FinishBattleAsync` с `RunFailed`, `AbandonAsync` |
 
-Поле `pendingDialogues` в `RunStepResponse`/`RunResponse` (`RunResponseFactory`). Повтор по `requestId` отдаёт тот же список.
+Поле `pendingDialogues` в `RunStepResponse`/`RunResponse` (`RunResponseFactory`). Повтор по `requestId` отдаёт тот же список. `RunDocument.LastEnteredStageNumber` сохраняет последний запуск этапа для `current` и повторов после обычного события, выбора и завершения боя.
 
 ## 6. `POST /api/dialogue/complete`
 
 - Тело: `{ requestId, launchKey, picks: int[] }`.
-- Переносит `launchKey` из `Pending` в `Completed` (или добавляет в `Completed` для уровневого запуска), идемпотентно по `requestId`, оптимистичная блокировка по `Rev`.
-- `picks` — только аналитика в демо; место для будущих платных выборов и наград за выбор.
+- Переносит `launchKey` из `Pending` в `Completed` (или добавляет в `Completed` для уровневого запуска), идемпотентно по `requestId` через `IdempotencyRepository`, оптимистичная блокировка по `Rev`.
+- `picks` — только аналитика в демо; место для будущих платных выборов и наград за выбор; `null` эквивалентен пустому списку.
 - `ApiRoutes`, `PlayerEndpoints` (или `DialogueEndpoints`), `400` на неизвестный `launchKey`.
 
 ## 7. Аналитика
 
-`DialogueAnalytics` через `AnalyticsRowFactory.CreateServerEvent`: `dialogue_offered` (launchKey, source), `dialogue_completed` (launchKey, picks, длительность с клиента — по желанию).
+`DialogueAnalytics` через `AnalyticsRowFactory.CreateServerEvent`: только `dialogue_completed` (launchKey, dialogueId, picks). Событие `dialogue_offered` не добавляем, чтобы повторные ответы не создавали дубли (решение подтверждено).
 
 ## 8. Документация
 
@@ -97,7 +96,7 @@
 
 ## Отдельная задача: `is_displayed` и `icon_name` в `Bonuses`
 
-- `Bonuses/Configs/Mappers/IBonusMapper.cs`, `BonusMapper.cs`: `is_displayed` (bool, `[JsonProperty("is_displayed")]`), `icon_name` (string). Решить с ГД, обязательные ли колонки сразу или `[OptionalColumn]` на время перехода.
+- `Bonuses/Configs/Mappers/IBonusMapper.cs`, `BonusMapper.cs`: `is_displayed` (bool, `[JsonProperty("is_displayed")]`), `icon_name` (string). Обе колонки `[OptionalColumn]` для совместимости со старыми снапшотами.
 - Валидация: при `is_displayed = true` `icon_name` не пустой.
 - Фикстуры конфигов, `ConfigSnapshotTests`, docs `config-sync.md` / `configuration.md` / `client-api.md`.
 - Клиент после деплоя переходит с вшитого `BonusIconAddress` на `icon_name`.

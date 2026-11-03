@@ -254,6 +254,52 @@ namespace Tests.Unit.GameConfig
         }
 
         [Test]
+        public async Task Builder_BonusDisplayMetadata_IsRead()
+        {
+            var result = await BuildPatchedAsync(ConfigDomainNames.Bonuses, rows => { });
+
+            Assert.That(result.Succeeded, Is.True, string.Join("; ", result.Errors));
+            Assert.That(result.ConfigSet!.Distributor.Bonuses.TryGet(1, out var displayed), Is.True);
+            Assert.That(displayed!.IsDisplayed, Is.True);
+            Assert.That(displayed.IconName, Is.EqualTo("max_health"));
+            Assert.That(result.ConfigSet.Distributor.Bonuses.TryGet(2, out var hidden), Is.True);
+            Assert.That(hidden!.IsDisplayed, Is.False);
+            Assert.That(hidden.IconName, Is.Empty);
+        }
+
+        [Test]
+        public async Task Builder_DisplayedBonusWithoutIcon_Fails()
+        {
+            var result = await BuildPatchedAsync(ConfigDomainNames.Bonuses, rows =>
+            {
+                ((JObject)rows[0])["is_displayed"] = true;
+                ((JObject)rows[0])["icon_name"] = " ";
+            });
+
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.Errors, Has.Some.Contains("Лист Bonuses, бонус 1: is_displayed = true, но icon_name пустое."));
+        }
+
+        [Test]
+        public async Task Builder_BonusesWithoutDisplayColumns_WarnsInsteadOfFailing()
+        {
+            var result = await BuildPatchedAsync(ConfigDomainNames.Bonuses, rows =>
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    var row = (JObject)rows[i];
+
+                    row.Remove("is_displayed");
+                    row.Remove("icon_name");
+                }
+            });
+
+            Assert.That(result.Succeeded, Is.True, string.Join("; ", result.Errors));
+            Assert.That(result.Warnings, Has.Some.Contains("нет необязательной колонки is_displayed"));
+            Assert.That(result.Warnings, Has.Some.Contains("нет необязательной колонки icon_name"));
+        }
+
+        [Test]
         public async Task Builder_UnknownLevelTriggerType_Warns()
         {
             var result = await BuildPatchedAsync(ConfigDomainNames.StoryLevels, rows =>

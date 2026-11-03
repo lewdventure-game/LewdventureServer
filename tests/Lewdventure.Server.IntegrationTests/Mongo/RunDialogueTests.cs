@@ -113,9 +113,11 @@ namespace Tests.Integration.Mongo
             var profile = await repository.GetAsync(UserId, CancellationToken.None);
             var expectedRev = profile!.Rev;
             var launchKey = _launchKeys.ForReward(3);
+            var otherLaunchKey = _launchKeys.ForReward(3);
             var orphanKey = _launchKeys.ForReward(77);
 
             profile.Dialogues.Pending.Add(new PlayerDialogueLaunchDocument { LaunchKey = launchKey, DialogueId = 3, CreatedAt = DateTime.UtcNow });
+            profile.Dialogues.Pending.Add(new PlayerDialogueLaunchDocument { LaunchKey = otherLaunchKey, DialogueId = 3, CreatedAt = DateTime.UtcNow });
             profile.Dialogues.Pending.Add(new PlayerDialogueLaunchDocument { LaunchKey = orphanKey, DialogueId = 77, CreatedAt = DateTime.UtcNow });
             profile.Rev = expectedRev + 1;
 
@@ -123,14 +125,31 @@ namespace Tests.Integration.Mongo
 
             var offered = await runService.GetCurrentAsync(UserId, CancellationToken.None);
 
-            Assert.That(ReadKeys(offered), Is.EqualTo(new[] { launchKey }));
+            Assert.That(ReadKeys(offered), Is.EqualTo(new[] { launchKey, otherLaunchKey }));
             Assert.That(offered.Dialogues[0].Trigger, Is.EqualTo("reward"));
 
-            var completed = await CompleteAsync(launchKey, 1, 1, 4);
+            const string requestId = "dialogue-reward-complete";
+            var completed = await CompleteAsync(launchKey, requestId, 1, 1, 4);
 
             Assert.That(completed.Succeeded, Is.True, string.Join("; ", completed.Errors));
-            Assert.That(completed.Profile!.Dialogues.Pending, Has.Count.EqualTo(1));
-            Assert.That(completed.Profile.Dialogues.Pending[0].LaunchKey, Is.EqualTo(orphanKey));
+            Assert.That(completed.Profile!.Dialogues.Pending, Has.Count.EqualTo(2));
+            Assert.That(completed.Profile.Dialogues.Pending[0].LaunchKey, Is.EqualTo(otherLaunchKey));
+            Assert.That(completed.Profile.Dialogues.Pending[1].LaunchKey, Is.EqualTo(orphanKey));
+
+            var repeated = await CompleteAsync(otherLaunchKey, requestId, 1, 1, 4);
+
+            Assert.That(repeated.Succeeded, Is.True, string.Join("; ", repeated.Errors));
+            Assert.That(repeated.Profile!.Dialogues.Completed, Has.Count.EqualTo(2));
+            Assert.That(repeated.Profile.Dialogues.Completed[1].LaunchKey, Is.EqualTo(launchKey));
+            Assert.That(repeated.Profile.Dialogues.Completed[1].Picks, Is.EqualTo(new[] { 1, 1, 4 }));
+            Assert.That(repeated.Profile.Dialogues.Pending, Has.Count.EqualTo(2));
+
+            var otherCompleted = await CompleteAsync(otherLaunchKey, "dialogue-reward-other", 1, 1, 4);
+
+            Assert.That(otherCompleted.Succeeded, Is.True, string.Join("; ", otherCompleted.Errors));
+            Assert.That(otherCompleted.Profile!.Dialogues.Completed, Has.Count.EqualTo(3));
+            Assert.That(otherCompleted.Profile.Dialogues.Pending, Has.Count.EqualTo(1));
+            Assert.That(otherCompleted.Profile.Dialogues.Pending[0].LaunchKey, Is.EqualTo(orphanKey));
 
             var current = await runService.GetCurrentAsync(UserId, CancellationToken.None);
 
@@ -168,6 +187,18 @@ namespace Tests.Integration.Mongo
 
                 Assert.That(result.Succeeded, Is.True, string.Join("; ", result.Errors));
 
+                if (ReadKeys(result).Contains(StageLaunchKey))
+                {
+                    var replayed = await runService.AdvanceAsync(UserId, runId, "dialogue-advance-" + guard, CancellationToken.None);
+
+                    Assert.That(replayed.Succeeded, Is.True, string.Join("; ", replayed.Errors));
+                    Assert.That(ReadKeys(replayed), Does.Contain(StageLaunchKey));
+
+                    var restored = await runService.GetCurrentAsync(UserId, CancellationToken.None);
+
+                    Assert.That(ReadKeys(restored), Does.Contain(StageLaunchKey));
+                }
+
                 offered.AddRange(ReadKeys(result));
             }
 
@@ -184,10 +215,15 @@ namespace Tests.Integration.Mongo
 
         private async Task<PlayerUpdateResult> CompleteAsync(string launchKey, params int[] picks)
         {
+            return await CompleteAsync(launchKey, string.Empty, picks);
+        }
+
+        private async Task<PlayerUpdateResult> CompleteAsync(string launchKey, string requestId, params int[] picks)
+        {
             var service = _environment.Services.GetRequiredService<PlayerDialogueService>();
             var distributor = _environment.Services.GetRequiredService<IGameConfigSetProvider>().Current.Distributor;
 
-            return await service.CompleteAsync(UserId, new DialogueCompletion(launchKey, picks), distributor, CancellationToken.None);
+            return await service.CompleteAsync(UserId, new DialogueCompletion(launchKey, picks, requestId), distributor, CancellationToken.None);
         }
 
         private List<string> ReadKeys(RunOperationResult result)

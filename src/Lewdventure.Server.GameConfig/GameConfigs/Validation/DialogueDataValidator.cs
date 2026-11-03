@@ -11,57 +11,56 @@ namespace Server.GameConfigs
         private const float MinScreenPercent = 0f;
         private const float MaxScreenPercent = 100f;
 
-        private readonly List<IDialogueStepMapper> _steps = new();
-        private readonly HashSet<int> _dialogueIds = new();
-        private readonly HashSet<int> _stepNumbers = new();
-        private readonly HashSet<int> _reachesEnd = new();
+        private readonly DialogueRewardValidator _dialogueRewardValidator = new();
 
         public void Collect(IConfigDistributor distributor, List<string> errors, List<string> warnings)
         {
             CollectDialogues(distributor.Dialogues, errors, warnings);
             CollectStoryLevels(distributor, errors);
+            _dialogueRewardValidator.Collect(distributor, errors);
         }
 
         private void CollectDialogues(IDialogueStepMapperManager dialogues, List<string> errors, List<string> warnings)
         {
-            _dialogueIds.Clear();
-
+            var dialogueIds = new HashSet<int>();
+            var steps = new List<IDialogueStepMapper>();
+            var stepNumbers = new HashSet<int>();
             var collection = dialogues.Collection;
 
             for (int i = 0; i < collection.Count; i++)
-                _dialogueIds.Add(collection[i].Id);
+                dialogueIds.Add(collection[i].Id);
 
-            foreach (var dialogueId in _dialogueIds)
+            foreach (var dialogueId in dialogueIds)
             {
-                dialogues.CopySteps(dialogueId, _steps);
+                dialogues.CopySteps(dialogueId, steps);
 
-                CollectStepNumbers(dialogueId, errors);
-                CollectSteps(dialogueId, errors, warnings);
-                CollectReachability(dialogueId, errors);
+                CollectStepNumbers(dialogueId, steps, stepNumbers, errors);
+                CollectSteps(dialogueId, steps, stepNumbers, errors, warnings);
+                CollectReachability(dialogueId, steps, errors);
             }
         }
 
-        private void CollectStepNumbers(int dialogueId, List<string> errors)
+        private void CollectStepNumbers(int dialogueId, List<IDialogueStepMapper> steps, HashSet<int> stepNumbers, List<string> errors)
         {
-            _stepNumbers.Clear();
+            stepNumbers.Clear();
 
-            for (int i = 0; i < _steps.Count; i++)
+            for (int i = 0; i < steps.Count; i++)
             {
-                var step = _steps[i].Step;
+                var step = steps[i].Step;
 
-                if (_stepNumbers.Add(step) == false)
+                if (stepNumbers.Add(step) == false)
                     errors.Add($"{DialoguesSheet}, диалог {dialogueId}: шаг {step} записан дважды.");
             }
 
-            if (_stepNumbers.Contains(FirstStep) == false)
+            if (stepNumbers.Contains(FirstStep) == false)
                 errors.Add($"{DialoguesSheet}, диалог {dialogueId}: нет шага {FirstStep}, диалог не с чего начать.");
         }
 
-        private void CollectSteps(int dialogueId, List<string> errors, List<string> warnings)
+        private void CollectSteps(int dialogueId, List<IDialogueStepMapper> steps, HashSet<int> stepNumbers, List<string> errors, List<string> warnings)
         {
-            for (int i = 0; i < _steps.Count; i++)
+            for (int i = 0; i < steps.Count; i++)
             {
-                var step = _steps[i];
+                var step = steps[i];
                 var place = $"{DialoguesSheet}, диалог {dialogueId} шаг {step.Step}";
                 var choiceCount = step.LocalizationKeys.Length - 1;
 
@@ -78,7 +77,7 @@ namespace Server.GameConfigs
                 {
                     var nextStep = step.NextSteps[nextIndex];
 
-                    if (_stepNumbers.Contains(nextStep) == false)
+                    if (stepNumbers.Contains(nextStep) == false)
                         errors.Add($"{place}: next_step ведёт на шаг {nextStep}, которого нет в диалоге.");
                 }
 
@@ -98,45 +97,44 @@ namespace Server.GameConfigs
             }
         }
 
-        private void CollectReachability(int dialogueId, List<string> errors)
+        private void CollectReachability(int dialogueId, List<IDialogueStepMapper> steps, List<string> errors)
         {
-            _reachesEnd.Clear();
-
+            var reachesEnd = new HashSet<int>();
             var changed = true;
 
             while (changed)
             {
                 changed = false;
 
-                for (int i = 0; i < _steps.Count; i++)
+                for (int i = 0; i < steps.Count; i++)
                 {
-                    var step = _steps[i];
+                    var step = steps[i];
 
-                    if (_reachesEnd.Contains(step.Step) || LeadsToEnd(step) == false)
+                    if (reachesEnd.Contains(step.Step) || LeadsToEnd(step, reachesEnd) == false)
                         continue;
 
-                    _reachesEnd.Add(step.Step);
+                    reachesEnd.Add(step.Step);
                     changed = true;
                 }
             }
 
-            for (int i = 0; i < _steps.Count; i++)
+            for (int i = 0; i < steps.Count; i++)
             {
-                var step = _steps[i];
+                var step = steps[i];
 
-                if (_reachesEnd.Contains(step.Step) == false)
+                if (reachesEnd.Contains(step.Step) == false)
                     errors.Add($"{DialoguesSheet}, диалог {dialogueId} шаг {step.Step}: из шага нельзя дойти до конца диалога (шага с пустым next_step), игрок застрянет в цикле.");
             }
         }
 
-        private bool LeadsToEnd(IDialogueStepMapper step)
+        private bool LeadsToEnd(IDialogueStepMapper step, HashSet<int> reachesEnd)
         {
             if (step.NextSteps.Length == 0)
                 return true;
 
             for (int i = 0; i < step.NextSteps.Length; i++)
             {
-                if (_reachesEnd.Contains(step.NextSteps[i]))
+                if (reachesEnd.Contains(step.NextSteps[i]))
                     return true;
             }
 

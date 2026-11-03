@@ -13,6 +13,7 @@ GDD: [../gdd/README.md](../gdd/README.md).
 | [player-state.md](player-state.md) | аккаунт устройства, токены, профиль игрока, хранение и идемпотентность |
 | [runs.md](runs.md) | серверное состояние забега, события, детерминизм, режим авторитета |
 | [dialogues.md](dialogues.md) | диалоги: лист `Dialogues`, диалоги уровня, награда `dialogue`, `pendingDialogues`, подтверждение показа |
+| [client-integration-dialogues-bonus-icons.md](client-integration-dialogues-bonus-icons.md) | для клиентской команды: интеграция диалогов и иконок бонусов, API, конфиги, повторы, приёмочные сценарии |
 | [experiments.md](experiments.md) | A/B-эксперименты на снапшотах конфигов: группы, назначение игроков, admin API |
 | [changes-2026-10-16.md](changes-2026-10-16.md) | **изменения 16.10.2026**: что поменялось на сервере, что сделать клиенту, ссылки на все документы |
 | [client-integration-2026-10-16.md](client-integration-2026-10-16.md) | для клиентской команды: что встроить после ГДД 2026-10-16 — `battle/finish`, промоут персонажа, блок сетапа и прокачки в забеге, места в коде клиента, сценарии проверки |

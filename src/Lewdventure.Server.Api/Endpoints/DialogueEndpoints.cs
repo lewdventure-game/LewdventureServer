@@ -53,10 +53,12 @@ namespace Server.Api.Endpoints
             if (request == null || string.IsNullOrWhiteSpace(request.LaunchKey))
                 return Results.BadRequest(new { error = "launchKey is required." });
 
-            if (MaxPicks < request.Picks.Count)
+            var picks = request.Picks ?? new List<int>();
+
+            if (MaxPicks < picks.Count)
                 return Results.BadRequest(new { error = $"picks count is above {MaxPicks}." });
 
-            var completion = new DialogueCompletion(request.LaunchKey, request.Picks);
+            var completion = new DialogueCompletion(request.LaunchKey, picks, request.RequestId);
             var result = await playerDialogueService.CompleteAsync(userId, completion, configDistributor, httpContext.RequestAborted);
 
             if (result.Conflict)

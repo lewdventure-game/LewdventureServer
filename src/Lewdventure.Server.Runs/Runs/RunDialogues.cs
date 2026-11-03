@@ -32,6 +32,10 @@ namespace Server.Runs
                 return;
 
             CollectLevel(run, moment, stageNumber, profile, result.Dialogues);
+
+            if (moment != RunDialogueMoment.StageEntered && 0 < run.LastEnteredStageNumber)
+                CollectLevel(run, RunDialogueMoment.StageEntered, run.LastEnteredStageNumber, profile, result.Dialogues);
+
             CollectLevel(run, ResolveFinishMoment(run, moment), stageNumber, profile, result.Dialogues);
             CollectRewards(profile, result.Dialogues);
         }
@@ -51,7 +55,9 @@ namespace Server.Runs
             if (run.StageIndex == 0)
                 CollectLevel(run, RunDialogueMoment.Start, 0, profile, result.Dialogues);
 
-            if (IsStageInProgress(run))
+            if (0 < run.LastEnteredStageNumber)
+                CollectLevel(run, RunDialogueMoment.StageEntered, run.LastEnteredStageNumber, profile, result.Dialogues);
+            else if (IsStageInProgress(run))
                 CollectLevel(run, RunDialogueMoment.StageEntered, run.StageIndex + 1, profile, result.Dialogues);
 
             CollectLevel(run, ResolveFinishMoment(run, RunDialogueMoment.None), 0, profile, result.Dialogues);

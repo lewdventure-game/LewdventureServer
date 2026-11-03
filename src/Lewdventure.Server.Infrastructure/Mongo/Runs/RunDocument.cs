@@ -32,6 +32,8 @@ namespace Server.Infrastructure.Mongo.Runs
 
         public string LastRequestId { get; set; } = string.Empty;
 
+        public int LastEnteredStageNumber { get; set; }
+
         public int RollIndex { get; set; }
 
         public int StageIndex { get; set; }

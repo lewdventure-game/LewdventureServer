@@ -41,7 +41,7 @@
 | `config_activations` | uuid | версия, предыдущая версия, кто, причина, время | по `createdAt` убыв. |
 | `users` | `usr_<hex>` | устройства с хэшами refresh-токенов, привязки платформ, статус | уникальные по `devices.deviceIdHash` и `identities` |
 | `player_profiles` | `userId` | ресурсы, персонажи, саммоны, снаряжение, лоадаут, сюжет, флаги, `rev` | по `_id` |
-| `player_runs` | `run_<hex>` | этапы забега, опыт, перки, бонусы, здоровье, seed, версия конфигов, `rev` | `userId` + `status`, `userId` + `createdAt` убыв. |
+| `player_runs` | `run_<hex>` | этапы забега, опыт, перки, бонусы, здоровье, seed, версия конфигов, последний этап с диалогом `lastEnteredStageNumber`, `rev` | `userId` + `status`, `userId` + `createdAt` убыв. |
 | `player_ledger` | uuid | журнал выдач и трат | `userId` + `createdAt` убыв. |
 | `idempotency` | `userId:requestId` | результат применённого запроса | TTL 48 часов по `createdAt` |
 | `experiments` | id эксперимента | статус, группы со снапшотами, процентами и фильтрами, `rev` | `status` + `createdAt` убыв. |

@@ -180,7 +180,7 @@ DI: runtime доступ к конфигам **только** через `IConfi
 | Constants | `Constants` | keyed by `constant_name` |
 | Characters | `Characters` | `id`, `is_melee`, `promote_id` (ссылка на набор в `Character_promotes`), `skill_ids` и `promote_to_skill_levels` — списки `;`, `art_name` (необязательная, без неё берётся `skin_name`), `skin_name` (id префаба боя в Unity, необязательная, с 2026-10-16). Бонусных колонок больше нет |
 | Character_promotes | `Character_promotes` | `id` = набор промоутов (ссылка из `Characters.promote_id`), `promote_level`, `frame_id`, `copies_to_upgrade`, награды тремя колонками `reward_types` / `reward_ids` / `reward_values` через `;` |
-| Bonuses | `Bonuses` | dictionary by id; `work_mode` — сырая строка на mapper, parse через `BonusWorkModeParser` |
+| Bonuses | `Bonuses` | dictionary by id; `work_modes` — сырая строка на mapper, parse через `BonusWorkModeParser`; `is_displayed` управляет показом иконки, `icon_name` — её Addressables-ключ; колонки необязательны для старых снапшотов, но при `is_displayed = true` пустое `icon_name` блокирует публикацию |
 | Statuses | `Statuses` | |
 | Summons | `Summons` | `id`, `art_name` (необязательная, без неё берётся `skin_name`), `skin_name` (id префаба боя в Unity, необязательная, с 2026-10-16), `is_melee`, `rarity`, `dmg_on_lvls`, `attack_cooldown`, `mastery_id`, `level_pattern_id`, `skill_ids`, `mastery_for_skills`, `skill_upgrade_ids` (три последних — параллельные списки через `;`) |
 | Summon_levels | `SummonLevels` | `id`, `pattern_id`, `level` (уровень, на который переходит саммон), `resource_types/ids/values` |
@@ -197,7 +197,7 @@ DI: runtime доступ к конфигам **только** через `IConfi
 | Exp_levels_patterns | `ExperienceLevelPatterns` | load-only; за последней строкой набора забег повторяет последнюю (порог и пресеты перков) |
 | Perks | `Perks` | |
 | Perk_groups | `PerkGroups` | load-only |
-| Dialogues | `Dialogues` | необязательный лист; composite key `id`+`step`, граф шагов проверяется при публикации ([dialogues.md](dialogues.md)) |
+| Dialogues | `Dialogues` | необязательный лист; composite key `id`+`step`, граф шагов проверяется при публикации; `DialogueRewardValidator` также проверяет id и количество наград `dialogue` в событиях, промоутах, мастерстве и константах ([dialogues.md](dialogues.md)) |
 | Skills | `Skills` | `id` + `triggers` + `actions`; lookup по numeric id; строки старого формата (`type` / `parameters`) не поддерживаются |
 
 ## work_mode

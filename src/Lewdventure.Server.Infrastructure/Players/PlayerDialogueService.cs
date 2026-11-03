@@ -10,12 +10,15 @@ namespace Server.Infrastructure.Players
     {
         private const int MaxAttempts = 3;
         private const int LastRunCount = 1;
+        private const int StaleReservationSeconds = 30;
+        private const string CompleteAction = "dialogue_complete";
 
         private readonly DialogueLaunchKeys _dialogueLaunchKeys = new();
         private readonly DialoguePathValidator _dialoguePathValidator = new();
 
         private readonly DialogueAnalytics _dialogueAnalytics;
         private readonly GameConfigSetCache _gameConfigSetCache;
+        private readonly IdempotencyRepository _idempotencyRepository;
         private readonly ILogger<PlayerDialogueService> _logger;
         private readonly PlayerProfileRepository _playerProfileRepository;
         private readonly PlayerProfileService _playerProfileService;
@@ -25,6 +28,7 @@ namespace Server.Infrastructure.Players
         public PlayerDialogueService(
             DialogueAnalytics dialogueAnalytics,
             GameConfigSetCache gameConfigSetCache,
+            IdempotencyRepository idempotencyRepository,
             ILogger<PlayerDialogueService> logger,
             PlayerProfileRepository playerProfileRepository,
             PlayerProfileService playerProfileService,
@@ -33,6 +37,7 @@ namespace Server.Infrastructure.Players
         {
             _dialogueAnalytics = dialogueAnalytics;
             _gameConfigSetCache = gameConfigSetCache;
+            _idempotencyRepository = idempotencyRepository;
             _logger = logger;
             _playerProfileRepository = playerProfileRepository;
             _playerProfileService = playerProfileService;
@@ -46,12 +51,31 @@ namespace Server.Infrastructure.Players
             IConfigDistributor configDistributor,
             CancellationToken cancellationToken)
         {
+            if (string.IsNullOrEmpty(completion.RequestId) == false)
+            {
+                var reservation = await _idempotencyRepository.GetAsync(userId, completion.RequestId, cancellationToken);
+
+                if (reservation != null && 0 < reservation.ResultRev)
+                    return new PlayerUpdateResult(await _playerProfileService.GetOrCreateAsync(userId, cancellationToken), false, new List<string>());
+
+                var claimed = reservation == null
+                    ? await ReserveAsync(userId, completion.RequestId, cancellationToken)
+                    : await TryTakeOverAsync(reservation, cancellationToken);
+
+                if (claimed == false)
+                    return new PlayerUpdateResult(null, true, new List<string>());
+            }
+
             for (int attempt = 0; attempt < MaxAttempts; attempt++)
             {
                 var profile = await _playerProfileService.GetOrCreateAsync(userId, cancellationToken);
 
                 if (IsCompleted(profile, completion.LaunchKey))
+                {
+                    await CompleteRequestAsync(userId, completion.RequestId, profile.Rev, cancellationToken);
+
                     return new PlayerUpdateResult(profile, false, new List<string>());
+                }
 
                 var pendingIndex = FindPending(profile, completion.LaunchKey);
                 var error = Validate(profile, completion, pendingIndex, configDistributor, out var dialogueId);
@@ -65,7 +89,11 @@ namespace Server.Infrastructure.Players
                 }
 
                 if (string.IsNullOrEmpty(error) == false)
+                {
+                    await ReleaseAsync(userId, completion.RequestId, cancellationToken);
+
                     return new PlayerUpdateResult(null, false, new List<string> { error });
+                }
 
                 var now = _timeProvider.GetUtcNow().UtcDateTime;
                 var expectedRev = profile.Rev;
@@ -86,13 +114,59 @@ namespace Server.Infrastructure.Players
                 if (await _playerProfileRepository.ReplaceAsync(profile, expectedRev, cancellationToken) == false)
                     continue;
 
+                await CompleteRequestAsync(userId, completion.RequestId, profile.Rev, cancellationToken);
                 _dialogueAnalytics.TrackCompleted(userId, completion.LaunchKey, dialogueId, completion.Picks);
                 _logger.LogInformation("[Player] dialogue completed userId = {UserId} launchKey = {LaunchKey} picks = {Picks}", userId, completion.LaunchKey, completion.Picks.Count);
 
                 return new PlayerUpdateResult(profile, false, new List<string>());
             }
 
+            await ReleaseAsync(userId, completion.RequestId, cancellationToken);
+
             return new PlayerUpdateResult(null, true, new List<string>());
+        }
+
+        private async Task<bool> ReserveAsync(string userId, string requestId, CancellationToken cancellationToken)
+        {
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+            return await _idempotencyRepository.TryReserveAsync(new IdempotencyDocument
+            {
+                Id = _idempotencyRepository.CreateKey(userId, requestId),
+                UserId = userId,
+                RequestId = requestId,
+                Action = CompleteAction,
+                CreatedAt = now,
+                UpdatedAt = now,
+            }, cancellationToken);
+        }
+
+        private async Task<bool> TryTakeOverAsync(IdempotencyDocument reservation, CancellationToken cancellationToken)
+        {
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+            if (now < reservation.UpdatedAt.AddSeconds(StaleReservationSeconds))
+                return false;
+
+            return await _idempotencyRepository.TryTakeOverAsync(reservation, now, cancellationToken);
+        }
+
+        private async Task CompleteRequestAsync(string userId, string requestId, long resultRev, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrEmpty(requestId))
+                return;
+
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+            await _idempotencyRepository.CompleteAsync(userId, requestId, resultRev, now, cancellationToken);
+        }
+
+        private async Task ReleaseAsync(string userId, string requestId, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrEmpty(requestId))
+                return;
+
+            await _idempotencyRepository.ReleaseAsync(userId, requestId, cancellationToken);
         }
 
         private string Validate(

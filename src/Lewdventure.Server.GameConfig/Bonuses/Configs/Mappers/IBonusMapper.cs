@@ -14,6 +14,10 @@ namespace Server.Bonuses
 
         public float[] BonusValues { get; }
 
+        public bool IsDisplayed { get; }
+
+        public string IconName { get; }
+
         public float BonusValue { get; }
     }
 }

@@ -140,6 +140,7 @@ namespace Server.Runs
                 return Failed("No active run.");
 
             run.LastRequestId = requestId;
+            run.LastEnteredStageNumber = run.StageIndex + 1;
 
             var stageNumber = run.StageIndex + 1;
             var step = await _runEngine.AdvanceAsync(run, CreateProfileStore(userId), cancellationToken);

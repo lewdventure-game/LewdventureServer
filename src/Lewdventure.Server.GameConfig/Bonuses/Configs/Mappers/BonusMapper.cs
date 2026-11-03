@@ -21,6 +21,14 @@ namespace Server.Bonuses
         [JsonConverter(typeof(DelimitedFloatArrayConverter), ';')]
         public float[] BonusValues { get; init; } = Array.Empty<float>();
 
+        [JsonProperty("is_displayed")]
+        [OptionalColumn("старые снапшоты не содержат настройки отображения; иконка скрыта")]
+        public bool IsDisplayed { get; init; }
+
+        [JsonProperty("icon_name")]
+        [OptionalColumn("старые снапшоты не содержат имени иконки; обязательно при is_displayed = true")]
+        public string IconName { get; init; } = string.Empty;
+
         public float BonusValue => BonusValues.Length == 0 ? 0f : BonusValues[0];
     }
 }

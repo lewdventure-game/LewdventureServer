@@ -143,6 +143,68 @@ namespace Tests.Unit.GameConfig
             Assert.That(result.Errors, Has.Some.Contains("диалогов в dialogues_ids 2, а триггеров в dialogues_triggers 1"));
         }
 
+        [TestCase("dialogue:1:2", "")]
+        [TestCase("dialogue:77:1", "диалог 77, которого нет")]
+        [TestCase("dialogue:1:0", "id и количество должны быть больше нуля")]
+        public async Task DialogueReward_InEvent_IsValidated(string reward, string expectedError)
+        {
+            var result = await BuildPatchedAsync(ConfigDomainNames.StoryEvents, rows =>
+            {
+                ((JObject)rows[0])["event_parameters"] = $"rewards=[{reward}]";
+            });
+
+            Assert.That(result.Succeeded, Is.EqualTo(expectedError.Length == 0), string.Join("; ", result.Errors));
+
+            if (expectedError.Length != 0)
+                Assert.That(result.Errors, Has.Some.Contains(expectedError));
+        }
+
+        [Test]
+        public async Task DialogueReward_InCharacterPromote_ChecksDialogueId()
+        {
+            var result = await BuildPatchedAsync(ConfigDomainNames.CharacterPromotes, rows =>
+            {
+                var row = (JObject)rows[0];
+
+                row["reward_types"] = "dialogue";
+                row["reward_ids"] = "77";
+                row["reward_values"] = "1";
+            });
+
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.Errors, Has.Some.Contains("Лист Character_promotes"));
+            Assert.That(result.Errors, Has.Some.Contains("dialogue:77:1"));
+        }
+
+        [Test]
+        public async Task Validator_ConcurrentCalls_DoNotShareState()
+        {
+            var built = await BuildPatchedAsync(ConfigDomainNames.Dialogues, _ => { });
+
+            Assert.That(built.Succeeded, Is.True, string.Join("; ", built.Errors));
+
+            var validator = new DialogueDataValidator();
+            var tasks = new Task<List<string>>[32];
+
+            for (int i = 0; i < tasks.Length; i++)
+            {
+                tasks[i] = Task.Run(() =>
+                {
+                    var errors = new List<string>();
+                    var warnings = new List<string>();
+
+                    validator.Collect(built.ConfigSet!.Distributor, errors, warnings);
+
+                    return errors;
+                });
+            }
+
+            var results = await Task.WhenAll(tasks);
+
+            for (int i = 0; i < results.Length; i++)
+                Assert.That(results[i], Is.Empty, string.Join("; ", results[i]));
+        }
+
         private async Task<GameConfigBuildResult> BuildPatchedAsync(string domainName, Action<JArray> patch)
         {
             var source = new FileConfigSnapshotSource(new ConfigSnapshotSerializer(new ConfigSnapshotHasher()));
