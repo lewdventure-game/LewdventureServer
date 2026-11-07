@@ -143,6 +143,8 @@ namespace Server.ConfigTool
 
             new MongoServicesRegistrar().Register(builder.Services);
             new ConfigSnapshotStoreRegistrar().Register(builder.Services);
+            builder.Services.AddSingleton<Server.Infrastructure.Mongo.Experiments.ExperimentRepository>();
+            builder.Services.AddSingleton<Server.Infrastructure.Mongo.Runs.RunRepository>();
             builder.Services.AddSingleton<MongoConfigToolCommands>();
         }
 
