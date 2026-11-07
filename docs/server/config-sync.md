@@ -74,6 +74,7 @@ Google Sheets
 | `GET /admin/config/snapshots` | ops | `X-Admin-Key` | последние снапшоты |
 | `GET /admin/config/snapshots/{version}` | ops | `X-Admin-Key` | экспорт снапшота |
 | `POST /admin/config/snapshots` | ops | `X-Admin-Key` | загрузка снапшота файлом |
+| `DELETE /admin/config/snapshots/{version}?confirm={version}` | ops | `X-Admin-Key` | удаление неиспользуемого снапшота; мастер, версия в памяти, снапшот активного забега или чернового/идущего эксперимента возвращают `409` |
 | `POST /admin/config/activate` | ops | `X-Admin-Key` | активировать сохранённую версию |
 | `POST /admin/config/reload` | ops | `X-Admin-Key` | перечитать активную версию |
 

@@ -29,8 +29,30 @@ namespace Server.Api.Endpoints
             group.MapGet("/snapshots", ListAsync);
             group.MapGet("/snapshots/{version}", ExportAsync);
             group.MapPost("/snapshots", UploadAsync);
+            group.MapDelete("/snapshots/{version}", DeleteAsync);
             group.MapPost("/activate", ActivateAsync);
             group.MapPost("/reload", ReloadAsync);
+        }
+
+        private async Task<IResult> DeleteAsync(
+            HttpContext httpContext,
+            string version,
+            [FromQuery] string? confirm,
+            [FromServices] ConfigPublishingService publishingService)
+        {
+            if (string.Equals(confirm, version, StringComparison.Ordinal) == false)
+                return Results.BadRequest(new { error = "confirm must repeat the version." });
+
+            var result = await publishingService.DeleteAsync(version, CreateActor(httpContext), httpContext.RequestAborted);
+            var body = new { succeeded = result.Succeeded, version, errors = result.Errors };
+
+            if (result.Status == ConfigSnapshotDeletionStatus.NotFound)
+                return Results.NotFound(body);
+
+            if (result.Status == ConfigSnapshotDeletionStatus.Conflict)
+                return Results.Conflict(body);
+
+            return Results.Ok(body);
         }
 
         private async Task<IResult> GetStatusAsync(

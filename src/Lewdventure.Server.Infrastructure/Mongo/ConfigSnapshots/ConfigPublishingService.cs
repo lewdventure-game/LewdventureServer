@@ -1,5 +1,7 @@
 using Server.GameConfigs;
 using Server.Infrastructure.Alerts;
+using Server.Infrastructure.Mongo.Experiments;
+using Server.Infrastructure.Mongo.Runs;
 
 namespace Server.Infrastructure.Mongo.ConfigSnapshots
 {
@@ -9,9 +11,11 @@ namespace Server.Infrastructure.Mongo.ConfigSnapshots
         private readonly ConfigActivationRepository _configActivationRepository;
         private readonly ConfigSnapshotDiff _configSnapshotDiff;
         private readonly ConfigSnapshotRepository _configSnapshotRepository;
+        private readonly ExperimentRepository _experimentRepository;
         private readonly GameConfigSetBuilder _gameConfigSetBuilder;
         private readonly IGameConfigSetProvider _gameConfigSetProvider;
         private readonly ILogger<ConfigPublishingService> _logger;
+        private readonly RunRepository _runRepository;
         private readonly SemaphoreSlim _lock = new(1, 1);
 
         public ConfigPublishingService(
@@ -19,17 +23,72 @@ namespace Server.Infrastructure.Mongo.ConfigSnapshots
             ConfigActivationRepository configActivationRepository,
             ConfigSnapshotDiff configSnapshotDiff,
             ConfigSnapshotRepository configSnapshotRepository,
+            ExperimentRepository experimentRepository,
             GameConfigSetBuilder gameConfigSetBuilder,
             IGameConfigSetProvider gameConfigSetProvider,
-            ILogger<ConfigPublishingService> logger)
+            ILogger<ConfigPublishingService> logger,
+            RunRepository runRepository)
         {
             _alertPublisher = alertPublisher;
             _configActivationRepository = configActivationRepository;
             _configSnapshotDiff = configSnapshotDiff;
             _configSnapshotRepository = configSnapshotRepository;
+            _experimentRepository = experimentRepository;
             _gameConfigSetBuilder = gameConfigSetBuilder;
             _gameConfigSetProvider = gameConfigSetProvider;
             _logger = logger;
+            _runRepository = runRepository;
+        }
+
+        public async Task<ConfigSnapshotDeletionResult> DeleteAsync(string version, string actor, CancellationToken cancellationToken)
+        {
+            await _lock.WaitAsync(cancellationToken);
+
+            try
+            {
+                var result = new ConfigSnapshotDeletionResult();
+                var activeVersion = await _configActivationRepository.GetActiveVersionAsync(cancellationToken);
+
+                if (string.Equals(activeVersion, version, StringComparison.Ordinal))
+                    return Conflict(result, $"Config snapshot {version} is active.");
+
+                if (string.Equals(_gameConfigSetProvider.Current.Version, version, StringComparison.Ordinal))
+                    return Conflict(result, $"Config snapshot {version} is loaded in memory.");
+
+                var experimentId = await _experimentRepository.FindUnfinishedSnapshotReferenceAsync(version, cancellationToken);
+
+                if (string.IsNullOrEmpty(experimentId) == false)
+                    return Conflict(result, $"Config snapshot {version} is used by experiment '{experimentId}'.");
+
+                if (await _runRepository.HasActiveConfigVersionAsync(version, cancellationToken))
+                    return Conflict(result, $"Config snapshot {version} is used by an active run.");
+
+                if (await _configSnapshotRepository.DeleteAsync(version, cancellationToken) == false)
+                {
+                    result.Status = ConfigSnapshotDeletionStatus.NotFound;
+                    result.Errors.Add($"Config snapshot {version} is not published.");
+
+                    return result;
+                }
+
+                result.Status = ConfigSnapshotDeletionStatus.Ok;
+
+                _logger.LogInformation("[Config][Snapshot] deleted version = {Version} by = {Actor}", version, actor);
+
+                return result;
+            }
+            finally
+            {
+                _lock.Release();
+            }
+        }
+
+        private ConfigSnapshotDeletionResult Conflict(ConfigSnapshotDeletionResult result, string error)
+        {
+            result.Status = ConfigSnapshotDeletionStatus.Conflict;
+            result.Errors.Add(error);
+
+            return result;
         }
 
         public async Task<ConfigPublishResult> PublishAsync(GameConfigSnapshot snapshot, string actor, string reason, bool activate, CancellationToken cancellationToken)

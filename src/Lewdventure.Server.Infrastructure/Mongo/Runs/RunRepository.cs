@@ -56,6 +56,19 @@ namespace Server.Infrastructure.Mongo.Runs
             return version ?? string.Empty;
         }
 
+        public async Task<bool> HasActiveConfigVersionAsync(string version, CancellationToken cancellationToken)
+        {
+            var filter = Builders<RunDocument>.Filter.And(
+                Builders<RunDocument>.Filter.Eq(item => item.Status, RunDocument.ActiveStatus),
+                Builders<RunDocument>.Filter.Eq(item => item.ConfigVersion, version));
+            var id = await Collection.Find(filter)
+                .Limit(1)
+                .Project(item => item.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            return string.IsNullOrEmpty(id) == false;
+        }
+
         public async Task<List<RunDocument>> ListAsync(string userId, int limit, CancellationToken cancellationToken)
         {
             return await Collection

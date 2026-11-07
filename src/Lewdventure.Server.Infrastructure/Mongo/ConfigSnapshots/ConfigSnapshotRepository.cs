@@ -97,5 +97,12 @@ namespace Server.Infrastructure.Mongo.ConfigSnapshots
 
             return result;
         }
+
+        public async Task<bool> DeleteAsync(string version, CancellationToken cancellationToken)
+        {
+            var result = await Collection.DeleteOneAsync(Builders<ConfigSnapshotDocument>.Filter.Eq(item => item.Id, version), cancellationToken);
+
+            return 0 < result.DeletedCount;
+        }
     }
 }

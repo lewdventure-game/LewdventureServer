@@ -13,5 +13,7 @@ namespace Server.Admin.Backend.Models
         public string ActiveVersion { get; set; } = string.Empty;
 
         public bool InSync { get; set; }
+
+        public bool CanDelete { get; set; }
     }
 }

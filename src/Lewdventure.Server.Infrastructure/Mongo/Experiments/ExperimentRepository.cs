@@ -77,5 +77,19 @@ namespace Server.Infrastructure.Mongo.Experiments
 
             return 0 < result.DeletedCount;
         }
+
+        public async Task<string> FindUnfinishedSnapshotReferenceAsync(string version, CancellationToken cancellationToken)
+        {
+            var status = Builders<ExperimentDocument>.Filter.Or(
+                Builders<ExperimentDocument>.Filter.Eq(item => item.Status, ExperimentDocument.DraftStatus),
+                Builders<ExperimentDocument>.Filter.Eq(item => item.Status, ExperimentDocument.RunningStatus));
+            var snapshot = Builders<ExperimentDocument>.Filter.ElemMatch(item => item.Groups, group => group.SnapshotVersion == version);
+            var id = await Collection.Find(Builders<ExperimentDocument>.Filter.And(status, snapshot))
+                .Limit(1)
+                .Project(item => item.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            return id ?? string.Empty;
+        }
     }
 }

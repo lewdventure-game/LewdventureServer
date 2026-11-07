@@ -60,6 +60,7 @@ namespace Server.Api.Endpoints
                 loadedAt = current.LoadedAt,
                 activeVersion,
                 inSync = string.IsNullOrEmpty(activeVersion) || string.Equals(activeVersion, current.Version, StringComparison.Ordinal),
+                canDelete = true,
             };
         }
     }

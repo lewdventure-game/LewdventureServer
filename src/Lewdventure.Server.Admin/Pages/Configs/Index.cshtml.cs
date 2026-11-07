@@ -37,6 +37,18 @@ namespace Server.Admin.Pages.Configs
             return RedirectToPage();
         }
 
+        public async Task<IActionResult> OnPostDeleteAsync(string version, string? confirm)
+        {
+            var denied = RequireAdmin();
+
+            if (denied != null)
+                return denied;
+
+            await ExecuteAsync<object>(HttpMethod.Delete, "/admin/config/snapshots/" + Escape(version) + "?confirm=" + Escape(confirm ?? string.Empty), null, "config.delete", version, $"{Shorten(version)} удалён.");
+
+            return RedirectToPage();
+        }
+
         public async Task<IActionResult> OnPostReloadAsync()
         {
             var denied = RequireAdmin();

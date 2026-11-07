@@ -78,9 +78,11 @@ namespace Tests.Integration.Mongo
                 _environment.Services.GetRequiredService<ConfigActivationRepository>(),
                 _environment.Services.GetRequiredService<ConfigSnapshotDiff>(),
                 _environment.Services.GetRequiredService<ConfigSnapshotRepository>(),
+                _environment.Services.GetRequiredService<Server.Infrastructure.Mongo.Experiments.ExperimentRepository>(),
                 builder,
                 otherProvider,
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<ConfigPublishingService>.Instance);
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<ConfigPublishingService>.Instance,
+                _environment.Services.GetRequiredService<Server.Infrastructure.Mongo.Runs.RunRepository>());
 
             var result = await otherService.LoadActiveAsync(string.Empty, CancellationToken.None);
 

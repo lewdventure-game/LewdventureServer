@@ -36,6 +36,9 @@ namespace Tests.Integration.Mongo
             services.AddSingleton<IBonusWorkModeParser, BonusWorkModeParser>();
             services.AddSingleton<IAlertPublisher, NullAlertPublisher>();
 
+            services.AddSingleton<Server.Infrastructure.Mongo.Experiments.ExperimentRepository>();
+            services.AddSingleton<Server.Infrastructure.Mongo.Runs.RunRepository>();
+
             new ConfigSnapshotStoreRegistrar().Register(services);
         }
     }

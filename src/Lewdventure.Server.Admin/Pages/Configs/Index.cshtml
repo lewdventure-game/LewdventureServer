@@ -22,7 +22,7 @@
         </dl>
     </div>
 }
-<p class="muted">Снапшоты публикуются из Google-таблиц кнопкой в таблице. Здесь их можно смотреть, брать в эксперименты и делать мастером.</p>
+<p class="muted">Снапшоты публикуются из Google-таблиц кнопкой в таблице. Здесь их можно смотреть, брать в эксперименты, делать мастером и удалять, если они не используются.</p>
 <table class="table">
     <thead>
     <tr><th>Версия</th><th>Создан</th><th>Кем</th><th>Источник</th><th></th></tr>
@@ -31,18 +31,28 @@
     @foreach (var snapshot in Model.Snapshots)
     {
         var isMaster = Model.Status != null && snapshot.Version == Model.Status.ActiveVersion;
+        var isLoaded = Model.Status != null && snapshot.Version == Model.Status.LoadedVersion;
         <tr class="@(isMaster ? "highlight" : string.Empty)">
-            <td><code title="@snapshot.Version">@Model.Shorten(snapshot.Version)</code>@(isMaster ? " · мастер" : string.Empty)</td>
+            <td><code title="@snapshot.Version">@Model.Shorten(snapshot.Version)</code>@(isMaster ? " · мастер" : isLoaded ? " · в памяти" : string.Empty)</td>
             <td>@snapshot.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
             <td>@snapshot.CreatedBy</td>
             <td>@snapshot.SourceKind</td>
             <td>
-                @if (Model.IsAdmin && isMaster == false)
-                {
-                    <form method="post" asp-page-handler="Activate" asp-route-version="@snapshot.Version" data-confirm="Сделать @Model.Shorten(snapshot.Version) мастером для всех игроков @Model.CurrentEnvironment?">
-                        <button type="submit">Сделать мастером</button>
-                    </form>
-                }
+                <div class="actions">
+                    @if (Model.IsAdmin && isMaster == false)
+                    {
+                        <form method="post" asp-page-handler="Activate" asp-route-version="@snapshot.Version" data-confirm="Сделать @Model.Shorten(snapshot.Version) мастером для всех игроков @Model.CurrentEnvironment?">
+                            <button type="submit">Сделать мастером</button>
+                        </form>
+                    }
+                    @if (Model.IsAdmin && Model.Status != null && Model.Status.CanDelete && isMaster == false && isLoaded == false)
+                    {
+                        <form method="post" asp-page-handler="Delete" asp-route-version="@snapshot.Version" data-confirm="Удалить снапшот @Model.Shorten(snapshot.Version) без возможности восстановления?">
+                            <input type="hidden" name="confirm" value="@snapshot.Version" />
+                            <button type="submit" class="danger">Удалить</button>
+                        </form>
+                    }
+                </div>
             </td>
         </tr>
     }
