@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Server.Api.Payments;
 using Server.Infrastructure.Players;
 
 namespace Server.Api.Security
@@ -20,15 +21,24 @@ namespace Server.Api.Security
 
         public AccessToken Issue(string userId)
         {
+            return Issue(userId, string.Empty);
+        }
+
+        public AccessToken Issue(string userId, string paymentScope)
+        {
             var now = _timeProvider.GetUtcNow().UtcDateTime;
             var expiresAt = now.AddMinutes(_authOptions.AccessTokenMinutes);
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_authOptions.SigningKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var claims = new[]
+            var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, userId),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
             };
+
+            if (paymentScope.Length != 0)
+                claims.Add(new Claim(PaymentIdentity.ScopeClaim, paymentScope));
+
             var token = new JwtSecurityToken(
                 _authOptions.Issuer,
                 _authOptions.Audience,

@@ -144,6 +144,10 @@ openssl rand -base64 48
 | `QaDiagnostics:TraceAllPlayers` | `false` | трассировать запросы всех игроков, а не только тестовых аккаунтов (`users.qa`). Включать ненадолго: на живой нагрузке это запись в Mongo на каждый запрос и десятки ГБ трасс в сутки |
 | `QaDiagnostics:MaxBodyBytes` | `4096` | сколько байт тела запроса и ответа сохранять, 256–65536 |
 
+## Payments
+
+Оба платёжных канала выключены по умолчанию. `Payments:SteamAppId` и `Payments:NutakuTitleId` подключают маршруты своей платформы. `Payments:SteamSandbox` и `Payments:NutakuSandbox` по умолчанию равны `true`. `Payments:SteamPurchasesEnabled` и `Payments:NutakuPurchasesEnabled` разрешают создание новых платежей. `Payments:SteamPublisherKey` и `Payments:NutakuServerKey` поступают через env или `secrets/`. Офферы настраиваются в `Payments:Offers`. Полная схема и порядок проверки описаны в [контракте покупок](../server/payments.md).
+
 ## ConfigPublisher
 
 | Ключ | По умолчанию | Описание |

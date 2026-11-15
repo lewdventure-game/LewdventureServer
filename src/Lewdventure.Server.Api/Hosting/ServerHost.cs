@@ -5,6 +5,7 @@ using Server.Api.Endpoints;
 using Server.Api.Health;
 using Server.Api.Http;
 using Server.Api.Options;
+using Server.Api.Payments;
 using Server.Api.Security;
 using Server.Infrastructure.Experiments;
 using Server.Infrastructure.Mongo;
@@ -53,7 +54,8 @@ namespace Server.Api.Hosting
                 await services.GetRequiredService<MongoStartupInitializer>().InitializeAsync(CancellationToken.None);
                 await services.GetRequiredService<ExperimentRegistryLoader>().ReloadAsync(CancellationToken.None);
             }
-            catch (Exception exception) when (exception is TimeoutException || exception is MongoDB.Driver.MongoException)
+            catch (Exception exception) when ((exception is TimeoutException || exception is MongoDB.Driver.MongoException) &&
+                services.GetRequiredService<IOptions<PaymentOptions>>().Value.Configured == false)
             {
                 services.GetRequiredService<ILogger<ServerHost>>().LogError("[Mongo] startup initialization failed, continuing without topology and index check error = {Error}", exception.Message);
             }
@@ -132,6 +134,7 @@ namespace Server.Api.Hosting
             new AdminQaEndpoints().Map(application);
             new AdminBalanceEndpoints().Map(application);
             new AuthEndpoints().Map(application);
+            new PaymentEndpoints(application.Services.GetRequiredService<IOptions<PaymentOptions>>().Value).Map(application);
             new PlayerEndpoints().Map(application);
             new RunEndpoints().Map(application);
             new DialogueEndpoints().Map(application);

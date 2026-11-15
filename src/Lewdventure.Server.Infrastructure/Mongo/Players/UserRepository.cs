@@ -101,6 +101,13 @@ namespace Server.Infrastructure.Mongo.Players
             return await Collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
         }
 
+        public Task<UserDocument> FindByIdentityAsync(string provider, string subject, CancellationToken cancellationToken)
+        {
+            var filter = Builders<UserDocument>.Filter.ElemMatch(item => item.Identities, identity => identity.Provider == provider && identity.Subject == subject);
+
+            return Collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+        }
+
         public async Task<UserDocument?> FindByQaAliasAsync(string alias, CancellationToken cancellationToken)
         {
             return await Collection.Find(Builders<UserDocument>.Filter.Eq("qa.alias", alias)).FirstOrDefaultAsync(cancellationToken);

@@ -28,6 +28,7 @@ src/Lewdventure.Server.Infrastructure/   Mongo/              клиент, ин�
 src/Lewdventure.Server.Api/              Hosting/            ServerHost, startup loader, фоновые сервисы
                                          Composition/        регистрация DI
                                          Endpoints/          battle, config, admin, health
+                                         Payments/           Steam Wallet, Nutaku Gold, заказы и выдача
                                          Security/ Options/ Http/ Health/ Metrics/ Json/
 tools/Lewdventure.Server.ConfigTool/     CLI снапшотов
 tools/Lewdventure.Server.LoadTest/       нагрузка по golden-кейсам
@@ -59,6 +60,7 @@ docs/                                    gdd, server, architecture, runbooks
 | --- | --- |
 | Оглавление | `docs/README.md` |
 | API боя | `docs/server/battle-api.md` |
+| Покупки | `docs/server/payments.md` |
 | Конфиги | `docs/server/config-sync.md` |
 | Архитектура | `docs/architecture/README.md`, `.ai-factory/ARCHITECTURE.md` |
 | Mongo | `docs/architecture/mongo-conventions.md` |

@@ -9,6 +9,7 @@ using Server.Api.Hosting;
 using Server.Api.Http;
 using Server.Api.Metrics;
 using Server.Api.Options;
+using Server.Api.Payments;
 using Server.Api.Security;
 using Server.Battles;
 using Server.Bonuses;
@@ -43,6 +44,7 @@ namespace Server.Api.Composition
             RegisterMongo(services);
 
             new SecurityRegistrar(_configuration).Register(services);
+            new PaymentRegistrar().Register(services, _configuration);
             new AlertsRegistrar(_configuration).Register(services);
             new AnalyticsRegistrar(_configuration).Register(services);
             new BattleServicesRegistrar().Register(services);

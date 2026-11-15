@@ -11,6 +11,8 @@ GDD: [../gdd/README.md](../gdd/README.md).
 | [battle-api.md](battle-api.md) | `POST /api/battle/simulate`, `POST /api/battle/replay`, коды ответов, flow, примеры |
 | [config-sync.md](config-sync.md) | снапшоты конфигов, публикация, ConfigTool, Google Sheets, managers, источник правды |
 | [player-state.md](player-state.md) | аккаунт устройства, токены, профиль игрока, хранение и идемпотентность |
+| [payments-integration-plan.md](payments-integration-plan.md) | исследование Steam Wallet и Nutaku Gold, архитектура покупок и критерии запуска |
+| [payments.md](payments.md) | серверный контракт покупок, настройки Steam и Nutaku, восстановление и возвраты |
 | [runs.md](runs.md) | серверное состояние забега, события, детерминизм, режим авторитета |
 | [dialogues.md](dialogues.md) | диалоги: лист `Dialogues`, диалоги уровня, награда `dialogue`, `pendingDialogues`, подтверждение показа |
 | [client-integration-dialogues-bonus-icons.md](client-integration-dialogues-bonus-icons.md) | для клиентской команды: интеграция диалогов и иконок бонусов, API, конфиги, повторы, приёмочные сценарии |
