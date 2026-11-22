@@ -7,10 +7,12 @@ namespace Server.Api.Payments
     internal sealed class PaymentEndpoints
     {
         private readonly PaymentOptions _options;
+        private readonly PaymentResponseFactory _responses;
 
-        public PaymentEndpoints(PaymentOptions options)
+        public PaymentEndpoints(PaymentOptions options, PaymentResponseFactory responses)
         {
             _options = options;
+            _responses = responses;
         }
 
         public void Map(WebApplication application)
@@ -57,7 +59,7 @@ namespace Server.Api.Payments
                 foreach (var offer in _options.Offers)
                 {
                     if (TryPrice(session, offer, currency, out var amount))
-                        offers.Add(new { offer.Sku, offer.Name, currency, amount });
+                        offers.Add(_responses.CreateCatalog(offer, currency, amount));
                 }
 
                 return Results.Ok(offers);
@@ -115,7 +117,7 @@ namespace Server.Api.Payments
                 if (order == null)
                     return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
 
-                return Results.Ok(CreateOrderResponse(order));
+                return Results.Ok(_responses.CreateOrder(order));
             }
             catch (SteamPaymentsException)
             {
@@ -134,7 +136,7 @@ namespace Server.Api.Payments
 
             return order == null || order.UserId != session.UserId || order.Subject != session.Subject
                 ? Results.NotFound()
-                : Results.Ok(CreateOrderResponse(order));
+                : Results.Ok(_responses.CreateOrder(order));
         }
 
         private async Task<IResult> ListOrdersAsync(HttpContext context, PaymentStore store)
@@ -144,7 +146,7 @@ namespace Server.Api.Payments
             var result = new List<object>(orders.Count);
 
             foreach (var order in orders)
-                result.Add(CreateOrderResponse(order));
+                result.Add(_responses.CreateOrder(order));
 
             return Results.Ok(result);
         }
@@ -222,13 +224,23 @@ namespace Server.Api.Payments
                     return Results.Conflict();
 
                 if (context.RequestAborted.IsCancellationRequested)
+                {
                     logger.LogWarning("[Error] Nutaku response disconnected after issuing payment entitlement paymentId = {PaymentId}", paymentId);
+                    await nutaku.MarkCompletionUncertainAsync(paymentId, subject, "response_disconnected");
+                }
 
                 return NutakuSuccess();
+            }
+            catch (PaymentSettlementException exception)
+            {
+                await nutaku.MarkCompletionUncertainAsync(paymentId, subject, exception.Retryable ? "settlement_retry" : "settlement_failed");
+
+                return Results.StatusCode(exception.Retryable ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status409Conflict);
             }
             catch (OperationCanceledException)
             {
                 logger.LogWarning("[Error] Nutaku payment completion outcome needs reconciliation paymentId = {PaymentId}", paymentId);
+                await nutaku.MarkCompletionUncertainAsync(paymentId, subject, "completion_timeout");
 
                 return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
@@ -255,19 +267,6 @@ namespace Server.Api.Payments
             amount = offer.NutakuGold;
 
             return 0 < amount;
-        }
-
-        private object CreateOrderResponse(PaymentOrder order)
-        {
-            return new
-            {
-                orderId = order.ExternalId,
-                order.Sku,
-                order.Amount,
-                order.Currency,
-                state = order.State.ToString(),
-                order.CreatedAt,
-            };
         }
     }
 }

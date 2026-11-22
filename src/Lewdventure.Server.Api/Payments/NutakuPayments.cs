@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.Options;
 using Server.Infrastructure.Mongo.Players;
+using Server.Services;
 
 namespace Server.Api.Payments
 {
@@ -11,14 +12,22 @@ namespace Server.Api.Payments
         private readonly PaymentStore _store;
         private readonly TimeProvider _timeProvider;
         private readonly TokenGenerator _tokens;
+        private readonly IConfigDistributor _configDistributor;
 
-        public NutakuPayments(IOptions<PaymentOptions> options, PaymentIdentity identity, PaymentStore store, TimeProvider timeProvider, TokenGenerator tokens)
+        public NutakuPayments(
+            IOptions<PaymentOptions> options,
+            PaymentIdentity identity,
+            PaymentStore store,
+            TimeProvider timeProvider,
+            TokenGenerator tokens,
+            IConfigDistributor configDistributor)
         {
             _options = options.Value;
             _identity = identity;
             _store = store;
             _timeProvider = timeProvider;
             _tokens = tokens;
+            _configDistributor = configDistributor;
         }
 
         public bool IsAuthentic(HttpRequest request)
@@ -113,6 +122,7 @@ namespace Server.Api.Payments
                     Sku = offer.Sku,
                     Name = offer.Name,
                     Entitlement = offer.Entitlement,
+                    Rewards = offer.Rewards,
                     Amount = offer.NutakuGold,
                     Currency = "GOLD",
                     Test = _options.NutakuSandbox || request.Test != 0,
@@ -141,7 +151,21 @@ namespace Server.Api.Payments
             if (user.Id.Length == 0 || _identity.ReadSubject(user, _options.NutakuScope) != subject)
                 return false;
 
-            return await _store.SettleAsync(order, false, paymentId, "nutaku:GPHS PUT", cancellationToken);
+            return await _store.SettleAsync(order, false, paymentId, "nutaku:GPHS PUT", _configDistributor, cancellationToken);
+        }
+
+        public async Task<bool> MarkCompletionUncertainAsync(string paymentId, string subject, string evidence)
+        {
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var order = await _store.GetAsync(_options.NutakuScope, paymentId, deadline.Token);
+
+            if (order == null || order.Subject != subject)
+                return false;
+
+            await _store.MarkReviewAsync(order, "nutaku_completion_uncertain", evidence, deadline.Token);
+            await _store.AddAuditAsync(order, "completion_uncertain", "server", paymentId, evidence, deadline.Token);
+
+            return true;
         }
 
         private bool Matches(PaymentOrder order, string subject, NutakuPaymentRequest request)

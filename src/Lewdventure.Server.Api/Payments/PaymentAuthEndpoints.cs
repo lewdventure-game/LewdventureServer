@@ -67,10 +67,20 @@ namespace Server.Api.Payments
             if (subject.Length == 0)
                 return Results.BadRequest();
 
-            var code = await nutaku.CreateLoginCodeAsync(subject, context.RequestAborted);
-            context.Response.Headers.CacheControl = "no-store";
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
+            deadline.CancelAfter(TimeSpan.FromSeconds(4));
 
-            return Results.Ok(new { code });
+            try
+            {
+                var code = await nutaku.CreateLoginCodeAsync(subject, deadline.Token);
+                context.Response.Headers.CacheControl = "no-store";
+
+                return Results.Ok(new { code });
+            }
+            catch (OperationCanceledException)
+            {
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
         }
 
         private async Task<IResult> IssueAsync(HttpContext context, string scope, string subject, PaymentIdentity identity, AccessTokenIssuer issuer)

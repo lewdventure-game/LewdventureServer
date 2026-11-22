@@ -34,6 +34,21 @@ namespace Server.Api.Health
                     writer.WriteString("status", ToStatus(entry.Value.Status));
                     writer.WriteString("reason", entry.Value.Description ?? string.Empty);
                     writer.WriteNumber("durationMs", (long)entry.Value.Duration.TotalMilliseconds);
+
+                    if (0 < entry.Value.Data.Count)
+                    {
+                        writer.WritePropertyName("data");
+                        writer.WriteStartObject();
+
+                        foreach (var pair in entry.Value.Data)
+                        {
+                            writer.WritePropertyName(pair.Key);
+                            JsonSerializer.Serialize(writer, pair.Value, pair.Value?.GetType() ?? typeof(object));
+                        }
+
+                        writer.WriteEndObject();
+                    }
+
                     writer.WriteEndObject();
                 }
 

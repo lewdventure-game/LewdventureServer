@@ -60,7 +60,7 @@ docs/                                    gdd, server, architecture, runbooks
 | --- | --- |
 | Оглавление | `docs/README.md` |
 | API боя | `docs/server/battle-api.md` |
-| Покупки | `docs/server/payments.md` |
+| Покупки | `docs/server/payments.md`, `docs/server/payments-client.md` |
 | Конфиги | `docs/server/config-sync.md` |
 | Архитектура | `docs/architecture/README.md`, `.ai-factory/ARCHITECTURE.md` |
 | Mongo | `docs/architecture/mongo-conventions.md` |

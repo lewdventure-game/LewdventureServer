@@ -134,7 +134,9 @@ namespace Server.Api.Hosting
             new AdminQaEndpoints().Map(application);
             new AdminBalanceEndpoints().Map(application);
             new AuthEndpoints().Map(application);
-            new PaymentEndpoints(application.Services.GetRequiredService<IOptions<PaymentOptions>>().Value).Map(application);
+            new PaymentEndpoints(
+                application.Services.GetRequiredService<IOptions<PaymentOptions>>().Value,
+                application.Services.GetRequiredService<PaymentResponseFactory>()).Map(application);
             new PlayerEndpoints().Map(application);
             new RunEndpoints().Map(application);
             new DialogueEndpoints().Map(application);

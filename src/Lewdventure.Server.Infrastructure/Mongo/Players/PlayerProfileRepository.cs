@@ -18,6 +18,11 @@ namespace Server.Infrastructure.Mongo.Players
             return await Collection.Find(Builders<PlayerProfileDocument>.Filter.Eq(item => item.Id, userId)).FirstOrDefaultAsync(cancellationToken);
         }
 
+        public async Task<PlayerProfileDocument?> GetAsync(IClientSessionHandle session, string userId, CancellationToken cancellationToken)
+        {
+            return await Collection.Find(session, Builders<PlayerProfileDocument>.Filter.Eq(item => item.Id, userId)).FirstOrDefaultAsync(cancellationToken);
+        }
+
         public async Task<List<PlayerProfileDocument>> ListByStoryProgressAsync(int completedLevelId, int nextLevelId, int limit, CancellationToken cancellationToken)
         {
             var filters = new List<FilterDefinition<PlayerProfileDocument>>
@@ -62,6 +67,16 @@ namespace Server.Infrastructure.Mongo.Players
                 Builders<PlayerProfileDocument>.Filter.Eq(item => item.Id, document.Id),
                 Builders<PlayerProfileDocument>.Filter.Eq(item => item.Rev, expectedRev));
             var result = await Collection.ReplaceOneAsync(filter, document, cancellationToken: cancellationToken);
+
+            return 0 < result.MatchedCount;
+        }
+
+        public async Task<bool> ReplaceAsync(IClientSessionHandle session, PlayerProfileDocument document, long expectedRev, CancellationToken cancellationToken)
+        {
+            var filter = Builders<PlayerProfileDocument>.Filter.And(
+                Builders<PlayerProfileDocument>.Filter.Eq(item => item.Id, document.Id),
+                Builders<PlayerProfileDocument>.Filter.Eq(item => item.Rev, expectedRev));
+            var result = await Collection.ReplaceOneAsync(session, filter, document, cancellationToken: cancellationToken);
 
             return 0 < result.MatchedCount;
         }

@@ -146,7 +146,7 @@ openssl rand -base64 48
 
 ## Payments
 
-Оба платёжных канала выключены по умолчанию. `Payments:SteamAppId` и `Payments:NutakuTitleId` подключают маршруты своей платформы. `Payments:SteamSandbox` и `Payments:NutakuSandbox` по умолчанию равны `true`. `Payments:SteamPurchasesEnabled` и `Payments:NutakuPurchasesEnabled` разрешают создание новых платежей. `Payments:SteamPublisherKey` и `Payments:NutakuServerKey` поступают через env или `secrets/`. Офферы настраиваются в `Payments:Offers`. Полная схема и порядок проверки описаны в [контракте покупок](../server/payments.md).
+Оба платёжных канала выключены по умолчанию. `Payments:SteamAppId` и `Payments:NutakuTitleId` подключают маршруты своей платформы. `Payments:SteamSandbox` и `Payments:NutakuSandbox` по умолчанию равны `true`. `Payments:SteamPurchasesEnabled` и `Payments:NutakuPurchasesEnabled` разрешают создание новых платежей. `Payments:SteamPublisherKey` и `Payments:NutakuServerKey` поступают через env или `secrets/`. Офферы настраиваются в `Payments:Offers`: внутренний SKU, имя, постоянный `Entitlement`, Steam item ID и цены, Nutaku Gold, необязательные `Rewards`. Платёжные награды поддерживают только положительные `resource` и `account`, например `resource:soft_money:100,account:starter_pack:1`; выдача и полный возврат атомарны с профилем и ledger. Недостаточный для возврата остаток не уходит в минус, а открывает review queue. Полная схема, ops API и порядок запуска описаны в [контракте покупок](../server/payments.md), Unity-интеграция — в [клиентском документе](../server/payments-client.md).
 
 ## ConfigPublisher
 

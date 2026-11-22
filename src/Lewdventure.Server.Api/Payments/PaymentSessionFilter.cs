@@ -41,6 +41,7 @@ namespace Server.Api.Payments
                 if (subject.Length == 0)
                     return Results.StatusCode(StatusCodes.Status403Forbidden);
 
+                await httpContext.RequestServices.GetRequiredService<PaymentRewardRestorer>().RestoreAsync(userId, httpContext.RequestAborted);
                 httpContext.Items[typeof(PaymentSession)] = new PaymentSession(userId, verifiedScope, subject, steam);
 
                 return await next(context);

@@ -9,6 +9,7 @@ namespace Server.Api.Payments
         public string Entitlement { get; set; } = string.Empty;
         public string Action { get; set; } = string.Empty;
         public string Evidence { get; set; } = string.Empty;
+        public bool RewardsRecovered { get; set; }
         public DateTime RecordedAt { get; set; }
     }
 }

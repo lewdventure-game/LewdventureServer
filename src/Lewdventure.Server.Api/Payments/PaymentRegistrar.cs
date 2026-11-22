@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Server.Api.Health;
 using Server.Infrastructure.Mongo;
 
 namespace Server.Api.Payments
@@ -10,6 +11,9 @@ namespace Server.Api.Payments
             var section = configuration.GetSection(PaymentOptions.SectionName);
             services.AddOptions<PaymentOptions>().Bind(section).ValidateOnStart();
             services.AddSingleton<IValidateOptions<PaymentOptions>, PaymentOptionsValidator>();
+            services.AddSingleton<PaymentRewardPolicy>();
+            services.AddSingleton<PaymentResponseFactory>();
+            services.AddSingleton<PaymentMetrics>();
 
             var options = new PaymentOptions();
             section.Bind(options);
@@ -21,14 +25,17 @@ namespace Server.Api.Payments
             services.AddSingleton<IMongoIndexContributor>(ResolvePaymentIndexes);
             services.AddSingleton<PaymentIdentity>();
             services.AddSingleton<PaymentSessionFilter>();
-            services.AddSingleton<NutakuPayments>();
+            services.AddTransient<NutakuPayments>();
             services.AddTransient<SteamPayments>();
+            services.AddTransient<SteamPaymentReconciler>();
+            services.AddTransient<PaymentRewardRestorer>();
             services.AddHttpClient<SteamPaymentsClient>(ConfigureSteamClient)
                 .RemoveAllLoggers()
                 .ConfigurePrimaryHttpMessageHandler(CreatePaymentHandler);
             services.AddHttpClient<NutakuPaymentsClient>(ConfigureNutakuClient)
                 .RemoveAllLoggers()
                 .ConfigurePrimaryHttpMessageHandler(CreatePaymentHandler);
+            services.AddHealthChecks().AddCheck<PaymentHealthCheck>("payments", tags: new[] { HealthTags.Ready });
 
             if (options.SteamAppId != 0)
                 services.AddHostedService<SteamPaymentWorker>();

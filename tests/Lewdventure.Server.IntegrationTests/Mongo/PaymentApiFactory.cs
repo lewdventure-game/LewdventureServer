@@ -43,6 +43,7 @@ namespace Tests.Integration.Mongo
             builder.UseSetting("Payments:Offers:0:Sku", "starter");
             builder.UseSetting("Payments:Offers:0:Name", "Starter Access");
             builder.UseSetting("Payments:Offers:0:Entitlement", "starter-access");
+            builder.UseSetting("Payments:Offers:0:Rewards", "resource:soft_money:100,account:starter_pack:1");
             builder.UseSetting("Payments:Offers:0:SteamItemId", "1001");
             builder.UseSetting("Payments:Offers:0:SteamPrices:USD", "199");
             builder.UseSetting("Payments:Offers:0:NutakuGold", "200");

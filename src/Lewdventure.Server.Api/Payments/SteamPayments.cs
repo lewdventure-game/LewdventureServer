@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
+using Server.Services;
 
 namespace Server.Api.Payments
 {
@@ -14,14 +15,22 @@ namespace Server.Api.Payments
         private readonly SteamPaymentsClient _client;
         private readonly ILogger<SteamPayments> _logger;
         private readonly TimeProvider _timeProvider;
+        private readonly IConfigDistributor _configDistributor;
 
-        public SteamPayments(IOptions<PaymentOptions> options, PaymentStore store, SteamPaymentsClient client, ILogger<SteamPayments> logger, TimeProvider timeProvider)
+        public SteamPayments(
+            IOptions<PaymentOptions> options,
+            PaymentStore store,
+            SteamPaymentsClient client,
+            ILogger<SteamPayments> logger,
+            TimeProvider timeProvider,
+            IConfigDistributor configDistributor)
         {
             _options = options.Value;
             _store = store;
             _client = client;
             _logger = logger;
             _timeProvider = timeProvider;
+            _configDistributor = configDistributor;
         }
 
         public string GetOrderId(string userId, string requestKey)
@@ -49,30 +58,26 @@ namespace Server.Api.Payments
                 Sku = offer.Sku,
                 Name = offer.Name,
                 Entitlement = offer.Entitlement,
+                Rewards = offer.Rewards,
                 SteamItemId = offer.SteamItemId,
                 Currency = currency,
                 Amount = amount,
                 Test = _options.SteamSandbox,
                 CreatedAt = now,
+                UpdatedAt = now,
                 NextCheckAt = now,
             }, cancellationToken);
         }
 
         public async Task<PaymentOrder> StartAsync(PaymentOrder order, CancellationToken cancellationToken)
         {
-            if (order.State != PaymentOrderState.Created || await _store.BeginSteamAsync(order, cancellationToken) == false)
+            if (order.State != PaymentOrderState.Created)
                 return await _store.GetAsync(order.Scope, order.ExternalId, cancellationToken);
 
-            var response = await _client.InitializeAsync(order, cancellationToken);
-            var parameters = response["params"] as JObject;
-            var transactionId = parameters?.Value<string>("transid") ?? string.Empty;
+            if (await _store.BeginSteamAsync(order, cancellationToken) == false)
+                return await _store.GetAsync(order.Scope, order.ExternalId, cancellationToken);
 
-            if (response.Value<string>("result") == "OK" && parameters?.Value<string>("orderid") == order.ExternalId &&
-                ulong.TryParse(transactionId, NumberStyles.None, CultureInfo.InvariantCulture, out var number) && 0 < number)
-                await _store.SetSteamInitializedAsync(order, transactionId, cancellationToken);
-            else if (response.Value<string>("result") == "Failure" && response["error"] is JObject error &&
-                error.Value<int>("errorcode") is 3 or 7 or 8 or 10 or 11 or 100 or 102 or 103 or 104 or 107)
-                await _store.FailSteamOrderAsync(order, cancellationToken);
+            await InitializeAsync(order, cancellationToken);
 
             return await _store.GetAsync(order.Scope, order.ExternalId, cancellationToken);
         }
@@ -82,13 +87,29 @@ namespace Server.Api.Payments
             var response = await _client.QueryAsync(order.ExternalId, cancellationToken);
 
             if (response.Value<string>("result") != "OK" || response["params"] is not JObject parameters)
+            {
+                var error = ReadError(response);
+
+                if (response.Value<string>("result") == "Failure" && order.State == PaymentOrderState.Initiating &&
+                    order.TransactionId.Length == 0 && order.InitializationAttempts < 10)
+                {
+                    await _store.RecordSteamInitializationErrorAsync(order, error, true, cancellationToken);
+                    await InitializeAsync(order, cancellationToken);
+
+                    return;
+                }
+
+                await _store.RecordSteamQueryErrorAsync(order, error, cancellationToken);
+
                 return;
+            }
 
             var transaction = new SteamTransaction().Read(parameters);
 
             if (transaction.Matches(order) == false)
             {
                 _logger.LogWarning("[Error] Steam query did not match the local order orderId = {OrderId}", order.ExternalId);
+                await _store.MarkReviewAsync(order, "provider_mismatch", "steam:QueryTxn", cancellationToken);
 
                 return;
             }
@@ -98,9 +119,17 @@ namespace Server.Api.Payments
             {
                 var finalized = await _client.FinalizeAsync(order.ExternalId, cancellationToken);
 
-                if (finalized.Value<string>("result") == "OK" && finalized["params"] is JObject details &&
-                    details.Value<string>("orderid") == order.ExternalId && details.Value<string>("transid") == transaction.TransactionId)
-                    await _store.SettleAsync(order, false, transaction.TransactionId, "steam:FinalizeTxn", cancellationToken);
+                if (finalized.Value<string>("result") == "OK" && finalized["params"] is JObject details)
+                {
+                    if (details.Value<string>("orderid") != order.ExternalId || details.Value<string>("transid") != transaction.TransactionId)
+                    {
+                        await _store.MarkReviewAsync(order, "finalize_mismatch", "steam:FinalizeTxn", cancellationToken);
+
+                        return;
+                    }
+
+                    await _store.SettleAsync(order, false, transaction.TransactionId, "steam:FinalizeTxn", _configDistributor, cancellationToken);
+                }
 
                 return;
             }
@@ -113,18 +142,53 @@ namespace Server.Api.Payments
             if (transaction.Matches(order) == false)
             {
                 _logger.LogWarning("[Error] Steam settlement did not match the local order orderId = {OrderId}", order.ExternalId);
+                await _store.MarkReviewAsync(order, "provider_mismatch", "steam:" + transaction.Status, cancellationToken);
 
                 return;
             }
 
             if (transaction.Reversed)
-                await _store.SettleAsync(order, true, transaction.TransactionId, "steam:" + transaction.Status + ":" + transaction.ItemStatus, cancellationToken);
+                await _store.SettleAsync(order, true, transaction.TransactionId, "steam:" + transaction.Status + ":" + transaction.ItemStatus, _configDistributor, cancellationToken);
             else if (transaction.Status == "Succeeded" && transaction.ItemStatus == "Succeeded" && transaction.MatchesPrice(order))
-                await _store.SettleAsync(order, false, transaction.TransactionId, "steam:Succeeded", cancellationToken);
+                await _store.SettleAsync(order, false, transaction.TransactionId, "steam:Succeeded", _configDistributor, cancellationToken);
             else if (transaction.Status == "Failed")
-                await _store.FailSteamOrderAsync(order, cancellationToken);
+                await _store.FailSteamOrderAsync(order, "steam:Failed", cancellationToken);
             else if (transaction.Status is "Approved" or "Succeeded")
-                _logger.LogWarning("[Error] Steam transaction requires payment review orderId = {OrderId} status = {Status}", order.ExternalId, transaction.Status);
+                await _store.MarkReviewAsync(order, "price_or_item_mismatch", "steam:" + transaction.Status + ":" + transaction.ItemStatus, cancellationToken);
+        }
+
+        private async Task InitializeAsync(PaymentOrder order, CancellationToken cancellationToken)
+        {
+            var response = await _client.InitializeAsync(order, cancellationToken);
+            var parameters = response["params"] as JObject;
+            var transactionId = parameters?.Value<string>("transid") ?? string.Empty;
+
+            if (response.Value<string>("result") == "OK" && parameters?.Value<string>("orderid") == order.ExternalId &&
+                ulong.TryParse(transactionId, NumberStyles.None, CultureInfo.InvariantCulture, out var number) && 0 < number)
+            {
+                await _store.SetSteamInitializedAsync(order, transactionId, cancellationToken);
+
+                return;
+            }
+
+            var error = ReadError(response);
+            var errorCode = response["error"] is JObject details ? details.Value<int?>("errorcode") : null;
+
+            if (response.Value<string>("result") == "Failure" && errorCode is 3 or 7 or 8 or 10 or 11 or 100 or 102 or 103 or 104 or 107)
+                await _store.FailSteamOrderAsync(order, error, cancellationToken);
+            else
+                await _store.RecordSteamInitializationErrorAsync(order, error, false, cancellationToken);
+        }
+
+        private string ReadError(JObject response)
+        {
+            if (response["error"] is not JObject error)
+                return response.Value<string>("result") ?? "Empty Steam response";
+
+            var code = error.Value<int?>("errorcode");
+            var description = error.Value<string>("errordesc") ?? string.Empty;
+
+            return "steam:" + (code?.ToString(CultureInfo.InvariantCulture) ?? "unknown") + ":" + description;
         }
     }
 }

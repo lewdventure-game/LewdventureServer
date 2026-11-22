@@ -9,11 +9,13 @@ namespace Server.Api.Payments
     {
         private readonly IOptions<AuthOptions> _authOptions;
         private readonly IOptions<MongoOptions> _mongoOptions;
+        private readonly PaymentRewardPolicy _rewards;
 
-        public PaymentOptionsValidator(IOptions<AuthOptions> authOptions, IOptions<MongoOptions> mongoOptions)
+        public PaymentOptionsValidator(IOptions<AuthOptions> authOptions, IOptions<MongoOptions> mongoOptions, PaymentRewardPolicy rewards)
         {
             _authOptions = authOptions;
             _mongoOptions = mongoOptions;
+            _rewards = rewards;
         }
 
         public ValidateOptionsResult Validate([AllowNull] string name, PaymentOptions options)
@@ -38,8 +40,8 @@ namespace Server.Api.Payments
             foreach (var offer in options.Offers)
             {
                 if (IsIdentifier(offer.Sku) == false || skus.Add(offer.Sku) == false || IsIdentifier(offer.Entitlement) == false ||
-                    string.IsNullOrWhiteSpace(offer.Name) || 128 < offer.Name.Length)
-                    return ValidateOptionsResult.Fail("Payment offers require a unique SKU, an entitlement and a name of at most 128 characters.");
+                    string.IsNullOrWhiteSpace(offer.Name) || 128 < offer.Name.Length || _rewards.Validate(offer.Rewards) == false)
+                    return ValidateOptionsResult.Fail("Payment offers require a unique SKU, an entitlement, a valid name and only positive resource/account rewards.");
 
                 if (offer.NutakuGold != 0 && (offer.NutakuGold < 10 || 30000 < offer.NutakuGold))
                     return ValidateOptionsResult.Fail("Nutaku offer prices must be between 10 and 30000 Gold.");
