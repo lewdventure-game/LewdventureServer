@@ -95,11 +95,12 @@ namespace Tests.Integration.Mongo
         [Test]
         public async Task Progress_TakesPlayersStoppedOnTheLevelWithoutQa()
         {
-            await InsertProfileAsync("usr_progress_a", new List<int> { 1 }, 1);
-            await InsertProfileAsync("usr_progress_b", new List<int> { 1 }, 3);
-            await InsertProfileAsync("usr_progress_c", new List<int> { 1 }, 2);
-            await InsertProfileAsync("usr_progress_further", new List<int> { 1, 2 }, 5);
-            await InsertProfileAsync("usr_progress_qa", new List<int> { 1 }, 9);
+            var updatedAt = DateTime.UtcNow;
+            await InsertProfileAsync("usr_progress_a", new List<int> { 1 }, 1, updatedAt);
+            await InsertProfileAsync("usr_progress_b", new List<int> { 1 }, 3, updatedAt);
+            await InsertProfileAsync("usr_progress_c", new List<int> { 1 }, 2, updatedAt);
+            await InsertProfileAsync("usr_progress_further", new List<int> { 1, 2 }, 5, updatedAt);
+            await InsertProfileAsync("usr_progress_qa", new List<int> { 1 }, 9, updatedAt);
             await _environment.Services.GetRequiredService<UserRepository>().InsertAsync(
                 new UserDocument { Id = "usr_progress_qa", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, Qa = new UserQaDocument { Alias = "qa-progress", MarkedBy = "test", MarkedAt = DateTime.UtcNow } },
                 CancellationToken.None);
@@ -126,9 +127,9 @@ namespace Tests.Integration.Mongo
             return new BalanceJobDocument { Id = jobId, CreatedAt = createdAt, UpdatedAt = createdAt, Actor = "test", Kind = "series", Request = "{}" };
         }
 
-        private async Task InsertProfileAsync(string userId, List<int> completedLevelIds, int promoteLevel)
+        private async Task InsertProfileAsync(string userId, List<int> completedLevelIds, int promoteLevel, DateTime updatedAt)
         {
-            var profile = new PlayerProfileDocument { Id = userId, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+            var profile = new PlayerProfileDocument { Id = userId, CreatedAt = updatedAt, UpdatedAt = updatedAt };
 
             profile.Characters.Add(new PlayerCharacterDocument { ConfigId = CharacterId, PromoteLevel = promoteLevel });
             profile.Loadout.CharacterId = CharacterId;

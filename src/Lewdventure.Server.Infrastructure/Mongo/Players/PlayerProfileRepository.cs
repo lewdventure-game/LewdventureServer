@@ -36,6 +36,7 @@ namespace Server.Infrastructure.Mongo.Players
             return await Collection
                 .Find(Builders<PlayerProfileDocument>.Filter.And(filters))
                 .SortByDescending(item => item.UpdatedAt)
+                .ThenByDescending(item => item.Id)
                 .Limit(limit)
                 .ToListAsync(cancellationToken);
         }
