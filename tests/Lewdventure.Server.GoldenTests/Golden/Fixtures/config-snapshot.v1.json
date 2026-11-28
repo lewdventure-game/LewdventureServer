@@ -1,8 +1,8 @@
 {
   "format": "lewdventure-config-snapshot",
   "formatVersion": 1,
-  "version": "sha256:3395efc3411c3f0009185dd5a970be390684a0a4210fddd76154e1f1523947ad",
-  "createdAt": "2026-10-17T11:34:04.3400000Z",
+  "version": "sha256:9403bd1ecfd16db0dc6f9ad090aa754b274a9d8b6e8d748fe4bb1d5112ef1955",
+  "createdAt": "2026-11-08T11:35:02.3800000Z",
   "sourceKind": "SheetsUpload",
   "domains": [
     {
@@ -321,7 +321,7 @@
     {
       "domain": "Characters",
       "spreadsheetId": "1rB22U8FrboY1hHqg1AwhEvDBzb1OxK9JTUWZ_1isRTg",
-      "range": "A1:H2",
+      "range": "A1:H3",
       "rows": [
         {
           "name": "",
@@ -332,10 +332,21 @@
           "skill_ids": "1;2;3",
           "promote_to_skill_levels": "1;2;3;4;5;6;7;8",
           "skin_name": "mr_penis"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "2",
+          "is_melee": false,
+          "promote_id": "1",
+          "skill_ids": "1;2;3",
+          "promote_to_skill_levels": "1;2;3;4;5;6;7;8",
+          "skin_name": "ms_pizda"
         }
       ],
       "sourceRows": [
-        2
+        2,
+        3
       ]
     },
     {
@@ -480,8 +491,8 @@
           "bonus_type": "max_health_perk",
           "bonus_value": "0.15",
           "work_modes": "permanent",
-          "is_displayed": true,
-          "icon_name": "max_health"
+          "is_displayed": false,
+          "icon_name": "bonus_max_health_perk"
         },
         {
           "name": "",
@@ -492,7 +503,7 @@
           "bonus_value": "5",
           "work_modes": "if_equipped:characters:1;first_turns:3",
           "is_displayed": false,
-          "icon_name": ""
+          "icon_name": "bonus_damage_local"
         },
         {
           "name": "",
@@ -501,7 +512,9 @@
           "operator": "add",
           "bonus_type": "evasion_local",
           "bonus_value": "0.05",
-          "work_modes": "end_of_game"
+          "work_modes": "end_of_game",
+          "is_displayed": false,
+          "icon_name": "bonus_evasion"
         },
         {
           "name": "",
@@ -510,7 +523,9 @@
           "operator": "add",
           "bonus_type": "crit_chance_local",
           "bonus_value": "0.15",
-          "work_modes": "end_of_battle"
+          "work_modes": "end_of_battle",
+          "is_displayed": false,
+          "icon_name": "bonus_crit_chance_local"
         },
         {
           "name": "",
@@ -519,7 +534,9 @@
           "operator": "add",
           "bonus_type": "damage_perk",
           "bonus_value": "-0.15",
-          "work_modes": "next_battles:5"
+          "work_modes": "next_battles:5",
+          "is_displayed": false,
+          "icon_name": "bonus_damage_perk"
         },
         {
           "name": "",
@@ -528,7 +545,9 @@
           "operator": "add",
           "bonus_type": "combo_1_chance_perk",
           "bonus_value": "1",
-          "work_modes": "first_turns:1"
+          "work_modes": "first_turns:1",
+          "is_displayed": false,
+          "icon_name": "bonus_combo_1_perk"
         },
         {
           "name": "",
@@ -537,7 +556,9 @@
           "operator": "add",
           "bonus_type": "damage_perk",
           "bonus_value": "-0.05",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_damage_perk"
         },
         {
           "name": "",
@@ -546,7 +567,9 @@
           "operator": "replace",
           "bonus_type": "crit_chance_local",
           "bonus_value": "1",
-          "work_modes": "first_turns:1"
+          "work_modes": "first_turns:1",
+          "is_displayed": false,
+          "icon_name": "bonus_crit_chance_local"
         },
         {
           "name": "",
@@ -555,7 +578,9 @@
           "operator": "add",
           "bonus_type": "healing_from_max",
           "bonus_value": "0.5",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_healing_max"
         },
         {
           "name": "",
@@ -564,7 +589,9 @@
           "operator": "add",
           "bonus_type": "damage_local",
           "bonus_value": "10;12;14;16;18;20;22;24;26;28",
-          "work_modes": "if_equipped:equipment:1"
+          "work_modes": "if_equipped:equipment:1",
+          "is_displayed": false,
+          "icon_name": "bonus_damage_local"
         },
         {
           "name": "",
@@ -573,7 +600,9 @@
           "operator": "add",
           "bonus_type": "damage_local",
           "bonus_value": "30;32;34;36;38;40;42;44;46;48",
-          "work_modes": "if_equipped:equipment:2"
+          "work_modes": "if_equipped:equipment:2",
+          "is_displayed": false,
+          "icon_name": "bonus_damage_local"
         },
         {
           "name": "",
@@ -582,7 +611,9 @@
           "operator": "add",
           "bonus_type": "damage_local",
           "bonus_value": "50;52;54;56;58;60;62;64;66;68",
-          "work_modes": "if_equipped:equipment:3"
+          "work_modes": "if_equipped:equipment:3",
+          "is_displayed": false,
+          "icon_name": "bonus_damage_local"
         },
         {
           "name": "Бонус в 1% ХП для прокачки персов",
@@ -591,7 +622,9 @@
           "operator": "add",
           "bonus_type": "max_health_global",
           "bonus_value": "0.01",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_max_health_global"
         },
         {
           "name": "1я пассивка персонажа 1 лвл",
@@ -600,7 +633,9 @@
           "operator": "add",
           "bonus_type": "crit_chance_local",
           "bonus_value": "0.2",
-          "work_modes": "if_equipped:characters:1"
+          "work_modes": "if_equipped:characters:1",
+          "is_displayed": false,
+          "icon_name": "bonus_crit_chance_local"
         },
         {
           "name": "1я пассивка персонажа 2 лвл",
@@ -609,7 +644,9 @@
           "operator": "add",
           "bonus_type": "crit_chance_local",
           "bonus_value": "0.25",
-          "work_modes": "if_equipped:characters:1"
+          "work_modes": "if_equipped:characters:1",
+          "is_displayed": false,
+          "icon_name": "bonus_crit_chance_local"
         },
         {
           "name": "2я пассивка персонажа 1 лвл",
@@ -618,7 +655,9 @@
           "operator": "add",
           "bonus_type": "crit_multiplier_global",
           "bonus_value": "0.5",
-          "work_modes": "if_equipped:characters:1;first_turns:3"
+          "work_modes": "if_equipped:characters:1;first_turns:3",
+          "is_displayed": false,
+          "icon_name": "bonus_crit_mult_global"
         },
         {
           "name": "2я пассивка персонажа 2 лвл",
@@ -627,7 +666,9 @@
           "operator": "add",
           "bonus_type": "crit_multiplier_global",
           "bonus_value": "0.75",
-          "work_modes": "if_equipped:characters:1;first_turns:3"
+          "work_modes": "if_equipped:characters:1;first_turns:3",
+          "is_displayed": false,
+          "icon_name": "bonus_crit_mult_global"
         },
         {
           "name": "2й скилл 1 саммона лвл1",
@@ -636,7 +677,9 @@
           "operator": "add",
           "bonus_type": "combo_1_chance_global",
           "bonus_value": "0.05",
-          "work_modes": "if_equipped:summons:1;every_turn"
+          "work_modes": "if_equipped:summons:1;every_turn",
+          "is_displayed": false,
+          "icon_name": "bonus_combo_1_global"
         },
         {
           "name": "2й скилл 1 саммона лвл2",
@@ -645,7 +688,9 @@
           "operator": "add",
           "bonus_type": "combo_1_chance_global",
           "bonus_value": "0.06",
-          "work_modes": "if_equipped:summons:1;every_turn"
+          "work_modes": "if_equipped:summons:1;every_turn",
+          "is_displayed": false,
+          "icon_name": "bonus_combo_1_global"
         },
         {
           "name": "2й скилл 1 саммона лвл3",
@@ -654,7 +699,9 @@
           "operator": "add",
           "bonus_type": "combo_1_chance_global",
           "bonus_value": "0.07",
-          "work_modes": "if_equipped:summons:1;every_turn"
+          "work_modes": "if_equipped:summons:1;every_turn",
+          "is_displayed": false,
+          "icon_name": "bonus_combo_1_global"
         },
         {
           "name": "2й скилл 1 саммона лвл4",
@@ -663,7 +710,9 @@
           "operator": "add",
           "bonus_type": "combo_1_chance_global",
           "bonus_value": "0.08",
-          "work_modes": "if_equipped:summons:1;every_turn"
+          "work_modes": "if_equipped:summons:1;every_turn",
+          "is_displayed": false,
+          "icon_name": "bonus_combo_1_global"
         },
         {
           "name": "2й скилл 1 саммона лвл5",
@@ -672,7 +721,9 @@
           "operator": "add",
           "bonus_type": "combo_1_chance_global",
           "bonus_value": "0.09",
-          "work_modes": "if_equipped:summons:1;every_turn"
+          "work_modes": "if_equipped:summons:1;every_turn",
+          "is_displayed": false,
+          "icon_name": "bonus_combo_1_global"
         },
         {
           "name": "2й скилл 1 саммона лвл6",
@@ -681,7 +732,9 @@
           "operator": "add",
           "bonus_type": "combo_1_chance_global",
           "bonus_value": "0.1",
-          "work_modes": "if_equipped:summons:1;every_turn"
+          "work_modes": "if_equipped:summons:1;every_turn",
+          "is_displayed": false,
+          "icon_name": "bonus_combo_1_global"
         },
         {
           "name": "2й скилл 1 саммона лвл7",
@@ -690,7 +743,9 @@
           "operator": "add",
           "bonus_type": "combo_1_chance_global",
           "bonus_value": "0.11",
-          "work_modes": "if_equipped:summons:1;every_turn"
+          "work_modes": "if_equipped:summons:1;every_turn",
+          "is_displayed": false,
+          "icon_name": "bonus_combo_1_global"
         },
         {
           "name": "2й скилл 1 саммона лвл8",
@@ -699,7 +754,9 @@
           "operator": "add",
           "bonus_type": "combo_1_chance_global",
           "bonus_value": "0.12",
-          "work_modes": "if_equipped:summons:1;every_turn"
+          "work_modes": "if_equipped:summons:1;every_turn",
+          "is_displayed": false,
+          "icon_name": "bonus_combo_1_global"
         },
         {
           "name": "2й скилл 1 саммона лвл9",
@@ -708,7 +765,9 @@
           "operator": "add",
           "bonus_type": "combo_1_chance_global",
           "bonus_value": "0.13",
-          "work_modes": "if_equipped:summons:1;every_turn"
+          "work_modes": "if_equipped:summons:1;every_turn",
+          "is_displayed": false,
+          "icon_name": "bonus_combo_1_global"
         },
         {
           "name": "2й скилл 1 саммона лвл10",
@@ -717,7 +776,9 @@
           "operator": "add",
           "bonus_type": "combo_1_chance_global",
           "bonus_value": "0.14",
-          "work_modes": "if_equipped:summons:1;every_turn"
+          "work_modes": "if_equipped:summons:1;every_turn",
+          "is_displayed": false,
+          "icon_name": "bonus_combo_1_global"
         },
         {
           "name": "2й скилл 2 саммона лвл1",
@@ -726,7 +787,9 @@
           "operator": "add",
           "bonus_type": "counter_chance_global",
           "bonus_value": "0.2",
-          "work_modes": "if_equipped:summons:2"
+          "work_modes": "if_equipped:summons:2",
+          "is_displayed": false,
+          "icon_name": "bonus_counter_global"
         },
         {
           "name": "2й скилл 2 саммона лвл2",
@@ -735,7 +798,9 @@
           "operator": "add",
           "bonus_type": "counter_chance_global",
           "bonus_value": "0.22",
-          "work_modes": "if_equipped:summons:2"
+          "work_modes": "if_equipped:summons:2",
+          "is_displayed": false,
+          "icon_name": "bonus_counter_global"
         },
         {
           "name": "2й скилл 2 саммона лвл3",
@@ -744,7 +809,9 @@
           "operator": "add",
           "bonus_type": "counter_chance_global",
           "bonus_value": "0.24",
-          "work_modes": "if_equipped:summons:2"
+          "work_modes": "if_equipped:summons:2",
+          "is_displayed": false,
+          "icon_name": "bonus_counter_global"
         },
         {
           "name": "2й скилл 2 саммона лвл4",
@@ -753,7 +820,9 @@
           "operator": "add",
           "bonus_type": "counter_chance_global",
           "bonus_value": "0.26",
-          "work_modes": "if_equipped:summons:2"
+          "work_modes": "if_equipped:summons:2",
+          "is_displayed": false,
+          "icon_name": "bonus_counter_global"
         },
         {
           "name": "2й скилл 2 саммона лвл5",
@@ -762,7 +831,9 @@
           "operator": "add",
           "bonus_type": "counter_chance_global",
           "bonus_value": "0.28",
-          "work_modes": "if_equipped:summons:2"
+          "work_modes": "if_equipped:summons:2",
+          "is_displayed": false,
+          "icon_name": "bonus_counter_global"
         },
         {
           "name": "2й скилл 2 саммона лвл6",
@@ -771,7 +842,9 @@
           "operator": "add",
           "bonus_type": "counter_chance_global",
           "bonus_value": "0.3",
-          "work_modes": "if_equipped:summons:2"
+          "work_modes": "if_equipped:summons:2",
+          "is_displayed": false,
+          "icon_name": "bonus_counter_global"
         },
         {
           "name": "2й скилл 2 саммона лвл7",
@@ -780,7 +853,9 @@
           "operator": "add",
           "bonus_type": "counter_chance_global",
           "bonus_value": "0.32",
-          "work_modes": "if_equipped:summons:2"
+          "work_modes": "if_equipped:summons:2",
+          "is_displayed": false,
+          "icon_name": "bonus_counter_global"
         },
         {
           "name": "2й скилл 2 саммона лвл8",
@@ -789,7 +864,9 @@
           "operator": "add",
           "bonus_type": "counter_chance_global",
           "bonus_value": "0.34",
-          "work_modes": "if_equipped:summons:2"
+          "work_modes": "if_equipped:summons:2",
+          "is_displayed": false,
+          "icon_name": "bonus_counter_global"
         },
         {
           "name": "2й скилл 2 саммона лвл9",
@@ -798,7 +875,9 @@
           "operator": "add",
           "bonus_type": "counter_chance_global",
           "bonus_value": "0.36",
-          "work_modes": "if_equipped:summons:2"
+          "work_modes": "if_equipped:summons:2",
+          "is_displayed": false,
+          "icon_name": "bonus_counter_global"
         },
         {
           "name": "2й скилл 2 саммона лвл10",
@@ -807,7 +886,9 @@
           "operator": "add",
           "bonus_type": "counter_chance_global",
           "bonus_value": "0.38",
-          "work_modes": "if_equipped:summons:2"
+          "work_modes": "if_equipped:summons:2",
+          "is_displayed": false,
+          "icon_name": "bonus_counter_global"
         },
         {
           "name": "Дебафф от горения",
@@ -816,7 +897,9 @@
           "operator": "add",
           "bonus_type": "armor_perk",
           "bonus_value": "-0.2",
-          "work_modes": "end_of_battle"
+          "work_modes": "end_of_battle",
+          "is_displayed": false,
+          "icon_name": "bonus_armor_perk"
         },
         {
           "name": "Дебафф от яда",
@@ -825,7 +908,9 @@
           "operator": "add",
           "bonus_type": "armor_perk",
           "bonus_value": "-0.15",
-          "work_modes": "end_of_battle"
+          "work_modes": "end_of_battle",
+          "is_displayed": false,
+          "icon_name": "bonus_armor_perk"
         },
         {
           "name": "2й скилл 3 саммона лвл1",
@@ -834,7 +919,9 @@
           "operator": "add",
           "bonus_type": "healing_from_max",
           "bonus_value": "0.1",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_healing_max"
         },
         {
           "name": "2й скилл 3 саммона лвл2",
@@ -843,7 +930,9 @@
           "operator": "add",
           "bonus_type": "healing_from_max",
           "bonus_value": "0.11",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_healing_max"
         },
         {
           "name": "2й скилл 3 саммона лвл3",
@@ -852,7 +941,9 @@
           "operator": "add",
           "bonus_type": "healing_from_max",
           "bonus_value": "0.12",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_healing_max"
         },
         {
           "name": "2й скилл 3 саммона лвл4",
@@ -861,7 +952,9 @@
           "operator": "add",
           "bonus_type": "healing_from_max",
           "bonus_value": "0.13",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_healing_max"
         },
         {
           "name": "2й скилл 3 саммона лвл5",
@@ -870,7 +963,9 @@
           "operator": "add",
           "bonus_type": "healing_from_max",
           "bonus_value": "0.14",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_healing_max"
         },
         {
           "name": "2й скилл 3 саммона лвл6",
@@ -879,7 +974,9 @@
           "operator": "add",
           "bonus_type": "healing_from_max",
           "bonus_value": "0.15",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_healing_max"
         },
         {
           "name": "2й скилл 3 саммона лвл7",
@@ -888,7 +985,9 @@
           "operator": "add",
           "bonus_type": "healing_from_max",
           "bonus_value": "0.16",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_healing_max"
         },
         {
           "name": "2й скилл 3 саммона лвл8",
@@ -897,7 +996,9 @@
           "operator": "add",
           "bonus_type": "healing_from_max",
           "bonus_value": "0.17",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_healing_max"
         },
         {
           "name": "2й скилл 3 саммона лвл9",
@@ -906,7 +1007,9 @@
           "operator": "add",
           "bonus_type": "healing_from_max",
           "bonus_value": "0.18",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_healing_max"
         },
         {
           "name": "2й скилл 3 саммона лвл10",
@@ -915,7 +1018,9 @@
           "operator": "add",
           "bonus_type": "healing_from_max",
           "bonus_value": "0.19",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_healing_max"
         },
         {
           "name": "Бонус в 1% урона для прокачки саммонов",
@@ -924,7 +1029,9 @@
           "operator": "add",
           "bonus_type": "damage_global",
           "bonus_value": "0.01",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_damage_global"
         },
         {
           "name": "Бонус обычного ивента положительный",
@@ -933,7 +1040,9 @@
           "operator": "add",
           "bonus_type": "max_health_perk",
           "bonus_value": "0.1",
-          "work_modes": "end_of_game"
+          "work_modes": "end_of_game",
+          "is_displayed": false,
+          "icon_name": "bonus_max_health_perk"
         },
         {
           "name": "Бонус обычного ивента отрицательный",
@@ -942,7 +1051,9 @@
           "operator": "add",
           "bonus_type": "max_health_perk",
           "bonus_value": "-0.1",
-          "work_modes": "end_of_game"
+          "work_modes": "end_of_game",
+          "is_displayed": false,
+          "icon_name": "bonus_max_health_perk"
         },
         {
           "name": "Бонус ивента 3 события 1",
@@ -951,7 +1062,9 @@
           "operator": "add",
           "bonus_type": "damage_perk",
           "bonus_value": "0.15",
-          "work_modes": "next_battles:3"
+          "work_modes": "next_battles:3",
+          "is_displayed": false,
+          "icon_name": "bonus_damage_perk"
         },
         {
           "name": "Бонус ивента 3 события 2",
@@ -960,7 +1073,9 @@
           "operator": "add",
           "bonus_type": "healing",
           "bonus_value": "-0.25",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_healing"
         },
         {
           "name": "Бонус ивента 3 события 4",
@@ -969,7 +1084,9 @@
           "operator": "add",
           "bonus_type": "crit_chance_perk",
           "bonus_value": "0.1",
-          "work_modes": "end_of_game"
+          "work_modes": "end_of_game",
+          "is_displayed": false,
+          "icon_name": "bonus_crit_chance_perk"
         },
         {
           "name": "Бонус ивента 4 события 1",
@@ -978,7 +1095,9 @@
           "operator": "add",
           "bonus_type": "crit_multiplier_perk",
           "bonus_value": "0.5",
-          "work_modes": "end_of_game"
+          "work_modes": "end_of_game",
+          "is_displayed": false,
+          "icon_name": "bonus_crit_mult_perk"
         },
         {
           "name": "Бонус ивента 4 события 2",
@@ -987,7 +1106,9 @@
           "operator": "add",
           "bonus_type": "max_health_perk",
           "bonus_value": "-0.15",
-          "work_modes": "end_of_game"
+          "work_modes": "end_of_game",
+          "is_displayed": false,
+          "icon_name": "bonus_max_health_perk"
         },
         {
           "name": "Бонус ивента 4 события 3",
@@ -996,7 +1117,9 @@
           "operator": "add",
           "bonus_type": "counter_chance_perk",
           "bonus_value": "0.3",
-          "work_modes": "end_of_game"
+          "work_modes": "end_of_game",
+          "is_displayed": false,
+          "icon_name": "bonus_counter_perk"
         },
         {
           "name": "Бонус ивента 4 события 4",
@@ -1005,7 +1128,9 @@
           "operator": "add",
           "bonus_type": "armor_perk",
           "bonus_value": "-0.75",
-          "work_modes": "end_of_game"
+          "work_modes": "end_of_game",
+          "is_displayed": false,
+          "icon_name": "bonus_armor_perk"
         },
         {
           "name": "1 скилл моба 10102",
@@ -1014,7 +1139,9 @@
           "operator": "add",
           "bonus_type": "healing_from_max",
           "bonus_value": "0.2",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_healing_max"
         },
         {
           "name": "Перк 1",
@@ -1023,7 +1150,9 @@
           "operator": "add",
           "bonus_type": "damage_perk",
           "bonus_value": "0.05",
-          "work_modes": "end_of_game"
+          "work_modes": "end_of_game",
+          "is_displayed": false,
+          "icon_name": "bonus_damage_perk"
         },
         {
           "name": "Перк 6",
@@ -1032,7 +1161,9 @@
           "operator": "add",
           "bonus_type": "max_health_perk",
           "bonus_value": "0.15",
-          "work_modes": "end_of_game"
+          "work_modes": "end_of_game",
+          "is_displayed": false,
+          "icon_name": "bonus_max_health_perk"
         },
         {
           "name": "Перк 7",
@@ -1041,7 +1172,9 @@
           "operator": "add",
           "bonus_type": "crit_chance_perk",
           "bonus_value": "0.05",
-          "work_modes": "end_of_battle"
+          "work_modes": "end_of_battle",
+          "is_displayed": false,
+          "icon_name": "bonus_crit_chance_perk"
         },
         {
           "name": "Перк 8, моментальная награда",
@@ -1050,7 +1183,9 @@
           "operator": "add",
           "bonus_type": "combo_1_chance_perk",
           "bonus_value": "0.2",
-          "work_modes": "end_of_game"
+          "work_modes": "end_of_game",
+          "is_displayed": false,
+          "icon_name": "bonus_combo_1_perk"
         },
         {
           "name": "Перк 8, активируемая награда",
@@ -1059,7 +1194,9 @@
           "operator": "add",
           "bonus_type": "combo_2_chance_perk",
           "bonus_value": "0.1",
-          "work_modes": "end_of_battle"
+          "work_modes": "end_of_battle",
+          "is_displayed": false,
+          "icon_name": "bonus_combo_2_perk"
         },
         {
           "name": "Перк 10",
@@ -1068,7 +1205,9 @@
           "operator": "add",
           "bonus_type": "spell_multiplier_perk",
           "bonus_value": "2",
-          "work_modes": "end_of_game"
+          "work_modes": "end_of_game",
+          "is_displayed": false,
+          "icon_name": "bonus_spell_perk"
         },
         {
           "name": "Перк 11",
@@ -1077,7 +1216,9 @@
           "operator": "add",
           "bonus_type": "max_health_perk",
           "bonus_value": "0.02",
-          "work_modes": "end_of_game"
+          "work_modes": "end_of_game",
+          "is_displayed": false,
+          "icon_name": "bonus_max_health_perk"
         },
         {
           "name": "Перк 12",
@@ -1086,7 +1227,9 @@
           "operator": "add",
           "bonus_type": "healing",
           "bonus_value": "0.5",
-          "work_modes": "permanent"
+          "work_modes": "permanent",
+          "is_displayed": false,
+          "icon_name": "bonus_healing"
         },
         {
           "name": "Перк 13",
@@ -1095,7 +1238,9 @@
           "operator": "add",
           "bonus_type": "max_health_perk",
           "bonus_value": "0.05",
-          "work_modes": "end_of_game"
+          "work_modes": "end_of_game",
+          "is_displayed": false,
+          "icon_name": "bonus_max_health_perk"
         },
         {
           "name": "2й скилл 3 саммона лвл1",
@@ -1104,7 +1249,9 @@
           "operator": "add",
           "bonus_type": "spell_multiplier_local",
           "bonus_value": "0.2",
-          "work_modes": "if_equipped:summons:3"
+          "work_modes": "if_equipped:summons:3",
+          "is_displayed": false,
+          "icon_name": "bonus_spell_local"
         },
         {
           "name": "2й скилл 3 саммона лвл2",
@@ -1113,7 +1260,9 @@
           "operator": "add",
           "bonus_type": "spell_multiplier_local",
           "bonus_value": "0.22",
-          "work_modes": "if_equipped:summons:3"
+          "work_modes": "if_equipped:summons:3",
+          "is_displayed": false,
+          "icon_name": "bonus_spell_local"
         },
         {
           "name": "2й скилл 3 саммона лвл3",
@@ -1122,7 +1271,9 @@
           "operator": "add",
           "bonus_type": "spell_multiplier_local",
           "bonus_value": "0.24",
-          "work_modes": "if_equipped:summons:3"
+          "work_modes": "if_equipped:summons:3",
+          "is_displayed": false,
+          "icon_name": "bonus_spell_local"
         },
         {
           "name": "2й скилл 3 саммона лвл4",
@@ -1131,7 +1282,9 @@
           "operator": "add",
           "bonus_type": "spell_multiplier_local",
           "bonus_value": "0.26",
-          "work_modes": "if_equipped:summons:3"
+          "work_modes": "if_equipped:summons:3",
+          "is_displayed": false,
+          "icon_name": "bonus_spell_local"
         },
         {
           "name": "2й скилл 3 саммона лвл5",
@@ -1140,7 +1293,9 @@
           "operator": "add",
           "bonus_type": "spell_multiplier_local",
           "bonus_value": "0.28",
-          "work_modes": "if_equipped:summons:3"
+          "work_modes": "if_equipped:summons:3",
+          "is_displayed": false,
+          "icon_name": "bonus_spell_local"
         },
         {
           "name": "2й скилл 3 саммона лвл6",
@@ -1149,7 +1304,9 @@
           "operator": "add",
           "bonus_type": "spell_multiplier_local",
           "bonus_value": "0.3",
-          "work_modes": "if_equipped:summons:3"
+          "work_modes": "if_equipped:summons:3",
+          "is_displayed": false,
+          "icon_name": "bonus_spell_local"
         },
         {
           "name": "2й скилл 3 саммона лвл7",
@@ -1158,7 +1315,9 @@
           "operator": "add",
           "bonus_type": "spell_multiplier_local",
           "bonus_value": "0.32",
-          "work_modes": "if_equipped:summons:3"
+          "work_modes": "if_equipped:summons:3",
+          "is_displayed": false,
+          "icon_name": "bonus_spell_local"
         },
         {
           "name": "2й скилл 3 саммона лвл8",
@@ -1167,7 +1326,9 @@
           "operator": "add",
           "bonus_type": "spell_multiplier_local",
           "bonus_value": "0.34",
-          "work_modes": "if_equipped:summons:3"
+          "work_modes": "if_equipped:summons:3",
+          "is_displayed": false,
+          "icon_name": "bonus_spell_local"
         },
         {
           "name": "2й скилл 3 саммона лвл9",
@@ -1176,7 +1337,9 @@
           "operator": "add",
           "bonus_type": "spell_multiplier_local",
           "bonus_value": "0.36",
-          "work_modes": "if_equipped:summons:3"
+          "work_modes": "if_equipped:summons:3",
+          "is_displayed": false,
+          "icon_name": "bonus_spell_local"
         },
         {
           "name": "2й скилл 3 саммона лвл10",
@@ -1185,7 +1348,9 @@
           "operator": "add",
           "bonus_type": "spell_multiplier_local",
           "bonus_value": "0.38",
-          "work_modes": "if_equipped:summons:3"
+          "work_modes": "if_equipped:summons:3",
+          "is_displayed": false,
+          "icon_name": "bonus_spell_local"
         }
       ],
       "sourceRows": [
@@ -5255,7 +5420,7 @@
     {
       "domain": "Story_levels",
       "spreadsheetId": "1gz8t6fmWwIwvz93U7pKZ8rrBu9RdfyJB5Yn9G2ITuCE",
-      "range": "A1:K3",
+      "range": "A1:M9",
       "rows": [
         {
           "name": "",
@@ -5268,7 +5433,9 @@
           "max_battle_turns": "25",
           "enemy_stats_multiplier": "1",
           "trigger_types": "always_available",
-          "trigger_values": "0"
+          "trigger_values": "0",
+          "dialogues_ids": "1;2",
+          "dialogues_triggers": "on_start;on_loss"
         },
         {
           "name": "",
@@ -5281,12 +5448,110 @@
           "max_battle_turns": "25",
           "enemy_stats_multiplier": "1.5",
           "trigger_types": "story_level_completed",
-          "trigger_values": "1"
+          "trigger_values": "1",
+          "dialogues_ids": "1;3",
+          "dialogues_triggers": "on_stage_entered:2;on_win"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "3",
+          "background": "Forest",
+          "start_phrase_loc_key": "story.level.1.start",
+          "stage_ids": "1;2;3;4;5;6;7;8;9;10",
+          "exp_level_id": "1",
+          "max_battle_turns": "25",
+          "enemy_stats_multiplier": "1.75",
+          "trigger_types": "story_level_completed",
+          "trigger_values": "2",
+          "dialogues_ids": "1;2",
+          "dialogues_triggers": "on_start;on_loss"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "4",
+          "background": "Forest",
+          "start_phrase_loc_key": "story.level.2.start",
+          "stage_ids": "11;12;13;14;15;16;17;18;19;20",
+          "exp_level_id": "2",
+          "max_battle_turns": "25",
+          "enemy_stats_multiplier": "2",
+          "trigger_types": "story_level_completed",
+          "trigger_values": "3",
+          "dialogues_ids": "1;3",
+          "dialogues_triggers": "on_stage_entered:2;on_win"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "5",
+          "background": "Forest",
+          "start_phrase_loc_key": "story.level.1.start",
+          "stage_ids": "1;2;3;4;5;6;7;8;9;10",
+          "exp_level_id": "1",
+          "max_battle_turns": "25",
+          "enemy_stats_multiplier": "2.25",
+          "trigger_types": "story_level_completed",
+          "trigger_values": "4",
+          "dialogues_ids": "1;2",
+          "dialogues_triggers": "on_start;on_loss"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "6",
+          "background": "Forest",
+          "start_phrase_loc_key": "story.level.2.start",
+          "stage_ids": "11;12;13;14;15;16;17;18;19;20",
+          "exp_level_id": "2",
+          "max_battle_turns": "25",
+          "enemy_stats_multiplier": "2.5",
+          "trigger_types": "story_level_completed",
+          "trigger_values": "5",
+          "dialogues_ids": "1;3",
+          "dialogues_triggers": "on_stage_entered:2;on_win"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "7",
+          "background": "Forest",
+          "start_phrase_loc_key": "story.level.1.start",
+          "stage_ids": "1;2;3;4;5;6;7;8;9;10",
+          "exp_level_id": "1",
+          "max_battle_turns": "25",
+          "enemy_stats_multiplier": "2.75",
+          "trigger_types": "story_level_completed",
+          "trigger_values": "6",
+          "dialogues_ids": "1;2",
+          "dialogues_triggers": "on_start;on_loss"
+        },
+        {
+          "name": "",
+          "is_off": false,
+          "id": "8",
+          "background": "Forest",
+          "start_phrase_loc_key": "story.level.2.start",
+          "stage_ids": "11;12;13;14;15;16;17;18;19;20",
+          "exp_level_id": "2",
+          "max_battle_turns": "25",
+          "enemy_stats_multiplier": "3",
+          "trigger_types": "story_level_completed",
+          "trigger_values": "7",
+          "dialogues_ids": "1;3",
+          "dialogues_triggers": "on_stage_entered:2;on_win"
         }
       ],
       "sourceRows": [
         2,
-        3
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
       ]
     },
     {
@@ -6186,10 +6451,10 @@
     {
       "domain": "Dialogues",
       "spreadsheetId": "1FDgmOrBTFPj2Tzf20r4Y87vKpl3Nxj45Fgr63XWykTU",
-      "range": "A1:K28",
+      "range": "A1:M28",
       "rows": [
         {
-          "name": "",
+          "name": "Стартовое свидание",
           "is_off": false,
           "id": "1",
           "step": "1",
